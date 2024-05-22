@@ -1,0 +1,32 @@
+[profile.default]
+src = 'src'
+out = 'out'
+test = 'test'
+libs = ['lib']
+optimizer = true
+optimizer_runs = 200
+fuzz = { runs = 50, max_test_rejects = 100_000_000}
+evm_version = 'shanghai'
+remappings = ["@uniswap/v3-periphery/=lib/accounts-v2/lib/v3-periphery/", "@uniswap/v3-core/=lib/accounts-v2/lib/v3-core/", "@openzeppelin/=lib/accounts-v2/lib/openzeppelin-contracts/", "@uniswap/v2-core/contracts=lib/accounts-v2/test/utils/fixtures/swap-router-02"]
+
+[profile.lite]
+src = 'src'
+out = 'out'
+test = 'test'
+libs = ['lib']
+optimizer = false
+fuzz = { runs = 50, max_test_rejects = 100_000_000}
+
+[fmt]
+bracket_spacing = true
+int_types = "long"
+line_length = 120
+number_underscore = "thousands"
+quote_style = "double"
+tab_width = 4
+
+[profile.hf]
+fuzz = { runs = 2_000, max_test_rejects = 1_000_000_000}
+
+[profile.ci]
+fuzz = { runs = 200, max_test_rejects = 100_000_000}

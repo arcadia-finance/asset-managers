@@ -1,0 +1,3 @@
+[submodule "lib/accounts-v2"]
+	path = lib/accounts-v2
+	url = https://github.com/arcadia-finance/accounts-v2
