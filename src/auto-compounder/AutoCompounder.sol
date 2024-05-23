@@ -182,16 +182,16 @@ contract AutoCompounder is IActionBase {
      * - Increases the liquidity of the current position with those fees.
      * - Transfers dust amounts to the initiator.
      */
-    function executeAction(bytes calldata actionData) external override returns (ActionData memory assetData) {
+    function executeAction(bytes calldata actionData) external override returns (ActionData memory depositData) {
         // Position transferred from Account
         // Caller should be the Account provided as input in compoundFeesForAccount()
         if (msg.sender != account) revert OnlyAccount();
 
         // Decode bytes data
         address initiator;
-        (assetData, initiator) = abi.decode(actionData, (ActionData, address));
+        (depositData, initiator) = abi.decode(actionData, (ActionData, address));
 
-        uint256 assetId = assetData.assetIds[0];
+        uint256 assetId = depositData.assetIds[0];
         PositionState memory position = _getPositionState(assetId);
 
         // Check that current tick of pool is not manipulated.
@@ -210,42 +210,28 @@ contract AutoCompounder is IActionBase {
             (fees.amount0, fees.amount1) = NONFUNGIBLE_POSITION_MANAGER.collect(collectParams);
         }
 
-        {
-            // Check value of totalFees in USD
-            uint256 totalFee0Value = position.usdPriceToken0 * fees.amount0 / 1e18;
-            uint256 totalFee1Value = position.usdPriceToken1 * fees.amount1 / 1e18;
-
-            if (totalFee0Value + totalFee1Value < MIN_USD_FEES_VALUE) revert FeeValueBelowTreshold();
-        }
-
-        // Calculate and remove initiator fee from fees to rebalance
-        uint256 initiatorFee0 = fees.amount0 * INITIATOR_FEE / BIPS;
-        uint256 initiatorFee1 = fees.amount1 * INITIATOR_FEE / BIPS;
-
-        fees.amount0 -= initiatorFee0;
-        fees.amount1 -= initiatorFee1;
+        // Remove initiator reward from fees, these will be send to the initiator.
+        fees.amount0 -= fees.amount0.mulDivDown(INITIATOR_FEE, BIPS);
+        fees.amount1 -= fees.amount1.mulDivDown(INITIATOR_FEE, BIPS);
 
         // Rebalance fee amounts to match ratios of pool tick relative to ticks of the position.
         fees = _rebalanceFees(position, fees);
 
-        uint256 amount0ToDeposit = ERC20(position.token0).balanceOf(address(this)) - initiatorFee0;
-        uint256 amount1ToDeposit = ERC20(position.token1).balanceOf(address(this)) - initiatorFee1;
-
         // Increase liquidity in pool
+        ERC20(position.token0).approve(address(NONFUNGIBLE_POSITION_MANAGER), fees.amount0);
+        ERC20(position.token1).approve(address(NONFUNGIBLE_POSITION_MANAGER), fees.amount1);
         IncreaseLiquidityParams memory increaseLiquidityParams = IncreaseLiquidityParams({
             tokenId: assetId,
-            amount0Desired: amount0ToDeposit,
-            amount1Desired: amount1ToDeposit,
+            amount0Desired: fees.amount0,
+            amount1Desired: fees.amount1,
             amount0Min: 0,
             amount1Min: 0,
             deadline: block.timestamp
         });
 
-        ERC20(position.token0).approve(address(NONFUNGIBLE_POSITION_MANAGER), amount0ToDeposit);
-        ERC20(position.token1).approve(address(NONFUNGIBLE_POSITION_MANAGER), amount1ToDeposit);
         INonfungiblePositionManager(address(NONFUNGIBLE_POSITION_MANAGER)).increaseLiquidity(increaseLiquidityParams);
 
-        // Dust amounts + fees are transfered to the initiator
+        // Dust amounts + rewards are transfered to the initiator
         ERC20(position.token0).safeTransfer(initiator, ERC20(position.token0).balanceOf(address(this)));
         ERC20(position.token1).safeTransfer(initiator, ERC20(position.token1).balanceOf(address(this)));
 
@@ -285,8 +271,12 @@ contract AutoCompounder is IActionBase {
      */
     function _rebalanceFees(PositionState memory position, Fees memory fees) internal returns (Fees memory) {
         // Check value of totalFees in USD
-        uint256 totalFee0Value = position.usdPriceToken0 * fees.amount0 / 1e18;
-        uint256 totalFee1Value = position.usdPriceToken1 * fees.amount1 / 1e18;
+        uint256 valueFee0 = position.usdPriceToken0.mulDivDown(fees.amount0, 1e18);
+        uint256 valueFee1 = position.usdPriceToken1.mulDivDown(fees.amount1, 1e18);
+        uint256 valueFeeTotal = valueFee0 + valueFee1;
+
+        // Check that the total value of the fees in USD exceeds the threshold to initiate a rebalance.
+        if (valueFeeTotal < MIN_USD_FEES_VALUE) revert FeeValueBelowTreshold();
 
         if (position.currentTick >= position.tickUpper) {
             // Position is fully in token 1
@@ -304,17 +294,17 @@ contract AutoCompounder is IActionBase {
             // Get ratio of token0/token1 based on tick ratio
             // Ticks in range can't be zero (upper bound should be strictly higher than lower bound for a position)
             uint256 token0Ratio = (ticksFromCurrentToUpperTick << 24) / ticksInRange;
-            uint256 targetToken0Value = (token0Ratio * (totalFee0Value + totalFee1Value)) >> 24;
+            uint256 targetToken0Value = (token0Ratio * (valueFee0 + valueFee1)) >> 24;
 
-            if (targetToken0Value < totalFee0Value) {
+            if (targetToken0Value < valueFee0) {
                 // sell token0 to token1
-                uint256 amount0ToSwap = (totalFee0Value - targetToken0Value) * fees.amount0 / totalFee0Value;
+                uint256 amount0ToSwap = (valueFee0 - targetToken0Value) * fees.amount0 / valueFee0;
                 fees = _swap(position, fees, true, int256(amount0ToSwap));
             } else {
                 // sell token1 for token0
                 uint256 token1Ratio = type(uint24).max - token0Ratio;
-                uint256 targetToken1Value = (token1Ratio * (totalFee0Value + totalFee1Value)) >> 24;
-                uint256 amount1ToSwap = (totalFee1Value - targetToken1Value) * fees.amount1 / totalFee1Value;
+                uint256 targetToken1Value = (token1Ratio * (valueFee0 + valueFee1)) >> 24;
+                uint256 amount1ToSwap = (valueFee1 - targetToken1Value) * fees.amount1 / valueFee1;
                 fees = _swap(position, fees, false, int256(amount1ToSwap));
             }
         }
