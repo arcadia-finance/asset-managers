@@ -298,13 +298,13 @@ contract AutoCompounder is IActionBase {
 
             if (targetToken0Value < valueFee0) {
                 // sell token0 to token1
-                uint256 amount0ToSwap = (valueFee0 - targetToken0Value) * fees.amount0 / valueFee0;
+                uint256 amount0ToSwap = (valueFee0 - targetToken0Value).mulDivDown(fees.amount0, valueFee0);
                 fees = _swap(position, fees, true, int256(amount0ToSwap));
             } else {
                 // sell token1 for token0
                 uint256 token1Ratio = type(uint24).max - token0Ratio;
                 uint256 targetToken1Value = (token1Ratio * (valueFee0 + valueFee1)) >> 24;
-                uint256 amount1ToSwap = (valueFee1 - targetToken1Value) * fees.amount1 / valueFee1;
+                uint256 amount1ToSwap = (valueFee1 - targetToken1Value).mulDivDown(fees.amount1, valueFee1);
                 fees = _swap(position, fees, false, int256(amount1ToSwap));
             }
         }
@@ -347,8 +347,8 @@ contract AutoCompounder is IActionBase {
         returns (Fees memory)
     {
         uint256 sqrtPriceLimitX96_ = zeroToOne
-            ? uint256(position.sqrtPriceX96) * MAX_LOWER_SQRT_PRICE_DEVIATION / BIPS
-            : uint256(position.sqrtPriceX96) * MAX_UPPER_SQRT_PRICE_DEVIATION / BIPS;
+            ? uint256(position.sqrtPriceX96).mulDivDown(MAX_LOWER_SQRT_PRICE_DEVIATION, BIPS)
+            : uint256(position.sqrtPriceX96).mulDivDown(MAX_UPPER_SQRT_PRICE_DEVIATION, BIPS);
 
         bytes memory data = abi.encode(position.token0, position.token1, position.fee);
         (int256 deltaAmount0, int256 deltaAmount1) =
