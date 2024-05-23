@@ -116,14 +116,29 @@ abstract contract AutoCompounder_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, SwapR
         );
 
         vm.prank(users.creatorAddress);
-        autoCompounder = new AutoCompounderExtension(
-            address(registryExtension),
-            address(uniswapV3Factory),
-            address(nonfungiblePositionManager),
-            TOLERANCE,
-            MIN_USD_FEES_VALUE,
-            INITIATOR_FEE
+        autoCompounder = new AutoCompounderExtension(TOLERANCE, MIN_USD_FEES_VALUE, INITIATOR_FEE);
+
+        // Overwrite contract addresses stored as constants in autoCompounder.
+        bytes memory bytecode = address(autoCompounder).code;
+        bytecode = Utils.veryBadBytesReplacer(
+            bytecode,
+            abi.encodePacked(0xd0690557600eb8Be8391D1d97346e2aab5300d5f),
+            abi.encodePacked(registryExtension),
+            false
         );
+        bytecode = Utils.veryBadBytesReplacer(
+            bytecode,
+            abi.encodePacked(0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1),
+            abi.encodePacked(nonfungiblePositionManager),
+            false
+        );
+        bytecode = Utils.veryBadBytesReplacer(
+            bytecode,
+            abi.encodePacked(0x33128a8fC17869897dcE68Ed026d694621f6FDfD),
+            abi.encodePacked(uniswapV3Factory),
+            false
+        );
+        vm.etch(address(autoCompounder), bytecode);
     }
 
     /*////////////////////////////////////////////////////////////////

@@ -7,15 +7,8 @@ pragma solidity 0.8.22;
 import { AutoCompounder } from "../../../src/auto-compounder/AutoCompounder.sol";
 
 contract AutoCompounderExtension is AutoCompounder {
-    constructor(
-        address registry,
-        address uniswapV3Factory,
-        address nonfungiblePositionManager,
-        uint256 tolerance_,
-        uint256 minUsdFeeValue,
-        uint256 initiatorFee
-    )
-        AutoCompounder(registry, uniswapV3Factory, nonfungiblePositionManager, tolerance_, minUsdFeeValue, initiatorFee)
+    constructor(uint256 tolerance_, uint256 minUsdFeeValue, uint256 initiatorFee)
+        AutoCompounder(tolerance_, minUsdFeeValue, initiatorFee)
     { }
 
     function sqrtPriceX96InLimits(address token0, address token1, uint24 fee)
