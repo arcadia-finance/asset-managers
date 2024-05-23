@@ -40,7 +40,7 @@ abstract contract AutoCompounder_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, SwapR
     uint24 public POOL_FEE = 100;
     uint256 public BIPS = 10_000;
     // 4 % price diff for testing
-    uint256 public TOLERANCE = 400;
+    int24 public TOLERANCE = 400;
     // $10
     uint256 public MIN_USD_FEES_VALUE = 10 * 1e18;
     // 10% initiator fee
@@ -116,14 +116,42 @@ abstract contract AutoCompounder_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, SwapR
         );
 
         vm.prank(users.creatorAddress);
-        autoCompounder = new AutoCompounderExtension(
-            address(registryExtension),
-            address(uniswapV3Factory),
-            address(nonfungiblePositionManager),
-            TOLERANCE,
-            MIN_USD_FEES_VALUE,
-            INITIATOR_FEE
+        autoCompounder = new AutoCompounderExtension(TOLERANCE, MIN_USD_FEES_VALUE, INITIATOR_FEE);
+
+        // Get the bytecode of the UniswapV3PoolExtension.
+        bytes memory args = abi.encode();
+        bytes memory bytecode = abi.encodePacked(vm.getCode("UniswapV3PoolExtension.sol"), args);
+        bytes32 poolExtensionInitCodeHash = keccak256(bytecode);
+        bytes32 POOL_INIT_CODE_HASH = 0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54;
+
+        // Overwrite contract addresses stored as constants in autoCompounder.
+        bytecode = address(autoCompounder).code;
+        bytecode = Utils.veryBadBytesReplacer(bytecode, POOL_INIT_CODE_HASH, poolExtensionInitCodeHash);
+        bytecode = Utils.veryBadBytesReplacer(
+            bytecode,
+            abi.encodePacked(0xd0690557600eb8Be8391D1d97346e2aab5300d5f),
+            abi.encodePacked(registryExtension),
+            false
         );
+        bytecode = Utils.veryBadBytesReplacer(
+            bytecode,
+            abi.encodePacked(0xd0690557600eb8Be8391D1d97346e2aab5300d5f),
+            abi.encodePacked(registryExtension),
+            false
+        );
+        bytecode = Utils.veryBadBytesReplacer(
+            bytecode,
+            abi.encodePacked(0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1),
+            abi.encodePacked(nonfungiblePositionManager),
+            false
+        );
+        bytecode = Utils.veryBadBytesReplacer(
+            bytecode,
+            abi.encodePacked(0x33128a8fC17869897dcE68Ed026d694621f6FDfD),
+            abi.encodePacked(uniswapV3Factory),
+            false
+        );
+        vm.etch(address(autoCompounder), bytecode);
     }
 
     /*////////////////////////////////////////////////////////////////

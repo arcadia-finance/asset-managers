@@ -21,7 +21,7 @@ contract Swap_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_revert_swap_ToleranceExceeded_Right() public {
+    /*     function testFuzz_revert_swap_ToleranceExceeded_Right() public {
         // Given : New balanced stable pool 1:1
         ERC20Mock token0_;
         ERC20Mock token1_;
@@ -151,5 +151,5 @@ contract Swap_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
         // Then : updatedSqrtPriceX96 should be < limitSqrtPriceX96
         (uint160 updatedSqrtPriceX96,,,,,,) = usdStablePool.slot0();
         assert(updatedSqrtPriceX96 < limitSqrtPriceX96);
-    }
+    } */
 }

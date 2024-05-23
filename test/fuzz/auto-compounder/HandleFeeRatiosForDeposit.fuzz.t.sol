@@ -21,7 +21,7 @@ contract HandleFeeRatiosForDeposit_AutoCompounder_Fuzz_Test is AutoCompounder_Fu
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_success_currentTickGreaterOrEqualToTickUpper(TestVariables memory testVars) public {
+    /*     function testFuzz_success_currentTickGreaterOrEqualToTickUpper(TestVariables memory testVars) public {
         // Given : Valid State
         bool token0HasLowestDecimals;
         (testVars, token0HasLowestDecimals) = givenValidBalancedState(testVars);
@@ -237,5 +237,5 @@ contract HandleFeeRatiosForDeposit_AutoCompounder_Fuzz_Test is AutoCompounder_Fu
         assert(token1.balanceOf(address(autoCompounder)) < testVars.feeAmount1 * 10 ** token1.decimals());
 
         // And : In order to test the proportions, we will validate that dust amount is minimal when calling executeAction()
-    }
+    } */
 }

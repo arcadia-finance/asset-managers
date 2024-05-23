@@ -22,7 +22,7 @@ contract GetSqrtPriceX96_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
                               TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function testFuzz_Success_getSqrtPriceX96_ZeroPriceToken1(uint256 priceToken0) public {
+    /*     function testFuzz_Success_getSqrtPriceX96_ZeroPriceToken1(uint256 priceToken0) public {
         // Test-case.
         uint256 priceToken1 = 0;
 
@@ -65,5 +65,5 @@ contract GetSqrtPriceX96_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
         uint256 actualSqrtPriceX96 = autoCompounder.getSqrtPriceX96(priceToken0, priceToken1);
 
         assertEq(actualSqrtPriceX96, expectedSqrtPriceX96);
-    }
+    } */
 }

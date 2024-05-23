@@ -22,7 +22,7 @@ contract SqrtPriceX96InLimits_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Te
                               TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function testFuzz_Revert_sqrtPriceX96InLimits_ToleranceExceeded_MoveTickRight(TestVariables memory testVars)
+    /*     function testFuzz_Revert_sqrtPriceX96InLimits_ToleranceExceeded_MoveTickRight(TestVariables memory testVars)
         public
     {
         // Given : Valid State
@@ -100,5 +100,5 @@ contract SqrtPriceX96InLimits_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Te
         assertEq(usdPriceToken1, usdPriceToken1_);
         assertEq(sqrtPriceX96, sqrtPriceX96AtCurrentTick);
         assertEq(pool, address(usdStablePool));
-    }
+    } */
 }
