@@ -151,6 +151,9 @@ abstract contract AutoCompounder_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, SwapR
             abi.encodePacked(uniswapV3Factory),
             false
         );
+        bytecode = Utils.veryBadBytesReplacer(
+            bytecode, abi.encodePacked(0xDa14Fdd72345c4d2511357214c5B89A919768e59), abi.encodePacked(factory), false
+        );
         vm.etch(address(autoCompounder), bytecode);
     }
 

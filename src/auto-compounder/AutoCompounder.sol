@@ -94,12 +94,14 @@ contract AutoCompounder is IActionBase {
                                 ERRORS
     ////////////////////////////////////////////////////////////// */
 
-    error CallerIsNotAccount();
     error CallerIsNotPool();
     error FeeValueBelowTreshold();
     error MaxToleranceExceeded();
     error MaxInitiatorFeeExceeded();
+    error NotAnAccount();
+    error OnlyAccount();
     error PriceToleranceExceeded();
+    error Reentered();
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -137,7 +139,9 @@ contract AutoCompounder is IActionBase {
      * @param assetId The position id to compound the fees for.
      */
     function compoundFeesForAccount(address account_, uint256 assetId) external {
+        if (!FACTORY.isAccount(account_)) revert NotAnAccount();
         // Cache Account in storage, used to validate caller for executeAction()
+        if (account != address(0)) revert Reentered();
         account = account_;
 
         address[] memory assets_ = new address[](1);
@@ -161,9 +165,11 @@ contract AutoCompounder is IActionBase {
         bytes memory actionData = abi.encode(assetData, transferFromOwner, permit, signature, compounderData);
 
         // Trigger flashAction with actionTarget as this contract
+        // Callback to executeAction() will be triggered.
         IAccount(account_).flashAction(address(this), actionData);
 
-        // executeAction() triggered as callback function
+        // Reset account.
+        account = address(0);
     }
 
     /**
@@ -179,7 +185,7 @@ contract AutoCompounder is IActionBase {
     function executeAction(bytes calldata actionData) external override returns (ActionData memory assetData) {
         // Position transferred from Account
         // Caller should be the Account provided as input in compoundFeesForAccount()
-        if (msg.sender != account) revert CallerIsNotAccount();
+        if (msg.sender != account) revert OnlyAccount();
 
         // Decode bytes data
         address initiator;
