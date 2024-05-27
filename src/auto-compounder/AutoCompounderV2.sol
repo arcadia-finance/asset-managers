@@ -18,7 +18,6 @@ import { IAccount } from "./interfaces/IAccount.sol";
 import { IFactory } from "./interfaces/IFactory.sol";
 import { IPermit2 } from "../../lib/accounts-v2/src/interfaces/IPermit2.sol";
 import { IRegistry } from "./interfaces/IRegistry.sol";
-import { IUniswapV3Factory } from "./interfaces/IUniswapV3Factory.sol";
 import { IUniswapV3Pool } from "./interfaces/IUniswapV3Pool.sol";
 import { PoolAddress } from "../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/PoolAddress.sol";
 import { SafeCastLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeCastLib.sol";
@@ -76,10 +75,10 @@ contract AutoCompounder is IActionBase {
         address token1;
         uint24 fee;
         address pool;
-        int24 tickLower;
-        int24 tickUpper;
-        int24 currentTick;
-        uint160 sqrtPriceX96;
+        int256 tickLower;
+        int256 tickUpper;
+        int256 currentTick;
+        uint256 sqrtPriceX96;
         uint256 usdPriceToken0;
         uint256 usdPriceToken1;
     }
@@ -94,6 +93,7 @@ contract AutoCompounder is IActionBase {
                                 ERRORS
     ////////////////////////////////////////////////////////////// */
 
+    error CallerIsNotAccount();
     error CallerIsNotPool();
     error FeeValueBelowTreshold();
     error MaxToleranceExceeded();
@@ -144,29 +144,28 @@ contract AutoCompounder is IActionBase {
         if (account != address(0)) revert Reentered();
         account = account_;
 
-        address[] memory assets_ = new address[](1);
-        assets_[0] = address(NONFUNGIBLE_POSITION_MANAGER);
-        assets_[0] = address(NONFUNGIBLE_POSITION_MANAGER);
-        uint256[] memory assetIds_ = new uint256[](1);
-        assetIds_[0] = assetId;
-        uint256[] memory assetAmounts_ = new uint256[](1);
-        assetAmounts_[0] = 1;
-        uint256[] memory assetTypes_ = new uint256[](1);
-        assetTypes_[0] = 2;
+        address[] memory assets = new address[](1);
+        assets[0] = address(NONFUNGIBLE_POSITION_MANAGER);
+        uint256[] memory assetIds = new uint256[](1);
+        assetIds[0] = assetId;
+        uint256[] memory assetAmounts = new uint256[](1);
+        assetAmounts[0] = 1;
+        uint256[] memory assetTypes = new uint256[](1);
+        assetTypes[0] = 2;
 
         ActionData memory assetData =
-            ActionData({ assets: assets_, assetIds: assetIds_, assetAmounts: assetAmounts_, assetTypes: assetTypes_ });
+            ActionData({ assets: assets, assetIds: assetIds, assetAmounts: assetAmounts, assetTypes: assetTypes });
 
         // Empty data needed to encode in actionData
         bytes memory signature;
         ActionData memory transferFromOwner;
         IPermit2.PermitBatchTransferFrom memory permit;
 
-        bytes memory compounderData = abi.encode(assetData, msg.sender);
-        bytes memory actionData = abi.encode(assetData, transferFromOwner, permit, signature, compounderData);
+        bytes memory compoundData = abi.encode(assetData, msg.sender);
+        bytes memory actionData = abi.encode(assetData, transferFromOwner, permit, signature, compoundData);
 
-        // Trigger flashAction with actionTarget as this contract
-        // Callback to executeAction() will be triggered.
+        // Trigger flashAction with actionTarget as this contract.
+        // callback to executeAction() will be triggered.
         IAccount(account_).flashAction(address(this), actionData);
 
         // Reset account.
@@ -184,11 +183,10 @@ contract AutoCompounder is IActionBase {
      * - Transfers dust amounts to the initiator.
      */
     function executeAction(bytes calldata actionData) external override returns (ActionData memory depositData) {
-        // Position transferred from Account
-        // Caller should be the Account provided as input in compoundFeesForAccount()
+        // Caller should be the Account for which compoundFeesForAccount() was called.
         if (msg.sender != account) revert OnlyAccount();
 
-        // Decode bytes data
+        // Decode bytes data.
         address initiator;
         (depositData, initiator) = abi.decode(actionData, (ActionData, address));
 
@@ -218,7 +216,7 @@ contract AutoCompounder is IActionBase {
         // Rebalance fee amounts to match ratios of pool tick relative to ticks of the position.
         fees = _rebalanceFees(position, fees);
 
-        // Increase liquidity in pool
+        // Increase liquidity of the position.
         ERC20(position.token0).approve(address(NONFUNGIBLE_POSITION_MANAGER), fees.amount0);
         ERC20(position.token1).approve(address(NONFUNGIBLE_POSITION_MANAGER), fees.amount1);
         IncreaseLiquidityParams memory increaseLiquidityParams = IncreaseLiquidityParams({
@@ -229,25 +227,21 @@ contract AutoCompounder is IActionBase {
             amount1Min: 0,
             deadline: block.timestamp
         });
-
         INonfungiblePositionManager(address(NONFUNGIBLE_POSITION_MANAGER)).increaseLiquidity(increaseLiquidityParams);
 
-        // Dust amounts + rewards are transfered to the initiator
+        // Dust amounts + rewards are transferred to the initiator.
         ERC20(position.token0).safeTransfer(initiator, ERC20(position.token0).balanceOf(address(this)));
         ERC20(position.token1).safeTransfer(initiator, ERC20(position.token1).balanceOf(address(this)));
 
-        // Position is deposited back to the Account
+        // Position is deposited back to the Account.
         NONFUNGIBLE_POSITION_MANAGER.approve(msg.sender, assetId);
     }
 
-    // TODO: natspec
     function _getPositionState(uint256 assetId) internal view returns (PositionState memory position) {
         (,, position.token0, position.token1, position.fee, position.tickLower, position.tickUpper,,,,,) =
             NONFUNGIBLE_POSITION_MANAGER.positions(assetId);
 
-        // TODO: hardcode UNI_V3_FACTORY address on Base
-        position.pool =
-            PoolAddress.computeAddress(address(UNI_V3_FACTORY), position.token0, position.token1, position.fee);
+        position.pool = PoolAddress.computeAddress(UNI_V3_FACTORY, position.token0, position.token1, position.fee);
         (position.sqrtPriceX96, position.currentTick,,,,,) = IUniswapV3Pool(position.pool).slot0();
 
         // Get current prices for 1e18 amount of assets
@@ -266,9 +260,8 @@ contract AutoCompounder is IActionBase {
 
     /**
      * @notice Calculates the current ratio at which fees should be deposited in the position, swaps one token to another if needed.
-     * @param position A struct with variables to track for a specified position.
-     * @param fees A struct containing the accumulated fees of the position.
-     * @return fees_ TODO
+     * @param position A struct with variables to track for a specific position.
+     * @param fees A struct containing the accumulated fees of the position as well as the external token prices.
      */
     function _rebalanceFees(PositionState memory position, Fees memory fees) internal returns (Fees memory) {
         // Check value of totalFees in USD
@@ -280,33 +273,30 @@ contract AutoCompounder is IActionBase {
         if (valueFeeTotal < MIN_USD_FEES_VALUE) revert FeeValueBelowTreshold();
 
         if (position.currentTick >= position.tickUpper) {
-            // Position is fully in token 1
-            // Swap full amount of token0 to token1
+            // Position is fully in token 1.
+            // Swap full amount of token0 to token1.
             fees = _swap(position, fees, true, int256(fees.amount0));
         } else if (position.currentTick <= position.tickLower) {
-            // Position is fully in token 0
-            // Swap full amount of token1 to token0
+            // Position is fully in token 0.
+            // Swap full amount of token1 to token0.
             fees = _swap(position, fees, false, int256(fees.amount1));
         } else {
-            // Get ratio of current tick for range
-            uint256 ticksInRange = uint256(int256(-position.tickLower + position.tickUpper));
-            uint256 ticksFromCurrentToUpperTick = uint256(int256(-position.currentTick + position.tickUpper));
+            // Position is in range.
+            // Rebalance fees to match ratio of fees with ratio of ticks.
+            uint256 ticksLowerToUpper = uint256(position.tickUpper - position.tickLower);
+            uint256 ticksCurrentToUpper = uint256(position.tickUpper - position.currentTick);
 
-            // Get ratio of token0/token1 based on tick ratio
-            // Ticks in range can't be zero (upper bound should be strictly higher than lower bound for a position)
-            uint256 token0Ratio = (ticksFromCurrentToUpperTick << 24) / ticksInRange;
-            uint256 targetToken0Value = (token0Ratio * (valueFee0 + valueFee1)) >> 24;
+            uint256 targetRatio = ticksCurrentToUpper.mulDivDown(1e18, ticksLowerToUpper);
+            uint256 currentRatio = valueFee1.mulDivDown(1e18, valueFeeTotal);
 
-            if (targetToken0Value < valueFee0) {
-                // sell token0 to token1
-                uint256 amount0ToSwap = (valueFee0 - targetToken0Value).mulDivDown(fees.amount0, valueFee0);
-                fees = _swap(position, fees, true, int256(amount0ToSwap));
+            if (currentRatio < targetRatio) {
+                // Swap token0 to token1.
+                uint256 deltaToken0 = (targetRatio - currentRatio).mulDivDown(valueFeeTotal, position.usdPriceToken0);
+                fees = _swap(position, fees, true, int256(deltaToken0));
             } else {
-                // sell token1 for token0
-                uint256 token1Ratio = type(uint24).max - token0Ratio;
-                uint256 targetToken1Value = (token1Ratio * (valueFee0 + valueFee1)) >> 24;
-                uint256 amount1ToSwap = (valueFee1 - targetToken1Value).mulDivDown(fees.amount1, valueFee1);
-                fees = _swap(position, fees, false, int256(amount1ToSwap));
+                // Swap token1 to token0.
+                uint256 deltaToken1 = (currentRatio - targetRatio).mulDivDown(valueFeeTotal, position.usdPriceToken1);
+                fees = _swap(position, fees, false, int256(deltaToken1));
             }
         }
 
@@ -341,20 +331,22 @@ contract AutoCompounder is IActionBase {
 
     /**
      * @notice Internal function to swap one asset for another.
-     *  // TODO : natspec
      */
     function _swap(PositionState memory position, Fees memory fees, bool zeroToOne, int256 amountIn)
         internal
         returns (Fees memory)
     {
+        // Max slippage.
+        // ToDo: not sure if this is correct.
         uint256 sqrtPriceLimitX96_ = zeroToOne
-            ? uint256(position.sqrtPriceX96).mulDivDown(MAX_LOWER_SQRT_PRICE_DEVIATION, BIPS)
-            : uint256(position.sqrtPriceX96).mulDivDown(MAX_UPPER_SQRT_PRICE_DEVIATION, BIPS);
+            ? position.sqrtPriceX96 * MAX_LOWER_SQRT_PRICE_DEVIATION / BIPS
+            : position.sqrtPriceX96 * MAX_UPPER_SQRT_PRICE_DEVIATION / BIPS;
 
         bytes memory data = abi.encode(position.token0, position.token1, position.fee);
         (int256 deltaAmount0, int256 deltaAmount1) =
             IUniswapV3Pool(position.pool).swap(address(this), zeroToOne, amountIn, uint160(sqrtPriceLimitX96_), data);
 
+        // Check if max slippage was exceeded (not all amount was swapped before sqrtPriceLimitX96_ is reached).
         if ((zeroToOne && deltaAmount0 < amountIn) || (!zeroToOne && deltaAmount1 < amountIn)) {
             revert MaxToleranceExceeded();
         }
@@ -377,7 +369,6 @@ contract AutoCompounder is IActionBase {
     /**
      * @notice Internal function to ensure the pool's current price remains within the specified tolerance range of the external price.
      */
-    // TODO : natspec
     function _assertBalancedPool(PositionState memory position) internal view {
         // Calculates current tick of the pool based on external prices
         int256 trustedTick = _getTrustedTick(position.usdPriceToken0, position.usdPriceToken1);
@@ -390,7 +381,7 @@ contract AutoCompounder is IActionBase {
     }
 
     /**
-     * @notice Calculates the trusted tick based on external prices of both tokens.
+     * @notice Calculates the sqrtPriceX96 (token1/token0) from trusted USD prices of both tokens.
      * @param priceToken0 The price of 1e18 tokens of token0 in USD, with 18 decimals precision.
      * @param priceToken1 The price of 1e18 tokens of token1 in USD, with 18 decimals precision.
      * @return trustedTick The trusted tick.
@@ -402,7 +393,7 @@ contract AutoCompounder is IActionBase {
      * price = (amountUsd/usdPriceToken1)/(amountUsd/usdPriceToken0) = usdPriceToken0/usdPriceToken1.
      */
     function _getTrustedTick(uint256 priceToken0, uint256 priceToken1) internal pure returns (int256 trustedTick) {
-        if (priceToken1 == 0) return int256(uint256(TickMath.MAX_SQRT_RATIO));
+        if (priceToken1 == 0) return TickMath.MAX_TICK;
 
         // Both priceTokens have 18 decimals precision and result of division should have 28 decimals precision.
         // -> multiply by 1e28
@@ -414,7 +405,7 @@ contract AutoCompounder is IActionBase {
 
         // Change sqrtPrice from a decimal fixed point number with 14 digits to a binary fixed point number with 96 digits.
         // Unsafe cast: Cast will only overflow when priceToken0/priceToken1 >= 2^128.
-        uint256 sqrtPriceX96 = uint160((sqrtPriceXd14 << FixedPoint96.RESOLUTION) / 1e14);
+        uint256 sqrtPriceX96 = (sqrtPriceXd14 << FixedPoint96.RESOLUTION) / 1e14;
 
         // Calculate trusted tick from sqrtPrice.
         trustedTick = TickMath.getTickAtSqrtRatio(uint160(sqrtPriceX96));

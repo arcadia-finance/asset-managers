@@ -124,15 +124,11 @@ abstract contract AutoCompounder_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, SwapR
         bytes32 poolExtensionInitCodeHash = keccak256(bytecode);
         bytes32 POOL_INIT_CODE_HASH = 0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54;
 
-        // Overwrite contract addresses stored as constants in autoCompounder.
+        // Overwrite code hash of the UniswapV3Pool.
         bytecode = address(autoCompounder).code;
         bytecode = Utils.veryBadBytesReplacer(bytecode, POOL_INIT_CODE_HASH, poolExtensionInitCodeHash);
-        bytecode = Utils.veryBadBytesReplacer(
-            bytecode,
-            abi.encodePacked(0xd0690557600eb8Be8391D1d97346e2aab5300d5f),
-            abi.encodePacked(registryExtension),
-            false
-        );
+
+        // Overwrite contract addresses stored as constants in autoCompounder.
         bytecode = Utils.veryBadBytesReplacer(
             bytecode,
             abi.encodePacked(0xd0690557600eb8Be8391D1d97346e2aab5300d5f),
