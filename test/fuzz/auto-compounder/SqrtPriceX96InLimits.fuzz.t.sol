@@ -41,7 +41,7 @@ contract SqrtPriceX96InLimits_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Te
 
         // When : calling  sqrtPriceX96InLimits()
         // Then : It should revert
-        vm.expectRevert(AutoCompounder.PriceToleranceExceeded.selector);
+        vm.expectRevert(AutoCompounder.UnbalancedPool.selector);
         autoCompounder.sqrtPriceX96InLimits(address(token0), address(token1), POOL_FEE);
     }
 
@@ -65,7 +65,7 @@ contract SqrtPriceX96InLimits_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Te
 
         // When : calling  sqrtPriceX96InLimits()
         // Then : It should revert
-        vm.expectRevert(AutoCompounder.PriceToleranceExceeded.selector);
+        vm.expectRevert(AutoCompounder.UnbalancedPool.selector);
         autoCompounder.sqrtPriceX96InLimits(address(token0), address(token1), POOL_FEE);
     }
 

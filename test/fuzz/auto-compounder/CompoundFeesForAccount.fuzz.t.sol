@@ -29,8 +29,8 @@ contract CompoundFeesForAccount_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_
         (testVars,) = givenValidBalancedState(testVars);
 
         // And : Fee amounts are too low
-        testVars.feeAmount0 = ((MIN_USD_FEES_VALUE / 2e18) - 1);
-        testVars.feeAmount1 = ((MIN_USD_FEES_VALUE / 2e18) - 1);
+        testVars.feeAmount0 = ((COMPOUND_THRESHOLD / 2e18) - 1);
+        testVars.feeAmount1 = ((COMPOUND_THRESHOLD / 2e18) - 1);
 
         // And : State is persisted
         uint256 tokenId = setState(testVars, usdStablePool);
@@ -61,10 +61,10 @@ contract CompoundFeesForAccount_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_
         vm.prank(users.accountOwner);
         proxyAccount.setAssetManager(address(autoCompounder), true);
 
-        // When : Calling compoundFeesForAccount()
+        // When : Calling compoundFees()
         vm.startPrank(initiator);
-        vm.expectRevert(AutoCompounder.FeeValueBelowTreshold.selector);
-        autoCompounder.compoundFeesForAccount(address(proxyAccount), tokenId);
+        vm.expectRevert(AutoCompounder.BelowTreshold.selector);
+        autoCompounder.compoundFees(address(proxyAccount), tokenId);
         vm.stopPrank();
     }
 
@@ -104,9 +104,9 @@ contract CompoundFeesForAccount_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_
         // Check liquidity pre-compounding
         (,,,,,,, uint128 initialLiquidity,,,,) = nonfungiblePositionManager.positions(tokenId);
 
-        // When : Calling compoundFeesForAccount()
+        // When : Calling compoundFees()
         vm.prank(initiator);
-        autoCompounder.compoundFeesForAccount(address(proxyAccount), tokenId);
+        autoCompounder.compoundFees(address(proxyAccount), tokenId);
 
         // Then : Liquidity of position should have increased
         (,,,,,,, uint128 newLiquidity,,,,) = nonfungiblePositionManager.positions(tokenId);
@@ -118,8 +118,8 @@ contract CompoundFeesForAccount_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_
         uint256 totalFee0 = (testVars.feeAmount0 * 10 ** token0.decimals());
         uint256 totalFee1 = (testVars.feeAmount1 * 10 ** token1.decimals());
 
-        uint256 initiatorFeeToken0Calculated = totalFee0 * INITIATOR_FEE / BIPS;
-        uint256 initiatorFeeToken1Calculated = (totalFee1 * INITIATOR_FEE / BIPS);
+        uint256 initiatorFeeToken0Calculated = totalFee0 * INITIATOR_SHARE / BIPS;
+        uint256 initiatorFeeToken1Calculated = (totalFee1 * INITIATOR_SHARE / BIPS);
 
         // And : initiatorFees should be correct. We add 1 for rounding issues in contract
         assert(initiatorFeesToken0 + 1 >= initiatorFeeToken0Calculated);
@@ -190,9 +190,9 @@ contract CompoundFeesForAccount_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_
         // Check liquidity pre-compounding
         (,,,,,,, uint128 initialLiquidity,,,,) = nonfungiblePositionManager.positions(tokenId);
 
-        // When : Calling compoundFeesForAccount()
+        // When : Calling compoundFees()
         vm.prank(initiator);
-        autoCompounder.compoundFeesForAccount(address(proxyAccount), tokenId);
+        autoCompounder.compoundFees(address(proxyAccount), tokenId);
 
         // Then : Liquidity of position should have increased
         (,,,,,,, uint128 newLiquidity,,,,) = nonfungiblePositionManager.positions(tokenId);
@@ -205,8 +205,8 @@ contract CompoundFeesForAccount_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_
         uint256 totalFee0 = (testVars.feeAmount0 * 10 ** token0.decimals());
         uint256 totalFee1 = (testVars.feeAmount1 * 10 ** token1.decimals()) + (amount1ToSwap * 1 / BIPS);
 
-        uint256 initiatorFeeToken0Calculated = totalFee0 * INITIATOR_FEE / BIPS;
-        uint256 initiatorFeeToken1Calculated = totalFee1 * INITIATOR_FEE / BIPS;
+        uint256 initiatorFeeToken0Calculated = totalFee0 * INITIATOR_SHARE / BIPS;
+        uint256 initiatorFeeToken1Calculated = totalFee1 * INITIATOR_SHARE / BIPS;
 
         assert(initiatorFeesToken0 + 1 >= initiatorFeeToken0Calculated);
         assert(initiatorFeesToken1 + 1 >= initiatorFeeToken1Calculated);
@@ -300,9 +300,9 @@ contract CompoundFeesForAccount_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_
         // Check liquidity pre-compounding
         (,,,,,,, uint128 initialLiquidity,,,,) = nonfungiblePositionManager.positions(tokenId);
 
-        // When : Calling compoundFeesForAccount()
+        // When : Calling compoundFees()
         vm.prank(initiator);
-        autoCompounder.compoundFeesForAccount(address(proxyAccount), tokenId);
+        autoCompounder.compoundFees(address(proxyAccount), tokenId);
 
         // Then : Liquidity of position should have increased
         (,,,,,,, uint128 newLiquidity,,,,) = nonfungiblePositionManager.positions(tokenId);
@@ -315,8 +315,8 @@ contract CompoundFeesForAccount_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_
         uint256 totalFee0 = (testVars.feeAmount0 * 10 ** token0.decimals()) + (amount0ToSwap * 1 / BIPS);
         uint256 totalFee1 = (testVars.feeAmount1 * 10 ** token1.decimals());
 
-        uint256 initiatorFeeToken0Calculated = totalFee0 * INITIATOR_FEE / BIPS;
-        uint256 initiatorFeeToken1Calculated = (totalFee1 * INITIATOR_FEE / BIPS);
+        uint256 initiatorFeeToken0Calculated = totalFee0 * INITIATOR_SHARE / BIPS;
+        uint256 initiatorFeeToken1Calculated = (totalFee1 * INITIATOR_SHARE / BIPS);
 
         assert(initiatorFeesToken0 + 1 >= initiatorFeeToken0Calculated);
         assert(initiatorFeesToken1 + 1 >= initiatorFeeToken1Calculated);

@@ -104,7 +104,7 @@ contract Swap_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
             1000
         );
 
-        uint256 limitSqrtPriceX96 = sqrtPriceX96 * autoCompounder.MAX_LOWER_SQRT_PRICE_DEVIATION() / BIPS;
+        uint256 limitSqrtPriceX96 = sqrtPriceX96 * autoCompounder.LOWER_SQRT_PRICE_DEVIATION() / BIPS;
 
         // When : Swapping an amount that will move the price out of tolerance zone, token0_ to token1_
         // AmountToSwap just above tolerance
@@ -139,7 +139,7 @@ contract Swap_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
             1000
         );
 
-        uint256 limitSqrtPriceX96 = sqrtPriceX96 * autoCompounder.MAX_UPPER_SQRT_PRICE_DEVIATION() / BIPS;
+        uint256 limitSqrtPriceX96 = sqrtPriceX96 * autoCompounder.UPPER_SQRT_PRICE_DEVIATION() / BIPS;
 
         // When : Swapping an amount that will move the price out of tolerance zone, token0_ to token1_
         // AmountToSwap just above tolerance

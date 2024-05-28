@@ -40,11 +40,11 @@ abstract contract AutoCompounder_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, SwapR
     uint24 public POOL_FEE = 100;
     uint256 public BIPS = 10_000;
     // 4 % price diff for testing
-    int24 public TOLERANCE = 400;
+    uint256 public TOLERANCE = 400;
     // $10
-    uint256 public MIN_USD_FEES_VALUE = 10 * 1e18;
+    uint256 public COMPOUND_THRESHOLD = 10 * 1e18;
     // 10% initiator fee
-    uint256 public INITIATOR_FEE = 1000;
+    uint256 public INITIATOR_SHARE = 1000;
 
     /*////////////////////////////////////////////////////////////////
                             VARIABLES
@@ -116,7 +116,7 @@ abstract contract AutoCompounder_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, SwapR
         );
 
         vm.prank(users.creatorAddress);
-        autoCompounder = new AutoCompounderExtension(TOLERANCE, MIN_USD_FEES_VALUE, INITIATOR_FEE);
+        autoCompounder = new AutoCompounderExtension(COMPOUND_THRESHOLD, INITIATOR_SHARE, TOLERANCE);
 
         // Get the bytecode of the UniswapV3PoolExtension.
         bytes memory args = abi.encode();
