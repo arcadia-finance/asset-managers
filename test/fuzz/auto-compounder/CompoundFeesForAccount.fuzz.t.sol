@@ -63,7 +63,7 @@ contract CompoundFeesForAccount_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_
 
         // When : Calling compoundFees()
         vm.startPrank(initiator);
-        vm.expectRevert(AutoCompounder.BelowTreshold.selector);
+        vm.expectRevert(AutoCompounder.BelowThreshold.selector);
         autoCompounder.compoundFees(address(proxyAccount), tokenId);
         vm.stopPrank();
     }

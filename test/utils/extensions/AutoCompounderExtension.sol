@@ -16,10 +16,10 @@ contract AutoCompounderExtension is AutoCompounder {
         return UniswapV3Logic._getSqrtPriceX96(priceToken0, priceToken1);
     }
 
-    function swap(PositionState memory position, Fees memory fees, bool zeroToOne, int256 amountIn)
+    function swap(PositionState memory position, Fees memory fees, bool zeroToOne, uint256 amountOut)
         public
         returns (bool, Fees memory)
     {
-        return _swap(position, fees, zeroToOne, amountIn);
+        return _swap(position, fees, zeroToOne, amountOut);
     }
 }
