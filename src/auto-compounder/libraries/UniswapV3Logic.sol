@@ -9,6 +9,7 @@ import { FixedPoint128 } from "../../../lib/accounts-v2/src/asset-modules/Uniswa
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { FullMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
 import { INonfungiblePositionManager } from "../interfaces/INonfungiblePositionManager.sol";
+import { IQuoter } from "../interfaces/IQuoter.sol";
 import { IUniswapV3Pool } from "../interfaces/IUniswapV3Pool.sol";
 import { PoolAddress } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/PoolAddress.sol";
 import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
@@ -18,12 +19,15 @@ library UniswapV3Logic {
 
     // The binary precision of sqrtPriceX96 squared.
     uint256 internal constant Q192 = FixedPoint96.Q96 ** 2;
+
     // The Uniswap V3 Factory contract.
     address internal constant UNISWAP_V3_FACTORY = 0x33128a8fC17869897dcE68Ed026d694621f6FDfD;
 
     // The Uniswap V3 NonfungiblePositionManager contract.
     INonfungiblePositionManager internal constant POSITION_MANAGER =
         INonfungiblePositionManager(0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1);
+    // The Uniswap V3 Quoter contract.
+    IQuoter internal constant QUOTER = IQuoter(0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a);
 
     /**
      * @notice Calculates the underlying token amounts of accrued fees, both collected and uncollected.
@@ -107,11 +111,16 @@ library UniswapV3Logic {
     }
 
     /**
-     * @notice Calculates the amountOut for a given amountIn and sqrtPriceX96 for swaps without slippage.
+     * @notice Calculates the amountOut for a given amountIn and sqrtPriceX96 for a hypothetical
+     * swap without slippage.
      * @param sqrtPriceX96 The square root of the price (token1/token0), with 96 binary precision.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
-     * @param amountIn The amount that of tokenIn that must be swapped to tokenIn.
-     * @return amountOut The amount that of tokenOut that must be swapped to.
+     * @param amountIn The amount that of tokenIn that must be swapped to tokenOut.
+     * @return amountOut The amount of tokenOut.
+     * @dev Function will revert for all pools where the sqrtPriceX96 is bigger than type(uint128).max.
+     * type(uint128).max is currently more than enough for all supported pools.
+     * If ever the sqrtPriceX96 of a pool exceeds type(uint128).max, a different auto compounder has to be deployed
+     * that does two consecutive mulDivs.
      */
     function _getAmountOut(uint256 sqrtPriceX96, bool zeroToOne, uint256 amountIn)
         internal

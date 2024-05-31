@@ -4,7 +4,11 @@
  */
 pragma solidity 0.8.22;
 
-import { AutoCompounder_Fuzz_Test, AutoCompounderExtension, AutoCompounder } from "./_AutoCompounder.fuzz.t.sol";
+import { AutoCompounder_Fuzz_Test } from "./_AutoCompounder.fuzz.t.sol";
+
+import { AutoCompounder } from "../../../src/auto-compounder/AutoCompounder.sol";
+import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { stdError } from "../../../lib/accounts-v2/lib/forge-std/src/StdError.sol";
 
 /**
  * @notice Fuzz tests for the function "Constructor" of contract "AutoCompounder".
@@ -14,38 +18,38 @@ contract Constructor_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
-    function setUp() public override {
-        AutoCompounder_Fuzz_Test.setUp();
-    }
+    function setUp() public override { }
 
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Revert_Constructor_MaxTolerance() public {
-        vm.startPrank(users.creatorAddress);
-        vm.expectRevert(AutoCompounder.MaxToleranceExceeded.selector);
-        autoCompounder = new AutoCompounderExtension(COMPOUND_THRESHOLD, INITIATOR_SHARE, 5001);
+    function testFuzz_Revert_Constructor_UnderflowTolerance(
+        uint256 compoundThreshold,
+        uint256 initiatorShare,
+        uint256 tolerance
+    ) public {
+        tolerance = bound(tolerance, 1e18 + 1, type(uint256).max);
+
+        vm.prank(users.deployer);
+        vm.expectRevert(stdError.arithmeticError);
+        new AutoCompounder(compoundThreshold, initiatorShare, tolerance);
     }
 
-    function testFuzz_Revert_Constructor_MaxInitiatorFee() public {
-        vm.startPrank(users.creatorAddress);
-        vm.expectRevert(AutoCompounder.MaxInitiatorShareExceeded.selector);
-        autoCompounder = new AutoCompounderExtension(COMPOUND_THRESHOLD, 2001, TOLERANCE);
-    }
+    function testFuzz_Success_Constructor(uint256 compoundThreshold, uint256 initiatorShare, uint256 tolerance)
+        public
+    {
+        tolerance = bound(tolerance, 0, 1e18);
 
-    function testFuzz_Success_Constructor() public {
-        vm.prank(users.creatorAddress);
-        autoCompounder = new AutoCompounderExtension(COMPOUND_THRESHOLD, INITIATOR_SHARE, TOLERANCE);
+        vm.prank(users.deployer);
+        AutoCompounder autoCompounder_ = new AutoCompounder(compoundThreshold, initiatorShare, tolerance);
 
-        // assertEq(uniV3Factory_, 0x33128a8fC17869897dcE68Ed026d694621f6FDfD);
-        // assertEq(registry_, 0xd0690557600eb8Be8391D1d97346e2aab5300d5f);
-        // assertEq(nonfungiblePositionManager_, 0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1);
-        // assertEq(factory_, 0xDa14Fdd72345c4d2511357214c5B89A919768e59);
+        assertEq(autoCompounder_.COMPOUND_THRESHOLD(), compoundThreshold);
+        assertEq(autoCompounder_.INITIATOR_SHARE(), initiatorShare);
 
-        // Sqrt of (BIPS + 1000) * BIPS is 10488
-        assertEq(autoCompounder.UPPER_SQRT_PRICE_DEVIATION(), 10_198);
-        assertEq(autoCompounder.LOWER_SQRT_PRICE_DEVIATION(), 9797);
-        assertEq(autoCompounder.COMPOUND_THRESHOLD(), COMPOUND_THRESHOLD);
-        assertEq(autoCompounder.INITIATOR_SHARE(), INITIATOR_SHARE);
+        uint256 lowerDeviation = FixedPointMathLib.sqrt((1e18 - tolerance) * 1e18);
+        uint256 upperDeviation = FixedPointMathLib.sqrt((1e18 + tolerance) * 1e18);
+
+        assertEq(autoCompounder_.LOWER_SQRT_PRICE_DEVIATION(), lowerDeviation);
+        assertEq(autoCompounder_.UPPER_SQRT_PRICE_DEVIATION(), upperDeviation);
     }
 }

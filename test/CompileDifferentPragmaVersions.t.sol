@@ -9,6 +9,7 @@ import { Test } from "../lib/accounts-v2/lib/forge-std/src/Test.sol";
 
 import { NonfungiblePositionManagerExtension } from
     "../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/NonfungiblePositionManagerExtension.sol";
+import { QuoterV2 } from "../lib/accounts-v2/lib/swap-router-contracts/contracts/lens/QuoterV2.sol";
 import { SwapRouter02 } from "../lib/accounts-v2/lib/swap-router-contracts/contracts/SwapRouter02.sol";
 
 contract CompoundFeesForAccount_AutoCompounder_Fuzz_Test is Test {
