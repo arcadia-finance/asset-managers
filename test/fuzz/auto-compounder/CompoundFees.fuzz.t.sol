@@ -77,6 +77,10 @@ contract CompoundFees_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
         // Create UniswapV3 pool.
         uint256 sqrtPriceX96 = autoCompounder.getSqrtPriceX96(10 ** token1.decimals(), 10 ** token0.decimals());
         usdStablePool = createPool(address(token0), address(token1), POOL_FEE, uint160(sqrtPriceX96), 300);
+
+        // And : AutoCompounder is allowed as Asset Manager
+        vm.prank(users.accountOwner);
+        account.setAssetManager(address(autoCompounder), true);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -112,10 +116,6 @@ contract CompoundFees_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
             vm.stopPrank();
         }
 
-        // And : AutoCompounder is allowed as Asset Manager
-        vm.prank(users.accountOwner);
-        account.setAssetManager(address(autoCompounder), true);
-
         // When : Calling compoundFees()
         vm.startPrank(initiator);
         vm.expectRevert(AutoCompounder.BelowThreshold.selector);
@@ -148,10 +148,6 @@ contract CompoundFees_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
             account.deposit(assets_, assetIds_, assetAmounts_);
             vm.stopPrank();
         }
-
-        // And : AutoCompounder is allowed as Asset Manager
-        vm.prank(users.accountOwner);
-        account.setAssetManager(address(autoCompounder), true);
 
         // Check liquidity pre-compounding
         (,,,,,,, uint128 initialLiquidity,,,,) = nonfungiblePositionManager.positions(tokenId);
@@ -206,14 +202,10 @@ contract CompoundFees_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
             vm.stopPrank();
         }
 
-        // And : AutoCompounder is allowed as Asset Manager
-        vm.prank(users.accountOwner);
-        account.setAssetManager(address(autoCompounder), true);
-
         // And : Move tick right
         uint256 amount1ToSwap;
         {
-            // Swap max amount to move ticks left (ensure tolerance is not exceeded when compounding afterwards)
+            // Swap max amount to move ticks right (ensure tolerance is not exceeded when compounding afterwards)
             amount1ToSwap = 100_000_000_000_000 * 10 ** token1.decimals();
 
             deal(address(token1), users.liquidityProvider, amount1ToSwap, true);
@@ -252,7 +244,9 @@ contract CompoundFees_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
         uint256 initiatorFeesToken1 = token1.balanceOf(initiator);
 
         uint256 totalFee0 = testVars.feeAmount0 * 10 ** token0.decimals();
-        uint256 totalFee1 = testVars.feeAmount1 * 10 ** token1.decimals();
+        uint256 totalFee1 = testVars.feeAmount1 * 10 ** token1.decimals() + amount1ToSwap * POOL_FEE / 1e6;
+        emit log_uint(totalFee0);
+        emit log_uint(totalFee1);
 
         uint256 initiatorFeeToken0Calculated = totalFee0 * (INITIATOR_SHARE + TOLERANCE) / 1e18;
         uint256 initiatorFeeToken1Calculated = totalFee1 * (INITIATOR_SHARE + TOLERANCE) / 1e18;
@@ -260,29 +254,19 @@ contract CompoundFees_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
         assertLe(initiatorFeesToken0, initiatorFeeToken0Calculated);
         assertLe(initiatorFeesToken1, initiatorFeeToken1Calculated);
 
+        uint256 initiatorFeeUsdValue;
+        uint256 totalFeeInUsdValue;
         if (token0.decimals() < token1.decimals()) {
-            uint256 dustToken0InUsdValue = (initiatorFeesToken0 + 1) - initiatorFeeToken0Calculated * 1e30 / 1e18;
-            uint256 dustToken1InUsdValue = (initiatorFeesToken1 + 1) - initiatorFeeToken1Calculated * 1e18 / 1e18;
+            initiatorFeeUsdValue = initiatorFeesToken0 * 1e30 / 1e18 + initiatorFeesToken1 * 1e18 / 1e18;
 
-            uint256 totalFee0InUsd = totalFee0 * 1e30 / 1e18;
-            uint256 totalFee1InUsd = totalFee1 * 1e18 / 1e18;
-
-            // Ensure dust represents max 3% from fees (is dependent on tolerance and tick range)
-            // We keep relatively high tolerance as otherwise we are not able to move the tick enough
-            // Dust amount decreases when lower tolerance
-            assertLe(dustToken0InUsdValue + dustToken1InUsdValue, (totalFee0InUsd + totalFee1InUsd) * 300 / 1e18);
+            totalFeeInUsdValue = totalFee0 * 1e30 / 1e18 + totalFee1 * 1e18 / 1e18;
         } else {
-            uint256 dustToken0InUsdValue = ((initiatorFeesToken0 + 1) - initiatorFeeToken0Calculated) * 1e18 / 1e18;
-            uint256 dustToken1InUsdValue = ((initiatorFeesToken1 + 1) - initiatorFeeToken1Calculated) * 1e30 / 1e18;
+            initiatorFeeUsdValue = initiatorFeesToken0 * 1e18 / 1e18 + initiatorFeesToken1 * 1e30 / 1e18;
 
-            uint256 totalFee0InUsd = totalFee0 * 1e18 / 1e18;
-            uint256 totalFee1InUsd = totalFee1 * 1e30 / 1e18;
-
-            // Ensure dust represents max 3% from fees (is dependent on tolerance and tick range)
-            // We keep relatively high tolerance as otherwise we are not able to move the tick enough
-            // Dust amount decreases when lower tolerance
-            assertLe(dustToken0InUsdValue + dustToken1InUsdValue, 300 * (totalFee0InUsd + totalFee1InUsd) / 1e18);
+            totalFeeInUsdValue = totalFee0 * 1e18 / 1e18 + totalFee1 * 1e30 / 1e18;
         }
+        // Ensure USD value of initiator fees is max INITIATOR_SHARE from total fees.
+        assertLe(initiatorFeeUsdValue, totalFeeInUsdValue * INITIATOR_SHARE / 1e18);
     }
 
     function testFuzz_Success_compoundFees_MoveTickLeft(TestVariables memory testVars, address initiator) public {
@@ -311,14 +295,10 @@ contract CompoundFees_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
             vm.stopPrank();
         }
 
-        // And : AutoCompounder is allowed as Asset Manager
-        vm.prank(users.accountOwner);
-        account.setAssetManager(address(autoCompounder), true);
-
-        // And : Move tick right
+        // And : Move tick left.
         uint256 amount0ToSwap;
         {
-            // Swap max amount to move ticks right (ensure tolerance is not exceeded when compounding afterwards)
+            // Swap max amount to move ticks left (ensure tolerance is not exceeded when compounding afterwards)
             amount0ToSwap = 100_000_000_000_000 * 10 ** token0.decimals();
 
             deal(address(token0), users.liquidityProvider, amount0ToSwap, true);
@@ -356,8 +336,8 @@ contract CompoundFees_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
         uint256 initiatorFeesToken0 = token0.balanceOf(initiator);
         uint256 initiatorFeesToken1 = token1.balanceOf(initiator);
 
-        uint256 totalFee0 = (testVars.feeAmount0 * 10 ** token0.decimals()) + (amount0ToSwap * 1 / 1e18);
-        uint256 totalFee1 = (testVars.feeAmount1 * 10 ** token1.decimals());
+        uint256 totalFee0 = testVars.feeAmount0 * 10 ** token0.decimals() + amount0ToSwap * POOL_FEE / 1e6;
+        uint256 totalFee1 = testVars.feeAmount1 * 10 ** token1.decimals();
 
         uint256 initiatorFeeToken0Calculated = totalFee0 * (INITIATOR_SHARE + TOLERANCE) / 1e18;
         uint256 initiatorFeeToken1Calculated = totalFee1 * (INITIATOR_SHARE + TOLERANCE) / 1e18;
@@ -365,29 +345,19 @@ contract CompoundFees_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
         assertLe(initiatorFeesToken0, initiatorFeeToken0Calculated);
         assertLe(initiatorFeesToken1, initiatorFeeToken1Calculated);
 
+        uint256 initiatorFeeUsdValue;
+        uint256 totalFeeInUsdValue;
         if (token0.decimals() < token1.decimals()) {
-            uint256 dustToken0InUsdValue = (initiatorFeesToken0 - initiatorFeeToken0Calculated) * 1e30 / 1e18;
-            uint256 dustToken1InUsdValue = (initiatorFeesToken1 + 1 - initiatorFeeToken1Calculated) * 1e18 / 1e18;
+            initiatorFeeUsdValue = initiatorFeesToken0 * 1e30 / 1e18 + initiatorFeesToken1 * 1e18 / 1e18;
 
-            uint256 totalFee0InUsd = totalFee0 * 1e30 / 1e18;
-            uint256 totalFee1InUsd = totalFee1 * 1e18 / 1e18;
-
-            // Ensure dust represents max 3% from fees (is dependent on tolerance and tick range)
-            // We keep relatively high tolerance as otherwise we are not able to move the tick enough
-            // Dust amount decreases when lower tolerance
-            assertLe(dustToken0InUsdValue + dustToken1InUsdValue, 300 * (totalFee0InUsd + totalFee1InUsd) / 1e18);
+            totalFeeInUsdValue = totalFee0 * 1e30 / 1e18 + totalFee1 * 1e18 / 1e18;
         } else {
-            uint256 dustToken0InUsdValue = (initiatorFeesToken0 - initiatorFeeToken0Calculated) * 1e18 / 1e18;
-            uint256 dustToken1InUsdValue = (initiatorFeesToken1 + 1 - initiatorFeeToken1Calculated) * 1e30 / 1e18;
+            initiatorFeeUsdValue = initiatorFeesToken0 * 1e18 / 1e18 + initiatorFeesToken1 * 1e30 / 1e18;
 
-            uint256 totalFee0InUsd = totalFee0 * 1e18 / 1e18;
-            uint256 totalFee1InUsd = totalFee1 * 1e30 / 1e18;
-
-            // Ensure dust represents max 2% from fees (is dependent on tolerance and tick range)
-            // We keep relatively high tolerance as otherwise we are not able to move the tick enough
-            // Dust amount decreases when lower tolerance
-            assertLe(dustToken0InUsdValue + dustToken1InUsdValue, 300 * (totalFee0InUsd + totalFee1InUsd) / 1e18);
+            totalFeeInUsdValue = totalFee0 * 1e18 / 1e18 + totalFee1 * 1e30 / 1e18;
         }
+        // Ensure USD value of initiator fees is max INITIATOR_SHARE from total fees.
+        assertLe(initiatorFeeUsdValue, totalFeeInUsdValue * INITIATOR_SHARE / 1e18);
     }
 
     /*////////////////////////////////////////////////////////////////

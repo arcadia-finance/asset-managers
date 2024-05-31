@@ -188,7 +188,7 @@ contract AutoCompounder is IActionBase {
         fees.amount1 -= fees.amount1.mulDivDown(INITIATOR_SHARE, 1e18);
 
         // Rebalance the fee amounts so that the maximum amount of liquidity can be added.
-        // The Pool must still balanced after the swap.
+        // The Pool must still be balanced after the swap.
         (bool zeroToOne, uint256 amountOut) = _getSwapParameters(position, fees);
         if (_swap(position, zeroToOne, amountOut)) revert UnbalancedPool();
 
