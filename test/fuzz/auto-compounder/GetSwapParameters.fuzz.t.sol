@@ -5,6 +5,7 @@
 pragma solidity 0.8.22;
 
 import { AutoCompounder_Fuzz_Test, AutoCompounder } from "./_AutoCompounder.fuzz.t.sol";
+import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { UniswapV3Logic } from "../../../src/auto-compounder/libraries/UniswapV3Logic.sol";
 
@@ -12,6 +13,7 @@ import { UniswapV3Logic } from "../../../src/auto-compounder/libraries/UniswapV3
  * @notice Fuzz tests for the function "_getSwapParameters" of contract "AutoCompounder".
  */
 contract GetSwapParameters_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
+    using FixedPointMathLib for uint256;
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
@@ -27,8 +29,7 @@ contract GetSwapParameters_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test 
         public
     {
         // Given : Valid State
-        bool token0HasLowestDecimals;
-        (testVars, token0HasLowestDecimals) = givenValidBalancedState(testVars);
+        (testVars,) = givenValidBalancedState(testVars);
 
         // And : State is persisted
         setState(testVars, usdStablePool);
@@ -37,10 +38,10 @@ contract GetSwapParameters_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test 
         int24 newTick = testVars.tickUpper;
         usdStablePool.setCurrentTick(newTick);
 
-        // And : Update sqrtPriceX96 in slot0
         uint160 sqrtPriceX96AtCurrentTick = TickMath.getSqrtRatioAtTick(newTick);
 
         AutoCompounder.PositionState memory position;
+        position.currentTick = newTick;
         position.tickLower = testVars.tickLower;
         position.tickUpper = testVars.tickUpper;
         position.sqrtPriceX96 = sqrtPriceX96AtCurrentTick;
@@ -59,10 +60,11 @@ contract GetSwapParameters_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test 
         assertEq(amountOut, amountOutExpected);
     }
 
-    /*     function testFuzz_success_getSwapParameters_currentTickSmallerOrEqualToTickLower(TestVariables memory testVars) public {
+    function testFuzz_success_getSwapParameters_currentTickSmallerOrEqualToTickLower(TestVariables memory testVars)
+        public
+    {
         // Given : Valid State
-        bool token0HasLowestDecimals;
-        (testVars, token0HasLowestDecimals) = givenValidBalancedState(testVars);
+        (testVars,) = givenValidBalancedState(testVars);
 
         // And : State is persisted
         setState(testVars, usdStablePool);
@@ -71,54 +73,26 @@ contract GetSwapParameters_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test 
         int24 newTick = testVars.tickLower;
         usdStablePool.setCurrentTick(newTick);
 
-        // And : Update sqrtPriceX96 in slot0
         uint160 sqrtPriceX96AtCurrentTick = TickMath.getSqrtRatioAtTick(newTick);
-        usdStablePool.setSqrtPriceX96(sqrtPriceX96AtCurrentTick);
 
-        // Deposit feeAmount1 at currentTick range (to enable swap)
-        addLiquidity(
-            usdStablePool,
-            token0HasLowestDecimals
-                ? type(uint32).max * 10 ** token0.decimals()
-                : type(uint24).max * 10 ** token0.decimals(),
-            token0HasLowestDecimals
-                ? type(uint24).max * 10 ** token0.decimals()
-                : type(uint32).max * 10 ** token0.decimals(),
-            users.liquidityProvider,
-            newTick - 20,
-            newTick + 20
-        );
+        AutoCompounder.PositionState memory position;
+        position.currentTick = newTick;
+        position.tickLower = testVars.tickLower;
+        position.tickUpper = testVars.tickUpper;
+        position.sqrtPriceX96 = sqrtPriceX96AtCurrentTick;
 
-        AutoCompounder.PositionData memory posData = AutoCompounder.PositionData({
-            token0: address(token0),
-            token1: address(token1),
-            fee: 100,
-            tickLower: testVars.tickLower,
-            tickUpper: testVars.tickUpper
-        });
+        AutoCompounder.Fees memory fees;
+        fees.amount0 = testVars.feeAmount0 * 10 ** token0.decimals();
+        fees.amount1 = testVars.feeAmount1 * 10 ** token1.decimals();
 
-        (uint256 usdPriceToken0, uint256 usdPriceToken1) = getPrices();
+        // When : calling getSwapParameters()
+        (bool zeroToOne, uint256 amountOut) = autoCompounder.getSwapParameters(position, fees);
 
-        AutoCompounder.FeeData memory feeData = AutoCompounder.FeeData({
-            usdPriceToken0: usdPriceToken0,
-            usdPriceToken1: usdPriceToken1,
-            feeAmount0: testVars.feeAmount0 * 10 ** token0.decimals(),
-            feeAmount1: testVars.feeAmount1 * 10 ** token1.decimals()
-        });
+        // Then : Returned values should be valid
+        assertEq(zeroToOne, false);
 
-        // And : Mint fees to AutoCompounder
-        ERC20Mock(address(token1)).mint(address(autoCompounder), testVars.feeAmount1 * 10 ** token1.decimals());
-
-        assert(token1.balanceOf(address(autoCompounder)) > 0);
-
-        // Given : sqrtPriceX96 set to zero below as we will test max slippage for swap function separately
-        // When : calling handleFeeRatiosForDeposit()
-        autoCompounder.handleFeeRatiosForDeposit(
-            address(usdStablePool), newTick, posData, feeData, sqrtPriceX96AtCurrentTick
-        );
-
-        // Then : feeAmount1 should have been swapped to token0
-        assertEq(token1.balanceOf(address(autoCompounder)), 0);
+        uint256 amountOutExpected = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, false, fees.amount1);
+        assertEq(amountOut, amountOutExpected);
     }
 
     function testFuzz_success_getSwapParameters_tickInRangeWithExcessToken0Fees(TestVariables memory testVars) public {
@@ -127,45 +101,46 @@ contract GetSwapParameters_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test 
 
         // And : totalFee0 is greater than totalFee1
         // And : currentTick unchanged (50/50)
-        // Case for targetToken0Value < totalFee0Value
-        vm.assume(testVars.feeAmount0 > testVars.feeAmount1);
+        // Case for currentRatio < targetRatio
+        testVars.feeAmount0 = bound(testVars.feeAmount0, testVars.feeAmount1 + 1, type(uint16).max);
 
         // And : State is persisted
         setState(testVars, usdStablePool);
 
-        AutoCompounder.PositionData memory posData = AutoCompounder.PositionData({
-            token0: address(token0),
-            token1: address(token1),
-            fee: 100,
-            tickLower: testVars.tickLower,
-            tickUpper: testVars.tickUpper
-        });
+        (uint160 sqrtPriceX96, int24 currentTick,,,,,) = usdStablePool.slot0();
+        AutoCompounder.PositionState memory position;
+        position.sqrtPriceX96 = sqrtPriceX96;
+        position.currentTick = currentTick;
+        position.tickLower = testVars.tickLower;
+        position.tickUpper = testVars.tickUpper;
 
-        (uint256 usdPriceToken0, uint256 usdPriceToken1) = getPrices();
+        AutoCompounder.Fees memory fees;
+        fees.amount0 = testVars.feeAmount0 * 10 ** token0.decimals();
+        fees.amount1 = testVars.feeAmount1 * 10 ** token1.decimals();
 
-        AutoCompounder.FeeData memory feeData = AutoCompounder.FeeData({
-            usdPriceToken0: usdPriceToken0,
-            usdPriceToken1: usdPriceToken1,
-            feeAmount0: testVars.feeAmount0 * 10 ** token0.decimals(),
-            feeAmount1: testVars.feeAmount1 * 10 ** token1.decimals()
-        });
+        // When : calling getSwapParameters()
+        (bool zeroToOne, uint256 amountOut) = autoCompounder.getSwapParameters(position, fees);
 
-        // And : Mint fees to AutoCompounder
-        ERC20Mock(address(token0)).mint(address(autoCompounder), testVars.feeAmount0 * 10 ** token0.decimals());
+        // Then : Returned values should be valid
+        assertEq(zeroToOne, true);
 
-        assert(token0.balanceOf(address(autoCompounder)) > 0);
+        uint256 expectedAmountOut;
+        {
+            // Calculate targetRatio
+            uint256 ticksCurrentToUpper = uint256(position.tickUpper - position.currentTick);
+            uint256 ticksLowerToUpper = uint256(position.tickUpper - position.tickLower);
+            uint256 targetRatio = ticksCurrentToUpper.mulDivDown(1e18, ticksLowerToUpper);
 
-        // Given : sqrtPriceX96 set to zero below as we will test max slippage for swap function separately
-        // When : calling handleFeeRatiosForDeposit()
-        (uint160 sqrtPriceX96,,,,,,) = usdStablePool.slot0();
-        autoCompounder.handleFeeRatiosForDeposit(
-            address(usdStablePool), usdStablePool.getCurrentTick(), posData, feeData, sqrtPriceX96
-        );
+            // Calculate the total fee value in token1 equivalent:
+            uint256 fee0ValueInToken1 = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
+            uint256 totalFeeValueInToken1 = fees.amount1 + fee0ValueInToken1;
+            uint256 currentRatio = fees.amount1.mulDivDown(1e18, totalFeeValueInToken1);
 
-        // Then : part of feeAmount0 should have been swapped to token1
-        assert(token0.balanceOf(address(autoCompounder)) < testVars.feeAmount0 * 10 ** token0.decimals());
+            expectedAmountOut = (targetRatio - currentRatio).mulDivDown(totalFeeValueInToken1, 1e18);
+        }
 
-        // And : In order to test the proportions, we will validate that dust amount is minimal when calling executeAction()
+        assertEq(amountOut, expectedAmountOut);
+        // And : Further testing will validate the swap results based on above ratios in compoundFees testing.
     }
 
     function testFuzz_success_getSwapParameters_tickInRangeWithExcessToken1Fees(TestVariables memory testVars) public {
@@ -174,44 +149,46 @@ contract GetSwapParameters_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test 
 
         // And : totalFee1 is greater than totalFee0
         // And : currentTick unchanged (50/50)
-        // Case for targetToken0Value <= totalFee0Value
-        vm.assume(testVars.feeAmount1 > uint256(testVars.feeAmount0));
+        // Case for currentRatio >= targetRatio
+        testVars.feeAmount1 = bound(testVars.feeAmount1, testVars.feeAmount0 + 1, uint256(type(uint16).max) + 1);
 
         // And : State is persisted
         setState(testVars, usdStablePool);
 
-        AutoCompounder.PositionData memory posData = AutoCompounder.PositionData({
-            token0: address(token0),
-            token1: address(token1),
-            fee: 100,
-            tickLower: testVars.tickLower,
-            tickUpper: testVars.tickUpper
-        });
+        (uint160 sqrtPriceX96, int24 currentTick,,,,,) = usdStablePool.slot0();
+        AutoCompounder.PositionState memory position;
+        position.sqrtPriceX96 = sqrtPriceX96;
+        position.currentTick = currentTick;
+        position.tickLower = testVars.tickLower;
+        position.tickUpper = testVars.tickUpper;
 
-        (uint256 usdPriceToken0, uint256 usdPriceToken1) = getPrices();
+        AutoCompounder.Fees memory fees;
+        fees.amount0 = testVars.feeAmount0 * 10 ** token0.decimals();
+        fees.amount1 = testVars.feeAmount1 * 10 ** token1.decimals();
 
-        AutoCompounder.FeeData memory feeData = AutoCompounder.FeeData({
-            usdPriceToken0: usdPriceToken0,
-            usdPriceToken1: usdPriceToken1,
-            feeAmount0: testVars.feeAmount0 * 10 ** token0.decimals(),
-            feeAmount1: testVars.feeAmount1 * 10 ** token1.decimals()
-        });
+        // When : calling getSwapParameters()
+        (bool zeroToOne, uint256 amountOut) = autoCompounder.getSwapParameters(position, fees);
 
-        // And : Mint fees to AutoCompounder
-        ERC20Mock(address(token1)).mint(address(autoCompounder), testVars.feeAmount1 * 10 ** token1.decimals());
+        // Then : Returned values should be valid
+        assertEq(zeroToOne, false);
 
-        assert(token1.balanceOf(address(autoCompounder)) > 0);
+        uint256 expectedAmountOut;
+        {
+            // Calculate targetRatio
+            uint256 ticksCurrentToUpper = uint256(position.tickUpper - position.currentTick);
+            uint256 ticksLowerToUpper = uint256(position.tickUpper - position.tickLower);
+            uint256 targetRatio = ticksCurrentToUpper.mulDivDown(1e18, ticksLowerToUpper);
 
-        // Given : sqrtPriceX96 set to zero below as we will test max slippage for swap function separately
-        // When : calling handleFeeRatiosForDeposit()
-        (uint160 sqrtPriceX96,,,,,,) = usdStablePool.slot0();
-        autoCompounder.handleFeeRatiosForDeposit(
-            address(usdStablePool), usdStablePool.getCurrentTick(), posData, feeData, sqrtPriceX96
-        );
+            // Calculate the total fee value in token1 equivalent:
+            uint256 fee0ValueInToken1 = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
+            uint256 totalFeeValueInToken1 = fees.amount1 + fee0ValueInToken1;
+            uint256 currentRatio = fees.amount1.mulDivDown(1e18, totalFeeValueInToken1);
 
-        // Then : part of feeAmount1 should have been swapped to token1
-        assert(token1.balanceOf(address(autoCompounder)) < testVars.feeAmount1 * 10 ** token1.decimals());
+            uint256 amountIn = (currentRatio - targetRatio).mulDivDown(totalFeeValueInToken1, 1e18);
+            expectedAmountOut = amountOut = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, false, amountIn);
+        }
 
-        // And : In order to test the proportions, we will validate that dust amount is minimal when calling executeAction()
-    } */
+        assertEq(amountOut, expectedAmountOut);
+        // And : Further testing will validate the swap results based on above ratios in compoundFees testing.
+    }
 }
