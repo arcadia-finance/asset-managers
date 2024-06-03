@@ -19,4 +19,12 @@ contract AutoCompounderExtension is AutoCompounder {
     function swap(PositionState memory position, bool zeroToOne, uint256 amountOut) public returns (bool) {
         return _swap(position, zeroToOne, amountOut);
     }
+
+    function getSwapParameters(PositionState memory position, Fees memory fees)
+        public
+        pure
+        returns (bool zeroToOne, uint256 amountOut)
+    {
+        (zeroToOne, amountOut) = _getSwapParameters(position, fees);
+    }
 }

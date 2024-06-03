@@ -4,12 +4,14 @@
  */
 pragma solidity 0.8.22;
 
-import { AutoCompounder_Fuzz_Test } from "./_AutoCompounder.fuzz.t.sol";
+import { AutoCompounder_Fuzz_Test, AutoCompounder } from "./_AutoCompounder.fuzz.t.sol";
+import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
+import { UniswapV3Logic } from "../../../src/auto-compounder/libraries/UniswapV3Logic.sol";
 
 /**
- * @notice Fuzz tests for the function "handleFeeRatiosForDeposit" of contract "AutoCompounder".
+ * @notice Fuzz tests for the function "_getSwapParameters" of contract "AutoCompounder".
  */
-contract HandleFeeRatiosForDeposit_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
+contract GetSwapParameters_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
@@ -21,7 +23,9 @@ contract HandleFeeRatiosForDeposit_AutoCompounder_Fuzz_Test is AutoCompounder_Fu
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    /*     function testFuzz_success_currentTickGreaterOrEqualToTickUpper(TestVariables memory testVars) public {
+    function testFuzz_success_getSwapParameters_currentTickGreaterOrEqualToTickUpper(TestVariables memory testVars)
+        public
+    {
         // Given : Valid State
         bool token0HasLowestDecimals;
         (testVars, token0HasLowestDecimals) = givenValidBalancedState(testVars);
@@ -29,61 +33,33 @@ contract HandleFeeRatiosForDeposit_AutoCompounder_Fuzz_Test is AutoCompounder_Fu
         // And : State is persisted
         setState(testVars, usdStablePool);
 
-        // And : newTick = tickLower
+        // And : newTick = tickUpper
         int24 newTick = testVars.tickUpper;
         usdStablePool.setCurrentTick(newTick);
 
         // And : Update sqrtPriceX96 in slot0
         uint160 sqrtPriceX96AtCurrentTick = TickMath.getSqrtRatioAtTick(newTick);
-        usdStablePool.setSqrtPriceX96(sqrtPriceX96AtCurrentTick);
 
-        // Deposit feeAmount0 at currentTick range (to enable swap)
-        addLiquidity(
-            usdStablePool,
-            token0HasLowestDecimals
-                ? type(uint32).max * 10 ** token0.decimals()
-                : type(uint24).max * 10 ** token0.decimals(),
-            token0HasLowestDecimals
-                ? type(uint24).max * 10 ** token0.decimals()
-                : type(uint32).max * 10 ** token0.decimals(),
-            users.liquidityProvider,
-            newTick - 20,
-            newTick + 20
-        );
+        AutoCompounder.PositionState memory position;
+        position.tickLower = testVars.tickLower;
+        position.tickUpper = testVars.tickUpper;
+        position.sqrtPriceX96 = sqrtPriceX96AtCurrentTick;
 
-        AutoCompounder.PositionData memory posData = AutoCompounder.PositionData({
-            token0: address(token0),
-            token1: address(token1),
-            fee: 100,
-            tickLower: testVars.tickLower,
-            tickUpper: testVars.tickUpper
-        });
+        AutoCompounder.Fees memory fees;
+        fees.amount0 = testVars.feeAmount0 * 10 ** token0.decimals();
+        fees.amount1 = testVars.feeAmount1 * 10 ** token1.decimals();
 
-        (uint256 usdPriceToken0, uint256 usdPriceToken1) = getPrices();
+        // When : calling getSwapParameters()
+        (bool zeroToOne, uint256 amountOut) = autoCompounder.getSwapParameters(position, fees);
 
-        AutoCompounder.FeeData memory feeData = AutoCompounder.FeeData({
-            usdPriceToken0: usdPriceToken0,
-            usdPriceToken1: usdPriceToken1,
-            feeAmount0: testVars.feeAmount0 * 10 ** token0.decimals(),
-            feeAmount1: testVars.feeAmount1 * 10 ** token1.decimals()
-        });
+        // Then : Returned values should be valid
+        assertEq(zeroToOne, true);
 
-        // And : Mint fees to AutoCompounder
-        ERC20Mock(address(token0)).mint(address(autoCompounder), testVars.feeAmount0 * 10 ** token0.decimals());
-
-        assert(token0.balanceOf(address(autoCompounder)) > 0);
-
-        // Given : sqrtPriceX96 set to zero below as we will test max slippage for swap function separately
-        // When : calling handleFeeRatiosForDeposit()
-        autoCompounder.handleFeeRatiosForDeposit(
-            address(usdStablePool), newTick, posData, feeData, sqrtPriceX96AtCurrentTick
-        );
-
-        // Then : feeAmount0 should have been swapped to token1
-        assertEq(token0.balanceOf(address(autoCompounder)), 0);
+        uint256 amountOutExpected = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
+        assertEq(amountOut, amountOutExpected);
     }
 
-    function testFuzz_success_currentTickSmallerOrEqualToTickLower(TestVariables memory testVars) public {
+    /*     function testFuzz_success_getSwapParameters_currentTickSmallerOrEqualToTickLower(TestVariables memory testVars) public {
         // Given : Valid State
         bool token0HasLowestDecimals;
         (testVars, token0HasLowestDecimals) = givenValidBalancedState(testVars);
@@ -145,7 +121,7 @@ contract HandleFeeRatiosForDeposit_AutoCompounder_Fuzz_Test is AutoCompounder_Fu
         assertEq(token1.balanceOf(address(autoCompounder)), 0);
     }
 
-    function testFuzz_success_tickInRangeWithExcessToken0Fees(TestVariables memory testVars) public {
+    function testFuzz_success_getSwapParameters_tickInRangeWithExcessToken0Fees(TestVariables memory testVars) public {
         // Given : Valid State
         (testVars,) = givenValidBalancedState(testVars);
 
@@ -192,7 +168,7 @@ contract HandleFeeRatiosForDeposit_AutoCompounder_Fuzz_Test is AutoCompounder_Fu
         // And : In order to test the proportions, we will validate that dust amount is minimal when calling executeAction()
     }
 
-    function testFuzz_success_tickInRangeWithExcessToken1Fees(TestVariables memory testVars) public {
+    function testFuzz_success_getSwapParameters_tickInRangeWithExcessToken1Fees(TestVariables memory testVars) public {
         // Given : Valid State
         (testVars,) = givenValidBalancedState(testVars);
 
