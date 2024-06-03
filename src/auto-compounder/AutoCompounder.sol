@@ -300,7 +300,7 @@ contract AutoCompounder is IActionBase {
             IUniswapV3Pool(position.pool).swap(address(this), zeroToOne, -int256(amountOut), sqrtPriceLimitX96, data);
 
         // Check if pool is still balanced (sqrtPriceLimitX96 is reached before an amountOut of tokenOut is received).
-        isPoolUnBalanced = (amountOut < (zeroToOne ? uint256(-deltaAmount1) : uint256(-deltaAmount0)));
+        isPoolUnBalanced = (amountOut > (zeroToOne ? uint256(-deltaAmount1) : uint256(-deltaAmount0)));
     }
 
     /**

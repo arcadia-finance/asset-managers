@@ -33,6 +33,8 @@ abstract contract AutoCompounder_Fuzz_Test is Fuzz_Test {
     uint256 internal COMPOUND_THRESHOLD = 10 * 1e18;
     // 10% initiator fee
     uint256 internal INITIATOR_SHARE = 0.1 * 1e18;
+    // BIPS = 10_000
+    uint256 BIPS = 10_000;
 
     /*////////////////////////////////////////////////////////////////
                             VARIABLES
