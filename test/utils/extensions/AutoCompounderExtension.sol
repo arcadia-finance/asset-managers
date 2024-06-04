@@ -19,28 +19,4 @@ contract AutoCompounderExtension is AutoCompounder {
     function swap(PositionState memory position, bool zeroToOne, uint256 amountOut) public returns (bool) {
         return _swap(position, zeroToOne, amountOut);
     }
-
-    function getSwapParameters(PositionState memory position, Fees memory fees)
-        public
-        pure
-        returns (bool zeroToOne, uint256 amountOut)
-    {
-        (zeroToOne, amountOut) = _getSwapParameters(position, fees);
-    }
-
-    function getPositionState(uint256 tokenId) public view returns (PositionState memory position) {
-        position = _getPositionState(tokenId);
-    }
-
-    function isBelowThreshold(PositionState memory position, Fees memory fees)
-        public
-        view
-        returns (bool isBelowThreshold_)
-    {
-        isBelowThreshold_ = _isBelowThreshold(position, fees);
-    }
-
-    function isPoolUnbalanced(PositionState memory position) public pure returns (bool isPoolUnbalanced_) {
-        isPoolUnbalanced_ = _isPoolUnbalanced(position);
-    }
 }
