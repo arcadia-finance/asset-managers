@@ -167,7 +167,7 @@ contract AutoCompounder is IActionBase {
 
         // Check that pool is initially balanced.
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
-        if (_isPoolUnBalanced(position)) revert UnbalancedPool();
+        if (_isPoolUnbalanced(position)) revert UnbalancedPool();
 
         // Collect fees.
         Fees memory fees;
@@ -200,8 +200,8 @@ contract AutoCompounder is IActionBase {
         else fees.amount0 += amountOut;
 
         // Increase liquidity of the position.
-        ERC20(position.token0).approve(address(UniswapV3Logic.POSITION_MANAGER), fees.amount0);
-        ERC20(position.token1).approve(address(UniswapV3Logic.POSITION_MANAGER), fees.amount1);
+        ERC20(position.token0).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), fees.amount0);
+        ERC20(position.token1).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), fees.amount1);
         UniswapV3Logic.POSITION_MANAGER.increaseLiquidity(
             IncreaseLiquidityParams({
                 tokenId: id,
@@ -281,11 +281,11 @@ contract AutoCompounder is IActionBase {
      * @param position Struct with the position data.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param amountOut The amount that of tokenOut that must be swapped to.
-     * @return isPoolUnBalanced Bool indicating if the pool is unbalanced due to slippage of the swap.
+     * @return isPoolUnbalanced Bool indicating if the pool is unbalanced due to slippage of the swap.
      */
     function _swap(PositionState memory position, bool zeroToOne, uint256 amountOut)
         internal
-        returns (bool isPoolUnBalanced)
+        returns (bool isPoolUnbalanced)
     {
         // Don't do swaps with zero amount.
         if (amountOut == 0) return false;
@@ -300,7 +300,7 @@ contract AutoCompounder is IActionBase {
             IUniswapV3Pool(position.pool).swap(address(this), zeroToOne, -int256(amountOut), sqrtPriceLimitX96, data);
 
         // Check if pool is still balanced (sqrtPriceLimitX96 is reached before an amountOut of tokenOut is received).
-        isPoolUnBalanced = (amountOut > (zeroToOne ? uint256(-deltaAmount1) : uint256(-deltaAmount0)));
+        isPoolUnbalanced = (amountOut > (zeroToOne ? uint256(-deltaAmount1) : uint256(-deltaAmount0)));
     }
 
     /**
@@ -374,11 +374,11 @@ contract AutoCompounder is IActionBase {
     /**
      * @notice returns if the pool of a Liquidity Position is unbalanced.
      * @param position Struct with the position data.
-     * @return isPoolUnBalanced Bool indicating if the pool is unbalanced.
+     * @return isPoolUnbalanced Bool indicating if the pool is unbalanced.
      */
-    function _isPoolUnBalanced(PositionState memory position) internal pure returns (bool isPoolUnBalanced) {
+    function _isPoolUnbalanced(PositionState memory position) internal pure returns (bool isPoolUnbalanced) {
         // Check if current priceX96 of the Pool is within accepted tolerance of the calculated trusted priceX96.
-        isPoolUnBalanced = position.sqrtPriceX96 < position.lowerBoundSqrtPriceX96
+        isPoolUnbalanced = position.sqrtPriceX96 < position.lowerBoundSqrtPriceX96
             || position.sqrtPriceX96 > position.upperBoundSqrtPriceX96;
     }
 
@@ -401,7 +401,7 @@ contract AutoCompounder is IActionBase {
 
         // Check that pool is initially balanced.
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
-        if (_isPoolUnBalanced(position)) return false;
+        if (_isPoolUnbalanced(position)) return false;
 
         // Get fee amounts
         Fees memory fees;
@@ -417,9 +417,9 @@ contract AutoCompounder is IActionBase {
         // Calculate fee amounts to match ratios of current pool tick relative to ticks of the position.
         // Pool should still be balanced after the swap.
         (bool zeroToOne, uint256 amountOut) = _getSwapParameters(position, fees);
-        bool isPoolUnBalanced = _quote(position, zeroToOne, amountOut);
+        bool isPoolUnbalanced = _quote(position, zeroToOne, amountOut);
 
-        isCompoundable_ = !isPoolUnBalanced;
+        isCompoundable_ = !isPoolUnbalanced;
     }
 
     /**
@@ -427,7 +427,7 @@ contract AutoCompounder is IActionBase {
      * @param position Struct with the position data.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param amountOut The amount that of tokenOut that must be swapped to.
-     * @return isPoolUnBalanced Bool indicating if the pool is unbalanced due to slippage after the swap.
+     * @return isPoolUnbalanced Bool indicating if the pool is unbalanced due to slippage after the swap.
      * @dev While this function does not persist state changes, it cannot be declared as view function,
      * since quoteExactInputSingle() of Uniswap's Quoter02.sol uses a try - except pattern where it first
      * does the swap (with state changes), next it reverts (state changes are not persisted) and information about
@@ -435,7 +435,7 @@ contract AutoCompounder is IActionBase {
      */
     function _quote(PositionState memory position, bool zeroToOne, uint256 amountOut)
         internal
-        returns (bool isPoolUnBalanced)
+        returns (bool isPoolUnbalanced)
     {
         // Don't get quote for swaps with zero amount.
         if (amountOut == 0) return false;
@@ -455,7 +455,7 @@ contract AutoCompounder is IActionBase {
         );
 
         // Check if max slippage was exceeded (sqrtPriceLimitX96 is reached).
-        isPoolUnBalanced = sqrtPriceX96After == sqrtPriceLimitX96 ? true : false;
+        isPoolUnbalanced = sqrtPriceX96After == sqrtPriceLimitX96 ? true : false;
     }
 
     /* ///////////////////////////////////////////////////////////////
