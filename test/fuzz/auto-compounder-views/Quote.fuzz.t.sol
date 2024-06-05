@@ -11,8 +11,6 @@ import { AutoCompounderViewsExtension } from "../../utils/extensions/AutoCompoun
 import { ERC20Mock } from "../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { Utils } from "../../../lib/accounts-v2/test/utils/Utils.sol";
 import { IAutoCompounder } from "../../../src/auto-compounder/interfaces/IAutoCompounder.sol";
-import { IUniswapV3Pool } from "../../../src/auto-compounder/interfaces/IUniswapV3Pool.sol";
-import { ISwapRouter02 } from "../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/interfaces/ISwapRouter02.sol";
 
 /**
  * @notice Fuzz tests for the function "_quote" of contract "AutoCompounderViews".

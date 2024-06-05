@@ -9,8 +9,6 @@ import { AutoCompounder_Fuzz_Test, AutoCompounder } from "../auto-compounder/_Au
 import { AutoCompounderViews, UniswapV3Logic } from "../../../src/auto-compounder/AutoCompounderViews.sol";
 import { ERC20Mock } from "../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { Utils } from "../../../lib/accounts-v2/test/utils/Utils.sol";
-import { IUniswapV3Pool } from "../../../src/auto-compounder/interfaces/IUniswapV3Pool.sol";
-import { ISwapRouter02 } from "../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/interfaces/ISwapRouter02.sol";
 
 /**
  * @notice Fuzz tests for the function "isCompoundable" of contract "AutoCompounderViews".
