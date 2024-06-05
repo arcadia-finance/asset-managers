@@ -102,7 +102,7 @@ contract GetSwapParameters_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test 
         // And : totalFee0 is greater than totalFee1
         // And : currentTick unchanged (50/50)
         // Case for currentRatio < targetRatio
-        testVars.feeAmount0 = bound(testVars.feeAmount0, testVars.feeAmount1 + 1, type(uint16).max);
+        testVars.feeAmount0 = bound(testVars.feeAmount0, testVars.feeAmount1 + 1, uint256(type(uint16).max) + 1);
 
         // And : State is persisted
         setState(testVars, usdStablePool);

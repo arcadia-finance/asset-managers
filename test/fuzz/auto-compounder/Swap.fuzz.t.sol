@@ -168,7 +168,7 @@ contract Swap_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
             position.pool = address(usdStablePool);
         }
 
-        // When : Swapping an amount that will move the price out of tolerance zone
+        // When : Swapping an amount that will move the price at limit of tolerance (still withing tolerance)
         uint256 amount0 = 100_000 * 10 ** token0.decimals();
 
         // This amount will move the ticks to the left by 395 which is at the limit of the tolerance of 4% (1 tick +- 0,01%).
