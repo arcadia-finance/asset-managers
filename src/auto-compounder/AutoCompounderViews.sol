@@ -4,6 +4,7 @@
  */
 pragma solidity 0.8.22;
 
+import { AutoCompounder } from "./AutoCompounder.sol";
 import { IAutoCompounder } from "./interfaces/IAutoCompounder.sol";
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { QuoteExactOutputSingleParams } from "./interfaces/IQuoter.sol";
@@ -21,7 +22,8 @@ contract AutoCompounderViews {
                             CONSTANTS
     ////////////////////////////////////////////////////////////// */
 
-    IAutoCompounder public immutable autoCompounder;
+    // The contract address of the Asset Manager.
+    AutoCompounder public immutable autoCompounder;
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -31,7 +33,7 @@ contract AutoCompounderViews {
      * @param autoCompounder_ The contract address of the Asset-Manager for compounding UniswapV3 fees of a certain Liquidity Position.
      */
     constructor(address autoCompounder_) {
-        autoCompounder = IAutoCompounder(autoCompounder_);
+        autoCompounder = AutoCompounder(autoCompounder_);
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -49,22 +51,23 @@ contract AutoCompounderViews {
      */
     function isCompoundable(uint256 id) external returns (bool isCompoundable_) {
         // Fetch and cache all position related data.
-        IAutoCompounder.PositionState memory position = autoCompounder.getPositionState(id);
+        AutoCompounder.PositionState memory position = autoCompounder.getPositionState(id);
 
         // Check that pool is initially balanced.
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
         if (autoCompounder.isPoolUnbalanced(position)) return false;
 
         // Get fee amounts
-        IAutoCompounder.Fees memory fees;
+        AutoCompounder.Fees memory fees;
         (fees.amount0, fees.amount1) = UniswapV3Logic._getFeeAmounts(id);
 
         // Total value of the fees must be greater than the threshold.
         if (autoCompounder.isBelowThreshold(position, fees)) return false;
 
         // Remove initiator reward from fees, these will be send to the initiator.
-        fees.amount0 -= fees.amount0.mulDivDown(autoCompounder.INITIATOR_SHARE(), 1e18);
-        fees.amount1 -= fees.amount1.mulDivDown(autoCompounder.INITIATOR_SHARE(), 1e18);
+        uint256 initiatorShare = autoCompounder.INITIATOR_SHARE();
+        fees.amount0 -= fees.amount0.mulDivDown(initiatorShare, 1e18);
+        fees.amount1 -= fees.amount1.mulDivDown(initiatorShare, 1e18);
 
         // Calculate fee amounts to match ratios of current pool tick relative to ticks of the position.
         // Pool should still be balanced after the swap.
@@ -85,7 +88,7 @@ contract AutoCompounderViews {
      * does the swap (with state changes), next it reverts (state changes are not persisted) and information about
      * the final state is passed via the error message in the expect.
      */
-    function _quote(IAutoCompounder.PositionState memory position, bool zeroToOne, uint256 amountOut)
+    function _quote(AutoCompounder.PositionState memory position, bool zeroToOne, uint256 amountOut)
         internal
         returns (bool isPoolUnbalanced)
     {

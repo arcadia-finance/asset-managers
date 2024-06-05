@@ -12,6 +12,6 @@ import { NonfungiblePositionManagerExtension } from
 import { QuoterV2 } from "../lib/accounts-v2/lib/swap-router-contracts/contracts/lens/QuoterV2.sol";
 import { SwapRouter02 } from "../lib/accounts-v2/lib/swap-router-contracts/contracts/SwapRouter02.sol";
 
-contract IsPoolUnbalanced_AutoCompounder_Fuzz_Test is Test {
+contract IsCompoundable_AutoCompounder_Fuzz_Test is Test {
     function test() public { }
 }
