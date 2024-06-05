@@ -4,7 +4,6 @@
  */
 pragma solidity 0.8.22;
 
-import { AutoCompounder } from "./AutoCompounder.sol";
 import { IAutoCompounder } from "./interfaces/IAutoCompounder.sol";
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { QuoteExactOutputSingleParams } from "./interfaces/IQuoter.sol";
@@ -23,7 +22,7 @@ contract AutoCompounderViews {
     ////////////////////////////////////////////////////////////// */
 
     // The contract address of the Asset Manager.
-    AutoCompounder public immutable autoCompounder;
+    IAutoCompounder public immutable autoCompounder;
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -33,7 +32,7 @@ contract AutoCompounderViews {
      * @param autoCompounder_ The contract address of the Asset-Manager for compounding UniswapV3 fees of a certain Liquidity Position.
      */
     constructor(address autoCompounder_) {
-        autoCompounder = AutoCompounder(autoCompounder_);
+        autoCompounder = IAutoCompounder(autoCompounder_);
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -51,14 +50,14 @@ contract AutoCompounderViews {
      */
     function isCompoundable(uint256 id) external returns (bool isCompoundable_) {
         // Fetch and cache all position related data.
-        AutoCompounder.PositionState memory position = autoCompounder.getPositionState(id);
+        IAutoCompounder.PositionState memory position = autoCompounder.getPositionState(id);
 
         // Check that pool is initially balanced.
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
         if (autoCompounder.isPoolUnbalanced(position)) return false;
 
         // Get fee amounts
-        AutoCompounder.Fees memory fees;
+        IAutoCompounder.Fees memory fees;
         (fees.amount0, fees.amount1) = UniswapV3Logic._getFeeAmounts(id);
 
         // Total value of the fees must be greater than the threshold.
@@ -88,7 +87,7 @@ contract AutoCompounderViews {
      * does the swap (with state changes), next it reverts (state changes are not persisted) and information about
      * the final state is passed via the error message in the expect.
      */
-    function _quote(AutoCompounder.PositionState memory position, bool zeroToOne, uint256 amountOut)
+    function _quote(IAutoCompounder.PositionState memory position, bool zeroToOne, uint256 amountOut)
         internal
         returns (bool isPoolUnbalanced)
     {

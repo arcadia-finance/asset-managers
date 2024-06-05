@@ -6,21 +6,23 @@ pragma solidity 0.8.22;
 
 import { AutoCompounder_Fuzz_Test, AutoCompounder } from "../auto-compounder/_AutoCompounder.fuzz.t.sol";
 
-import { AutoCompounderViews, UniswapV3Logic } from "../../../src/auto-compounder/AutoCompounderViews.sol";
+import { UniswapV3Logic } from "../../../src/auto-compounder/AutoCompounderViews.sol";
+import { AutoCompounderViewsExtension } from "../../utils/extensions/AutoCompounderViewsExtension.sol";
 import { ERC20Mock } from "../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { Utils } from "../../../lib/accounts-v2/test/utils/Utils.sol";
+import { IAutoCompounder } from "../../../src/auto-compounder/interfaces/IAutoCompounder.sol";
 import { IUniswapV3Pool } from "../../../src/auto-compounder/interfaces/IUniswapV3Pool.sol";
 import { ISwapRouter02 } from "../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/interfaces/ISwapRouter02.sol";
 
 /**
- * @notice Fuzz tests for the function "isCompoundable" of contract "AutoCompounderViews".
+ * @notice Fuzz tests for the function "_quote" of contract "AutoCompounderViews".
  */
-contract IsCompoundable_AutoCompounderViews_Fuzz_Test is AutoCompounder_Fuzz_Test {
+contract Quote_AutoCompounderViews_Fuzz_Test is AutoCompounder_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////  
                             VARIABLES
     /////////////////////////////////////////////////////////////// */
 
-    AutoCompounderViews public compounderViews;
+    AutoCompounderViewsExtension public compounderViews;
 
     /* ///////////////////////////////////////////////////////////////
                               SETUP
@@ -36,9 +38,7 @@ contract IsCompoundable_AutoCompounderViews_Fuzz_Test is AutoCompounder_Fuzz_Tes
                               TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function testFuzz_success_isCompoundable_false_initiallyUnbalanced(AutoCompounder.PositionState memory position)
-        public
-    {
+    function testFuzz_success_quote_false_poolIsUnbalanced(IAutoCompounder.PositionState memory position) public {
         // Given : New balanced stable pool 1:1
         token0 = new ERC20Mock("Token0", "TOK0", 18);
         token1 = new ERC20Mock("Token1", "TOK1", 18);
@@ -51,7 +51,7 @@ contract IsCompoundable_AutoCompounderViews_Fuzz_Test is AutoCompounder_Fuzz_Tes
         usdStablePool = createPool(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
 
         // Liquidity has been added for both tokens
-        (uint256 tokenId,,) = addLiquidity(
+        addLiquidity(
             usdStablePool,
             100_000 * 10 ** token0.decimals(),
             100_000 * 10 ** token1.decimals(),
@@ -69,104 +69,51 @@ contract IsCompoundable_AutoCompounderViews_Fuzz_Test is AutoCompounder_Fuzz_Tes
             position.pool = address(usdStablePool);
         }
 
-        // And : We generate one sided fees to move the pool in an unbalanced state
-        generateFees(1000, 1);
+        // When : Calling quote()
+        // AmountOut of 42_000 will move the ticks to the right by 392 which exceeds the tolerance of 4% (1 tick +- 0,01%).
+        bool isPoolUnbalanced = compounderViews.quote(position, true, 42_000 * 1e18);
 
-        // And : Ensure isCompoundable returns false for being unbalanced
-        bool poolIsUnbalanced = autoCompounder.isPoolUnbalanced(position);
-        assertEq(poolIsUnbalanced, true);
+        // Then : It should return "true"
+        assertEq(isPoolUnbalanced, true);
+    }
 
-        // When : Calling isCompoundable()
-        bool isCompoundable_ = compounderViews.isCompoundable(tokenId);
+    function testFuzz_success_quote(IAutoCompounder.PositionState memory position) public {
+        // Given : New balanced stable pool 1:1
+        token0 = new ERC20Mock("Token0", "TOK0", 18);
+        token1 = new ERC20Mock("Token1", "TOK1", 18);
+        (token0, token1) = token0 < token1 ? (token0, token1) : (token1, token0);
+
+        AddAsset(token0, int256(10 ** token0.decimals()));
+        AddAsset(token1, int256(10 ** token1.decimals()));
+
+        uint160 sqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(1e18, 1e18);
+        usdStablePool = createPool(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
+
+        // Liquidity has been added for both tokens
+        addLiquidity(
+            usdStablePool,
+            100_000 * 10 ** token0.decimals(),
+            100_000 * 10 ** token1.decimals(),
+            users.liquidityProvider,
+            -1000,
+            1000
+        );
+
+        {
+            position.token0 = address(token0);
+            position.token1 = address(token1);
+            position.fee = POOL_FEE;
+            position.lowerBoundSqrtPriceX96 = sqrtPriceX96 * autoCompounder.LOWER_SQRT_PRICE_DEVIATION() / 1e18;
+            position.upperBoundSqrtPriceX96 = sqrtPriceX96 * autoCompounder.UPPER_SQRT_PRICE_DEVIATION() / 1e18;
+            position.pool = address(usdStablePool);
+        }
+
+        // When : Calling quote()
+        // AmountOut of 40_000 will move the ticks to the right by 392 at limit of tolerance (still in limits)
+        bool isPoolUnbalanced = compounderViews.quote(position, true, 40_000 * 1e18);
 
         // Then : It should return "false"
-        assertEq(isCompoundable_, false);
-    }
-
-    function testFuzz_success_isCompoundable_false_feesBelowThreshold(AutoCompounder.PositionState memory position)
-        public
-    {
-        // Given : New balanced stable pool 1:1
-        token0 = new ERC20Mock("Token0", "TOK0", 18);
-        token1 = new ERC20Mock("Token1", "TOK1", 18);
-        (token0, token1) = token0 < token1 ? (token0, token1) : (token1, token0);
-
-        AddAsset(token0, int256(10 ** token0.decimals()));
-        AddAsset(token1, int256(10 ** token1.decimals()));
-
-        uint160 sqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPool(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
-
-        // Liquidity has been added for both tokens
-        (uint256 tokenId,,) = addLiquidity(
-            usdStablePool,
-            100_000 * 10 ** token0.decimals(),
-            100_000 * 10 ** token1.decimals(),
-            users.liquidityProvider,
-            -1000,
-            1000
-        );
-
-        {
-            position.token0 = address(token0);
-            position.token1 = address(token1);
-            position.fee = POOL_FEE;
-            position.lowerBoundSqrtPriceX96 = sqrtPriceX96 * autoCompounder.LOWER_SQRT_PRICE_DEVIATION() / 1e18;
-            position.upperBoundSqrtPriceX96 = sqrtPriceX96 * autoCompounder.UPPER_SQRT_PRICE_DEVIATION() / 1e18;
-            position.pool = address(usdStablePool);
-        }
-
-        // And : We generate 9$ of fees, which is below 10$ threshold
-        generateFees(4, 5);
-
-        // When : Calling isCompoundable()
-        bool isCompoundable_ = compounderViews.isCompoundable(tokenId);
-        assertEq(isCompoundable_, false);
-    }
-
-    function testFuzz_success_isCompoundable_false_unbalancedAfterFeeSwap(AutoCompounder.PositionState memory position)
-        public
-    {
-        // todo : note
-    }
-
-    function testFuzz_success_isCompoundable_true(AutoCompounder.PositionState memory position) public {
-        // Given : New balanced stable pool 1:1
-        token0 = new ERC20Mock("Token0", "TOK0", 18);
-        token1 = new ERC20Mock("Token1", "TOK1", 18);
-        (token0, token1) = token0 < token1 ? (token0, token1) : (token1, token0);
-
-        AddAsset(token0, int256(10 ** token0.decimals()));
-        AddAsset(token1, int256(10 ** token1.decimals()));
-
-        uint160 sqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPool(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
-
-        // Liquidity has been added for both tokens
-        (uint256 tokenId,,) = addLiquidity(
-            usdStablePool,
-            100_000 * 10 ** token0.decimals(),
-            100_000 * 10 ** token1.decimals(),
-            users.liquidityProvider,
-            -1000,
-            1000
-        );
-
-        {
-            position.token0 = address(token0);
-            position.token1 = address(token1);
-            position.fee = POOL_FEE;
-            position.lowerBoundSqrtPriceX96 = sqrtPriceX96 * autoCompounder.LOWER_SQRT_PRICE_DEVIATION() / 1e18;
-            position.upperBoundSqrtPriceX96 = sqrtPriceX96 * autoCompounder.UPPER_SQRT_PRICE_DEVIATION() / 1e18;
-            position.pool = address(usdStablePool);
-        }
-
-        // And : We generate 11$ of fees, which is above 10$ threshold
-        generateFees(6, 5);
-
-        // When : Calling isCompoundable()
-        bool isCompoundable_ = compounderViews.isCompoundable(tokenId);
-        assertEq(isCompoundable_, true);
+        assertEq(isPoolUnbalanced, false);
     }
 
     /*////////////////////////////////////////////////////////////////
@@ -174,7 +121,7 @@ contract IsCompoundable_AutoCompounderViews_Fuzz_Test is AutoCompounder_Fuzz_Tes
     ////////////////////////////////////////////////////////////////*/
     function deployAutoCompounderViews() public {
         vm.prank(users.deployer);
-        compounderViews = new AutoCompounderViews(address(autoCompounder));
+        compounderViews = new AutoCompounderViewsExtension(address(autoCompounder));
 
         // Get the bytecode of the UniswapV3PoolExtension.
         bytes memory args = abi.encode();
