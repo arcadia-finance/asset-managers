@@ -4,39 +4,31 @@
  */
 pragma solidity 0.8.22;
 
-import { AutoCompounder_Fuzz_Test, AutoCompounder } from "../auto-compounder/_AutoCompounder.fuzz.t.sol";
-
-import { AutoCompounderViews, UniswapV3Logic } from "../../../src/auto-compounder/AutoCompounderViews.sol";
 import { ERC20Mock } from "../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
+import { UniswapV3AutoCompounder } from "../../../src/auto-compounder/UniswapV3AutoCompounder.sol";
+import { UniswapV3AutoCompoundHelper_Fuzz_Test } from "./_UniswapV3AutoCompoundHelper.fuzz.t.sol";
+import { UniswapV3Logic } from "../../../src/auto-compounder/libraries/UniswapV3Logic.sol";
 import { Utils } from "../../../lib/accounts-v2/test/utils/Utils.sol";
 
 /**
- * @notice Fuzz tests for the function "isCompoundable" of contract "AutoCompounderViews".
+ * @notice Fuzz tests for the function "isCompoundable" of contract "UniswapV3AutoCompoundHelper".
  */
-contract IsCompoundable_AutoCompounderViews_Fuzz_Test is AutoCompounder_Fuzz_Test {
-    /* ///////////////////////////////////////////////////////////////  
-                            VARIABLES
-    /////////////////////////////////////////////////////////////// */
-
-    AutoCompounderViews public compounderViews;
-
+contract IsCompoundable_UniswapV3AutoCompoundHelper_Fuzz_Test is UniswapV3AutoCompoundHelper_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public virtual override {
-        AutoCompounder_Fuzz_Test.setUp();
-
-        deployAutoCompounderViews();
+        UniswapV3AutoCompoundHelper_Fuzz_Test.setUp();
     }
 
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function testFuzz_success_isCompoundable_false_initiallyUnbalanced(AutoCompounder.PositionState memory position)
-        public
-    {
+    function testFuzz_success_isCompoundable_false_initiallyUnbalanced(
+        UniswapV3AutoCompounder.PositionState memory position
+    ) public {
         // Given : New balanced stable pool 1:1
         token0 = new ERC20Mock("Token0", "TOK0", 18);
         token1 = new ERC20Mock("Token1", "TOK1", 18);
@@ -75,15 +67,15 @@ contract IsCompoundable_AutoCompounderViews_Fuzz_Test is AutoCompounder_Fuzz_Tes
         assertEq(poolIsUnbalanced, true);
 
         // When : Calling isCompoundable()
-        bool isCompoundable_ = compounderViews.isCompoundable(tokenId);
+        bool isCompoundable_ = autoCompoundHelper.isCompoundable(tokenId);
 
         // Then : It should return "false"
         assertEq(isCompoundable_, false);
     }
 
-    function testFuzz_success_isCompoundable_false_feesBelowThreshold(AutoCompounder.PositionState memory position)
-        public
-    {
+    function testFuzz_success_isCompoundable_false_feesBelowThreshold(
+        UniswapV3AutoCompounder.PositionState memory position
+    ) public {
         // Given : New balanced stable pool 1:1
         token0 = new ERC20Mock("Token0", "TOK0", 18);
         token1 = new ERC20Mock("Token1", "TOK1", 18);
@@ -118,13 +110,13 @@ contract IsCompoundable_AutoCompounderViews_Fuzz_Test is AutoCompounder_Fuzz_Tes
         generateFees(4, 5);
 
         // When : Calling isCompoundable()
-        bool isCompoundable_ = compounderViews.isCompoundable(tokenId);
+        bool isCompoundable_ = autoCompoundHelper.isCompoundable(tokenId);
         assertEq(isCompoundable_, false);
     }
 
-    function testFuzz_success_isCompoundable_false_unbalancedAfterFeeSwap(AutoCompounder.PositionState memory position)
-        public
-    {
+    function testFuzz_success_isCompoundable_false_unbalancedAfterFeeSwap(
+        UniswapV3AutoCompounder.PositionState memory position
+    ) public {
         // Given : New balanced stable pool 1:1
         token0 = new ERC20Mock("Token0", "TOK0", 18);
         token1 = new ERC20Mock("Token1", "TOK1", 18);
@@ -167,13 +159,13 @@ contract IsCompoundable_AutoCompounderViews_Fuzz_Test is AutoCompounder_Fuzz_Tes
         autoCompounder.swap(position, true, amountOut);
 
         // When : Calling isCompoundable()
-        bool isCompoundable_ = compounderViews.isCompoundable(tokenId);
+        bool isCompoundable_ = autoCompoundHelper.isCompoundable(tokenId);
 
         // Then : It should return "false"
         assertEq(isCompoundable_, false);
     }
 
-    function testFuzz_success_isCompoundable_true(AutoCompounder.PositionState memory position) public {
+    function testFuzz_success_isCompoundable_true(UniswapV3AutoCompounder.PositionState memory position) public {
         // Given : New balanced stable pool 1:1
         token0 = new ERC20Mock("Token0", "TOK0", 18);
         token1 = new ERC20Mock("Token1", "TOK1", 18);
@@ -208,49 +200,7 @@ contract IsCompoundable_AutoCompounderViews_Fuzz_Test is AutoCompounder_Fuzz_Tes
         generateFees(6, 5);
 
         // When : Calling isCompoundable()
-        bool isCompoundable_ = compounderViews.isCompoundable(tokenId);
+        bool isCompoundable_ = autoCompoundHelper.isCompoundable(tokenId);
         assertEq(isCompoundable_, true);
-    }
-
-    /*////////////////////////////////////////////////////////////////
-                        HELPER FUNCTIONS
-    ////////////////////////////////////////////////////////////////*/
-    function deployAutoCompounderViews() public {
-        vm.prank(users.deployer);
-        compounderViews = new AutoCompounderViews(address(autoCompounder));
-
-        // Get the bytecode of the UniswapV3PoolExtension.
-        bytes memory args = abi.encode();
-        bytes memory bytecode = abi.encodePacked(vm.getCode("UniswapV3PoolExtension.sol"), args);
-        bytes32 poolExtensionInitCodeHash = keccak256(bytecode);
-        bytes32 POOL_INIT_CODE_HASH = 0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54;
-
-        // Overwrite code hash of the UniswapV3Pool.
-        bytecode = address(compounderViews).code;
-        bytecode = Utils.veryBadBytesReplacer(bytecode, POOL_INIT_CODE_HASH, poolExtensionInitCodeHash);
-
-        // Overwrite contract addresses stored as constants in AutoCompounderViews.
-        bytecode = Utils.veryBadBytesReplacer(
-            bytecode, abi.encodePacked(0xDa14Fdd72345c4d2511357214c5B89A919768e59), abi.encodePacked(factory), false
-        );
-        bytecode = Utils.veryBadBytesReplacer(
-            bytecode, abi.encodePacked(0xd0690557600eb8Be8391D1d97346e2aab5300d5f), abi.encodePacked(registry), false
-        );
-        bytecode = Utils.veryBadBytesReplacer(
-            bytecode,
-            abi.encodePacked(0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1),
-            abi.encodePacked(nonfungiblePositionManager),
-            false
-        );
-        bytecode = Utils.veryBadBytesReplacer(
-            bytecode,
-            abi.encodePacked(0x33128a8fC17869897dcE68Ed026d694621f6FDfD),
-            abi.encodePacked(uniswapV3Factory),
-            false
-        );
-        bytecode = Utils.veryBadBytesReplacer(
-            bytecode, abi.encodePacked(0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a), abi.encodePacked(quoter), false
-        );
-        vm.etch(address(compounderViews), bytecode);
     }
 }

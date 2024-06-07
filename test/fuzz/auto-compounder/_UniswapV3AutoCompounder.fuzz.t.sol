@@ -7,18 +7,18 @@ pragma solidity 0.8.22;
 import { Fuzz_Test } from "../Fuzz.t.sol";
 
 import { AutoCompounderExtension } from "../../utils/extensions/AutoCompounderExtension.sol";
-import { AutoCompounder } from "../../../src/auto-compounder/AutoCompounder.sol";
 import { ERC20Mock } from "../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { UniswapV3AMExtension } from "../../../lib/accounts-v2/test/utils/extensions/UniswapV3AMExtension.sol";
+import { UniswapV3AutoCompounder } from "../../../src/auto-compounder/UniswapV3AutoCompounder.sol";
 import { Utils } from "../../../lib/accounts-v2/test/utils/Utils.sol";
 import { IUniswapV3PoolExtension } from
     "../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/IUniswapV3PoolExtension.sol";
 import { ISwapRouter02 } from "../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/interfaces/ISwapRouter02.sol";
 
 /**
- * @notice Common logic needed by all "AutoCompounder" fuzz tests.
+ * @notice Common logic needed by all "UniswapV3AutoCompounder" fuzz tests.
  */
-abstract contract AutoCompounder_Fuzz_Test is Fuzz_Test {
+abstract contract UniswapV3AutoCompounder_Fuzz_Test is Fuzz_Test {
     /*////////////////////////////////////////////////////////////////
                             CONSTANTS
     /////////////////////////////////////////////////////////////// */

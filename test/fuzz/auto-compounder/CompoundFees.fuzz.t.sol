@@ -4,26 +4,23 @@
  */
 pragma solidity 0.8.22;
 
-import {
-    AutoCompounder_Fuzz_Test,
-    AutoCompounder,
-    IUniswapV3PoolExtension,
-    ISwapRouter02
-} from "./_AutoCompounder.fuzz.t.sol";
-
 import { ERC20Mock } from "../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { ERC721 } from "../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
+import { ISwapRouter02 } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
+import { IUniswapV3PoolExtension } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
+import { UniswapV3AutoCompounder } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
+import { UniswapV3AutoCompounder_Fuzz_Test } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
 
 /**
- * @notice Fuzz tests for the function "compoundFees" of contract "AutoCompounder".
+ * @notice Fuzz tests for the function "compoundFees" of contract "UniswapV3AutoCompounder".
  */
-contract CompoundFees_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
+contract CompoundFees_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompounder_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public virtual override {
-        AutoCompounder_Fuzz_Test.setUp();
+        UniswapV3AutoCompounder_Fuzz_Test.setUp();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -61,7 +58,7 @@ contract CompoundFees_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
 
         // When : Calling compoundFees()
         vm.startPrank(initiator);
-        vm.expectRevert(AutoCompounder.BelowThreshold.selector);
+        vm.expectRevert(UniswapV3AutoCompounder.BelowThreshold.selector);
         autoCompounder.compoundFees(address(account), tokenId);
         vm.stopPrank();
     }
@@ -188,8 +185,6 @@ contract CompoundFees_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
 
         uint256 totalFee0 = testVars.feeAmount0 * 10 ** token0.decimals();
         uint256 totalFee1 = testVars.feeAmount1 * 10 ** token1.decimals() + amount1ToSwap * POOL_FEE / 1e6;
-        emit log_uint(totalFee0);
-        emit log_uint(totalFee1);
 
         uint256 initiatorFeeToken0Calculated = totalFee0 * (INITIATOR_SHARE + TOLERANCE) / 1e18;
         uint256 initiatorFeeToken1Calculated = totalFee1 * (INITIATOR_SHARE + TOLERANCE) / 1e18;

@@ -4,12 +4,12 @@
  */
 pragma solidity 0.8.22;
 
-import { AutoCompounder } from "../../../src/auto-compounder/AutoCompounder.sol";
+import { UniswapV3AutoCompounder } from "../../../src/auto-compounder/UniswapV3AutoCompounder.sol";
 import { UniswapV3Logic } from "../../../src/auto-compounder/libraries/UniswapV3Logic.sol";
 
-contract AutoCompounderExtension is AutoCompounder {
+contract AutoCompounderExtension is UniswapV3AutoCompounder {
     constructor(uint256 compoundThreshold, uint256 initiatorShare, uint256 tolerance)
-        AutoCompounder(compoundThreshold, initiatorShare, tolerance)
+        UniswapV3AutoCompounder(compoundThreshold, initiatorShare, tolerance)
     { }
 
     function getSqrtPriceX96(uint256 priceToken0, uint256 priceToken1) public pure returns (uint256) {

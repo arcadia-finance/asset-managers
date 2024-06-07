@@ -29,7 +29,7 @@ import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
  * pools and sandwiching the swap and/or increase liquidity. This asset manager should not be used for Arcadia Account that have/will have
  * Uniswap V3 Liquidity Positions where one of the underlying assets is priced with such low precision oracles.
  */
-contract AutoCompounder is IActionBase {
+contract UniswapV3AutoCompounder is IActionBase {
     using FixedPointMathLib for uint256;
     using SafeTransferLib for ERC20;
     /* //////////////////////////////////////////////////////////////

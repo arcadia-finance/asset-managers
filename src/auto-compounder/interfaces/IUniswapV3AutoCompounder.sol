@@ -4,7 +4,7 @@
  */
 pragma solidity 0.8.22;
 
-interface IAutoCompounder {
+interface IUniswapV3AutoCompounder {
     struct PositionState {
         address pool;
         address token0;

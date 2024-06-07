@@ -4,16 +4,15 @@
  */
 pragma solidity 0.8.22;
 
-import { AutoCompounder_Fuzz_Test } from "./_AutoCompounder.fuzz.t.sol";
-
-import { AutoCompounder } from "../../../src/auto-compounder/AutoCompounder.sol";
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { stdError } from "../../../lib/accounts-v2/lib/forge-std/src/StdError.sol";
+import { UniswapV3AutoCompounder } from "../../../src/auto-compounder/UniswapV3AutoCompounder.sol";
+import { UniswapV3AutoCompounder_Fuzz_Test } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
 
 /**
- * @notice Fuzz tests for the function "Constructor" of contract "AutoCompounder".
+ * @notice Fuzz tests for the function "Constructor" of contract "UniswapV3AutoCompounder".
  */
-contract Constructor_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
+contract Constructor_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompounder_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
@@ -32,7 +31,7 @@ contract Constructor_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
 
         vm.prank(users.deployer);
         vm.expectRevert(stdError.arithmeticError);
-        new AutoCompounder(compoundThreshold, initiatorShare, tolerance);
+        new UniswapV3AutoCompounder(compoundThreshold, initiatorShare, tolerance);
     }
 
     function testFuzz_Success_Constructor(uint256 compoundThreshold, uint256 initiatorShare, uint256 tolerance)
@@ -41,7 +40,8 @@ contract Constructor_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
         tolerance = bound(tolerance, 0, 1e18);
 
         vm.prank(users.deployer);
-        AutoCompounder autoCompounder_ = new AutoCompounder(compoundThreshold, initiatorShare, tolerance);
+        UniswapV3AutoCompounder autoCompounder_ =
+            new UniswapV3AutoCompounder(compoundThreshold, initiatorShare, tolerance);
 
         assertEq(autoCompounder_.COMPOUND_THRESHOLD(), compoundThreshold);
         assertEq(autoCompounder_.INITIATOR_SHARE(), initiatorShare);

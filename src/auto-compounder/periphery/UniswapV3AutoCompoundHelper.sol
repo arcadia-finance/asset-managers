@@ -4,18 +4,18 @@
  */
 pragma solidity 0.8.22;
 
-import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { IAutoCompounder } from "./interfaces/IAutoCompounder.sol";
-import { IQuoter } from "./interfaces/IQuoter.sol";
-import { QuoteExactOutputSingleParams } from "./interfaces/IQuoter.sol";
-import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
+import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { IQuoter } from "../interfaces/IQuoter.sol";
+import { IUniswapV3AutoCompounder } from "../interfaces/IUniswapV3AutoCompounder.sol";
+import { QuoteExactOutputSingleParams } from "../interfaces/IQuoter.sol";
+import { UniswapV3Logic } from "../libraries/UniswapV3Logic.sol";
 
 /**
  * @title Off-chain view functions for UniswapV3 AutoCompounder Asset-Manager.
  * @author Pragma Labs
  * @notice This contract holds view functions accessible for initiators to check if the fees of a certain Liquidity Position can be compounded.
  */
-contract AutoCompounderViews {
+contract UniswapV3AutoCompoundHelper {
     using FixedPointMathLib for uint256;
 
     /* //////////////////////////////////////////////////////////////
@@ -23,7 +23,7 @@ contract AutoCompounderViews {
     ////////////////////////////////////////////////////////////// */
 
     // The contract address of the Asset Manager.
-    IAutoCompounder public immutable autoCompounder;
+    IUniswapV3AutoCompounder public immutable autoCompounder;
 
     // The Uniswap V3 Quoter contract.
     IQuoter internal constant QUOTER = IQuoter(0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a);
@@ -36,7 +36,7 @@ contract AutoCompounderViews {
      * @param autoCompounder_ The contract address of the Asset-Manager for compounding UniswapV3 fees of a certain Liquidity Position.
      */
     constructor(address autoCompounder_) {
-        autoCompounder = IAutoCompounder(autoCompounder_);
+        autoCompounder = IUniswapV3AutoCompounder(autoCompounder_);
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -48,20 +48,20 @@ contract AutoCompounderViews {
      * @param id The id of the Liquidity Position.
      * @return isCompoundable_ Bool indicating if the fees can be compounded.
      * @dev While this function does not persist state changes, it cannot be declared as view function.
-     * Since quoteExactInputSingle() of Uniswap's Quoter02.sol uses a try - except pattern where it first
+     * Since quoteExactOutputSingle() of Uniswap's Quoter02.sol uses a try - except pattern where it first
      * does the swap (with state changes), next it reverts (state changes are not persisted) and information about
      * the final state is passed via the error message in the expect.
      */
     function isCompoundable(uint256 id) external returns (bool isCompoundable_) {
         // Fetch and cache all position related data.
-        IAutoCompounder.PositionState memory position = autoCompounder.getPositionState(id);
+        IUniswapV3AutoCompounder.PositionState memory position = autoCompounder.getPositionState(id);
 
         // Check that pool is initially balanced.
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
         if (autoCompounder.isPoolUnbalanced(position)) return false;
 
         // Get fee amounts
-        IAutoCompounder.Fees memory fees;
+        IUniswapV3AutoCompounder.Fees memory fees;
         (fees.amount0, fees.amount1) = UniswapV3Logic._getFeeAmounts(id);
 
         // Total value of the fees must be greater than the threshold.
@@ -87,11 +87,11 @@ contract AutoCompounderViews {
      * @param amountOut The amount that of tokenOut that must be swapped to.
      * @return isPoolUnbalanced Bool indicating if the pool is unbalanced due to slippage after the swap.
      * @dev While this function does not persist state changes, it cannot be declared as view function,
-     * since quoteExactInputSingle() of Uniswap's Quoter02.sol uses a try - except pattern where it first
+     * since quoteExactOutputSingle() of Uniswap's Quoter02.sol uses a try - except pattern where it first
      * does the swap (with state changes), next it reverts (state changes are not persisted) and information about
      * the final state is passed via the error message in the expect.
      */
-    function _quote(IAutoCompounder.PositionState memory position, bool zeroToOne, uint256 amountOut)
+    function _quote(IUniswapV3AutoCompounder.PositionState memory position, bool zeroToOne, uint256 amountOut)
         internal
         returns (bool isPoolUnbalanced)
     {

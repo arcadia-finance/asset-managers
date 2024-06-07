@@ -4,22 +4,23 @@
  */
 pragma solidity 0.8.22;
 
-import { AutoCompounder_Fuzz_Test, AutoCompounder } from "./_AutoCompounder.fuzz.t.sol";
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
+import { UniswapV3AutoCompounder } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
+import { UniswapV3AutoCompounder_Fuzz_Test } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
 import { UniswapV3Logic } from "../../../src/auto-compounder/libraries/UniswapV3Logic.sol";
 
 /**
- * @notice Fuzz tests for the function "_getSwapParameters" of contract "AutoCompounder".
+ * @notice Fuzz tests for the function "_getSwapParameters" of contract "UniswapV3AutoCompounder".
  */
-contract GetSwapParameters_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
+contract GetSwapParameters_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompounder_Fuzz_Test {
     using FixedPointMathLib for uint256;
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public override {
-        AutoCompounder_Fuzz_Test.setUp();
+        UniswapV3AutoCompounder_Fuzz_Test.setUp();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -40,13 +41,13 @@ contract GetSwapParameters_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test 
 
         uint160 sqrtPriceX96AtCurrentTick = TickMath.getSqrtRatioAtTick(newTick);
 
-        AutoCompounder.PositionState memory position;
+        UniswapV3AutoCompounder.PositionState memory position;
         position.currentTick = newTick;
         position.tickLower = testVars.tickLower;
         position.tickUpper = testVars.tickUpper;
         position.sqrtPriceX96 = sqrtPriceX96AtCurrentTick;
 
-        AutoCompounder.Fees memory fees;
+        UniswapV3AutoCompounder.Fees memory fees;
         fees.amount0 = testVars.feeAmount0 * 10 ** token0.decimals();
         fees.amount1 = testVars.feeAmount1 * 10 ** token1.decimals();
 
@@ -75,13 +76,13 @@ contract GetSwapParameters_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test 
 
         uint160 sqrtPriceX96AtCurrentTick = TickMath.getSqrtRatioAtTick(newTick);
 
-        AutoCompounder.PositionState memory position;
+        UniswapV3AutoCompounder.PositionState memory position;
         position.currentTick = newTick;
         position.tickLower = testVars.tickLower;
         position.tickUpper = testVars.tickUpper;
         position.sqrtPriceX96 = sqrtPriceX96AtCurrentTick;
 
-        AutoCompounder.Fees memory fees;
+        UniswapV3AutoCompounder.Fees memory fees;
         fees.amount0 = testVars.feeAmount0 * 10 ** token0.decimals();
         fees.amount1 = testVars.feeAmount1 * 10 ** token1.decimals();
 
@@ -108,13 +109,13 @@ contract GetSwapParameters_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test 
         setState(testVars, usdStablePool);
 
         (uint160 sqrtPriceX96, int24 currentTick,,,,,) = usdStablePool.slot0();
-        AutoCompounder.PositionState memory position;
+        UniswapV3AutoCompounder.PositionState memory position;
         position.sqrtPriceX96 = sqrtPriceX96;
         position.currentTick = currentTick;
         position.tickLower = testVars.tickLower;
         position.tickUpper = testVars.tickUpper;
 
-        AutoCompounder.Fees memory fees;
+        UniswapV3AutoCompounder.Fees memory fees;
         fees.amount0 = testVars.feeAmount0 * 10 ** token0.decimals();
         fees.amount1 = testVars.feeAmount1 * 10 ** token1.decimals();
 
@@ -156,13 +157,13 @@ contract GetSwapParameters_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test 
         setState(testVars, usdStablePool);
 
         (uint160 sqrtPriceX96, int24 currentTick,,,,,) = usdStablePool.slot0();
-        AutoCompounder.PositionState memory position;
+        UniswapV3AutoCompounder.PositionState memory position;
         position.sqrtPriceX96 = sqrtPriceX96;
         position.currentTick = currentTick;
         position.tickLower = testVars.tickLower;
         position.tickUpper = testVars.tickUpper;
 
-        AutoCompounder.Fees memory fees;
+        UniswapV3AutoCompounder.Fees memory fees;
         fees.amount0 = testVars.feeAmount0 * 10 ** token0.decimals();
         fees.amount1 = testVars.feeAmount1 * 10 ** token1.decimals();
 

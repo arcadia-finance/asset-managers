@@ -4,21 +4,22 @@
  */
 pragma solidity 0.8.22;
 
-import { AutoCompounder_Fuzz_Test, AutoCompounder } from "./_AutoCompounder.fuzz.t.sol";
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { UniswapV3AutoCompounder } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
+import { UniswapV3AutoCompounder_Fuzz_Test } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
 import { UniswapV3Logic } from "../../../src/auto-compounder/libraries/UniswapV3Logic.sol";
 
 /**
- * @notice Fuzz tests for the function "_getPositionState" of contract "AutoCompounder".
+ * @notice Fuzz tests for the function "_getPositionState" of contract "UniswapV3AutoCompounder".
  */
-contract GetPositionState_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
+contract GetPositionState_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompounder_Fuzz_Test {
     using FixedPointMathLib for uint256;
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public override {
-        AutoCompounder_Fuzz_Test.setUp();
+        UniswapV3AutoCompounder_Fuzz_Test.setUp();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -33,7 +34,7 @@ contract GetPositionState_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
         uint256 tokenId = setState(testVars, usdStablePool);
 
         // When : Calling getPositionState()
-        AutoCompounder.PositionState memory position = autoCompounder.getPositionState(tokenId);
+        UniswapV3AutoCompounder.PositionState memory position = autoCompounder.getPositionState(tokenId);
 
         // Then : It should return the correct values
         assertEq(position.token0, address(token0));

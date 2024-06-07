@@ -4,27 +4,30 @@
  */
 pragma solidity 0.8.22;
 
-import { AutoCompounder_Fuzz_Test, AutoCompounder, ERC20Mock } from "./_AutoCompounder.fuzz.t.sol";
-
+import { ERC20Mock } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
+import { UniswapV3AutoCompounder } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
+import { UniswapV3AutoCompounder_Fuzz_Test } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
 import { UniswapV3Logic } from "../../../src/auto-compounder/libraries/UniswapV3Logic.sol";
 
 /**
- * @notice Fuzz tests for the function "Swap" of contract "AutoCompounder".
+ * @notice Fuzz tests for the function "Swap" of contract "UniswapV3AutoCompounder".
  */
-contract Swap_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
+contract Swap_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompounder_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public override {
-        AutoCompounder_Fuzz_Test.setUp();
+        UniswapV3AutoCompounder_Fuzz_Test.setUp();
     }
 
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function testFuzz_success_swap_zeroAmount(AutoCompounder.PositionState memory position, bool zeroToOne) public {
+    function testFuzz_success_swap_zeroAmount(UniswapV3AutoCompounder.PositionState memory position, bool zeroToOne)
+        public
+    {
         // Given : amountOut is 0
         uint256 amountOut = 0;
         // When : Calling _swap()
@@ -34,7 +37,7 @@ contract Swap_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
     }
 
     function testFuzz_success_swap_zeroToOne_UnbalancedPool(
-        AutoCompounder.PositionState memory position,
+        UniswapV3AutoCompounder.PositionState memory position,
         bool zeroToOne
     ) public {
         // Given : zeroToOne swap
@@ -84,7 +87,7 @@ contract Swap_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
     }
 
     function testFuzz_success_swap_oneToZEro_UnbalancedPool(
-        AutoCompounder.PositionState memory position,
+        UniswapV3AutoCompounder.PositionState memory position,
         bool zeroToOne
     ) public {
         // Given : oneToZero swap
@@ -133,9 +136,10 @@ contract Swap_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
         assertEq(isPoolUnbalanced, true);
     }
 
-    function testFuzz_success_swap_zeroToOne_balancedPool(AutoCompounder.PositionState memory position, bool zeroToOne)
-        public
-    {
+    function testFuzz_success_swap_zeroToOne_balancedPool(
+        UniswapV3AutoCompounder.PositionState memory position,
+        bool zeroToOne
+    ) public {
         // Given : zeroToOne swap
         zeroToOne = true;
 
@@ -182,9 +186,10 @@ contract Swap_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
         assertEq(isPoolUnbalanced, false);
     }
 
-    function testFuzz_success_swap_oneToZero_balancedPool(AutoCompounder.PositionState memory position, bool zeroToOne)
-        public
-    {
+    function testFuzz_success_swap_oneToZero_balancedPool(
+        UniswapV3AutoCompounder.PositionState memory position,
+        bool zeroToOne
+    ) public {
         // Given : oneToZero swap
         zeroToOne = false;
 
