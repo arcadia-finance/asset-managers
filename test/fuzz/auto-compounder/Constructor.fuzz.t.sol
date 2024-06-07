@@ -4,68 +4,52 @@
  */
 pragma solidity 0.8.22;
 
-import { AutoCompounder_Fuzz_Test, AutoCompounderExtension, AutoCompounder } from "./_AutoCompounder.fuzz.t.sol";
+import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { stdError } from "../../../lib/accounts-v2/lib/forge-std/src/StdError.sol";
+import { UniswapV3AutoCompounder } from "../../../src/auto-compounder/UniswapV3AutoCompounder.sol";
+import { UniswapV3AutoCompounder_Fuzz_Test } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
 
 /**
- * @notice Fuzz tests for the function "Constructor" of contract "AutoCompounder".
+ * @notice Fuzz tests for the function "Constructor" of contract "UniswapV3AutoCompounder".
  */
-contract Constructor_AutoCompounder_Fuzz_Test is AutoCompounder_Fuzz_Test {
+contract Constructor_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompounder_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
-    function setUp() public override {
-        AutoCompounder_Fuzz_Test.setUp();
-    }
+    function setUp() public override { }
 
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Revert_Constructor_MaxTolerance() public {
-        vm.startPrank(users.creatorAddress);
-        vm.expectRevert(AutoCompounder.MaxToleranceExceeded.selector);
-        autoCompounder = new AutoCompounderExtension(
-            address(registryExtension),
-            address(uniswapV3Factory),
-            address(nonfungiblePositionManager),
-            5001,
-            MIN_USD_FEES_VALUE,
-            INITIATOR_FEE
-        );
+    function testFuzz_Revert_Constructor_UnderflowTolerance(
+        uint256 compoundThreshold,
+        uint256 initiatorShare,
+        uint256 tolerance
+    ) public {
+        tolerance = bound(tolerance, 1e18 + 1, type(uint256).max);
+
+        vm.prank(users.deployer);
+        vm.expectRevert(stdError.arithmeticError);
+        new UniswapV3AutoCompounder(compoundThreshold, initiatorShare, tolerance);
     }
 
-    function testFuzz_Revert_Constructor_MaxInitiatorFee() public {
-        vm.startPrank(users.creatorAddress);
-        vm.expectRevert(AutoCompounder.MaxInitiatorFeeExceeded.selector);
-        autoCompounder = new AutoCompounderExtension(
-            address(registryExtension),
-            address(uniswapV3Factory),
-            address(nonfungiblePositionManager),
-            TOLERANCE,
-            MIN_USD_FEES_VALUE,
-            2001
-        );
-    }
+    function testFuzz_Success_Constructor(uint256 compoundThreshold, uint256 initiatorShare, uint256 tolerance)
+        public
+    {
+        tolerance = bound(tolerance, 0, 1e18);
 
-    function testFuzz_Success_Constructor() public {
-        vm.prank(users.creatorAddress);
-        autoCompounder = new AutoCompounderExtension(
-            address(registryExtension),
-            address(uniswapV3Factory),
-            address(nonfungiblePositionManager),
-            TOLERANCE,
-            MIN_USD_FEES_VALUE,
-            INITIATOR_FEE
-        );
+        vm.prank(users.deployer);
+        UniswapV3AutoCompounder autoCompounder_ =
+            new UniswapV3AutoCompounder(compoundThreshold, initiatorShare, tolerance);
 
-        assertEq(address(autoCompounder.UNI_V3_FACTORY()), address(uniswapV3Factory));
-        assertEq(address(autoCompounder.REGISTRY()), address(registryExtension));
-        assertEq(address(autoCompounder.NONFUNGIBLE_POSITIONMANAGER()), address(nonfungiblePositionManager));
-        // Sqrt of (BIPS + 1000) * BIPS is 10488
-        assertEq(autoCompounder.MAX_UPPER_SQRT_PRICE_DEVIATION(), 10_198);
-        assertEq(autoCompounder.MAX_LOWER_SQRT_PRICE_DEVIATION(), 9797);
-        assertEq(autoCompounder.TOLERANCE(), TOLERANCE);
-        assertEq(autoCompounder.MIN_USD_FEES_VALUE(), MIN_USD_FEES_VALUE);
-        assertEq(autoCompounder.INITIATOR_FEE(), INITIATOR_FEE);
+        assertEq(autoCompounder_.COMPOUND_THRESHOLD(), compoundThreshold);
+        assertEq(autoCompounder_.INITIATOR_SHARE(), initiatorShare);
+
+        uint256 lowerDeviation = FixedPointMathLib.sqrt((1e18 - tolerance) * 1e18);
+        uint256 upperDeviation = FixedPointMathLib.sqrt((1e18 + tolerance) * 1e18);
+
+        assertEq(autoCompounder_.LOWER_SQRT_PRICE_DEVIATION(), lowerDeviation);
+        assertEq(autoCompounder_.UPPER_SQRT_PRICE_DEVIATION(), upperDeviation);
     }
 }

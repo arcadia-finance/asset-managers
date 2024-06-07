@@ -22,6 +22,8 @@ struct IncreaseLiquidityParams {
 }
 
 interface INonfungiblePositionManager {
+    function approve(address spender, uint256 tokenId) external;
+
     function collect(CollectParams calldata params) external payable returns (uint256 amount0, uint256 amount1);
 
     function positions(uint256 tokenId)
@@ -46,6 +48,4 @@ interface INonfungiblePositionManager {
         external
         payable
         returns (uint128 liquidity, uint256 amount0, uint256 amount1);
-
-    function approve(address spender, uint256 tokenId) external;
 }
