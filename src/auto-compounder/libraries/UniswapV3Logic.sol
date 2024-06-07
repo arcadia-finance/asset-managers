@@ -26,8 +26,6 @@ library UniswapV3Logic {
     // The Uniswap V3 NonfungiblePositionManager contract.
     INonfungiblePositionManager internal constant POSITION_MANAGER =
         INonfungiblePositionManager(0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1);
-    // The Uniswap V3 Quoter contract.
-    IQuoter internal constant QUOTER = IQuoter(0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a);
 
     /**
      * @notice Calculates the underlying token amounts of accrued fees, both collected and uncollected.

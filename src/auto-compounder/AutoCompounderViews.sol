@@ -4,8 +4,9 @@
  */
 pragma solidity 0.8.22;
 
-import { IAutoCompounder } from "./interfaces/IAutoCompounder.sol";
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { IAutoCompounder } from "./interfaces/IAutoCompounder.sol";
+import { IQuoter } from "./interfaces/IQuoter.sol";
 import { QuoteExactOutputSingleParams } from "./interfaces/IQuoter.sol";
 import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
 
@@ -23,6 +24,9 @@ contract AutoCompounderViews {
 
     // The contract address of the Asset Manager.
     IAutoCompounder public immutable autoCompounder;
+
+    // The Uniswap V3 Quoter contract.
+    IQuoter internal constant QUOTER = IQuoter(0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a);
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -98,7 +102,7 @@ contract AutoCompounderViews {
         uint256 sqrtPriceLimitX96 = zeroToOne ? position.lowerBoundSqrtPriceX96 : position.upperBoundSqrtPriceX96;
 
         // Quote the swap.
-        (, uint160 sqrtPriceX96After,,) = UniswapV3Logic.QUOTER.quoteExactOutputSingle(
+        (, uint160 sqrtPriceX96After,,) = QUOTER.quoteExactOutputSingle(
             QuoteExactOutputSingleParams({
                 tokenIn: zeroToOne ? position.token0 : position.token1,
                 tokenOut: zeroToOne ? position.token1 : position.token0,
