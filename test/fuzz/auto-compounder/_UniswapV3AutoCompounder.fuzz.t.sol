@@ -92,12 +92,12 @@ abstract contract UniswapV3AutoCompounder_Fuzz_Test is
         token1 = new ERC20Mock("Token 18d", "TOK18", 18);
         (token0, token1) = token0 < token1 ? (token0, token1) : (token1, token0);
 
-        AddAsset(token0, int256(10 ** MOCK_ORACLE_DECIMALS));
-        AddAsset(token1, int256(10 ** MOCK_ORACLE_DECIMALS));
+        AddAsset(address(token0), int256(10 ** MOCK_ORACLE_DECIMALS));
+        AddAsset(address(token1), int256(10 ** MOCK_ORACLE_DECIMALS));
 
         // Create UniswapV3 pool.
         uint256 sqrtPriceX96 = autoCompounder.getSqrtPriceX96(10 ** token1.decimals(), 10 ** token0.decimals());
-        usdStablePool = createPool(address(token0), address(token1), POOL_FEE, uint160(sqrtPriceX96), 300);
+        usdStablePool = createPoolUniV3(address(token0), address(token1), POOL_FEE, uint160(sqrtPriceX96), 300);
 
         // And : AutoCompounder is allowed as Asset Manager
         vm.prank(users.accountOwner);
@@ -199,13 +199,14 @@ abstract contract UniswapV3AutoCompounder_Fuzz_Test is
 
     function setState(TestVariables memory testVars, IUniswapV3PoolExtension pool) public returns (uint256 tokenId) {
         // Given : Mint initial position
-        (tokenId,,) = addLiquidity(
+        (tokenId,,) = addLiquidityUniV3(
             pool,
             testVars.amountToken0,
             testVars.amountToken1,
             users.liquidityProvider,
             testVars.tickLower,
-            testVars.tickUpper
+            testVars.tickUpper,
+            true
         );
 
         // And : Generate fees for the position

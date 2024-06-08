@@ -48,20 +48,21 @@ contract Swap_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompounder_Fuzz_
         token1 = new ERC20Mock("Token1", "TOK1", 18);
         (token0, token1) = token0 < token1 ? (token0, token1) : (token1, token0);
 
-        AddAsset(token0, int256(10 ** token0.decimals()));
-        AddAsset(token1, int256(10 ** token1.decimals()));
+        AddAsset(address(token0), int256(10 ** token0.decimals()));
+        AddAsset(address(token1), int256(10 ** token1.decimals()));
 
         uint160 sqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPool(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
+        usdStablePool = createPoolUniV3(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
 
         // And : Liquidity has been added for both tokens
-        addLiquidity(
+        addLiquidityUniV3(
             usdStablePool,
             100_000 * 10 ** token0.decimals(),
             100_000 * 10 ** token1.decimals(),
             users.liquidityProvider,
             -1000,
-            1000
+            1000,
+            true
         );
 
         {
@@ -98,20 +99,21 @@ contract Swap_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompounder_Fuzz_
         token1 = new ERC20Mock("Token1", "TOK1", 18);
         (token0, token1) = token0 < token1 ? (token0, token1) : (token1, token0);
 
-        AddAsset(token0, int256(10 ** token0.decimals()));
-        AddAsset(token1, int256(10 ** token1.decimals()));
+        AddAsset(address(token0), int256(10 ** token0.decimals()));
+        AddAsset(address(token1), int256(10 ** token1.decimals()));
 
         uint160 sqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPool(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
+        usdStablePool = createPoolUniV3(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
 
         // And : Liquidity has been added for both tokens
-        addLiquidity(
+        addLiquidityUniV3(
             usdStablePool,
             100_000 * 10 ** token0.decimals(),
             100_000 * 10 ** token1.decimals(),
             users.liquidityProvider,
             -1000,
-            1000
+            1000,
+            true
         );
 
         {
@@ -148,20 +150,21 @@ contract Swap_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompounder_Fuzz_
         token1 = new ERC20Mock("Token1", "TOK1", 18);
         (token0, token1) = token0 < token1 ? (token0, token1) : (token1, token0);
 
-        AddAsset(token0, int256(10 ** token0.decimals()));
-        AddAsset(token1, int256(10 ** token1.decimals()));
+        AddAsset(address(token0), int256(10 ** token0.decimals()));
+        AddAsset(address(token1), int256(10 ** token1.decimals()));
 
         uint160 sqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPool(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
+        usdStablePool = createPoolUniV3(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
 
         // And : Liquidity has been added for both tokens
-        addLiquidity(
+        addLiquidityUniV3(
             usdStablePool,
             100_000 * 10 ** token0.decimals(),
             100_000 * 10 ** token1.decimals(),
             users.liquidityProvider,
             -1000,
-            1000
+            1000,
+            true
         );
 
         {
@@ -198,20 +201,21 @@ contract Swap_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompounder_Fuzz_
         token1 = new ERC20Mock("Token1", "TOK1", 18);
         (token0, token1) = token0 < token1 ? (token0, token1) : (token1, token0);
 
-        AddAsset(token0, int256(10 ** token0.decimals()));
-        AddAsset(token1, int256(10 ** token1.decimals()));
+        AddAsset(address(token0), int256(10 ** token0.decimals()));
+        AddAsset(address(token1), int256(10 ** token1.decimals()));
 
         uint160 sqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPool(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
+        usdStablePool = createPoolUniV3(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
 
         // And : Liquidity has been added for both tokens
-        addLiquidity(
+        addLiquidityUniV3(
             usdStablePool,
             100_000 * 10 ** token0.decimals(),
             100_000 * 10 ** token1.decimals(),
             users.liquidityProvider,
             -1000,
-            1000
+            1000,
+            true
         );
 
         {
