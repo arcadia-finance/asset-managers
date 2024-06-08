@@ -34,7 +34,7 @@ abstract contract UniswapV3AutoCompoundHelper_Fuzz_Test is UniswapV3AutoCompound
     ////////////////////////////////////////////////////////////////*/
 
     function deployAutoCompoundHelper() public {
-        vm.prank(users.deployer);
+        vm.prank(users.owner);
         autoCompoundHelper = new UniswapV3AutoCompoundHelperExtension(address(autoCompounder));
 
         // Get the bytecode of the UniswapV3PoolExtension.
