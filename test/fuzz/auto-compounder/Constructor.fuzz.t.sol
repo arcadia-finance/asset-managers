@@ -29,7 +29,7 @@ contract Constructor_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompounde
     ) public {
         tolerance = bound(tolerance, 1e18 + 1, type(uint256).max);
 
-        vm.prank(users.deployer);
+        vm.prank(users.owner);
         vm.expectRevert(stdError.arithmeticError);
         new UniswapV3AutoCompounder(compoundThreshold, initiatorShare, tolerance);
     }
@@ -39,7 +39,7 @@ contract Constructor_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompounde
     {
         tolerance = bound(tolerance, 0, 1e18);
 
-        vm.prank(users.deployer);
+        vm.prank(users.owner);
         UniswapV3AutoCompounder autoCompounder_ =
             new UniswapV3AutoCompounder(compoundThreshold, initiatorShare, tolerance);
 

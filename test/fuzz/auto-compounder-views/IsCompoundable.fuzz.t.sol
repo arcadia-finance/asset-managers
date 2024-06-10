@@ -34,20 +34,21 @@ contract IsCompoundable_UniswapV3AutoCompoundHelper_Fuzz_Test is UniswapV3AutoCo
         token1 = new ERC20Mock("Token1", "TOK1", 18);
         (token0, token1) = token0 < token1 ? (token0, token1) : (token1, token0);
 
-        AddAsset(token0, int256(10 ** token0.decimals()));
-        AddAsset(token1, int256(10 ** token1.decimals()));
+        addAssetToArcadia(address(token0), int256(10 ** token0.decimals()));
+        addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
 
         uint160 sqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPool(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
+        usdStablePool = createPoolUniV3(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
 
         // Liquidity has been added for both tokens
-        (uint256 tokenId,,) = addLiquidity(
+        (uint256 tokenId,,) = addLiquidityUniV3(
             usdStablePool,
             100_000 * 10 ** token0.decimals(),
             100_000 * 10 ** token1.decimals(),
             users.liquidityProvider,
             -1000,
-            1000
+            1000,
+            true
         );
 
         {
@@ -81,20 +82,21 @@ contract IsCompoundable_UniswapV3AutoCompoundHelper_Fuzz_Test is UniswapV3AutoCo
         token1 = new ERC20Mock("Token1", "TOK1", 18);
         (token0, token1) = token0 < token1 ? (token0, token1) : (token1, token0);
 
-        AddAsset(token0, int256(10 ** token0.decimals()));
-        AddAsset(token1, int256(10 ** token1.decimals()));
+        addAssetToArcadia(address(token0), int256(10 ** token0.decimals()));
+        addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
 
         uint160 sqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPool(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
+        usdStablePool = createPoolUniV3(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
 
         // Liquidity has been added for both tokens
-        (uint256 tokenId,,) = addLiquidity(
+        (uint256 tokenId,,) = addLiquidityUniV3(
             usdStablePool,
             100_000 * 10 ** token0.decimals(),
             100_000 * 10 ** token1.decimals(),
             users.liquidityProvider,
             -1000,
-            1000
+            1000,
+            true
         );
 
         {
@@ -122,20 +124,21 @@ contract IsCompoundable_UniswapV3AutoCompoundHelper_Fuzz_Test is UniswapV3AutoCo
         token1 = new ERC20Mock("Token1", "TOK1", 18);
         (token0, token1) = token0 < token1 ? (token0, token1) : (token1, token0);
 
-        AddAsset(token0, int256(10 ** token0.decimals()));
-        AddAsset(token1, int256(10 ** token1.decimals()));
+        addAssetToArcadia(address(token0), int256(10 ** token0.decimals()));
+        addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
 
         uint160 sqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPool(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
+        usdStablePool = createPoolUniV3(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
 
         // Liquidity has been added for both tokens
-        (uint256 tokenId,,) = addLiquidity(
+        (uint256 tokenId,,) = addLiquidityUniV3(
             usdStablePool,
             100_000 * 10 ** token0.decimals(),
             100_000 * 10 ** token1.decimals(),
             users.liquidityProvider,
             -1000,
-            1000
+            1000,
+            true
         );
 
         {
@@ -171,20 +174,21 @@ contract IsCompoundable_UniswapV3AutoCompoundHelper_Fuzz_Test is UniswapV3AutoCo
         token1 = new ERC20Mock("Token1", "TOK1", 18);
         (token0, token1) = token0 < token1 ? (token0, token1) : (token1, token0);
 
-        AddAsset(token0, int256(10 ** token0.decimals()));
-        AddAsset(token1, int256(10 ** token1.decimals()));
+        addAssetToArcadia(address(token0), int256(10 ** token0.decimals()));
+        addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
 
         uint160 sqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPool(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
+        usdStablePool = createPoolUniV3(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
 
         // Liquidity has been added for both tokens
-        (uint256 tokenId,,) = addLiquidity(
+        (uint256 tokenId,,) = addLiquidityUniV3(
             usdStablePool,
             100_000 * 10 ** token0.decimals(),
             100_000 * 10 ** token1.decimals(),
             users.liquidityProvider,
             -1000,
-            1000
+            1000,
+            true
         );
 
         {
