@@ -6,20 +6,20 @@ pragma solidity 0.8.22;
 
 import { ActionData, IActionBase } from "../../lib/accounts-v2/src/interfaces/IActionBase.sol";
 import { ArcadiaLogic } from "./libraries/ArcadiaLogic.sol";
-import { CollectParams, IncreaseLiquidityParams } from "./interfaces/UniswapV3/INonfungiblePositionManager.sol";
+import { CollectParams, IncreaseLiquidityParams } from "./interfaces/Slipstream/INonfungiblePositionManager.sol";
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IAccount } from "./interfaces/IAccount.sol";
-import { IUniswapV3Pool } from "./interfaces/UniswapV3/IUniswapV3Pool.sol";
-import { PoolAddress } from "../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/PoolAddress.sol";
-import { QuoteExactOutputSingleParams } from "./interfaces/UniswapV3/IQuoter.sol";
-import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
+import { ICLPool } from "./interfaces/Slipstream/ICLPool.sol";
+import { PoolAddress } from "../../lib/accounts-v2/src/asset-modules/Slipstream/libraries/PoolAddress.sol";
+import { QuoteExactOutputSingleParams } from "./interfaces/IQuoter.sol";
+import { SlipstreamLogic } from "./libraries/SlipstreamLogic.sol";
 
 /**
- * @title Stateless AutoCompounder for UniswapV3 Liquidity Positions.
+ * @title Stateless AutoCompounder Slipstream Liquidity Positions.
  * @author Pragma Labs
- * @notice The AutoCompounder will act as an Asset Manager for Arcadia Accounts.
- * It will allow third parties to trigger the compounding functionality for a Uniswap V3 Liquidity Position in the Account.
+ * @notice The AutoCompounder will act as an Asset Manager for Slipstream Liquidity Positions.
+ * It will allow third parties to trigger the compounding functionality for a Slipstream Liquidity Position in the Account.
  * Compounding can only be triggered if certain conditions are met and the initiator will get a small fee for the service provided.
  * The compounding will collect the fees earned by a position and increase the liquidity of the position by those fees.
  * Depending on current tick of the pool and the position range, fees will be deposited in appropriate ratio.
@@ -27,9 +27,9 @@ import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
  * price feeds (oracles).
  * Some oracles can however deviate from the actual price by a few percent points, this could potentially open attack vectors by manipulating
  * pools and sandwiching the swap and/or increase liquidity. This asset manager should not be used for Arcadia Account that have/will have
- * Uniswap V3 Liquidity Positions where one of the underlying assets is priced with such low precision oracles.
+ * Slipstream Liquidity Positions where one of the underlying assets is priced with such low precision oracles.
  */
-contract UniswapV3AutoCompounder is IActionBase {
+contract SlipstreamAutoCompounder is IActionBase {
     using FixedPointMathLib for uint256;
     using SafeTransferLib for ERC20;
     /* //////////////////////////////////////////////////////////////
@@ -59,7 +59,7 @@ contract UniswapV3AutoCompounder is IActionBase {
         address pool;
         address token0;
         address token1;
-        uint24 fee;
+        int24 tickSpacing;
         int256 tickLower;
         int256 tickUpper;
         int256 currentTick;
@@ -118,7 +118,7 @@ contract UniswapV3AutoCompounder is IActionBase {
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Compounds the fees earned by a UniswapV3 Liquidity Position owned by an Arcadia Account.
+     * @notice Compounds the fees earned by a Slipstream Liquidity Position owned by an Arcadia Account.
      * @param account_ The Arcadia Account owning the position.
      * @param id The id of the Liquidity Position.
      */
@@ -130,7 +130,7 @@ contract UniswapV3AutoCompounder is IActionBase {
 
         // Encode data for the flash-action.
         bytes memory actionData =
-            ArcadiaLogic._encodeActionData(msg.sender, address(UniswapV3Logic.POSITION_MANAGER), id);
+            ArcadiaLogic._encodeActionData(msg.sender, address(SlipstreamLogic.POSITION_MANAGER), id);
 
         // Call flashAction() with this contract as actionTarget.
         IAccount(account_).flashAction(address(this), actionData);
@@ -171,7 +171,7 @@ contract UniswapV3AutoCompounder is IActionBase {
 
         // Collect fees.
         Fees memory fees;
-        (fees.amount0, fees.amount1) = UniswapV3Logic.POSITION_MANAGER.collect(
+        (fees.amount0, fees.amount1) = SlipstreamLogic.POSITION_MANAGER.collect(
             CollectParams({
                 tokenId: id,
                 recipient: address(this),
@@ -200,9 +200,9 @@ contract UniswapV3AutoCompounder is IActionBase {
         else fees.amount0 += amountOut;
 
         // Increase liquidity of the position.
-        ERC20(position.token0).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), fees.amount0);
-        ERC20(position.token1).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), fees.amount1);
-        UniswapV3Logic.POSITION_MANAGER.increaseLiquidity(
+        ERC20(position.token0).safeApprove(address(SlipstreamLogic.POSITION_MANAGER), fees.amount0);
+        ERC20(position.token1).safeApprove(address(SlipstreamLogic.POSITION_MANAGER), fees.amount1);
+        SlipstreamLogic.POSITION_MANAGER.increaseLiquidity(
             IncreaseLiquidityParams({
                 tokenId: id,
                 amount0Desired: fees.amount0,
@@ -218,7 +218,7 @@ contract UniswapV3AutoCompounder is IActionBase {
         ERC20(position.token1).safeTransfer(initiator, ERC20(position.token1).balanceOf(address(this)));
 
         // Approve Account to deposited Liquidity Position back into the Account
-        UniswapV3Logic.POSITION_MANAGER.approve(msg.sender, id);
+        SlipstreamLogic.POSITION_MANAGER.approve(msg.sender, id);
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -245,12 +245,12 @@ contract UniswapV3AutoCompounder is IActionBase {
             // Position is out of range and fully in token 1.
             // Swap full amount of token0 to token1.
             zeroToOne = true;
-            amountOut = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
+            amountOut = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
         } else if (position.currentTick <= position.tickLower) {
             // Position is out of range and fully in token 0.
             // Swap full amount of token1 to token0.
             zeroToOne = false;
-            amountOut = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, false, fees.amount1);
+            amountOut = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, false, fees.amount1);
         } else {
             // Position is in range.
             // Rebalance fees so that the ratio of the fee values matches with ratio of the ticks.
@@ -259,7 +259,7 @@ contract UniswapV3AutoCompounder is IActionBase {
             uint256 targetRatio = ticksCurrentToUpper.mulDivDown(1e18, ticksLowerToUpper);
 
             // Calculate the total fee value in token1 equivalent:
-            uint256 fee0ValueInToken1 = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
+            uint256 fee0ValueInToken1 = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
             uint256 totalFeeValueInToken1 = fees.amount1 + fee0ValueInToken1;
             uint256 currentRatio = fees.amount1.mulDivDown(1e18, totalFeeValueInToken1);
 
@@ -271,13 +271,13 @@ contract UniswapV3AutoCompounder is IActionBase {
                 // Swap token1 partially to token0.
                 zeroToOne = false;
                 uint256 amountIn = (currentRatio - targetRatio).mulDivDown(totalFeeValueInToken1, 1e18);
-                amountOut = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, false, amountIn);
+                amountOut = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, false, amountIn);
             }
         }
     }
 
     /**
-     * @notice Swaps one token to the other token in the Uniswap V3 Pool of the Liquidity Position.
+     * @notice Swaps one token to the other token in the Slipstream Pool of the Liquidity Position.
      * @param position Struct with the position data.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param amountOut The amount that of tokenOut that must be swapped to.
@@ -295,26 +295,26 @@ contract UniswapV3AutoCompounder is IActionBase {
             uint160(zeroToOne ? position.lowerBoundSqrtPriceX96 : position.upperBoundSqrtPriceX96);
 
         // Do the swap.
-        bytes memory data = abi.encode(position.token0, position.token1, position.fee);
+        bytes memory data = abi.encode(position.token0, position.token1, position.tickSpacing);
         (int256 deltaAmount0, int256 deltaAmount1) =
-            IUniswapV3Pool(position.pool).swap(address(this), zeroToOne, -int256(amountOut), sqrtPriceLimitX96, data);
+            ICLPool(position.pool).swap(address(this), zeroToOne, -int256(amountOut), sqrtPriceLimitX96, data);
 
         // Check if pool is still balanced (sqrtPriceLimitX96 is reached before an amountOut of tokenOut is received).
         isPoolUnbalanced_ = (amountOut > (zeroToOne ? uint256(-deltaAmount1) : uint256(-deltaAmount0)));
     }
 
     /**
-     * @notice Callback after executing a swap via IUniswapV3Pool.swap.
+     * @notice Callback after executing a swap via ICLPool.swap.
      * @param amount0Delta The amount of token0 that was sent (negative) or must be received (positive) by the pool by
      * the end of the swap. If positive, the callback must send that amount of token0 to the pool.
      * @param amount1Delta The amount of token1 that was sent (negative) or must be received (positive) by the pool by
      * the end of the swap. If positive, the callback must send that amount of token1 to the pool.
-     * @param data Any data passed by this contract via the IUniswapV3Pool.swap() call.
+     * @param data Any data passed by this contract via the ICLPool.swap() call.
      */
     function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external {
-        // Check that callback came from an actual Uniswap V3 pool.
-        (address token0, address token1, uint24 fee) = abi.decode(data, (address, address, uint24));
-        address pool = PoolAddress.computeAddress(UniswapV3Logic.UNISWAP_V3_FACTORY, token0, token1, fee);
+        // Check that callback came from an actual Slipstream pool.
+        (address token0, address token1, int24 tickSpacing) = abi.decode(data, (address, address, int24));
+        address pool = PoolAddress.computeAddress(SlipstreamLogic.CL_FACTORY, token0, token1, tickSpacing);
         if (pool != msg.sender) revert OnlyPool();
 
         if (amount0Delta > 0) {
@@ -334,20 +334,20 @@ contract UniswapV3AutoCompounder is IActionBase {
      * @return position Struct with the position data.
      */
     function getPositionState(uint256 id) public view returns (PositionState memory position) {
-        (,, position.token0, position.token1, position.fee, position.tickLower, position.tickUpper,,,,,) =
-            UniswapV3Logic.POSITION_MANAGER.positions(id);
+        (,, position.token0, position.token1, position.tickSpacing, position.tickLower, position.tickUpper,,,,,) =
+            SlipstreamLogic.POSITION_MANAGER.positions(id);
 
         // Get trusted USD prices for 1e18 gwei of token0 and token1.
         (position.usdPriceToken0, position.usdPriceToken1) =
             ArcadiaLogic._getValuesInUsd(position.token0, position.token1);
 
         position.pool = PoolAddress.computeAddress(
-            UniswapV3Logic.UNISWAP_V3_FACTORY, position.token0, position.token1, position.fee
+            SlipstreamLogic.CL_FACTORY, position.token0, position.token1, position.tickSpacing
         );
-        (position.sqrtPriceX96, position.currentTick,,,,,) = IUniswapV3Pool(position.pool).slot0();
+        (position.sqrtPriceX96, position.currentTick,,,,) = ICLPool(position.pool).slot0();
 
         // Calculate the square root of the relative rate sqrt(token1/token0) from the trusted USD price of both tokens.
-        uint256 trustedSqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(position.usdPriceToken0, position.usdPriceToken1);
+        uint256 trustedSqrtPriceX96 = SlipstreamLogic._getSqrtPriceX96(position.usdPriceToken0, position.usdPriceToken1);
 
         // Calculate the upper and lower bounds of sqrtPriceX96 for the Pool to be balanced.
         position.lowerBoundSqrtPriceX96 = trustedSqrtPriceX96.mulDivDown(LOWER_SQRT_PRICE_DEVIATION, 1e18);
