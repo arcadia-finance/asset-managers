@@ -92,8 +92,8 @@ abstract contract UniswapV3AutoCompounder_Fuzz_Test is
         token1 = new ERC20Mock("Token 18d", "TOK18", 18);
         (token0, token1) = token0 < token1 ? (token0, token1) : (token1, token0);
 
-        AddAsset(address(token0), int256(10 ** MOCK_ORACLE_DECIMALS));
-        AddAsset(address(token1), int256(10 ** MOCK_ORACLE_DECIMALS));
+        addAssetToArcadia(address(token0), int256(10 ** MOCK_ORACLE_DECIMALS));
+        addAssetToArcadia(address(token1), int256(10 ** MOCK_ORACLE_DECIMALS));
 
         // Create UniswapV3 pool.
         uint256 sqrtPriceX96 = autoCompounder.getSqrtPriceX96(10 ** token1.decimals(), 10 ** token0.decimals());
