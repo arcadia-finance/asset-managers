@@ -5,17 +5,17 @@
 pragma solidity 0.8.22;
 
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { IQuoter } from "../interfaces/UniswapV3/IQuoter.sol";
-import { IUniswapV3AutoCompounder } from "../interfaces/IUniswapV3AutoCompounder.sol";
-import { QuoteExactOutputSingleParams } from "../interfaces/UniswapV3/IQuoter.sol";
-import { UniswapV3Logic } from "../libraries/UniswapV3Logic.sol";
+import { IQuoter } from "../interfaces/Slipstream/IQuoter.sol";
+import { ISlipstreamAutoCompounder } from "../interfaces/ISlipstreamAutoCompounder.sol";
+import { QuoteExactOutputSingleParams } from "../interfaces/Slipstream/IQuoter.sol";
+import { SlipstreamLogic } from "../libraries/SlipstreamLogic.sol";
 
 /**
- * @title Off-chain view functions for UniswapV3 AutoCompounder Asset-Manager.
+ * @title Off-chain view functions for Slipstream AutoCompounder Asset-Manager.
  * @author Pragma Labs
  * @notice This contract holds view functions accessible for initiators to check if the fees of a certain Liquidity Position can be compounded.
  */
-contract UniswapV3AutoCompoundHelper {
+contract SlipstreamAutoCompoundHelper {
     using FixedPointMathLib for uint256;
 
     /* //////////////////////////////////////////////////////////////
@@ -23,20 +23,20 @@ contract UniswapV3AutoCompoundHelper {
     ////////////////////////////////////////////////////////////// */
 
     // The contract address of the Asset Manager.
-    IUniswapV3AutoCompounder public immutable AUTO_COMPOUNDER;
+    ISlipstreamAutoCompounder public immutable AUTO_COMPOUNDER;
 
-    // The Uniswap V3 Quoter contract.
-    IQuoter internal constant QUOTER = IQuoter(0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a);
+    // The Slipstream Quoter contract.
+    IQuoter internal constant QUOTER = IQuoter(0x254cF9E1E6e233aa1AC962CB9B05b2cfeAaE15b0);
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
     ////////////////////////////////////////////////////////////// */
 
     /**
-     * @param autoCompounder The contract address of the Asset-Manager for compounding UniswapV3 fees of a certain Liquidity Position.
+     * @param autoCompounder The contract address of the Asset-Manager for compounding Slipstream fees of a certain Liquidity Position.
      */
     constructor(address autoCompounder) {
-        AUTO_COMPOUNDER = IUniswapV3AutoCompounder(autoCompounder);
+        AUTO_COMPOUNDER = ISlipstreamAutoCompounder(autoCompounder);
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -48,21 +48,21 @@ contract UniswapV3AutoCompoundHelper {
      * @param id The id of the Liquidity Position.
      * @return isCompoundable_ Bool indicating if the fees can be compounded.
      * @dev While this function does not persist state changes, it cannot be declared as view function.
-     * Since quoteExactOutputSingle() of Uniswap's Quoter02.sol uses a try - except pattern where it first
+     * Since quoteExactOutputSingle() of Slipstream's Quoter02.sol uses a try - except pattern where it first
      * does the swap (with state changes), next it reverts (state changes are not persisted) and information about
      * the final state is passed via the error message in the expect.
      */
     function isCompoundable(uint256 id) external returns (bool isCompoundable_) {
         // Fetch and cache all position related data.
-        IUniswapV3AutoCompounder.PositionState memory position = AUTO_COMPOUNDER.getPositionState(id);
+        ISlipstreamAutoCompounder.PositionState memory position = AUTO_COMPOUNDER.getPositionState(id);
 
         // Check that pool is initially balanced.
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
         if (AUTO_COMPOUNDER.isPoolUnbalanced(position)) return false;
 
         // Get fee amounts
-        IUniswapV3AutoCompounder.Fees memory fees;
-        (fees.amount0, fees.amount1) = UniswapV3Logic._getFeeAmounts(id);
+        ISlipstreamAutoCompounder.Fees memory fees;
+        (fees.amount0, fees.amount1) = SlipstreamLogic._getFeeAmounts(id);
 
         // Total value of the fees must be greater than the threshold.
         if (AUTO_COMPOUNDER.isBelowThreshold(position, fees)) return false;
@@ -87,11 +87,11 @@ contract UniswapV3AutoCompoundHelper {
      * @param amountOut The amount that of tokenOut that must be swapped to.
      * @return isPoolUnbalanced Bool indicating if the pool is unbalanced due to slippage after the swap.
      * @dev While this function does not persist state changes, it cannot be declared as view function,
-     * since quoteExactOutputSingle() of Uniswap's Quoter02.sol uses a try - except pattern where it first
+     * since quoteExactOutputSingle() of Slipstream's Quoter02.sol uses a try - except pattern where it first
      * does the swap (with state changes), next it reverts (state changes are not persisted) and information about
      * the final state is passed via the error message in the expect.
      */
-    function _quote(IUniswapV3AutoCompounder.PositionState memory position, bool zeroToOne, uint256 amountOut)
+    function _quote(ISlipstreamAutoCompounder.PositionState memory position, bool zeroToOne, uint256 amountOut)
         internal
         returns (bool isPoolUnbalanced)
     {
@@ -106,8 +106,8 @@ contract UniswapV3AutoCompoundHelper {
             QuoteExactOutputSingleParams({
                 tokenIn: zeroToOne ? position.token0 : position.token1,
                 tokenOut: zeroToOne ? position.token1 : position.token0,
-                amountOut: amountOut,
-                fee: position.fee,
+                amount: amountOut,
+                tickSpacing: position.tickSpacing,
                 sqrtPriceLimitX96: uint160(sqrtPriceLimitX96)
             })
         );
