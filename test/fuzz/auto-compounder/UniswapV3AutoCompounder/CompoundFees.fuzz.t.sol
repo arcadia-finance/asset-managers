@@ -4,8 +4,8 @@
  */
 pragma solidity 0.8.22;
 
-import { ERC20Mock } from "../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
-import { ERC721 } from "../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
+import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
+import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { ISwapRouter02 } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
 import { IUniswapV3PoolExtension } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
 import { UniswapV3AutoCompounder } from "./_UniswapV3AutoCompounder.fuzz.t.sol";

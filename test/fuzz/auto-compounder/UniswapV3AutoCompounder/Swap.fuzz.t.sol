@@ -7,7 +7,7 @@ pragma solidity 0.8.22;
 import { ERC20Mock } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
 import { UniswapV3AutoCompounder } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
 import { UniswapV3AutoCompounder_Fuzz_Test } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
-import { UniswapV3Logic } from "../../../src/auto-compounder/libraries/UniswapV3Logic.sol";
+import { UniswapV3Logic } from "../../../../src/auto-compounder/libraries/UniswapV3Logic.sol";
 
 /**
  * @notice Fuzz tests for the function "Swap" of contract "UniswapV3AutoCompounder".

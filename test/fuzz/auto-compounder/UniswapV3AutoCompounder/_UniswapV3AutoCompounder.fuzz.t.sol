@@ -69,7 +69,7 @@ abstract contract UniswapV3AutoCompounder_Fuzz_Test is
                             TEST CONTRACTS
     /////////////////////////////////////////////////////////////// */
 
-    AutoCompounderExtension internal autoCompounder;
+    UniswapV3AutoCompounderExtension internal autoCompounder;
 
     /* ///////////////////////////////////////////////////////////////
                               SETUP

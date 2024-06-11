@@ -9,7 +9,7 @@ import { FixedPoint128 } from "../../../lib/accounts-v2/src/asset-modules/Uniswa
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { FullMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
 import { ICLPool } from "../interfaces/slipstream/ICLPool.sol";
-import { INonfungiblePositionManager } from "../interfaces/Slipstream/INonfungiblePositionManager.sol";
+import { ISlipstreamPositionManager } from "../interfaces/Slipstream/ISlipstreamPositionManager.sol";
 import { PoolAddress } from "../../../lib/accounts-v2/src/asset-modules/Slipstream/libraries/PoolAddress.sol";
 import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 
@@ -23,8 +23,8 @@ library SlipstreamLogic {
     address internal constant CL_FACTORY = 0x5e7BB104d84c7CB9B682AaC2F3d509f5F406809A;
 
     // The Slipstream NonfungiblePositionManager contract.
-    INonfungiblePositionManager internal constant POSITION_MANAGER =
-        INonfungiblePositionManager(0x827922686190790b37229fd06084350E74485b72);
+    ISlipstreamPositionManager internal constant POSITION_MANAGER =
+        ISlipstreamPositionManager(0x827922686190790b37229fd06084350E74485b72);
 
     /**
      * @notice Calculates the underlying token amounts of accrued fees, both collected and uncollected.

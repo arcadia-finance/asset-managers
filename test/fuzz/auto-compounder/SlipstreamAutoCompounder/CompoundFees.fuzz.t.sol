@@ -4,9 +4,9 @@
  */
 pragma solidity 0.8.22;
 
-import { ERC20Mock } from "../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
-import { ERC721 } from "../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
-import { ISwapRouter02 } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
+import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
+import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
+import { ISwapRouter } from "./_SlipstreamAutoCompounder.fuzz.t.sol";
 import { ICLPoolExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/extensions/interfaces/ICLPoolExtension.sol";
 import { SlipstreamAutoCompounder } from "../../../../src/auto-compounder/SlipstreamAutoCompounder.sol";
@@ -154,7 +154,7 @@ contract CompoundFees_SlipstreamAutoCompounder_Fuzz_Test is SlipstreamAutoCompou
             vm.startPrank(users.liquidityProvider);
             token1.approve(address(swapRouter), amount1ToSwap);
 
-            ISwapRouter02.ExactInputSingleParams memory exactInputParams = ISwapRouter02.ExactInputSingleParams({
+            ISwapRouter.ExactInputSingleParams memory exactInputParams = ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
                 fee: POOL_FEE,
@@ -245,7 +245,7 @@ contract CompoundFees_SlipstreamAutoCompounder_Fuzz_Test is SlipstreamAutoCompou
             vm.startPrank(users.liquidityProvider);
             token0.approve(address(swapRouter), amount0ToSwap);
 
-            ISwapRouter02.ExactInputSingleParams memory exactInputParams = ISwapRouter02.ExactInputSingleParams({
+            ISwapRouter.ExactInputSingleParams memory exactInputParams = ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
                 fee: POOL_FEE,

@@ -6,13 +6,13 @@ pragma solidity 0.8.22;
 
 import { ActionData, IActionBase } from "../../lib/accounts-v2/src/interfaces/IActionBase.sol";
 import { ArcadiaLogic } from "./libraries/ArcadiaLogic.sol";
-import { CollectParams, IncreaseLiquidityParams } from "./interfaces/slipstream/INonfungiblePositionManager.sol";
+import { CollectParams, IncreaseLiquidityParams } from "./interfaces/slipstream/ISlipstreamPositionManager.sol";
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IAccount } from "./interfaces/IAccount.sol";
 import { ICLPool } from "./interfaces/slipstream/ICLPool.sol";
 import { PoolAddress } from "../../lib/accounts-v2/src/asset-modules/slipstream/libraries/PoolAddress.sol";
-import { QuoteExactOutputSingleParams } from "./interfaces/IQuoter.sol";
+import { QuoteExactOutputSingleParams } from "./interfaces/Slipstream/IQuoter.sol";
 import { SlipstreamLogic } from "./libraries/SlipstreamLogic.sol";
 
 /**

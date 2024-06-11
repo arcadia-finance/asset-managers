@@ -4,11 +4,11 @@
  */
 pragma solidity 0.8.22;
 
-import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
+import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { UniswapV3AutoCompounder } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
 import { UniswapV3AutoCompounder_Fuzz_Test } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
-import { UniswapV3Logic } from "../../../src/auto-compounder/libraries/UniswapV3Logic.sol";
+import { UniswapV3Logic } from "../../../../src/auto-compounder/libraries/UniswapV3Logic.sol";
 
 /**
  * @notice Fuzz tests for the function "_getSwapParameters" of contract "UniswapV3AutoCompounder".

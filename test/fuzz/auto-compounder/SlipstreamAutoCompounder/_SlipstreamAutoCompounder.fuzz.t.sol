@@ -9,25 +9,19 @@ import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/E
 import { Fuzz_Test } from "../../Fuzz.t.sol";
 import { ICLPoolExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/extensions/interfaces/ICLPoolExtension.sol";
-//import { ISwapRouter02 } from "../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/interfaces/ISwapRouter02.sol";
+import { ISwapRouter } from "../../../../src/auto-compounder/interfaces/Slipstream/ISwapRouter.sol";
 //import { QuoterV2Fixture } from "../../../utils/fixtures/quoter-v2/QuoterV2Fixture.f.sol";
 import { SlipstreamAutoCompounder } from "../../../../src/auto-compounder/SlipstreamAutoCompounder.sol";
-//import { SwapRouter02Fixture } from
-//    "../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/SwapRouter02Fixture.f.sol";
+import { SwapRouterFixture } from "../../../utils/fixtures/slipstream/SwapRouter.f.sol";
 import { SlipstreamAMExtension } from "../../../../lib/accounts-v2/test/utils/extensions/SlipstreamAMExtension.sol";
 import { SlipstreamFixture } from "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/Slipstream.f.sol";
-import { UniswapV3AutoCompounderExtension } from "../../../utils/extensions/UniswapV3AutoCompounderExtension.sol";
+import { SlipstreamAutoCompounderExtension } from "../../../utils/extensions/SlipstreamAutoCompounderExtension.sol";
 import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
 
 /**
  * @notice Common logic needed by all "SlipstreamAutoCompounder" fuzz tests.
  */
-abstract contract SlipstreamAutoCompounder_Fuzz_Test is
-    Fuzz_Test,
-    SlipstreamFixture,
-    SwapRouter02Fixture,
-    QuoterV2Fixture
-{
+abstract contract SlipstreamAutoCompounder_Fuzz_Test is Fuzz_Test, SlipstreamFixture, SwapRouterFixture {
     /*////////////////////////////////////////////////////////////////
                             CONSTANTS
     /////////////////////////////////////////////////////////////// */
@@ -76,10 +70,8 @@ abstract contract SlipstreamAutoCompounder_Fuzz_Test is
         Fuzz_Test.setUp();
 
         SlipstreamFixture.setUp();
-        SwapRouter02Fixture.deploySwapRouter02(
-            address(0), address(cLFactory), address(slipstreamPositionManager), address(weth9)
-        );
-        QuoterV2Fixture.deployQuoterV2(address(clFactory), address(weth9));
+        SwapRouterFixture.deploySwapRouter(address(cLFactory), address(weth9));
+        //QuoterV2Fixture.deployQuoterV2(address(clFactory), address(weth9));
 
         deployAutoCompounder(COMPOUND_THRESHOLD, INITIATOR_SHARE, TOLERANCE);
 
@@ -109,7 +101,7 @@ abstract contract SlipstreamAutoCompounder_Fuzz_Test is
         autoCompounder = new SlipstreamAutoCompounderExtension(compoundThreshold, initiatorShare, tolerance);
 
         // Overwrite code hash of the CLPool.
-        bytecode = address(autoCompounder).code;
+        bytes memory bytecode = address(autoCompounder).code;
 
         // Overwrite contract addresses stored as constants in AutoCompounder.
         bytecode = Utils.veryBadBytesReplacer(
@@ -161,7 +153,7 @@ abstract contract SlipstreamAutoCompounder_Fuzz_Test is
         testVars_ = testVars;
     }
 
-    function setState(TestVariables memory testVars, IUniswapV3PoolExtension pool) public returns (uint256 tokenId) {
+    function setState(TestVariables memory testVars, ICLPoolExtension pool) public returns (uint256 tokenId) {
         // Given : Mint initial position
         (tokenId,,) = addLiquidityCL(
             pool,
@@ -186,7 +178,7 @@ abstract contract SlipstreamAutoCompounder_Fuzz_Test is
         vm.startPrank(users.liquidityProvider);
         token0.approve(address(swapRouter), amount0ToSwap);
 
-        ISwapRouter02.ExactInputSingleParams memory exactInputParams = ISwapRouter02.ExactInputSingleParams({
+        ISwapRouter.ExactInputSingleParams memory exactInputParams = ISwapRouter.ExactInputSingleParams({
             tokenIn: address(token0),
             tokenOut: address(token1),
             tickspacing: TICK_SPACING,
@@ -204,7 +196,7 @@ abstract contract SlipstreamAutoCompounder_Fuzz_Test is
         deal(address(token1), users.liquidityProvider, amount1ToSwap, true);
         token1.approve(address(swapRouter), amount1ToSwap);
 
-        exactInputParams = ISwapRouter02.ExactInputSingleParams({
+        exactInputParams = ISwapRouter.ExactInputSingleParams({
             tokenIn: address(token1),
             tokenOut: address(token0),
             tickSpacing: TICK_SPACING,

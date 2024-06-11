@@ -21,7 +21,7 @@ struct IncreaseLiquidityParams {
     uint256 deadline;
 }
 
-interface INonfungiblePositionManager {
+interface ISlipstreamPositionManager {
     function approve(address spender, uint256 tokenId) external;
 
     function collect(CollectParams calldata params) external payable returns (uint256 amount0, uint256 amount1);

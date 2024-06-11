@@ -4,11 +4,11 @@
  */
 pragma solidity 0.8.22;
 
-import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
+import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { SlipstreamAutoCompounder } from "./_SlipstreamAutoCompounder.fuzz.t.sol";
 import { SlipstreamAutoCompounder_Fuzz_Test } from "./_SlipstreamAutoCompounder.fuzz.t.sol";
-import { SlipstreamLogic } from "../../../src/auto-compounder/libraries/SlipstreamLogic.sol";
+import { SlipstreamLogic } from "../../../../src/auto-compounder/libraries/SlipstreamLogic.sol";
 
 /**
  * @notice Fuzz tests for the function "_getSwapParameters" of contract "SlipstreamAutoCompounder".
@@ -57,7 +57,7 @@ contract GetSwapParameters_SlipstreamAutoCompounder_Fuzz_Test is SlipstreamAutoC
         // Then : Returned values should be valid
         assertEq(zeroToOne, true);
 
-        uint256 amountOutExpected = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
+        uint256 amountOutExpected = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
         assertEq(amountOut, amountOutExpected);
     }
 
@@ -92,7 +92,7 @@ contract GetSwapParameters_SlipstreamAutoCompounder_Fuzz_Test is SlipstreamAutoC
         // Then : Returned values should be valid
         assertEq(zeroToOne, false);
 
-        uint256 amountOutExpected = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, false, fees.amount1);
+        uint256 amountOutExpected = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, false, fees.amount1);
         assertEq(amountOut, amountOutExpected);
     }
 
@@ -133,7 +133,7 @@ contract GetSwapParameters_SlipstreamAutoCompounder_Fuzz_Test is SlipstreamAutoC
             uint256 targetRatio = ticksCurrentToUpper.mulDivDown(1e18, ticksLowerToUpper);
 
             // Calculate the total fee value in token1 equivalent:
-            uint256 fee0ValueInToken1 = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
+            uint256 fee0ValueInToken1 = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
             uint256 totalFeeValueInToken1 = fees.amount1 + fee0ValueInToken1;
             uint256 currentRatio = fees.amount1.mulDivDown(1e18, totalFeeValueInToken1);
 
@@ -181,12 +181,12 @@ contract GetSwapParameters_SlipstreamAutoCompounder_Fuzz_Test is SlipstreamAutoC
             uint256 targetRatio = ticksCurrentToUpper.mulDivDown(1e18, ticksLowerToUpper);
 
             // Calculate the total fee value in token1 equivalent:
-            uint256 fee0ValueInToken1 = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
+            uint256 fee0ValueInToken1 = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
             uint256 totalFeeValueInToken1 = fees.amount1 + fee0ValueInToken1;
             uint256 currentRatio = fees.amount1.mulDivDown(1e18, totalFeeValueInToken1);
 
             uint256 amountIn = (currentRatio - targetRatio).mulDivDown(totalFeeValueInToken1, 1e18);
-            expectedAmountOut = amountOut = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, false, amountIn);
+            expectedAmountOut = amountOut = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, false, amountIn);
         }
 
         assertEq(amountOut, expectedAmountOut);

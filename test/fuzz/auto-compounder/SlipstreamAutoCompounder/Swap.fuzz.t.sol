@@ -7,7 +7,7 @@ pragma solidity 0.8.22;
 import { ERC20Mock } from "./_SlipstreamAutoCompounder.fuzz.t.sol";
 import { SlipstreamAutoCompounder } from "./_SlipstreamAutoCompounder.fuzz.t.sol";
 import { SlipstreamAutoCompounder_Fuzz_Test } from "./_SlipstreamAutoCompounder.fuzz.t.sol";
-import { SlipstreamV3Logic } from "../../../src/auto-compounder/libraries/SlipstreamV3Logic.sol";
+import { SlipstreamLogic } from "../../../../src/auto-compounder/libraries/SlipstreamLogic.sol";
 
 /**
  * @notice Fuzz tests for the function "Swap" of contract "SlipstreamAutoCompounder".
