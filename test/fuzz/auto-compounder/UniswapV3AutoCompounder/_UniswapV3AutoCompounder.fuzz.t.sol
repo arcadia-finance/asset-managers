@@ -4,23 +4,23 @@
  */
 pragma solidity 0.8.22;
 
-import { Base_Test } from "../../../lib/accounts-v2/test/Base.t.sol";
-import { Fuzz_Test } from "../Fuzz.t.sol";
-import { QuoterV2Fixture } from "../../utils/fixtures/quoter-v2/QuoterV2Fixture.f.sol";
+import { Base_Test } from "../../../../lib/accounts-v2/test/Base.t.sol";
+import { Fuzz_Test } from "../../Fuzz.t.sol";
+import { QuoterV2Fixture } from "../../../utils/fixtures/quoter-v2/QuoterV2Fixture.f.sol";
 import { SwapRouter02Fixture } from
-    "../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/SwapRouter02Fixture.f.sol";
-import { UniswapV3Fixture } from "../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";
+    "../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/SwapRouter02Fixture.f.sol";
+import { UniswapV3Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";
 import { UniswapV3AMFixture } from
-    "../../../lib/accounts-v2/test/utils/fixtures/arcadia-accounts/UniswapV3AMFixture.f.sol";
-
-import { AutoCompounderExtension } from "../../utils/extensions/AutoCompounderExtension.sol";
-import { ERC20Mock } from "../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
+    "../../../../lib/accounts-v2/test/utils/fixtures/arcadia-accounts/UniswapV3AMFixture.f.sol";
+import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { IUniswapV3PoolExtension } from
-    "../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/IUniswapV3PoolExtension.sol";
-import { ISwapRouter02 } from "../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/interfaces/ISwapRouter02.sol";
-import { UniswapV3AMExtension } from "../../../lib/accounts-v2/test/utils/extensions/UniswapV3AMExtension.sol";
-import { UniswapV3AutoCompounder } from "../../../src/auto-compounder/UniswapV3AutoCompounder.sol";
-import { Utils } from "../../../lib/accounts-v2/test/utils/Utils.sol";
+    "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/IUniswapV3PoolExtension.sol";
+import { ISwapRouter02 } from
+    "../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/interfaces/ISwapRouter02.sol";
+import { UniswapV3AMExtension } from "../../../../lib/accounts-v2/test/utils/extensions/UniswapV3AMExtension.sol";
+import { UniswapV3AutoCompounder } from "../../../../src/auto-compounder/UniswapV3AutoCompounder.sol";
+import { UniswapV3AutoCompounderExtension } from "../../../utils/extensions/UniswapV3AutoCompounderExtension.sol";
+import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
 
 /**
  * @notice Common logic needed by all "UniswapV3AutoCompounder" fuzz tests.
@@ -129,7 +129,7 @@ abstract contract UniswapV3AutoCompounder_Fuzz_Test is
 
     function deployAutoCompounder(uint256 compoundThreshold, uint256 initiatorShare, uint256 tolerance) public {
         vm.prank(users.owner);
-        autoCompounder = new AutoCompounderExtension(compoundThreshold, initiatorShare, tolerance);
+        autoCompounder = new UniswapV3AutoCompounderExtension(compoundThreshold, initiatorShare, tolerance);
 
         // Get the bytecode of the UniswapV3PoolExtension.
         bytes memory args = abi.encode();

@@ -4,12 +4,12 @@
  */
 pragma solidity 0.8.22;
 
-import { ERC20Mock } from "../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
-import { IUniswapV3AutoCompounder } from "../../../src/auto-compounder/interfaces/IUniswapV3AutoCompounder.sol";
-import { UniswapV3AutoCompounder } from "../../../src/auto-compounder/UniswapV3AutoCompounder.sol";
-import { UniswapV3AutoCompoundHelper_Fuzz_Test } from "./_UniswapV3AutoCompoundHelper.fuzz.t.sol";
-import { UniswapV3Logic } from "../../../src/auto-compounder/libraries/UniswapV3Logic.sol";
-import { Utils } from "../../../lib/accounts-v2/test/utils/Utils.sol";
+import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
+import { ISlipstreamAutoCompounder } from "../../../../src/auto-compounder/interfaces/ISlipstreamAutoCompounder.sol";
+import { SlipstreamAutoCompounder } from "../../../../src/auto-compounder/SlipstreamAutoCompounder.sol";
+import { UniswapV3AutoCompoundHelper_Fuzz_Test } from "./_SlipstreamAutoCompoundHelper.fuzz.t.sol";
+import { SlipstreamLogic } from "../../../../src/auto-compounder/libraries/SlipstreamLogic.sol";
+import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
 
 /**
  * @notice Fuzz tests for the function "_quote" of contract "UniswapV3AutoCompoundHelper".

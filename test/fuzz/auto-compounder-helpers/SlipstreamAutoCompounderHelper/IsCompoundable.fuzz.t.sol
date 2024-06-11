@@ -4,22 +4,22 @@
  */
 pragma solidity 0.8.22;
 
-import { ERC20Mock } from "../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
-import { UniswapV3AutoCompounder } from "../../../src/auto-compounder/UniswapV3AutoCompounder.sol";
-import { UniswapV3AutoCompoundHelper_Fuzz_Test } from "./_UniswapV3AutoCompoundHelper.fuzz.t.sol";
-import { UniswapV3Logic } from "../../../src/auto-compounder/libraries/UniswapV3Logic.sol";
-import { Utils } from "../../../lib/accounts-v2/test/utils/Utils.sol";
+import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
+import { UniswapV3AutoCompounder } from "../../../../src/auto-compounder/SlipstreamAutoCompounder.sol";
+import { SlipstreamAutoCompoundHelper_Fuzz_Test } from "./_SlipstreamAutoCompoundHelper.fuzz.t.sol";
+import { SlipstreamLogic } from "../../../../src/auto-compounder/libraries/SlipstreamLogic.sol";
+import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
 
 /**
- * @notice Fuzz tests for the function "isCompoundable" of contract "UniswapV3AutoCompoundHelper".
+ * @notice Fuzz tests for the function "isCompoundable" of contract "SlipstreamAutoCompoundHelper".
  */
-contract IsCompoundable_UniswapV3AutoCompoundHelper_Fuzz_Test is UniswapV3AutoCompoundHelper_Fuzz_Test {
+contract IsCompoundable_SlipstreamAutoCompoundHelper_Fuzz_Test is SlipstreamAutoCompoundHelper_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public virtual override {
-        UniswapV3AutoCompoundHelper_Fuzz_Test.setUp();
+        SlipstreamAutoCompoundHelper_Fuzz_Test.setUp();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -27,7 +27,7 @@ contract IsCompoundable_UniswapV3AutoCompoundHelper_Fuzz_Test is UniswapV3AutoCo
     //////////////////////////////////////////////////////////////*/
 
     function testFuzz_success_isCompoundable_false_initiallyUnbalanced(
-        UniswapV3AutoCompounder.PositionState memory position
+        SlipstreamAutoCompounder.PositionState memory position
     ) public {
         // Given : New balanced stable pool 1:1
         token0 = new ERC20Mock("Token0", "TOK0", 18);
@@ -75,7 +75,7 @@ contract IsCompoundable_UniswapV3AutoCompoundHelper_Fuzz_Test is UniswapV3AutoCo
     }
 
     function testFuzz_success_isCompoundable_false_feesBelowThreshold(
-        UniswapV3AutoCompounder.PositionState memory position
+        SlipstreamAutoCompounder.PositionState memory position
     ) public {
         // Given : New balanced stable pool 1:1
         token0 = new ERC20Mock("Token0", "TOK0", 18);
@@ -117,7 +117,7 @@ contract IsCompoundable_UniswapV3AutoCompoundHelper_Fuzz_Test is UniswapV3AutoCo
     }
 
     function testFuzz_success_isCompoundable_false_unbalancedAfterFeeSwap(
-        UniswapV3AutoCompounder.PositionState memory position
+        SlipstreamAutoCompounder.PositionState memory position
     ) public {
         // Given : New balanced stable pool 1:1
         token0 = new ERC20Mock("Token0", "TOK0", 18);
@@ -168,7 +168,7 @@ contract IsCompoundable_UniswapV3AutoCompoundHelper_Fuzz_Test is UniswapV3AutoCo
         assertEq(isCompoundable_, false);
     }
 
-    function testFuzz_success_isCompoundable_true(UniswapV3AutoCompounder.PositionState memory position) public {
+    function testFuzz_success_isCompoundable_true(SlipstreamAutoCompounder.PositionState memory position) public {
         // Given : New balanced stable pool 1:1
         token0 = new ERC20Mock("Token0", "TOK0", 18);
         token1 = new ERC20Mock("Token1", "TOK1", 18);
@@ -177,7 +177,7 @@ contract IsCompoundable_UniswapV3AutoCompoundHelper_Fuzz_Test is UniswapV3AutoCo
         addAssetToArcadia(address(token0), int256(10 ** token0.decimals()));
         addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
 
-        uint160 sqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(1e18, 1e18);
+        uint160 sqrtPriceX96 = SlipstreamLogic._getSqrtPriceX96(1e18, 1e18);
         usdStablePool = createPoolUniV3(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
 
         // Liquidity has been added for both tokens
