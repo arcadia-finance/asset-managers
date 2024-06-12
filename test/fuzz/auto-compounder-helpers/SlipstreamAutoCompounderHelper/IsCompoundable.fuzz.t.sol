@@ -38,7 +38,7 @@ contract IsCompoundable_SlipstreamAutoCompoundHelper_Fuzz_Test is SlipstreamAuto
         addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
 
         uint160 sqrtPriceX96 = SlipstreamLogic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPoolCL(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
+        usdStablePool = createPoolCL(address(token0), address(token1), TICK_SPACING, sqrtPriceX96, 300);
 
         // Liquidity has been added for both tokens
         (uint256 tokenId,,) = addLiquidityCL(
@@ -54,7 +54,7 @@ contract IsCompoundable_SlipstreamAutoCompoundHelper_Fuzz_Test is SlipstreamAuto
         {
             position.token0 = address(token0);
             position.token1 = address(token1);
-            position.fee = POOL_FEE;
+            position.tickSpacing = TICK_SPACING;
             position.lowerBoundSqrtPriceX96 = sqrtPriceX96 * autoCompounder.LOWER_SQRT_PRICE_DEVIATION() / 1e18;
             position.upperBoundSqrtPriceX96 = sqrtPriceX96 * autoCompounder.UPPER_SQRT_PRICE_DEVIATION() / 1e18;
             position.pool = address(usdStablePool);
@@ -86,7 +86,7 @@ contract IsCompoundable_SlipstreamAutoCompoundHelper_Fuzz_Test is SlipstreamAuto
         addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
 
         uint160 sqrtPriceX96 = SlipstreamLogic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPoolCL(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
+        usdStablePool = createPoolCL(address(token0), address(token1), TICK_SPACING, sqrtPriceX96, 300);
 
         // Liquidity has been added for both tokens
         (uint256 tokenId,,) = addLiquidityCL(
@@ -128,7 +128,7 @@ contract IsCompoundable_SlipstreamAutoCompoundHelper_Fuzz_Test is SlipstreamAuto
         addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
 
         uint160 sqrtPriceX96 = SlipstreamLogic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPoolCL(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
+        usdStablePool = createPoolCL(address(token0), address(token1), TICK_SPACING, sqrtPriceX96, 300);
 
         // Liquidity has been added for both tokens
         (uint256 tokenId,,) = addLiquidityCL(
@@ -178,7 +178,7 @@ contract IsCompoundable_SlipstreamAutoCompoundHelper_Fuzz_Test is SlipstreamAuto
         addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
 
         uint160 sqrtPriceX96 = SlipstreamLogic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPoolCL(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
+        usdStablePool = createPoolCL(address(token0), address(token1), TICK_SPACING, sqrtPriceX96, 300);
 
         // Liquidity has been added for both tokens
         (uint256 tokenId,,) = addLiquidityCL(

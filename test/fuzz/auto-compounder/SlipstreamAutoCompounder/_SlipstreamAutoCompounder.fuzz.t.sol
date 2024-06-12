@@ -10,7 +10,7 @@ import { Fuzz_Test } from "../../Fuzz.t.sol";
 import { ICLPoolExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/extensions/interfaces/ICLPoolExtension.sol";
 import { ISwapRouter } from "../../../../src/auto-compounder/interfaces/Slipstream/ISwapRouter.sol";
-//import { QuoterV2Fixture } from "../../../utils/fixtures/quoter-v2/QuoterV2Fixture.f.sol";
+import { QuoterFixture } from "../../../utils/fixtures/slipstream/Quoter.f.sol";
 import { SlipstreamAutoCompounder } from "../../../../src/auto-compounder/SlipstreamAutoCompounder.sol";
 import { SwapRouterFixture } from "../../../utils/fixtures/slipstream/SwapRouter.f.sol";
 import { SlipstreamAMExtension } from "../../../../lib/accounts-v2/test/utils/extensions/SlipstreamAMExtension.sol";
@@ -21,7 +21,12 @@ import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
 /**
  * @notice Common logic needed by all "SlipstreamAutoCompounder" fuzz tests.
  */
-abstract contract SlipstreamAutoCompounder_Fuzz_Test is Fuzz_Test, SlipstreamFixture, SwapRouterFixture {
+abstract contract SlipstreamAutoCompounder_Fuzz_Test is
+    Fuzz_Test,
+    SlipstreamFixture,
+    SwapRouterFixture,
+    QuoterFixture
+{
     /*////////////////////////////////////////////////////////////////
                             CONSTANTS
     /////////////////////////////////////////////////////////////// */
@@ -66,12 +71,13 @@ abstract contract SlipstreamAutoCompounder_Fuzz_Test is Fuzz_Test, SlipstreamFix
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
-    function setUp() public virtual override(Fuzz_Test, SlipstreamFixture, Base_Test) {
+    function setUp() public virtual override(Fuzz_Test, SlipstreamFixture) {
         Fuzz_Test.setUp();
 
         SlipstreamFixture.setUp();
+        SlipstreamFixture.deploySlipstream();
         SwapRouterFixture.deploySwapRouter(address(cLFactory), address(weth9));
-        //QuoterV2Fixture.deployQuoterV2(address(clFactory), address(weth9));
+        QuoterFixture.deployQuoter(address(cLFactory), address(weth9));
 
         deployAutoCompounder(COMPOUND_THRESHOLD, INITIATOR_SHARE, TOLERANCE);
 
@@ -85,7 +91,7 @@ abstract contract SlipstreamAutoCompounder_Fuzz_Test is Fuzz_Test, SlipstreamFix
 
         // Create UniswapV3 pool.
         uint256 sqrtPriceX96 = autoCompounder.getSqrtPriceX96(10 ** token1.decimals(), 10 ** token0.decimals());
-        usdStablePool = createPoolCL(address(token0), address(token1), 100, uint160(sqrtPriceX96), 300);
+        usdStablePool = createPoolCL(address(token0), address(token1), TICK_SPACING, uint160(sqrtPriceX96), 300);
 
         // And : AutoCompounder is allowed as Asset Manager
         vm.prank(users.accountOwner);
@@ -128,7 +134,7 @@ abstract contract SlipstreamAutoCompounder_Fuzz_Test is Fuzz_Test, SlipstreamFix
         returns (TestVariables memory testVars_, bool token0HasLowestDecimals)
     {
         // Given : ticks should be in range
-        int24 currentTick = usdStablePool.getCurrentTick();
+        (, int24 currentTick,,,,) = usdStablePool.slot0();
 
         // And : tickRange is minimum 20
         testVars.tickUpper = int24(bound(testVars.tickUpper, currentTick + 10, currentTick + type(int16).max));
@@ -181,8 +187,9 @@ abstract contract SlipstreamAutoCompounder_Fuzz_Test is Fuzz_Test, SlipstreamFix
         ISwapRouter.ExactInputSingleParams memory exactInputParams = ISwapRouter.ExactInputSingleParams({
             tokenIn: address(token0),
             tokenOut: address(token1),
-            tickspacing: TICK_SPACING,
+            tickSpacing: TICK_SPACING,
             recipient: users.liquidityProvider,
+            deadline: block.timestamp,
             amountIn: amount0ToSwap,
             amountOutMinimum: 0,
             sqrtPriceLimitX96: 0
@@ -201,6 +208,7 @@ abstract contract SlipstreamAutoCompounder_Fuzz_Test is Fuzz_Test, SlipstreamFix
             tokenOut: address(token0),
             tickSpacing: TICK_SPACING,
             recipient: users.liquidityProvider,
+            deadline: block.timestamp,
             amountIn: amount1ToSwap,
             amountOutMinimum: 0,
             sqrtPriceLimitX96: 0

@@ -108,7 +108,7 @@ contract GetSwapParameters_SlipstreamAutoCompounder_Fuzz_Test is SlipstreamAutoC
         // And : State is persisted
         setState(testVars, usdStablePool);
 
-        (uint160 sqrtPriceX96, int24 currentTick,,,,,) = usdStablePool.slot0();
+        (uint160 sqrtPriceX96, int24 currentTick,,,,) = usdStablePool.slot0();
         SlipstreamAutoCompounder.PositionState memory position;
         position.sqrtPriceX96 = sqrtPriceX96;
         position.currentTick = currentTick;
@@ -156,7 +156,7 @@ contract GetSwapParameters_SlipstreamAutoCompounder_Fuzz_Test is SlipstreamAutoC
         // And : State is persisted
         setState(testVars, usdStablePool);
 
-        (uint160 sqrtPriceX96, int24 currentTick,,,,,) = usdStablePool.slot0();
+        (uint160 sqrtPriceX96, int24 currentTick,,,,) = usdStablePool.slot0();
         SlipstreamAutoCompounder.PositionState memory position;
         position.sqrtPriceX96 = sqrtPriceX96;
         position.currentTick = currentTick;

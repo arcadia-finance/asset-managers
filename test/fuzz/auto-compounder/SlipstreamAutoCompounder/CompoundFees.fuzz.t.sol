@@ -157,8 +157,9 @@ contract CompoundFees_SlipstreamAutoCompounder_Fuzz_Test is SlipstreamAutoCompou
             ISwapRouter.ExactInputSingleParams memory exactInputParams = ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: POOL_FEE,
+                tickSpacing: TICK_SPACING,
                 recipient: users.liquidityProvider,
+                deadline: block.timestamp,
                 amountIn: amount1ToSwap,
                 amountOutMinimum: 0,
                 sqrtPriceLimitX96: 0
@@ -248,8 +249,9 @@ contract CompoundFees_SlipstreamAutoCompounder_Fuzz_Test is SlipstreamAutoCompou
             ISwapRouter.ExactInputSingleParams memory exactInputParams = ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: POOL_FEE,
+                tickSpacing: TICK_SPACING,
                 recipient: users.liquidityProvider,
+                deadline: block.timestamp,
                 amountIn: amount0ToSwap,
                 amountOutMinimum: 0,
                 sqrtPriceLimitX96: 0

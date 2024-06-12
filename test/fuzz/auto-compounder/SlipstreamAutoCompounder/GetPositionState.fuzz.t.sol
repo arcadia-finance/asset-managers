@@ -39,7 +39,7 @@ contract GetPositionState_SlipstreamAutoCompounder_Fuzz_Test is SlipstreamAutoCo
         // Then : It should return the correct values
         assertEq(position.token0, address(token0));
         assertEq(position.token1, address(token1));
-        assertEq(position.fee, POOL_FEE);
+        assertEq(position.tickSpacing, TICK_SPACING);
         assertEq(position.tickLower, testVars.tickLower);
         assertEq(position.tickUpper, testVars.tickUpper);
 
@@ -51,7 +51,7 @@ contract GetPositionState_SlipstreamAutoCompounder_Fuzz_Test is SlipstreamAutoCo
 
         assertEq(position.pool, address(usdStablePool));
 
-        (uint160 sqrtPriceX96, int24 tick,,,,,) = usdStablePool.slot0();
+        (uint160 sqrtPriceX96, int24 tick,,,,) = usdStablePool.slot0();
 
         assertEq(position.sqrtPriceX96, sqrtPriceX96);
         assertEq(position.currentTick, tick);
