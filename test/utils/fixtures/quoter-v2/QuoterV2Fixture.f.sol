@@ -28,7 +28,7 @@ contract QuoterV2Fixture is Test {
 
         // Get the bytecode of the Quoter.
         args = abi.encode(factoryV3_, weth9_);
-        bytecode = abi.encodePacked(vm.getCode("QuoterV2.sol"), args);
+        bytecode = abi.encodePacked(vm.getCode("QuoterV2Extension.sol"), args);
 
         // Overwrite constant in bytecode of Quoter.
         // -> Replace the code hash of UniswapV3Pool.sol with the code hash of UniswapV3PoolExtension.sol

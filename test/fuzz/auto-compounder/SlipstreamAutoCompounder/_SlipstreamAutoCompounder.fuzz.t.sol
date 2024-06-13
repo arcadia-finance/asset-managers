@@ -4,6 +4,7 @@
  */
 pragma solidity 0.8.22;
 
+import { AerodromeFixture } from "../../../../lib/accounts-v2/test/utils/fixtures/aerodrome/AerodromeFixture.f.sol";
 import { Base_Test } from "../../../../lib/accounts-v2/test/Base.t.sol";
 import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { Fuzz_Test } from "../../Fuzz.t.sol";
@@ -23,6 +24,7 @@ import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
  */
 abstract contract SlipstreamAutoCompounder_Fuzz_Test is
     Fuzz_Test,
+    AerodromeFixture,
     SlipstreamFixture,
     SwapRouterFixture,
     QuoterFixture
@@ -66,6 +68,7 @@ abstract contract SlipstreamAutoCompounder_Fuzz_Test is
     /////////////////////////////////////////////////////////////// */
 
     SlipstreamAutoCompounderExtension internal autoCompounder;
+    SlipstreamAMExtension internal slipstreamAM;
 
     /* ///////////////////////////////////////////////////////////////
                               SETUP
@@ -74,11 +77,13 @@ abstract contract SlipstreamAutoCompounder_Fuzz_Test is
     function setUp() public virtual override(Fuzz_Test, SlipstreamFixture) {
         Fuzz_Test.setUp();
 
+        AerodromeFixture.deployAerodromePeriphery();
         SlipstreamFixture.setUp();
         SlipstreamFixture.deploySlipstream();
         SwapRouterFixture.deploySwapRouter(address(cLFactory), address(weth9));
         QuoterFixture.deployQuoter(address(cLFactory), address(weth9));
 
+        deploySlipstreamAM();
         deployAutoCompounder(COMPOUND_THRESHOLD, INITIATOR_SHARE, TOLERANCE);
 
         // Add two stable tokens with 6 and 18 decimals.
@@ -216,6 +221,16 @@ abstract contract SlipstreamAutoCompounder_Fuzz_Test is
 
         swapRouter.exactInputSingle(exactInputParams);
 
+        vm.stopPrank();
+    }
+
+    function deploySlipstreamAM() public {
+        vm.startPrank(users.owner);
+        // Add the Asset Module to the Registry.
+        slipstreamAM = new SlipstreamAMExtension(address(registry), address(slipstreamPositionManager));
+
+        registry.addAssetModule(address(slipstreamAM));
+        slipstreamAM.setProtocol();
         vm.stopPrank();
     }
 }
