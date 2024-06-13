@@ -11,12 +11,10 @@ import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/ut
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IAccount } from "./interfaces/IAccount.sol";
 import { IUniswapV3Pool } from "./interfaces/IUniswapV3Pool.sol";
-import { PoolAddress } from "../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/PoolAddress.sol";
-import { QuoteExactOutputSingleParams } from "./interfaces/IQuoter.sol";
 import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
 
 /**
- * @title Stateless AutoCompounder for UniswapV3 Liquidity Positions.
+ * @title Permissionless and Stateless AutoCompounder for UniswapV3 Liquidity Positions.
  * @author Pragma Labs
  * @notice The AutoCompounder will act as an Asset Manager for Arcadia Accounts.
  * It will allow third parties to trigger the compounding functionality for a Uniswap V3 Liquidity Position in the Account.
@@ -81,8 +79,6 @@ contract UniswapV3AutoCompounder is IActionBase {
     ////////////////////////////////////////////////////////////// */
 
     error BelowThreshold();
-    error MaxInitiatorShareExceeded();
-    error MaxToleranceExceeded();
     error NotAnAccount();
     error OnlyAccount();
     error OnlyPool();
@@ -100,7 +96,7 @@ contract UniswapV3AutoCompounder is IActionBase {
      * @param tolerance The maximum deviation of the actual pool price,
      * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
      * @dev The tolerance for the pool price will be converted to an upper and lower max sqrtPrice deviation,
-     * using the square root of the basis (one with 18 decimals precision) + tolerance value (18 decimals precision).
+     * using the square root of the basis (one with 18 decimals precision) +- tolerance (18 decimals precision).
      * The tolerance boundaries are symmetric around the price, but taking the square root will result in a different
      * allowed deviation of the sqrtPriceX96 for the lower and upper boundaries.
      */
@@ -108,7 +104,8 @@ contract UniswapV3AutoCompounder is IActionBase {
         COMPOUND_THRESHOLD = compoundThreshold;
         INITIATOR_SHARE = initiatorShare;
 
-        // sqrtPrice to price has a quadratic relationship, thus we need to take the square root of max percentage price deviation.
+        // SQRT_PRICE_DEVIATION is the square root of maximum/minimum price deviation.
+        // Sqrt halves the number of decimals.
         LOWER_SQRT_PRICE_DEVIATION = FixedPointMathLib.sqrt((1e18 - tolerance) * 1e18);
         UPPER_SQRT_PRICE_DEVIATION = FixedPointMathLib.sqrt((1e18 + tolerance) * 1e18);
     }
@@ -200,7 +197,12 @@ contract UniswapV3AutoCompounder is IActionBase {
         else fees.amount0 += amountOut;
 
         // Increase liquidity of the position.
+        // The approval for at least one token after increasing liquidity will remain non-zero.
+        // We have to set approval first to 0 for ERC20 tokens that require the approval to be set to zero
+        // before setting it to a non-zero value.
+        ERC20(position.token0).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), 0);
         ERC20(position.token0).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), fees.amount0);
+        ERC20(position.token1).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), 0);
         ERC20(position.token1).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), fees.amount1);
         UniswapV3Logic.POSITION_MANAGER.increaseLiquidity(
             IncreaseLiquidityParams({
@@ -234,7 +236,8 @@ contract UniswapV3AutoCompounder is IActionBase {
      * @dev We assume the fees amount are small compared to the liquidity of the pool,
      * hence we neglect slippage when optimizing the swap amounts.
      * Slippage must be limited, the contract enforces that the pool is still balanced after the swap and
-     * since we use swaps with amountOut, slippage will result in less reward of tokenIn for the initiator.
+     * since we use swaps with amountOut, slippage will result in less reward of tokenIn for the initiator,
+     * not less liquidity increased.
      */
     function getSwapParameters(PositionState memory position, Fees memory fees)
         public
@@ -314,8 +317,7 @@ contract UniswapV3AutoCompounder is IActionBase {
     function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external {
         // Check that callback came from an actual Uniswap V3 pool.
         (address token0, address token1, uint24 fee) = abi.decode(data, (address, address, uint24));
-        address pool = PoolAddress.computeAddress(UniswapV3Logic.UNISWAP_V3_FACTORY, token0, token1, fee);
-        if (pool != msg.sender) revert OnlyPool();
+        if (UniswapV3Logic._computePoolAddress(token0, token1, fee) != msg.sender) revert OnlyPool();
 
         if (amount0Delta > 0) {
             ERC20(token0).safeTransfer(msg.sender, uint256(amount0Delta));
@@ -329,11 +331,12 @@ contract UniswapV3AutoCompounder is IActionBase {
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Fetches all required position data from third part contracts.
+     * @notice Fetches all required position data from external contracts.
      * @param id The id of the Liquidity Position.
      * @return position Struct with the position data.
      */
     function getPositionState(uint256 id) public view returns (PositionState memory position) {
+        // Get data of the Liquidity Position.
         (,, position.token0, position.token1, position.fee, position.tickLower, position.tickUpper,,,,,) =
             UniswapV3Logic.POSITION_MANAGER.positions(id);
 
@@ -341,9 +344,8 @@ contract UniswapV3AutoCompounder is IActionBase {
         (position.usdPriceToken0, position.usdPriceToken1) =
             ArcadiaLogic._getValuesInUsd(position.token0, position.token1);
 
-        position.pool = PoolAddress.computeAddress(
-            UniswapV3Logic.UNISWAP_V3_FACTORY, position.token0, position.token1, position.fee
-        );
+        // Get data of the Liquidity Pool.
+        position.pool = UniswapV3Logic._computePoolAddress(position.token0, position.token1, position.fee);
         (position.sqrtPriceX96, position.currentTick,,,,,) = IUniswapV3Pool(position.pool).slot0();
 
         // Calculate the square root of the relative rate sqrt(token1/token0) from the trusted USD price of both tokens.
@@ -355,7 +357,7 @@ contract UniswapV3AutoCompounder is IActionBase {
     }
 
     /**
-     * @notice Returns if the total fee value in USD is below the threshold.
+     * @notice Returns if the total fee value in USD is below the rebalancing threshold.
      * @param position Struct with the position data.
      * @param fees Struct with the fees accumulated by a position.
      * @return isBelowThreshold_ Bool indicating if the total fee value in USD is below the threshold.
@@ -365,9 +367,8 @@ contract UniswapV3AutoCompounder is IActionBase {
         view
         returns (bool isBelowThreshold_)
     {
-        uint256 valueFee0 = position.usdPriceToken0.mulDivDown(fees.amount0, 1e18);
-        uint256 valueFee1 = position.usdPriceToken1.mulDivDown(fees.amount1, 1e18);
-        uint256 totalValueFees = valueFee0 + valueFee1;
+        uint256 totalValueFees = position.usdPriceToken0.mulDivDown(fees.amount0, 1e18)
+            + position.usdPriceToken1.mulDivDown(fees.amount1, 1e18);
 
         isBelowThreshold_ = totalValueFees < COMPOUND_THRESHOLD;
     }
