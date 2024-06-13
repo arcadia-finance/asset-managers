@@ -10,8 +10,8 @@ import { CollectParams, IncreaseLiquidityParams } from "./interfaces/Slipstream/
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IAccount } from "./interfaces/IAccount.sol";
-import { ICLPool } from "./interfaces/slipstream/ICLPool.sol";
-import { PoolAddress } from "../../lib/accounts-v2/src/asset-modules/slipstream/libraries/PoolAddress.sol";
+import { ICLPool } from "./interfaces/Slipstream/ICLPool.sol";
+import { PoolAddress } from "../../lib/accounts-v2/src/asset-modules/Slipstream/libraries/PoolAddress.sol";
 import { QuoteExactOutputSingleParams } from "./interfaces/Slipstream/IQuoter.sol";
 import { SlipstreamLogic } from "./libraries/SlipstreamLogic.sol";
 

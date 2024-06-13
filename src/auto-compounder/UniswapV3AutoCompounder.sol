@@ -10,10 +10,10 @@ import { CollectParams, IncreaseLiquidityParams } from "./interfaces/UniswapV3/I
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IAccount } from "./interfaces/IAccount.sol";
-import { IUniswapV3Pool } from "./interfaces/uniswapV3/IUniswapV3Pool.sol";
-import { PoolAddress } from "../../lib/accounts-v2/src/asset-modules/uniswapV3/libraries/PoolAddress.sol";
-import { QuoteExactOutputSingleParams } from "./interfaces/uniswapV3/IQuoter.sol";
-import { UniswapV3Logic } from "./libraries/uniswapV3Logic.sol";
+import { IUniswapV3Pool } from "./interfaces/UniswapV3/IUniswapV3Pool.sol";
+import { PoolAddress } from "../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/PoolAddress.sol";
+import { QuoteExactOutputSingleParams } from "./interfaces/UniswapV3/IQuoter.sol";
+import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
 
 /**
  * @title Stateless AutoCompounder for UniswapV3 Liquidity Positions.
