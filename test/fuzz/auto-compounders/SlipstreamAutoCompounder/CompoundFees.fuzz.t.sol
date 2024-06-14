@@ -6,11 +6,11 @@ pragma solidity 0.8.22;
 
 import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
-import { ExactInputSingleParams } from "../../../../src/auto-compounder/interfaces/Slipstream/ISwapRouter.sol";
+import { ExactInputSingleParams } from "../../../../src/auto-compounders/slipstream/interfaces/ISwapRouter.sol";
 import { ISwapRouter } from "./_SlipstreamAutoCompounder.fuzz.t.sol";
 import { ICLPoolExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/extensions/interfaces/ICLPoolExtension.sol";
-import { SlipstreamAutoCompounder } from "../../../../src/auto-compounder/SlipstreamAutoCompounder.sol";
+import { SlipstreamAutoCompounder } from "../../../../src/auto-compounders/slipstream/SlipstreamAutoCompounder.sol";
 import { SlipstreamAutoCompounder_Fuzz_Test } from "./_SlipstreamAutoCompounder.fuzz.t.sol";
 
 /**

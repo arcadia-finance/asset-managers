@@ -4,10 +4,12 @@
  */
 pragma solidity 0.8.22;
 
-import { IUniswapV3AutoCompounder } from "../../../src/auto-compounder/interfaces/IUniswapV3AutoCompounder.sol";
-import { PositionState } from "../../../src/auto-compounder/interfaces/IUniswapV3AutoCompounder.sol";
-import { UniswapV3AutoCompoundHelper } from "../../../src/auto-compounder/periphery/UniswapV3AutoCompoundHelper.sol";
-import { UniswapV3Logic } from "../../../src/auto-compounder/libraries/UniswapV3Logic.sol";
+import { IUniswapV3AutoCompounder } from
+    "../../../src/auto-compounders/uniswap-v3/interfaces/IUniswapV3AutoCompounder.sol";
+import { PositionState } from "../../../src/auto-compounders/uniswap-v3/interfaces/IUniswapV3AutoCompounder.sol";
+import { UniswapV3AutoCompoundHelper } from
+    "../../../src/auto-compounders/uniswap-v3/periphery/UniswapV3AutoCompoundHelper.sol";
+import { UniswapV3Logic } from "../../../src/auto-compounders/uniswap-v3/libraries/UniswapV3Logic.sol";
 
 contract UniswapV3AutoCompoundHelperExtension is UniswapV3AutoCompoundHelper {
     constructor(address autoCompounder_) UniswapV3AutoCompoundHelper(autoCompounder_) { }

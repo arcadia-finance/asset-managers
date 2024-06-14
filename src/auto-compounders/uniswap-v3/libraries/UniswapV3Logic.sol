@@ -4,41 +4,35 @@
  */
 pragma solidity 0.8.22;
 
-import { FixedPoint96 } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
-import { FixedPoint128 } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint128.sol";
-import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { FullMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
-import { ICLPool } from "../interfaces/Slipstream/ICLPool.sol";
-import { ISlipstreamPositionManager } from "../interfaces/Slipstream/ISlipstreamPositionManager.sol";
-import { PoolAddress } from "../../../lib/accounts-v2/src/asset-modules/Slipstream/libraries/PoolAddress.sol";
-import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
+import { FixedPoint96 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
+import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
+import { INonfungiblePositionManager } from "../interfaces/INonfungiblePositionManager.sol";
+import { PoolAddress } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/PoolAddress.sol";
+import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 
-library SlipstreamLogic {
+library UniswapV3Logic {
     using FixedPointMathLib for uint256;
 
     // The binary precision of sqrtPriceX96 squared.
     uint256 internal constant Q192 = FixedPoint96.Q96 ** 2;
 
-    // The Slipstream Factory contract.
-    address internal constant CL_FACTORY = 0x5e7BB104d84c7CB9B682AaC2F3d509f5F406809A;
+    // The Uniswap V3 Factory contract.
+    address internal constant UNISWAP_V3_FACTORY = 0x33128a8fC17869897dcE68Ed026d694621f6FDfD;
 
-    // The Slipstream NonfungiblePositionManager contract.
-    ISlipstreamPositionManager internal constant POSITION_MANAGER =
-        ISlipstreamPositionManager(0x827922686190790b37229fd06084350E74485b72);
+    // The Uniswap V3 NonfungiblePositionManager contract.
+    INonfungiblePositionManager internal constant POSITION_MANAGER =
+        INonfungiblePositionManager(0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1);
 
     /**
-     * @notice Computes the contract address of a Slipstream Pool.
+     * @notice Computes the contract address of a Uniswap V3 Pool.
      * @param token0 The contract address of token0.
      * @param token1 The contract address of token1.
-     * @param tickSpacing The tick spacing of the Pool.
-     * @return pool The contract address of the Slipstream Pool.
+     * @param fee The fee of the Pool.
+     * @return pool The contract address of the Uniswap V3 Pool.
      */
-    function _computePoolAddress(address token0, address token1, int24 tickSpacing)
-        internal
-        view
-        returns (address pool)
-    {
-        pool = PoolAddress.computeAddress(CL_FACTORY, token0, token1, tickSpacing);
+    function _computePoolAddress(address token0, address token1, uint24 fee) internal pure returns (address pool) {
+        pool = PoolAddress.computeAddress(UNISWAP_V3_FACTORY, token0, token1, fee);
     }
 
     /**
@@ -50,8 +44,8 @@ library SlipstreamLogic {
      * @return amountOut The amount of tokenOut.
      * @dev Function will revert for all pools where the sqrtPriceX96 is bigger than type(uint128).max.
      * type(uint128).max is currently more than enough for all supported pools.
-     * If ever the sqrtPriceX96 of a pool exceeds type(uint128).max, a different auto compounder has to be deployed
-     * that does two consecutive mulDivs.
+     * If ever the sqrtPriceX96 of a pool exceeds type(uint128).max, a different auto compounder has to be deployed,
+     * which does two consecutive mulDivs.
      */
     function _getAmountOut(uint256 sqrtPriceX96, bool zeroToOne, uint256 amountIn)
         internal

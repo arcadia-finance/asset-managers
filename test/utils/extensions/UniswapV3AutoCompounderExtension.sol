@@ -4,8 +4,8 @@
  */
 pragma solidity 0.8.22;
 
-import { UniswapV3AutoCompounder } from "../../../src/auto-compounder/UniswapV3AutoCompounder.sol";
-import { UniswapV3Logic } from "../../../src/auto-compounder/libraries/UniswapV3Logic.sol";
+import { UniswapV3AutoCompounder } from "../../../src/auto-compounders/uniswap-v3/UniswapV3AutoCompounder.sol";
+import { UniswapV3Logic } from "../../../src/auto-compounders/uniswap-v3/libraries/UniswapV3Logic.sol";
 
 contract UniswapV3AutoCompounderExtension is UniswapV3AutoCompounder {
     constructor(uint256 compoundThreshold, uint256 initiatorShare, uint256 tolerance)

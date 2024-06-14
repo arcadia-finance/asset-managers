@@ -5,21 +5,21 @@
 pragma solidity 0.8.22;
 
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { SlipstreamAutoCompounder } from "../../../../src/auto-compounder/SlipstreamAutoCompounder.sol";
-import { SlipstreamAutoCompounder_Fuzz_Test } from "./_SlipstreamAutoCompounder.fuzz.t.sol";
-import { SlipstreamLogic } from "../../../../src/auto-compounder/libraries/SlipstreamLogic.sol";
+import { UniswapV3AutoCompounder } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
+import { UniswapV3AutoCompounder_Fuzz_Test } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
+import { UniswapV3Logic } from "../../../../src/auto-compounders/uniswap-v3/libraries/UniswapV3Logic.sol";
 
 /**
- * @notice Fuzz tests for the function "_getPositionState" of contract "SlipstreamAutoCompounder".
+ * @notice Fuzz tests for the function "_getPositionState" of contract "UniswapV3AutoCompounder".
  */
-contract GetPositionState_SlipstreamAutoCompounder_Fuzz_Test is SlipstreamAutoCompounder_Fuzz_Test {
+contract GetPositionState_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompounder_Fuzz_Test {
     using FixedPointMathLib for uint256;
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public override {
-        SlipstreamAutoCompounder_Fuzz_Test.setUp();
+        UniswapV3AutoCompounder_Fuzz_Test.setUp();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -34,12 +34,12 @@ contract GetPositionState_SlipstreamAutoCompounder_Fuzz_Test is SlipstreamAutoCo
         uint256 tokenId = setState(testVars, usdStablePool);
 
         // When : Calling getPositionState()
-        SlipstreamAutoCompounder.PositionState memory position = autoCompounder.getPositionState(tokenId);
+        UniswapV3AutoCompounder.PositionState memory position = autoCompounder.getPositionState(tokenId);
 
         // Then : It should return the correct values
         assertEq(position.token0, address(token0));
         assertEq(position.token1, address(token1));
-        assertEq(position.tickSpacing, TICK_SPACING);
+        assertEq(position.fee, POOL_FEE);
         assertEq(position.tickLower, testVars.tickLower);
         assertEq(position.tickUpper, testVars.tickUpper);
 
@@ -51,12 +51,12 @@ contract GetPositionState_SlipstreamAutoCompounder_Fuzz_Test is SlipstreamAutoCo
 
         assertEq(position.pool, address(usdStablePool));
 
-        (uint160 sqrtPriceX96, int24 tick,,,,) = usdStablePool.slot0();
+        (uint160 sqrtPriceX96, int24 tick,,,,,) = usdStablePool.slot0();
 
         assertEq(position.sqrtPriceX96, sqrtPriceX96);
         assertEq(position.currentTick, tick);
 
-        uint256 trustedSqrtPriceX96 = SlipstreamLogic._getSqrtPriceX96(priceToken0, priceToken1);
+        uint256 trustedSqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(priceToken0, priceToken1);
         uint256 lowerBoundSqrtPriceX96 =
             trustedSqrtPriceX96.mulDivDown(autoCompounder.LOWER_SQRT_PRICE_DEVIATION(), 1e18);
         uint256 upperBoundSqrtPriceX96 =

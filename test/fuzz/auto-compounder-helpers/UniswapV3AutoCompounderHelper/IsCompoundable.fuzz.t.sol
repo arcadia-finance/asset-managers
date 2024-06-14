@@ -5,9 +5,9 @@
 pragma solidity 0.8.22;
 
 import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
-import { UniswapV3AutoCompounder } from "../../../../src/auto-compounder/UniswapV3AutoCompounder.sol";
+import { UniswapV3AutoCompounder } from "../../../../src/auto-compounders/uniswap-v3/UniswapV3AutoCompounder.sol";
 import { UniswapV3AutoCompoundHelper_Fuzz_Test } from "./_UniswapV3AutoCompoundHelper.fuzz.t.sol";
-import { UniswapV3Logic } from "../../../../src/auto-compounder/libraries/UniswapV3Logic.sol";
+import { UniswapV3Logic } from "../../../../src/auto-compounders/uniswap-v3/libraries/UniswapV3Logic.sol";
 import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
 
 /**

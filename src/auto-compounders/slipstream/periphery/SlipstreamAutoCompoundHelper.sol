@@ -5,14 +5,13 @@
 pragma solidity 0.8.22;
 
 import { Fees } from "../interfaces/ISlipstreamAutoCompounder.sol";
-import { FixedPoint128 } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint128.sol";
-import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { FullMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
-import { IQuoter } from "../interfaces/Slipstream/IQuoter.sol";
+import { FixedPoint128 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint128.sol";
+import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
+import { ICLPool } from "../interfaces/ICLPool.sol";
+import { IQuoter, QuoteExactOutputSingleParams } from "../interfaces/IQuoter.sol";
 import { ISlipstreamAutoCompounder } from "../interfaces/ISlipstreamAutoCompounder.sol";
-import { ICLPool } from "../interfaces/Slipstream/ICLPool.sol";
 import { PositionState } from "../interfaces/ISlipstreamAutoCompounder.sol";
-import { QuoteExactOutputSingleParams } from "../interfaces/Slipstream/IQuoter.sol";
 import { SlipstreamLogic } from "../libraries/SlipstreamLogic.sol";
 
 /**
@@ -22,7 +21,6 @@ import { SlipstreamLogic } from "../libraries/SlipstreamLogic.sol";
  */
 contract SlipstreamAutoCompoundHelper {
     using FixedPointMathLib for uint256;
-
     /* //////////////////////////////////////////////////////////////
                             CONSTANTS
     ////////////////////////////////////////////////////////////// */

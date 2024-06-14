@@ -66,7 +66,7 @@ library ArcadiaLogic {
         ActionData memory assetData =
             ActionData({ assets: assets_, assetIds: assetIds_, assetAmounts: assetAmounts_, assetTypes: assetTypes_ });
 
-        // Empty data object that have to be encoded when calling flashAction(), but that are not used for this specific flash-action.
+        // Empty data objects that have to be encoded when calling flashAction(), but that are not used for this specific flash-action.
         bytes memory signature;
         ActionData memory transferFromOwner;
         IPermit2.PermitBatchTransferFrom memory permit;

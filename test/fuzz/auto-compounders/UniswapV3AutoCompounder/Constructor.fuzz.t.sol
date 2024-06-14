@@ -6,7 +6,7 @@ pragma solidity 0.8.22;
 
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { stdError } from "../../../../lib/accounts-v2/lib/forge-std/src/StdError.sol";
-import { UniswapV3AutoCompounder } from "../../../../src/auto-compounder/UniswapV3AutoCompounder.sol";
+import { UniswapV3AutoCompounder } from "../../../../src/auto-compounders/uniswap-v3/UniswapV3AutoCompounder.sol";
 import { UniswapV3AutoCompounder_Fuzz_Test } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
 
 /**

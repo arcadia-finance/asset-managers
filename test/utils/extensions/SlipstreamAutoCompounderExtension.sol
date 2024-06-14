@@ -4,8 +4,8 @@
  */
 pragma solidity 0.8.22;
 
-import { SlipstreamAutoCompounder } from "../../../src/auto-compounder/SlipstreamAutoCompounder.sol";
-import { SlipstreamLogic } from "../../../src/auto-compounder/libraries/SlipstreamLogic.sol";
+import { SlipstreamAutoCompounder } from "../../../src/auto-compounders/slipstream/SlipstreamAutoCompounder.sol";
+import { SlipstreamLogic } from "../../../src/auto-compounders/slipstream/libraries/SlipstreamLogic.sol";
 
 contract SlipstreamAutoCompounderExtension is SlipstreamAutoCompounder {
     constructor(uint256 compoundThreshold, uint256 initiatorShare, uint256 tolerance)

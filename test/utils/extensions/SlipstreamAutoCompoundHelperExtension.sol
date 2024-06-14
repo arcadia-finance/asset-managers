@@ -4,10 +4,12 @@
  */
 pragma solidity 0.8.22;
 
-import { ISlipstreamAutoCompounder } from "../../../src/auto-compounder/interfaces/ISlipstreamAutoCompounder.sol";
-import { PositionState } from "../../../src/auto-compounder/interfaces/ISlipstreamAutoCompounder.sol";
-import { SlipstreamAutoCompoundHelper } from "../../../src/auto-compounder/periphery/SlipstreamAutoCompoundHelper.sol";
-import { SlipstreamLogic } from "../../../src/auto-compounder/libraries/SlipstreamLogic.sol";
+import { ISlipstreamAutoCompounder } from
+    "../../../src/auto-compounders/slipstream/interfaces/ISlipstreamAutoCompounder.sol";
+import { PositionState } from "../../../src/auto-compounders/slipstream/interfaces/ISlipstreamAutoCompounder.sol";
+import { SlipstreamAutoCompoundHelper } from
+    "../../../src/auto-compounders/slipstream/periphery/SlipstreamAutoCompoundHelper.sol";
+import { SlipstreamLogic } from "../../../src/auto-compounders/slipstream/libraries/SlipstreamLogic.sol";
 
 contract SlipstreamAutoCompoundHelperExtension is SlipstreamAutoCompoundHelper {
     constructor(address autoCompounder_) SlipstreamAutoCompoundHelper(autoCompounder_) { }
