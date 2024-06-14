@@ -20,7 +20,6 @@ import { UniswapV3Logic } from "../libraries/UniswapV3Logic.sol";
  */
 contract UniswapV3AutoCompoundHelper {
     using FixedPointMathLib for uint256;
-
     /* //////////////////////////////////////////////////////////////
                             CONSTANTS
     ////////////////////////////////////////////////////////////// */

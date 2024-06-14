@@ -14,7 +14,7 @@ import { IUniswapV3Pool } from "./interfaces/UniswapV3/IUniswapV3Pool.sol";
 import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
 
 /**
- * @title Permissionless and Stateless AutoCompounder for UniswapV3 Liquidity Positions.
+ * @title Permissionless and Stateless Auto-Compounder for UniswapV3 Liquidity Positions.
  * @author Pragma Labs
  * @notice The AutoCompounder will act as an Asset Manager for Arcadia Accounts.
  * It will allow third parties to trigger the compounding functionality for a Uniswap V3 Liquidity Position in the Account.

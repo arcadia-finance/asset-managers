@@ -44,8 +44,8 @@ library UniswapV3Logic {
      * @return amountOut The amount of tokenOut.
      * @dev Function will revert for all pools where the sqrtPriceX96 is bigger than type(uint128).max.
      * type(uint128).max is currently more than enough for all supported pools.
-     * If ever the sqrtPriceX96 of a pool exceeds type(uint128).max, a different auto compounder has to be deployed
-     * that does two consecutive mulDivs.
+     * If ever the sqrtPriceX96 of a pool exceeds type(uint128).max, a different auto compounder has to be deployed,
+     * which does two consecutive mulDivs.
      */
     function _getAmountOut(uint256 sqrtPriceX96, bool zeroToOne, uint256 amountIn)
         internal
