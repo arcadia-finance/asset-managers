@@ -4,43 +4,42 @@
  */
 pragma solidity 0.8.22;
 
-import { Fees } from "../interfaces/ISlipstreamAutoCompounder.sol";
-import { FixedPoint128 } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint128.sol";
-import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { FullMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
-import { ICLPool } from "../interfaces/Slipstream/ICLPool.sol";
-import { IQuoter } from "../interfaces/Slipstream/IQuoter.sol";
-import { ISlipstreamAutoCompounder } from "../interfaces/ISlipstreamAutoCompounder.sol";
-import { PositionState } from "../interfaces/ISlipstreamAutoCompounder.sol";
-import { QuoteExactOutputSingleParams } from "../interfaces/Slipstream/IQuoter.sol";
-import { SlipstreamLogic } from "../libraries/SlipstreamLogic.sol";
+import { Fees } from "../interfaces/IUniswapV3AutoCompounder.sol";
+import { FixedPoint128 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint128.sol";
+import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
+import { IQuoter, QuoteExactOutputSingleParams } from "../interfaces/IQuoter.sol";
+import { IUniswapV3AutoCompounder } from "../interfaces/IUniswapV3AutoCompounder.sol";
+import { IUniswapV3Pool } from "../interfaces/IUniswapV3Pool.sol";
+import { PositionState } from "../interfaces/IUniswapV3AutoCompounder.sol";
+import { UniswapV3Logic } from "../libraries/UniswapV3Logic.sol";
 
 /**
- * @title Off-chain view functions for Slipstream AutoCompounder Asset-Manager.
+ * @title Off-chain view functions for UniswapV3 AutoCompounder Asset-Manager.
  * @author Pragma Labs
  * @notice This contract holds view functions accessible for initiators to check if the fees of a certain Liquidity Position can be compounded.
  */
-contract SlipstreamAutoCompoundHelper {
+contract UniswapV3AutoCompoundHelper {
     using FixedPointMathLib for uint256;
     /* //////////////////////////////////////////////////////////////
                             CONSTANTS
     ////////////////////////////////////////////////////////////// */
 
     // The contract address of the Asset Manager.
-    ISlipstreamAutoCompounder public immutable AUTO_COMPOUNDER;
+    IUniswapV3AutoCompounder public immutable AUTO_COMPOUNDER;
 
-    // The Slipstream Quoter contract.
-    IQuoter internal constant QUOTER = IQuoter(0x254cF9E1E6e233aa1AC962CB9B05b2cfeAaE15b0);
+    // The Uniswap V3 Quoter contract.
+    IQuoter internal constant QUOTER = IQuoter(0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a);
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
     ////////////////////////////////////////////////////////////// */
 
     /**
-     * @param autoCompounder The contract address of the Asset-Manager for compounding Slipstream fees of a certain Liquidity Position.
+     * @param autoCompounder The contract address of the Asset-Manager for compounding UniswapV3 fees of a certain Liquidity Position.
      */
     constructor(address autoCompounder) {
-        AUTO_COMPOUNDER = ISlipstreamAutoCompounder(autoCompounder);
+        AUTO_COMPOUNDER = IUniswapV3AutoCompounder(autoCompounder);
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -52,7 +51,7 @@ contract SlipstreamAutoCompoundHelper {
      * @param id The id of the Liquidity Position.
      * @return isCompoundable_ Bool indicating if the fees can be compounded.
      * @dev While this function does not persist state changes, it cannot be declared as view function.
-     * Since quoteExactOutputSingle() of Slipstream's Quoter02.sol uses a try - except pattern where it first
+     * Since quoteExactOutputSingle() of Uniswap's Quoter02.sol uses a try - except pattern where it first
      * does the swap (with state changes), next it reverts (state changes are not persisted) and information about
      * the final state is passed via the error message in the expect.
      */
@@ -91,7 +90,7 @@ contract SlipstreamAutoCompoundHelper {
      * @param amountOut The amount that of tokenOut that must be swapped to.
      * @return isPoolUnbalanced Bool indicating if the pool is unbalanced due to slippage after the swap.
      * @dev While this function does not persist state changes, it cannot be declared as view function,
-     * since quoteExactOutputSingle() of Slipstream's Quoter02.sol uses a try - except pattern where it first
+     * since quoteExactOutputSingle() of Uniswap's Quoter02.sol uses a try - except pattern where it first
      * does the swap (with state changes), next it reverts (state changes are not persisted) and information about
      * the final state is passed via the error message in the expect.
      */
@@ -110,8 +109,8 @@ contract SlipstreamAutoCompoundHelper {
             QuoteExactOutputSingleParams({
                 tokenIn: zeroToOne ? position.token0 : position.token1,
                 tokenOut: zeroToOne ? position.token1 : position.token0,
-                amount: amountOut,
-                tickSpacing: position.tickSpacing,
+                amountOut: amountOut,
+                fee: position.fee,
                 sqrtPriceLimitX96: uint160(sqrtPriceLimitX96)
             })
         );
@@ -132,7 +131,7 @@ contract SlipstreamAutoCompoundHelper {
             ,
             address token0,
             address token1,
-            int24 tickSpacing,
+            uint24 fee,
             int24 tickLower,
             int24 tickUpper,
             uint256 liquidity, // gas: cheaper to use uint256 instead of uint128.
@@ -140,10 +139,10 @@ contract SlipstreamAutoCompoundHelper {
             uint256 feeGrowthInside1LastX128,
             uint256 tokensOwed0, // gas: cheaper to use uint256 instead of uint128.
             uint256 tokensOwed1 // gas: cheaper to use uint256 instead of uint128.
-        ) = SlipstreamLogic.POSITION_MANAGER.positions(id);
+        ) = UniswapV3Logic.POSITION_MANAGER.positions(id);
 
         (uint256 feeGrowthInside0CurrentX128, uint256 feeGrowthInside1CurrentX128) =
-            _getFeeGrowthInside(token0, token1, tickSpacing, tickLower, tickUpper);
+            _getFeeGrowthInside(token0, token1, fee, tickLower, tickUpper);
 
         // Calculate the total amount of fees by adding the already realized fees (tokensOwed),
         // to the accumulated fees since the last time the position was updated:
@@ -165,26 +164,26 @@ contract SlipstreamAutoCompoundHelper {
      * @notice Calculates the current fee growth inside the Liquidity Range.
      * @param token0 Token0 of the Liquidity Pool.
      * @param token1 Token1 of the Liquidity Pool.
-     * @param tickSpacing The tickSpacing of the Liquidity Pool.
+     * @param fee The fee of the Liquidity Pool.
      * @param tickLower The lower tick of the liquidity position.
      * @param tickUpper The upper tick of the liquidity position.
      * @return feeGrowthInside0X128 The amount of fees in underlying token0 tokens.
      * @return feeGrowthInside1X128 The amount of fees in underlying token1 tokens.
      */
-    function _getFeeGrowthInside(address token0, address token1, int24 tickSpacing, int24 tickLower, int24 tickUpper)
+    function _getFeeGrowthInside(address token0, address token1, uint24 fee, int24 tickLower, int24 tickUpper)
         internal
         view
         returns (uint256 feeGrowthInside0X128, uint256 feeGrowthInside1X128)
     {
-        ICLPool pool = ICLPool(SlipstreamLogic._computePoolAddress(token0, token1, tickSpacing));
+        IUniswapV3Pool pool = IUniswapV3Pool(UniswapV3Logic._computePoolAddress(token0, token1, fee));
 
         // To calculate the pending fees, the current tick has to be used, even if the pool would be unbalanced.
-        (, int24 tickCurrent,,,,) = pool.slot0();
-        (,,, uint256 lowerFeeGrowthOutside0X128, uint256 lowerFeeGrowthOutside1X128,,,,,) = pool.ticks(tickLower);
-        (,,, uint256 upperFeeGrowthOutside0X128, uint256 upperFeeGrowthOutside1X128,,,,,) = pool.ticks(tickUpper);
+        (, int24 tickCurrent,,,,,) = pool.slot0();
+        (,, uint256 lowerFeeGrowthOutside0X128, uint256 lowerFeeGrowthOutside1X128,,,,) = pool.ticks(tickLower);
+        (,, uint256 upperFeeGrowthOutside0X128, uint256 upperFeeGrowthOutside1X128,,,,) = pool.ticks(tickUpper);
 
         // Calculate the fee growth inside of the Liquidity Range since the last time the position was updated.
-        // feeGrowthInside can overflow (without reverting), as is the case in the Slipstream fee calculations.
+        // feeGrowthInside can overflow (without reverting), as is the case in the Uniswap fee calculations.
         unchecked {
             if (tickCurrent < tickLower) {
                 feeGrowthInside0X128 = lowerFeeGrowthOutside0X128 - upperFeeGrowthOutside0X128;

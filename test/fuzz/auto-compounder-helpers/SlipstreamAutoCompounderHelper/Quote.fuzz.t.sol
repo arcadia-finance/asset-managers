@@ -5,11 +5,12 @@
 pragma solidity 0.8.22;
 
 import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
-import { ISlipstreamAutoCompounder } from "../../../../src/auto-compounder/interfaces/ISlipstreamAutoCompounder.sol";
-import { PositionState } from "../../../../src/auto-compounder/interfaces/ISlipstreamAutoCompounder.sol";
-import { SlipstreamAutoCompounder } from "../../../../src/auto-compounder/SlipstreamAutoCompounder.sol";
+import { ISlipstreamAutoCompounder } from
+    "../../../../src/auto-compounders/slipstream/interfaces/ISlipstreamAutoCompounder.sol";
+import { PositionState } from "../../../../src/auto-compounders/slipstream/interfaces/ISlipstreamAutoCompounder.sol";
+import { SlipstreamAutoCompounder } from "../../../../src/auto-compounders/slipstream/SlipstreamAutoCompounder.sol";
 import { SlipstreamAutoCompoundHelper_Fuzz_Test } from "./_SlipstreamAutoCompoundHelper.fuzz.t.sol";
-import { SlipstreamLogic } from "../../../../src/auto-compounder/libraries/SlipstreamLogic.sol";
+import { SlipstreamLogic } from "../../../../src/auto-compounders/slipstream/libraries/SlipstreamLogic.sol";
 import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
 
 /**

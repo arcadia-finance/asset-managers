@@ -5,7 +5,7 @@
 pragma solidity 0.8.22;
 
 import { Test } from "../../../../lib/accounts-v2/lib/forge-std/src/Test.sol";
-import { IQuoter } from "../../../../src/auto-compounder/interfaces/Slipstream/IQuoter.sol";
+import { IQuoter } from "../../../../src/auto-compounders/slipstream/interfaces/IQuoter.sol";
 import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
 
 contract QuoterFixture is Test {

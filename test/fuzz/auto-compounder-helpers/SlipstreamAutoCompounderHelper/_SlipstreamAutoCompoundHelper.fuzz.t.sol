@@ -5,9 +5,9 @@
 pragma solidity 0.8.22;
 
 import { SlipstreamAutoCompounder_Fuzz_Test } from
-    "../../auto-compounder/SlipstreamAutoCompounder/_SlipstreamAutoCompounder.fuzz.t.sol";
+    "../../auto-compounders/SlipstreamAutoCompounder/_SlipstreamAutoCompounder.fuzz.t.sol";
 import { SlipstreamAutoCompoundHelper } from
-    "../../../../src/auto-compounder/periphery/SlipstreamAutoCompoundHelper.sol";
+    "../../../../src/auto-compounders/slipstream/periphery/SlipstreamAutoCompoundHelper.sol";
 import { SlipstreamAutoCompoundHelperExtension } from
     "../../../utils/extensions/SlipstreamAutoCompoundHelperExtension.sol";
 import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";

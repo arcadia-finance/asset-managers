@@ -4,12 +4,12 @@
  */
 pragma solidity 0.8.22;
 
-import { FixedPoint96 } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
-import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { FullMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
-import { ISlipstreamPositionManager } from "../interfaces/Slipstream/ISlipstreamPositionManager.sol";
-import { PoolAddress } from "../../../lib/accounts-v2/src/asset-modules/Slipstream/libraries/PoolAddress.sol";
-import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
+import { FixedPoint96 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
+import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
+import { ISlipstreamPositionManager } from "../interfaces/ISlipstreamPositionManager.sol";
+import { PoolAddress } from "../../../../lib/accounts-v2/src/asset-modules/Slipstream/libraries/PoolAddress.sol";
+import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 
 library SlipstreamLogic {
     using FixedPointMathLib for uint256;

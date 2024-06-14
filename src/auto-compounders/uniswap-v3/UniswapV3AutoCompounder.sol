@@ -4,13 +4,13 @@
  */
 pragma solidity 0.8.22;
 
-import { ActionData, IActionBase } from "../../lib/accounts-v2/src/interfaces/IActionBase.sol";
-import { ArcadiaLogic } from "./libraries/ArcadiaLogic.sol";
-import { CollectParams, IncreaseLiquidityParams } from "./interfaces/UniswapV3/INonfungiblePositionManager.sol";
-import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
-import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { IAccount } from "./interfaces/IAccount.sol";
-import { IUniswapV3Pool } from "./interfaces/UniswapV3/IUniswapV3Pool.sol";
+import { ActionData, IActionBase } from "../../../lib/accounts-v2/src/interfaces/IActionBase.sol";
+import { ArcadiaLogic } from "../libraries/ArcadiaLogic.sol";
+import { CollectParams, IncreaseLiquidityParams } from "./interfaces/INonfungiblePositionManager.sol";
+import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
+import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { IAccount } from "../interfaces/IAccount.sol";
+import { IUniswapV3Pool } from "./interfaces/IUniswapV3Pool.sol";
 import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
 
 /**

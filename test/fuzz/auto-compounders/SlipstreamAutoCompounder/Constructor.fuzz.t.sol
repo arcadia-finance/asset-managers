@@ -6,7 +6,7 @@ pragma solidity 0.8.22;
 
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { stdError } from "../../../../lib/accounts-v2/lib/forge-std/src/StdError.sol";
-import { SlipstreamAutoCompounder } from "../../../../src/auto-compounder/SlipstreamAutoCompounder.sol";
+import { SlipstreamAutoCompounder } from "../../../../src/auto-compounders/slipstream/SlipstreamAutoCompounder.sol";
 import { SlipstreamAutoCompounder_Fuzz_Test } from "./_SlipstreamAutoCompounder.fuzz.t.sol";
 
 /**
