@@ -5,9 +5,12 @@
 pragma solidity 0.8.22;
 
 import { Fees } from "../interfaces/ISlipstreamAutoCompounder.sol";
+import { FixedPoint128 } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint128.sol";
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { FullMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
 import { IQuoter } from "../interfaces/Slipstream/IQuoter.sol";
 import { ISlipstreamAutoCompounder } from "../interfaces/ISlipstreamAutoCompounder.sol";
+import { ICLPool } from "../interfaces/Slipstream/ICLPool.sol";
 import { PositionState } from "../interfaces/ISlipstreamAutoCompounder.sol";
 import { QuoteExactOutputSingleParams } from "../interfaces/Slipstream/IQuoter.sol";
 import { SlipstreamLogic } from "../libraries/SlipstreamLogic.sol";
@@ -64,7 +67,7 @@ contract SlipstreamAutoCompoundHelper {
 
         // Get fee amounts
         Fees memory fees;
-        (fees.amount0, fees.amount1) = SlipstreamLogic._getFeeAmounts(id);
+        (fees.amount0, fees.amount1) = _getFeeAmounts(id);
 
         // Total value of the fees must be greater than the threshold.
         if (AUTO_COMPOUNDER.isBelowThreshold(position, fees)) return false;
@@ -116,5 +119,86 @@ contract SlipstreamAutoCompoundHelper {
 
         // Check if max slippage was exceeded (sqrtPriceLimitX96 is reached).
         isPoolUnbalanced = sqrtPriceX96After == sqrtPriceLimitX96 ? true : false;
+    }
+
+    /**
+     * @notice Calculates the underlying token amounts of accrued fees, both collected and uncollected.
+     * @param id The id of the Liquidity Position.
+     * @return amount0 The amount of fees in underlying token0 tokens.
+     * @return amount1 The amount of fees in underlying token1 tokens.
+     */
+    function _getFeeAmounts(uint256 id) internal view returns (uint256 amount0, uint256 amount1) {
+        (
+            ,
+            ,
+            address token0,
+            address token1,
+            int24 tickSpacing,
+            int24 tickLower,
+            int24 tickUpper,
+            uint256 liquidity, // gas: cheaper to use uint256 instead of uint128.
+            uint256 feeGrowthInside0LastX128,
+            uint256 feeGrowthInside1LastX128,
+            uint256 tokensOwed0, // gas: cheaper to use uint256 instead of uint128.
+            uint256 tokensOwed1 // gas: cheaper to use uint256 instead of uint128.
+        ) = SlipstreamLogic.POSITION_MANAGER.positions(id);
+
+        (uint256 feeGrowthInside0CurrentX128, uint256 feeGrowthInside1CurrentX128) =
+            _getFeeGrowthInside(token0, token1, tickSpacing, tickLower, tickUpper);
+
+        // Calculate the total amount of fees by adding the already realized fees (tokensOwed),
+        // to the accumulated fees since the last time the position was updated:
+        // (feeGrowthInsideCurrentX128 - feeGrowthInsideLastX128) * liquidity.
+        // Fee calculations in NonfungiblePositionManager.sol overflow (without reverting) when
+        // one or both terms, or their sum, is bigger than a uint128.
+        // This is however much bigger than any realistic situation.
+        unchecked {
+            amount0 = FullMath.mulDiv(
+                feeGrowthInside0CurrentX128 - feeGrowthInside0LastX128, liquidity, FixedPoint128.Q128
+            ) + tokensOwed0;
+            amount1 = FullMath.mulDiv(
+                feeGrowthInside1CurrentX128 - feeGrowthInside1LastX128, liquidity, FixedPoint128.Q128
+            ) + tokensOwed1;
+        }
+    }
+
+    /**
+     * @notice Calculates the current fee growth inside the Liquidity Range.
+     * @param token0 Token0 of the Liquidity Pool.
+     * @param token1 Token1 of the Liquidity Pool.
+     * @param tickSpacing The tickSpacing of the Liquidity Pool.
+     * @param tickLower The lower tick of the liquidity position.
+     * @param tickUpper The upper tick of the liquidity position.
+     * @return feeGrowthInside0X128 The amount of fees in underlying token0 tokens.
+     * @return feeGrowthInside1X128 The amount of fees in underlying token1 tokens.
+     */
+    function _getFeeGrowthInside(address token0, address token1, int24 tickSpacing, int24 tickLower, int24 tickUpper)
+        internal
+        view
+        returns (uint256 feeGrowthInside0X128, uint256 feeGrowthInside1X128)
+    {
+        ICLPool pool = ICLPool(SlipstreamLogic._computePoolAddress(token0, token1, tickSpacing));
+
+        // To calculate the pending fees, the current tick has to be used, even if the pool would be unbalanced.
+        (, int24 tickCurrent,,,,) = pool.slot0();
+        (,,, uint256 lowerFeeGrowthOutside0X128, uint256 lowerFeeGrowthOutside1X128,,,,,) = pool.ticks(tickLower);
+        (,,, uint256 upperFeeGrowthOutside0X128, uint256 upperFeeGrowthOutside1X128,,,,,) = pool.ticks(tickUpper);
+
+        // Calculate the fee growth inside of the Liquidity Range since the last time the position was updated.
+        // feeGrowthInside can overflow (without reverting), as is the case in the Slipstream fee calculations.
+        unchecked {
+            if (tickCurrent < tickLower) {
+                feeGrowthInside0X128 = lowerFeeGrowthOutside0X128 - upperFeeGrowthOutside0X128;
+                feeGrowthInside1X128 = lowerFeeGrowthOutside1X128 - upperFeeGrowthOutside1X128;
+            } else if (tickCurrent < tickUpper) {
+                feeGrowthInside0X128 =
+                    pool.feeGrowthGlobal0X128() - lowerFeeGrowthOutside0X128 - upperFeeGrowthOutside0X128;
+                feeGrowthInside1X128 =
+                    pool.feeGrowthGlobal1X128() - lowerFeeGrowthOutside1X128 - upperFeeGrowthOutside1X128;
+            } else {
+                feeGrowthInside0X128 = upperFeeGrowthOutside0X128 - lowerFeeGrowthOutside0X128;
+                feeGrowthInside1X128 = upperFeeGrowthOutside1X128 - lowerFeeGrowthOutside1X128;
+            }
+        }
     }
 }
