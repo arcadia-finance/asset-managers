@@ -4,23 +4,25 @@
  */
 pragma solidity 0.8.22;
 
-import { ERC20Mock } from "../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
-import { ERC721 } from "../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
-import { ISwapRouter02 } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
-import { IUniswapV3PoolExtension } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
-import { UniswapV3AutoCompounder } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
-import { UniswapV3AutoCompounder_Fuzz_Test } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
+import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
+import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
+import { ExactInputSingleParams } from "../../../../src/auto-compounder/interfaces/Slipstream/ISwapRouter.sol";
+import { ISwapRouter } from "./_SlipstreamAutoCompounder.fuzz.t.sol";
+import { ICLPoolExtension } from
+    "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/extensions/interfaces/ICLPoolExtension.sol";
+import { SlipstreamAutoCompounder } from "../../../../src/auto-compounder/SlipstreamAutoCompounder.sol";
+import { SlipstreamAutoCompounder_Fuzz_Test } from "./_SlipstreamAutoCompounder.fuzz.t.sol";
 
 /**
- * @notice Fuzz tests for the function "compoundFees" of contract "UniswapV3AutoCompounder".
+ * @notice Fuzz tests for the function "compoundFees" of contract "SlipstreamAutoCompounder".
  */
-contract CompoundFees_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompounder_Fuzz_Test {
+contract CompoundFees_SlipstreamAutoCompounder_Fuzz_Test is SlipstreamAutoCompounder_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public virtual override {
-        UniswapV3AutoCompounder_Fuzz_Test.setUp();
+        SlipstreamAutoCompounder_Fuzz_Test.setUp();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -39,11 +41,11 @@ contract CompoundFees_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompound
 
         // And : Transfer position to account owner
         vm.prank(users.liquidityProvider);
-        ERC721(address(nonfungiblePositionManager)).transferFrom(users.liquidityProvider, users.accountOwner, tokenId);
+        ERC721(address(slipstreamPositionManager)).transferFrom(users.liquidityProvider, users.accountOwner, tokenId);
 
         {
             address[] memory assets_ = new address[](1);
-            assets_[0] = address(nonfungiblePositionManager);
+            assets_[0] = address(slipstreamPositionManager);
             uint256[] memory assetIds_ = new uint256[](1);
             assetIds_[0] = tokenId;
             uint256[] memory assetAmounts_ = new uint256[](1);
@@ -51,14 +53,14 @@ contract CompoundFees_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompound
 
             // And : Deposit position in Account
             vm.startPrank(users.accountOwner);
-            ERC721(address(nonfungiblePositionManager)).approve(address(account), tokenId);
+            ERC721(address(slipstreamPositionManager)).approve(address(account), tokenId);
             account.deposit(assets_, assetIds_, assetAmounts_);
             vm.stopPrank();
         }
 
         // When : Calling compoundFees()
         vm.startPrank(initiator);
-        vm.expectRevert(UniswapV3AutoCompounder.BelowThreshold.selector);
+        vm.expectRevert(SlipstreamAutoCompounder.BelowThreshold.selector);
         autoCompounder.compoundFees(address(account), tokenId);
         vm.stopPrank();
     }
@@ -72,11 +74,11 @@ contract CompoundFees_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompound
 
         // And : Transfer position to account owner
         vm.prank(users.liquidityProvider);
-        ERC721(address(nonfungiblePositionManager)).transferFrom(users.liquidityProvider, users.accountOwner, tokenId);
+        ERC721(address(slipstreamPositionManager)).transferFrom(users.liquidityProvider, users.accountOwner, tokenId);
 
         {
             address[] memory assets_ = new address[](1);
-            assets_[0] = address(nonfungiblePositionManager);
+            assets_[0] = address(slipstreamPositionManager);
             uint256[] memory assetIds_ = new uint256[](1);
             assetIds_[0] = tokenId;
             uint256[] memory assetAmounts_ = new uint256[](1);
@@ -84,20 +86,20 @@ contract CompoundFees_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompound
 
             // And : Deposit position in Account
             vm.startPrank(users.accountOwner);
-            ERC721(address(nonfungiblePositionManager)).approve(address(account), tokenId);
+            ERC721(address(slipstreamPositionManager)).approve(address(account), tokenId);
             account.deposit(assets_, assetIds_, assetAmounts_);
             vm.stopPrank();
         }
 
         // Check liquidity pre-compounding
-        (,,,,,,, uint128 initialLiquidity,,,,) = nonfungiblePositionManager.positions(tokenId);
+        (,,,,,,, uint128 initialLiquidity,,,,) = slipstreamPositionManager.positions(tokenId);
 
         // When : Calling compoundFees()
         vm.prank(initiator);
         autoCompounder.compoundFees(address(account), tokenId);
 
         // Then : Liquidity of position should have increased
-        (,,,,,,, uint128 newLiquidity,,,,) = nonfungiblePositionManager.positions(tokenId);
+        (,,,,,,, uint128 newLiquidity,,,,) = slipstreamPositionManager.positions(tokenId);
         assertGt(newLiquidity, initialLiquidity);
 
         // And : initiatorFees should never be bigger than the calculated share plus a small bonus due to rounding errors in.
@@ -125,11 +127,11 @@ contract CompoundFees_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompound
 
         // And : Transfer position to account owner
         vm.prank(users.liquidityProvider);
-        ERC721(address(nonfungiblePositionManager)).transferFrom(users.liquidityProvider, users.accountOwner, tokenId);
+        ERC721(address(slipstreamPositionManager)).transferFrom(users.liquidityProvider, users.accountOwner, tokenId);
 
         {
             address[] memory assets_ = new address[](1);
-            assets_[0] = address(nonfungiblePositionManager);
+            assets_[0] = address(slipstreamPositionManager);
             uint256[] memory assetIds_ = new uint256[](1);
             assetIds_[0] = tokenId;
             uint256[] memory assetAmounts_ = new uint256[](1);
@@ -137,7 +139,7 @@ contract CompoundFees_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompound
 
             // And : Deposit position in Account
             vm.startPrank(users.accountOwner);
-            ERC721(address(nonfungiblePositionManager)).approve(address(account), tokenId);
+            ERC721(address(slipstreamPositionManager)).approve(address(account), tokenId);
             account.deposit(assets_, assetIds_, assetAmounts_);
             vm.stopPrank();
         }
@@ -153,11 +155,12 @@ contract CompoundFees_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompound
             vm.startPrank(users.liquidityProvider);
             token1.approve(address(swapRouter), amount1ToSwap);
 
-            ISwapRouter02.ExactInputSingleParams memory exactInputParams = ISwapRouter02.ExactInputSingleParams({
+            ExactInputSingleParams memory exactInputParams = ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: POOL_FEE,
+                tickSpacing: TICK_SPACING,
                 recipient: users.liquidityProvider,
+                deadline: block.timestamp,
                 amountIn: amount1ToSwap,
                 amountOutMinimum: 0,
                 sqrtPriceLimitX96: 0
@@ -169,14 +172,14 @@ contract CompoundFees_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompound
         }
 
         // Check liquidity pre-compounding
-        (,,,,,,, uint128 initialLiquidity,,,,) = nonfungiblePositionManager.positions(tokenId);
+        (,,,,,,, uint128 initialLiquidity,,,,) = slipstreamPositionManager.positions(tokenId);
 
         // When : Calling compoundFees()
         vm.prank(initiator);
         autoCompounder.compoundFees(address(account), tokenId);
 
         // Then : Liquidity of position should have increased
-        (,,,,,,, uint128 newLiquidity,,,,) = nonfungiblePositionManager.positions(tokenId);
+        (,,,,,,, uint128 newLiquidity,,,,) = slipstreamPositionManager.positions(tokenId);
         assertGt(newLiquidity, initialLiquidity);
 
         // And : Initiator fees should have been distributed
@@ -216,11 +219,11 @@ contract CompoundFees_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompound
 
         // And : Transfer position to account owner
         vm.prank(users.liquidityProvider);
-        ERC721(address(nonfungiblePositionManager)).transferFrom(users.liquidityProvider, users.accountOwner, tokenId);
+        ERC721(address(slipstreamPositionManager)).transferFrom(users.liquidityProvider, users.accountOwner, tokenId);
 
         {
             address[] memory assets_ = new address[](1);
-            assets_[0] = address(nonfungiblePositionManager);
+            assets_[0] = address(slipstreamPositionManager);
             uint256[] memory assetIds_ = new uint256[](1);
             assetIds_[0] = tokenId;
             uint256[] memory assetAmounts_ = new uint256[](1);
@@ -228,7 +231,7 @@ contract CompoundFees_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompound
 
             // And : Deposit position in Account
             vm.startPrank(users.accountOwner);
-            ERC721(address(nonfungiblePositionManager)).approve(address(account), tokenId);
+            ERC721(address(slipstreamPositionManager)).approve(address(account), tokenId);
             account.deposit(assets_, assetIds_, assetAmounts_);
             vm.stopPrank();
         }
@@ -244,11 +247,12 @@ contract CompoundFees_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompound
             vm.startPrank(users.liquidityProvider);
             token0.approve(address(swapRouter), amount0ToSwap);
 
-            ISwapRouter02.ExactInputSingleParams memory exactInputParams = ISwapRouter02.ExactInputSingleParams({
+            ExactInputSingleParams memory exactInputParams = ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: POOL_FEE,
+                tickSpacing: TICK_SPACING,
                 recipient: users.liquidityProvider,
+                deadline: block.timestamp,
                 amountIn: amount0ToSwap,
                 amountOutMinimum: 0,
                 sqrtPriceLimitX96: 0
@@ -260,14 +264,14 @@ contract CompoundFees_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompound
         }
 
         // Check liquidity pre-compounding
-        (,,,,,,, uint128 initialLiquidity,,,,) = nonfungiblePositionManager.positions(tokenId);
+        (,,,,,,, uint128 initialLiquidity,,,,) = slipstreamPositionManager.positions(tokenId);
 
         // When : Calling compoundFees()
         vm.prank(initiator);
         autoCompounder.compoundFees(address(account), tokenId);
 
         // Then : Liquidity of position should have increased
-        (,,,,,,, uint128 newLiquidity,,,,) = nonfungiblePositionManager.positions(tokenId);
+        (,,,,,,, uint128 newLiquidity,,,,) = slipstreamPositionManager.positions(tokenId);
         assertGt(newLiquidity, initialLiquidity);
 
         // And : Initiator fees should have been distributed

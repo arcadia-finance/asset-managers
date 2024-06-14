@@ -8,7 +8,7 @@ struct PositionState {
     address pool;
     address token0;
     address token1;
-    uint24 fee;
+    int24 tickSpacing;
     int256 tickLower;
     int256 tickUpper;
     int256 currentTick;
@@ -24,7 +24,7 @@ struct Fees {
     uint256 amount1;
 }
 
-interface IUniswapV3AutoCompounder {
+interface ISlipstreamAutoCompounder {
     function getSwapParameters(PositionState memory position, Fees memory fees)
         external
         view

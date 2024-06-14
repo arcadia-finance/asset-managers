@@ -8,8 +8,8 @@ import { FixedPoint96 } from "../../../lib/accounts-v2/src/asset-modules/Uniswap
 import { FixedPoint128 } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint128.sol";
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { FullMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
-import { INonfungiblePositionManager } from "../interfaces/INonfungiblePositionManager.sol";
-import { IUniswapV3Pool } from "../interfaces/IUniswapV3Pool.sol";
+import { INonfungiblePositionManager } from "../interfaces/UniswapV3/INonfungiblePositionManager.sol";
+import { IUniswapV3Pool } from "../interfaces/UniswapV3/IUniswapV3Pool.sol";
 import { PoolAddress } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/PoolAddress.sol";
 import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 

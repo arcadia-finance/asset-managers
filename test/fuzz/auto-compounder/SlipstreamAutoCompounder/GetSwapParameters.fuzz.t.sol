@@ -4,23 +4,23 @@
  */
 pragma solidity 0.8.22;
 
-import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
-import { UniswapV3AutoCompounder } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
-import { UniswapV3AutoCompounder_Fuzz_Test } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
-import { UniswapV3Logic } from "../../../src/auto-compounder/libraries/UniswapV3Logic.sol";
+import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { SlipstreamAutoCompounder } from "./_SlipstreamAutoCompounder.fuzz.t.sol";
+import { SlipstreamAutoCompounder_Fuzz_Test } from "./_SlipstreamAutoCompounder.fuzz.t.sol";
+import { SlipstreamLogic } from "../../../../src/auto-compounder/libraries/SlipstreamLogic.sol";
+import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 
 /**
- * @notice Fuzz tests for the function "_getSwapParameters" of contract "UniswapV3AutoCompounder".
+ * @notice Fuzz tests for the function "_getSwapParameters" of contract "SlipstreamAutoCompounder".
  */
-contract GetSwapParameters_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompounder_Fuzz_Test {
+contract GetSwapParameters_SlipstreamAutoCompounder_Fuzz_Test is SlipstreamAutoCompounder_Fuzz_Test {
     using FixedPointMathLib for uint256;
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public override {
-        UniswapV3AutoCompounder_Fuzz_Test.setUp();
+        SlipstreamAutoCompounder_Fuzz_Test.setUp();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -41,13 +41,13 @@ contract GetSwapParameters_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCom
 
         uint160 sqrtPriceX96AtCurrentTick = TickMath.getSqrtRatioAtTick(newTick);
 
-        UniswapV3AutoCompounder.PositionState memory position;
+        SlipstreamAutoCompounder.PositionState memory position;
         position.currentTick = newTick;
         position.tickLower = testVars.tickLower;
         position.tickUpper = testVars.tickUpper;
         position.sqrtPriceX96 = sqrtPriceX96AtCurrentTick;
 
-        UniswapV3AutoCompounder.Fees memory fees;
+        SlipstreamAutoCompounder.Fees memory fees;
         fees.amount0 = testVars.feeAmount0 * 10 ** token0.decimals();
         fees.amount1 = testVars.feeAmount1 * 10 ** token1.decimals();
 
@@ -57,7 +57,7 @@ contract GetSwapParameters_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCom
         // Then : Returned values should be valid
         assertEq(zeroToOne, true);
 
-        uint256 amountOutExpected = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
+        uint256 amountOutExpected = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
         assertEq(amountOut, amountOutExpected);
     }
 
@@ -76,13 +76,13 @@ contract GetSwapParameters_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCom
 
         uint160 sqrtPriceX96AtCurrentTick = TickMath.getSqrtRatioAtTick(newTick);
 
-        UniswapV3AutoCompounder.PositionState memory position;
+        SlipstreamAutoCompounder.PositionState memory position;
         position.currentTick = newTick;
         position.tickLower = testVars.tickLower;
         position.tickUpper = testVars.tickUpper;
         position.sqrtPriceX96 = sqrtPriceX96AtCurrentTick;
 
-        UniswapV3AutoCompounder.Fees memory fees;
+        SlipstreamAutoCompounder.Fees memory fees;
         fees.amount0 = testVars.feeAmount0 * 10 ** token0.decimals();
         fees.amount1 = testVars.feeAmount1 * 10 ** token1.decimals();
 
@@ -92,7 +92,7 @@ contract GetSwapParameters_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCom
         // Then : Returned values should be valid
         assertEq(zeroToOne, false);
 
-        uint256 amountOutExpected = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, false, fees.amount1);
+        uint256 amountOutExpected = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, false, fees.amount1);
         assertEq(amountOut, amountOutExpected);
     }
 
@@ -108,14 +108,14 @@ contract GetSwapParameters_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCom
         // And : State is persisted
         setState(testVars, usdStablePool);
 
-        (uint160 sqrtPriceX96, int24 currentTick,,,,,) = usdStablePool.slot0();
-        UniswapV3AutoCompounder.PositionState memory position;
+        (uint160 sqrtPriceX96, int24 currentTick,,,,) = usdStablePool.slot0();
+        SlipstreamAutoCompounder.PositionState memory position;
         position.sqrtPriceX96 = sqrtPriceX96;
         position.currentTick = currentTick;
         position.tickLower = testVars.tickLower;
         position.tickUpper = testVars.tickUpper;
 
-        UniswapV3AutoCompounder.Fees memory fees;
+        SlipstreamAutoCompounder.Fees memory fees;
         fees.amount0 = testVars.feeAmount0 * 10 ** token0.decimals();
         fees.amount1 = testVars.feeAmount1 * 10 ** token1.decimals();
 
@@ -133,7 +133,7 @@ contract GetSwapParameters_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCom
             uint256 targetRatio = ticksCurrentToUpper.mulDivDown(1e18, ticksLowerToUpper);
 
             // Calculate the total fee value in token1 equivalent:
-            uint256 fee0ValueInToken1 = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
+            uint256 fee0ValueInToken1 = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
             uint256 totalFeeValueInToken1 = fees.amount1 + fee0ValueInToken1;
             uint256 currentRatio = fees.amount1.mulDivDown(1e18, totalFeeValueInToken1);
 
@@ -156,14 +156,14 @@ contract GetSwapParameters_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCom
         // And : State is persisted
         setState(testVars, usdStablePool);
 
-        (uint160 sqrtPriceX96, int24 currentTick,,,,,) = usdStablePool.slot0();
-        UniswapV3AutoCompounder.PositionState memory position;
+        (uint160 sqrtPriceX96, int24 currentTick,,,,) = usdStablePool.slot0();
+        SlipstreamAutoCompounder.PositionState memory position;
         position.sqrtPriceX96 = sqrtPriceX96;
         position.currentTick = currentTick;
         position.tickLower = testVars.tickLower;
         position.tickUpper = testVars.tickUpper;
 
-        UniswapV3AutoCompounder.Fees memory fees;
+        SlipstreamAutoCompounder.Fees memory fees;
         fees.amount0 = testVars.feeAmount0 * 10 ** token0.decimals();
         fees.amount1 = testVars.feeAmount1 * 10 ** token1.decimals();
 
@@ -181,12 +181,12 @@ contract GetSwapParameters_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCom
             uint256 targetRatio = ticksCurrentToUpper.mulDivDown(1e18, ticksLowerToUpper);
 
             // Calculate the total fee value in token1 equivalent:
-            uint256 fee0ValueInToken1 = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
+            uint256 fee0ValueInToken1 = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
             uint256 totalFeeValueInToken1 = fees.amount1 + fee0ValueInToken1;
             uint256 currentRatio = fees.amount1.mulDivDown(1e18, totalFeeValueInToken1);
 
             uint256 amountIn = (currentRatio - targetRatio).mulDivDown(totalFeeValueInToken1, 1e18);
-            expectedAmountOut = amountOut = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, false, amountIn);
+            expectedAmountOut = amountOut = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, false, amountIn);
         }
 
         assertEq(amountOut, expectedAmountOut);

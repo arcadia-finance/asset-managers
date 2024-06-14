@@ -4,28 +4,28 @@
  */
 pragma solidity 0.8.22;
 
-import { ERC20Mock } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
-import { UniswapV3AutoCompounder } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
-import { UniswapV3AutoCompounder_Fuzz_Test } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
-import { UniswapV3Logic } from "../../../src/auto-compounder/libraries/UniswapV3Logic.sol";
+import { ERC20Mock } from "./_SlipstreamAutoCompounder.fuzz.t.sol";
+import { SlipstreamAutoCompounder } from "./_SlipstreamAutoCompounder.fuzz.t.sol";
+import { SlipstreamAutoCompounder_Fuzz_Test } from "./_SlipstreamAutoCompounder.fuzz.t.sol";
+import { SlipstreamLogic } from "../../../../src/auto-compounder/libraries/SlipstreamLogic.sol";
 
 /**
- * @notice Fuzz tests for the function "Swap" of contract "UniswapV3AutoCompounder".
+ * @notice Fuzz tests for the function "Swap" of contract "SlipstreamAutoCompounder".
  */
-contract Swap_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompounder_Fuzz_Test {
+contract Swap_SlipstreamAutoCompounder_Fuzz_Test is SlipstreamAutoCompounder_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public override {
-        UniswapV3AutoCompounder_Fuzz_Test.setUp();
+        SlipstreamAutoCompounder_Fuzz_Test.setUp();
     }
 
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function testFuzz_success_swap_zeroAmount(UniswapV3AutoCompounder.PositionState memory position, bool zeroToOne)
+    function testFuzz_success_swap_zeroAmount(SlipstreamAutoCompounder.PositionState memory position, bool zeroToOne)
         public
     {
         // Given : amountOut is 0
@@ -37,7 +37,7 @@ contract Swap_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompounder_Fuzz_
     }
 
     function testFuzz_success_swap_zeroToOne_UnbalancedPool(
-        UniswapV3AutoCompounder.PositionState memory position,
+        SlipstreamAutoCompounder.PositionState memory position,
         bool zeroToOne
     ) public {
         // Given : zeroToOne swap
@@ -51,11 +51,11 @@ contract Swap_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompounder_Fuzz_
         addAssetToArcadia(address(token0), int256(10 ** token0.decimals()));
         addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
 
-        uint160 sqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPoolUniV3(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
+        uint160 sqrtPriceX96 = SlipstreamLogic._getSqrtPriceX96(1e18, 1e18);
+        usdStablePool = createPoolCL(address(token0), address(token1), TICK_SPACING, sqrtPriceX96, 300);
 
         // And : Liquidity has been added for both tokens
-        addLiquidityUniV3(
+        addLiquidityCL(
             usdStablePool,
             100_000 * 10 ** token0.decimals(),
             100_000 * 10 ** token1.decimals(),
@@ -68,7 +68,7 @@ contract Swap_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompounder_Fuzz_
         {
             position.token0 = address(token0);
             position.token1 = address(token1);
-            position.fee = POOL_FEE;
+            position.tickSpacing = TICK_SPACING;
             position.lowerBoundSqrtPriceX96 = sqrtPriceX96 * autoCompounder.LOWER_SQRT_PRICE_DEVIATION() / 1e18;
             position.pool = address(usdStablePool);
         }
@@ -88,7 +88,7 @@ contract Swap_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompounder_Fuzz_
     }
 
     function testFuzz_success_swap_oneToZEro_UnbalancedPool(
-        UniswapV3AutoCompounder.PositionState memory position,
+        SlipstreamAutoCompounder.PositionState memory position,
         bool zeroToOne
     ) public {
         // Given : oneToZero swap
@@ -102,11 +102,11 @@ contract Swap_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompounder_Fuzz_
         addAssetToArcadia(address(token0), int256(10 ** token0.decimals()));
         addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
 
-        uint160 sqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPoolUniV3(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
+        uint160 sqrtPriceX96 = SlipstreamLogic._getSqrtPriceX96(1e18, 1e18);
+        usdStablePool = createPoolCL(address(token0), address(token1), TICK_SPACING, sqrtPriceX96, 300);
 
         // And : Liquidity has been added for both tokens
-        addLiquidityUniV3(
+        addLiquidityCL(
             usdStablePool,
             100_000 * 10 ** token0.decimals(),
             100_000 * 10 ** token1.decimals(),
@@ -119,7 +119,7 @@ contract Swap_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompounder_Fuzz_
         {
             position.token0 = address(token0);
             position.token1 = address(token1);
-            position.fee = POOL_FEE;
+            position.tickSpacing = TICK_SPACING;
             position.upperBoundSqrtPriceX96 = sqrtPriceX96 * autoCompounder.UPPER_SQRT_PRICE_DEVIATION() / 1e18;
             position.pool = address(usdStablePool);
         }
@@ -139,7 +139,7 @@ contract Swap_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompounder_Fuzz_
     }
 
     function testFuzz_success_swap_zeroToOne_balancedPool(
-        UniswapV3AutoCompounder.PositionState memory position,
+        SlipstreamAutoCompounder.PositionState memory position,
         bool zeroToOne
     ) public {
         // Given : zeroToOne swap
@@ -153,11 +153,11 @@ contract Swap_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompounder_Fuzz_
         addAssetToArcadia(address(token0), int256(10 ** token0.decimals()));
         addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
 
-        uint160 sqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPoolUniV3(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
+        uint160 sqrtPriceX96 = SlipstreamLogic._getSqrtPriceX96(1e18, 1e18);
+        usdStablePool = createPoolCL(address(token0), address(token1), TICK_SPACING, sqrtPriceX96, 300);
 
         // And : Liquidity has been added for both tokens
-        addLiquidityUniV3(
+        addLiquidityCL(
             usdStablePool,
             100_000 * 10 ** token0.decimals(),
             100_000 * 10 ** token1.decimals(),
@@ -170,7 +170,7 @@ contract Swap_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompounder_Fuzz_
         {
             position.token0 = address(token0);
             position.token1 = address(token1);
-            position.fee = POOL_FEE;
+            position.tickSpacing = TICK_SPACING;
             position.lowerBoundSqrtPriceX96 = sqrtPriceX96 * autoCompounder.LOWER_SQRT_PRICE_DEVIATION() / 1e18;
             position.pool = address(usdStablePool);
         }
@@ -190,7 +190,7 @@ contract Swap_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompounder_Fuzz_
     }
 
     function testFuzz_success_swap_oneToZero_balancedPool(
-        UniswapV3AutoCompounder.PositionState memory position,
+        SlipstreamAutoCompounder.PositionState memory position,
         bool zeroToOne
     ) public {
         // Given : oneToZero swap
@@ -204,11 +204,11 @@ contract Swap_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompounder_Fuzz_
         addAssetToArcadia(address(token0), int256(10 ** token0.decimals()));
         addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
 
-        uint160 sqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPoolUniV3(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
+        uint160 sqrtPriceX96 = SlipstreamLogic._getSqrtPriceX96(1e18, 1e18);
+        usdStablePool = createPoolCL(address(token0), address(token1), TICK_SPACING, sqrtPriceX96, 300);
 
         // And : Liquidity has been added for both tokens
-        addLiquidityUniV3(
+        addLiquidityCL(
             usdStablePool,
             100_000 * 10 ** token0.decimals(),
             100_000 * 10 ** token1.decimals(),
@@ -221,7 +221,7 @@ contract Swap_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompounder_Fuzz_
         {
             position.token0 = address(token0);
             position.token1 = address(token1);
-            position.fee = POOL_FEE;
+            position.tickSpacing = TICK_SPACING;
             position.upperBoundSqrtPriceX96 = sqrtPriceX96 * autoCompounder.UPPER_SQRT_PRICE_DEVIATION() / 1e18;
             position.pool = address(usdStablePool);
         }

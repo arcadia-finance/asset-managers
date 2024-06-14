@@ -4,33 +4,31 @@
  */
 pragma solidity 0.8.22;
 
-import { Base_Test } from "../../../lib/accounts-v2/test/Base.t.sol";
-import { Fuzz_Test } from "../Fuzz.t.sol";
-import { QuoterV2Fixture } from "../../utils/fixtures/quoter-v2/QuoterV2Fixture.f.sol";
-import { SwapRouter02Fixture } from
-    "../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/SwapRouter02Fixture.f.sol";
-import { UniswapV3Fixture } from "../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";
-import { UniswapV3AMFixture } from
-    "../../../lib/accounts-v2/test/utils/fixtures/arcadia-accounts/UniswapV3AMFixture.f.sol";
-
-import { AutoCompounderExtension } from "../../utils/extensions/AutoCompounderExtension.sol";
-import { ERC20Mock } from "../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
-import { IUniswapV3PoolExtension } from
-    "../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/IUniswapV3PoolExtension.sol";
-import { ISwapRouter02 } from "../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/interfaces/ISwapRouter02.sol";
-import { UniswapV3AMExtension } from "../../../lib/accounts-v2/test/utils/extensions/UniswapV3AMExtension.sol";
-import { UniswapV3AutoCompounder } from "../../../src/auto-compounder/UniswapV3AutoCompounder.sol";
-import { Utils } from "../../../lib/accounts-v2/test/utils/Utils.sol";
+import { AerodromeFixture } from "../../../../lib/accounts-v2/test/utils/fixtures/aerodrome/AerodromeFixture.f.sol";
+import { Base_Test } from "../../../../lib/accounts-v2/test/Base.t.sol";
+import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
+import { ExactInputSingleParams } from "../../../../src/auto-compounder/interfaces/Slipstream/ISwapRouter.sol";
+import { Fuzz_Test } from "../../Fuzz.t.sol";
+import { ICLPoolExtension } from
+    "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/extensions/interfaces/ICLPoolExtension.sol";
+import { ISwapRouter } from "../../../../src/auto-compounder/interfaces/Slipstream/ISwapRouter.sol";
+import { QuoterFixture } from "../../../utils/fixtures/slipstream/Quoter.f.sol";
+import { SlipstreamAutoCompounder } from "../../../../src/auto-compounder/SlipstreamAutoCompounder.sol";
+import { SwapRouterFixture } from "../../../utils/fixtures/slipstream/SwapRouter.f.sol";
+import { SlipstreamAMExtension } from "../../../../lib/accounts-v2/test/utils/extensions/SlipstreamAMExtension.sol";
+import { SlipstreamFixture } from "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/Slipstream.f.sol";
+import { SlipstreamAutoCompounderExtension } from "../../../utils/extensions/SlipstreamAutoCompounderExtension.sol";
+import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
 
 /**
- * @notice Common logic needed by all "UniswapV3AutoCompounder" fuzz tests.
+ * @notice Common logic needed by all "SlipstreamAutoCompounder" fuzz tests.
  */
-abstract contract UniswapV3AutoCompounder_Fuzz_Test is
+abstract contract SlipstreamAutoCompounder_Fuzz_Test is
     Fuzz_Test,
-    UniswapV3Fixture,
-    UniswapV3AMFixture,
-    SwapRouter02Fixture,
-    QuoterV2Fixture
+    AerodromeFixture,
+    SlipstreamFixture,
+    SwapRouterFixture,
+    QuoterFixture
 {
     /*////////////////////////////////////////////////////////////////
                             CONSTANTS
@@ -38,6 +36,7 @@ abstract contract UniswapV3AutoCompounder_Fuzz_Test is
 
     uint256 internal MOCK_ORACLE_DECIMALS = 18;
     uint24 internal POOL_FEE = 100;
+    int24 internal TICK_SPACING = 1;
 
     // 4 % price diff for testing
     uint256 internal TOLERANCE = 0.04 * 1e18;
@@ -53,7 +52,7 @@ abstract contract UniswapV3AutoCompounder_Fuzz_Test is
     ERC20Mock internal token0;
     ERC20Mock internal token1;
 
-    IUniswapV3PoolExtension internal usdStablePool;
+    ICLPoolExtension internal usdStablePool;
 
     struct TestVariables {
         int24 tickLower;
@@ -69,22 +68,23 @@ abstract contract UniswapV3AutoCompounder_Fuzz_Test is
                             TEST CONTRACTS
     /////////////////////////////////////////////////////////////// */
 
-    AutoCompounderExtension internal autoCompounder;
+    SlipstreamAutoCompounderExtension internal autoCompounder;
+    SlipstreamAMExtension internal slipstreamAM;
 
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
-    function setUp() public virtual override(Fuzz_Test, UniswapV3Fixture, Base_Test) {
+    function setUp() public virtual override(Fuzz_Test, SlipstreamFixture) {
         Fuzz_Test.setUp();
 
-        UniswapV3Fixture.setUp();
-        SwapRouter02Fixture.deploySwapRouter02(
-            address(0), address(uniswapV3Factory), address(nonfungiblePositionManager), address(weth9)
-        );
-        QuoterV2Fixture.deployQuoterV2(address(uniswapV3Factory), address(weth9));
+        AerodromeFixture.deployAerodromePeriphery();
+        SlipstreamFixture.setUp();
+        SlipstreamFixture.deploySlipstream();
+        SwapRouterFixture.deploySwapRouter(address(cLFactory), address(weth9));
+        QuoterFixture.deployQuoter(address(cLFactory), address(weth9));
 
-        deployUniswapV3AM();
+        deploySlipstreamAM();
         deployAutoCompounder(COMPOUND_THRESHOLD, INITIATOR_SHARE, TOLERANCE);
 
         // Add two stable tokens with 6 and 18 decimals.
@@ -97,7 +97,7 @@ abstract contract UniswapV3AutoCompounder_Fuzz_Test is
 
         // Create UniswapV3 pool.
         uint256 sqrtPriceX96 = autoCompounder.getSqrtPriceX96(10 ** token1.decimals(), 10 ** token0.decimals());
-        usdStablePool = createPoolUniV3(address(token0), address(token1), POOL_FEE, uint160(sqrtPriceX96), 300);
+        usdStablePool = createPoolCL(address(token0), address(token1), TICK_SPACING, uint160(sqrtPriceX96), 300);
 
         // And : AutoCompounder is allowed as Asset Manager
         vm.prank(users.accountOwner);
@@ -107,39 +107,13 @@ abstract contract UniswapV3AutoCompounder_Fuzz_Test is
     /*////////////////////////////////////////////////////////////////
                         HELPER FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
-    function deployUniswapV3AM() internal {
-        // Deploy Add the Asset Module to the Registry.
-        vm.startPrank(users.owner);
-        uniV3AM = new UniswapV3AMExtension(address(registry), address(nonfungiblePositionManager));
-        registry.addAssetModule(address(uniV3AM));
-        uniV3AM.setProtocol();
-        vm.stopPrank();
-
-        // Get the bytecode of the UniswapV3PoolExtension.
-        bytes memory args = abi.encode();
-        bytes memory bytecode = abi.encodePacked(vm.getCode("UniswapV3PoolExtension.sol"), args);
-        bytes32 poolExtensionInitCodeHash = keccak256(bytecode);
-        bytes32 POOL_INIT_CODE_HASH = 0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54;
-
-        // Overwrite code hash of the UniswapV3AMExtension.
-        bytecode = address(uniV3AM).code;
-        bytecode = Utils.veryBadBytesReplacer(bytecode, POOL_INIT_CODE_HASH, poolExtensionInitCodeHash);
-        vm.etch(address(uniV3AM), bytecode);
-    }
 
     function deployAutoCompounder(uint256 compoundThreshold, uint256 initiatorShare, uint256 tolerance) public {
         vm.prank(users.owner);
-        autoCompounder = new AutoCompounderExtension(compoundThreshold, initiatorShare, tolerance);
+        autoCompounder = new SlipstreamAutoCompounderExtension(compoundThreshold, initiatorShare, tolerance);
 
-        // Get the bytecode of the UniswapV3PoolExtension.
-        bytes memory args = abi.encode();
-        bytes memory bytecode = abi.encodePacked(vm.getCode("UniswapV3PoolExtension.sol"), args);
-        bytes32 poolExtensionInitCodeHash = keccak256(bytecode);
-        bytes32 POOL_INIT_CODE_HASH = 0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54;
-
-        // Overwrite code hash of the UniswapV3Pool.
-        bytecode = address(autoCompounder).code;
-        bytecode = Utils.veryBadBytesReplacer(bytecode, POOL_INIT_CODE_HASH, poolExtensionInitCodeHash);
+        // Overwrite code hash of the CLPool.
+        bytes memory bytecode = address(autoCompounder).code;
 
         // Overwrite contract addresses stored as constants in AutoCompounder.
         bytecode = Utils.veryBadBytesReplacer(
@@ -150,18 +124,12 @@ abstract contract UniswapV3AutoCompounder_Fuzz_Test is
         );
         bytecode = Utils.veryBadBytesReplacer(
             bytecode,
-            abi.encodePacked(0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1),
-            abi.encodePacked(nonfungiblePositionManager),
+            abi.encodePacked(0x827922686190790b37229fd06084350E74485b72),
+            abi.encodePacked(slipstreamPositionManager),
             false
         );
         bytecode = Utils.veryBadBytesReplacer(
-            bytecode,
-            abi.encodePacked(0x33128a8fC17869897dcE68Ed026d694621f6FDfD),
-            abi.encodePacked(uniswapV3Factory),
-            false
-        );
-        bytecode = Utils.veryBadBytesReplacer(
-            bytecode, abi.encodePacked(0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a), abi.encodePacked(quoter), false
+            bytecode, abi.encodePacked(0x5e7BB104d84c7CB9B682AaC2F3d509f5F406809A), abi.encodePacked(cLFactory), false
         );
         vm.etch(address(autoCompounder), bytecode);
     }
@@ -172,7 +140,7 @@ abstract contract UniswapV3AutoCompounder_Fuzz_Test is
         returns (TestVariables memory testVars_, bool token0HasLowestDecimals)
     {
         // Given : ticks should be in range
-        int24 currentTick = usdStablePool.getCurrentTick();
+        (, int24 currentTick,,,,) = usdStablePool.slot0();
 
         // And : tickRange is minimum 20
         testVars.tickUpper = int24(bound(testVars.tickUpper, currentTick + 10, currentTick + type(int16).max));
@@ -197,9 +165,9 @@ abstract contract UniswapV3AutoCompounder_Fuzz_Test is
         testVars_ = testVars;
     }
 
-    function setState(TestVariables memory testVars, IUniswapV3PoolExtension pool) public returns (uint256 tokenId) {
+    function setState(TestVariables memory testVars, ICLPoolExtension pool) public returns (uint256 tokenId) {
         // Given : Mint initial position
-        (tokenId,,) = addLiquidityUniV3(
+        (tokenId,,) = addLiquidityCL(
             pool,
             testVars.amountToken0,
             testVars.amountToken1,
@@ -222,11 +190,12 @@ abstract contract UniswapV3AutoCompounder_Fuzz_Test is
         vm.startPrank(users.liquidityProvider);
         token0.approve(address(swapRouter), amount0ToSwap);
 
-        ISwapRouter02.ExactInputSingleParams memory exactInputParams = ISwapRouter02.ExactInputSingleParams({
+        ExactInputSingleParams memory exactInputParams = ExactInputSingleParams({
             tokenIn: address(token0),
             tokenOut: address(token1),
-            fee: POOL_FEE,
+            tickSpacing: TICK_SPACING,
             recipient: users.liquidityProvider,
+            deadline: block.timestamp,
             amountIn: amount0ToSwap,
             amountOutMinimum: 0,
             sqrtPriceLimitX96: 0
@@ -240,11 +209,12 @@ abstract contract UniswapV3AutoCompounder_Fuzz_Test is
         deal(address(token1), users.liquidityProvider, amount1ToSwap, true);
         token1.approve(address(swapRouter), amount1ToSwap);
 
-        exactInputParams = ISwapRouter02.ExactInputSingleParams({
+        exactInputParams = ExactInputSingleParams({
             tokenIn: address(token1),
             tokenOut: address(token0),
-            fee: POOL_FEE,
+            tickSpacing: TICK_SPACING,
             recipient: users.liquidityProvider,
+            deadline: block.timestamp,
             amountIn: amount1ToSwap,
             amountOutMinimum: 0,
             sqrtPriceLimitX96: 0
@@ -252,6 +222,16 @@ abstract contract UniswapV3AutoCompounder_Fuzz_Test is
 
         swapRouter.exactInputSingle(exactInputParams);
 
+        vm.stopPrank();
+    }
+
+    function deploySlipstreamAM() public {
+        vm.startPrank(users.owner);
+        // Add the Asset Module to the Registry.
+        slipstreamAM = new SlipstreamAMExtension(address(registry), address(slipstreamPositionManager));
+
+        registry.addAssetModule(address(slipstreamAM));
+        slipstreamAM.setProtocol();
         vm.stopPrank();
     }
 }
