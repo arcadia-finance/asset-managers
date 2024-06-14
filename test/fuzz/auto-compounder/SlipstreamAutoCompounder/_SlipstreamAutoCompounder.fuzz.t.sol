@@ -7,6 +7,7 @@ pragma solidity 0.8.22;
 import { AerodromeFixture } from "../../../../lib/accounts-v2/test/utils/fixtures/aerodrome/AerodromeFixture.f.sol";
 import { Base_Test } from "../../../../lib/accounts-v2/test/Base.t.sol";
 import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
+import { ExactInputSingleParams } from "../../../../src/auto-compounder/interfaces/Slipstream/ISwapRouter.sol";
 import { Fuzz_Test } from "../../Fuzz.t.sol";
 import { ICLPoolExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/extensions/interfaces/ICLPoolExtension.sol";
@@ -189,7 +190,7 @@ abstract contract SlipstreamAutoCompounder_Fuzz_Test is
         vm.startPrank(users.liquidityProvider);
         token0.approve(address(swapRouter), amount0ToSwap);
 
-        ISwapRouter.ExactInputSingleParams memory exactInputParams = ISwapRouter.ExactInputSingleParams({
+        ExactInputSingleParams memory exactInputParams = ExactInputSingleParams({
             tokenIn: address(token0),
             tokenOut: address(token1),
             tickSpacing: TICK_SPACING,
@@ -208,7 +209,7 @@ abstract contract SlipstreamAutoCompounder_Fuzz_Test is
         deal(address(token1), users.liquidityProvider, amount1ToSwap, true);
         token1.approve(address(swapRouter), amount1ToSwap);
 
-        exactInputParams = ISwapRouter.ExactInputSingleParams({
+        exactInputParams = ExactInputSingleParams({
             tokenIn: address(token1),
             tokenOut: address(token0),
             tickSpacing: TICK_SPACING,
