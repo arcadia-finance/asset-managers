@@ -4,9 +4,11 @@
  */
 pragma solidity 0.8.22;
 
+import { Fees } from "../interfaces/ISlipstreamAutoCompounder.sol";
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IQuoter } from "../interfaces/Slipstream/IQuoter.sol";
 import { ISlipstreamAutoCompounder } from "../interfaces/ISlipstreamAutoCompounder.sol";
+import { PositionState } from "../interfaces/ISlipstreamAutoCompounder.sol";
 import { QuoteExactOutputSingleParams } from "../interfaces/Slipstream/IQuoter.sol";
 import { SlipstreamLogic } from "../libraries/SlipstreamLogic.sol";
 
@@ -54,14 +56,14 @@ contract SlipstreamAutoCompoundHelper {
      */
     function isCompoundable(uint256 id) external returns (bool isCompoundable_) {
         // Fetch and cache all position related data.
-        ISlipstreamAutoCompounder.PositionState memory position = AUTO_COMPOUNDER.getPositionState(id);
+        PositionState memory position = AUTO_COMPOUNDER.getPositionState(id);
 
         // Check that pool is initially balanced.
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
         if (AUTO_COMPOUNDER.isPoolUnbalanced(position)) return false;
 
         // Get fee amounts
-        ISlipstreamAutoCompounder.Fees memory fees;
+        Fees memory fees;
         (fees.amount0, fees.amount1) = SlipstreamLogic._getFeeAmounts(id);
 
         // Total value of the fees must be greater than the threshold.
@@ -91,7 +93,7 @@ contract SlipstreamAutoCompoundHelper {
      * does the swap (with state changes), next it reverts (state changes are not persisted) and information about
      * the final state is passed via the error message in the expect.
      */
-    function _quote(ISlipstreamAutoCompounder.PositionState memory position, bool zeroToOne, uint256 amountOut)
+    function _quote(PositionState memory position, bool zeroToOne, uint256 amountOut)
         internal
         returns (bool isPoolUnbalanced)
     {

@@ -6,6 +6,7 @@ pragma solidity 0.8.22;
 
 import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { ISlipstreamAutoCompounder } from "../../../../src/auto-compounder/interfaces/ISlipstreamAutoCompounder.sol";
+import { PositionState } from "../../../../src/auto-compounder/interfaces/ISlipstreamAutoCompounder.sol";
 import { SlipstreamAutoCompounder } from "../../../../src/auto-compounder/SlipstreamAutoCompounder.sol";
 import { SlipstreamAutoCompoundHelper_Fuzz_Test } from "./_SlipstreamAutoCompoundHelper.fuzz.t.sol";
 import { SlipstreamLogic } from "../../../../src/auto-compounder/libraries/SlipstreamLogic.sol";
@@ -27,9 +28,7 @@ contract Quote_SlipstreamAutoCompoundHelper_Fuzz_Test is SlipstreamAutoCompoundH
                               TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function testFuzz_success_quote_false_poolIsUnbalanced(ISlipstreamAutoCompounder.PositionState memory position)
-        public
-    {
+    function testFuzz_success_quote_false_poolIsUnbalanced(PositionState memory position) public {
         // Given : New balanced stable pool 1:1
         token0 = new ERC20Mock("Token0", "TOK0", 18);
         token1 = new ERC20Mock("Token1", "TOK1", 18);
@@ -69,7 +68,7 @@ contract Quote_SlipstreamAutoCompoundHelper_Fuzz_Test is SlipstreamAutoCompoundH
         assertEq(isPoolUnbalanced, true);
     }
 
-    function testFuzz_success_quote(ISlipstreamAutoCompounder.PositionState memory position) public {
+    function testFuzz_success_quote(PositionState memory position) public {
         // Given : New balanced stable pool 1:1
         token0 = new ERC20Mock("Token0", "TOK0", 18);
         token1 = new ERC20Mock("Token1", "TOK1", 18);
