@@ -4,15 +4,15 @@
  */
 pragma solidity 0.8.22;
 
-import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { stdError } from "../../../lib/accounts-v2/lib/forge-std/src/StdError.sol";
-import { UniswapV3AutoCompounder } from "../../../src/auto-compounder/UniswapV3AutoCompounder.sol";
-import { UniswapV3AutoCompounder_Fuzz_Test } from "./_UniswapV3AutoCompounder.fuzz.t.sol";
+import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { stdError } from "../../../../lib/accounts-v2/lib/forge-std/src/StdError.sol";
+import { SlipstreamAutoCompounder } from "../../../../src/auto-compounder/SlipstreamAutoCompounder.sol";
+import { SlipstreamAutoCompounder_Fuzz_Test } from "./_SlipstreamAutoCompounder.fuzz.t.sol";
 
 /**
- * @notice Fuzz tests for the function "Constructor" of contract "UniswapV3AutoCompounder".
+ * @notice Fuzz tests for the function "Constructor" of contract "SlipstreamAutoCompounder".
  */
-contract Constructor_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompounder_Fuzz_Test {
+contract Constructor_SlipstreamAutoCompounder_Fuzz_Test is SlipstreamAutoCompounder_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
@@ -31,7 +31,7 @@ contract Constructor_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompounde
 
         vm.prank(users.owner);
         vm.expectRevert(stdError.arithmeticError);
-        new UniswapV3AutoCompounder(compoundThreshold, initiatorShare, tolerance);
+        new SlipstreamAutoCompounder(compoundThreshold, initiatorShare, tolerance);
     }
 
     function testFuzz_Success_Constructor(uint256 compoundThreshold, uint256 initiatorShare, uint256 tolerance)
@@ -40,8 +40,8 @@ contract Constructor_UniswapV3AutoCompounder_Fuzz_Test is UniswapV3AutoCompounde
         tolerance = bound(tolerance, 0, 1e18);
 
         vm.prank(users.owner);
-        UniswapV3AutoCompounder autoCompounder_ =
-            new UniswapV3AutoCompounder(compoundThreshold, initiatorShare, tolerance);
+        SlipstreamAutoCompounder autoCompounder_ =
+            new SlipstreamAutoCompounder(compoundThreshold, initiatorShare, tolerance);
 
         assertEq(autoCompounder_.COMPOUND_THRESHOLD(), compoundThreshold);
         assertEq(autoCompounder_.INITIATOR_SHARE(), initiatorShare);

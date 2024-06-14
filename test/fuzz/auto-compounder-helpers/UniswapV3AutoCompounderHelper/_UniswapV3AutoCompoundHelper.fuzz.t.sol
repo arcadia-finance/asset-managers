@@ -4,10 +4,12 @@
  */
 pragma solidity 0.8.22;
 
-import { UniswapV3AutoCompounder_Fuzz_Test } from "../auto-compounder/_UniswapV3AutoCompounder.fuzz.t.sol";
-import { UniswapV3AutoCompoundHelper } from "../../../src/auto-compounder/periphery/UniswapV3AutoCompoundHelper.sol";
-import { UniswapV3AutoCompoundHelperExtension } from "../../utils/extensions/UniswapV3AutoCompoundHelperExtension.sol";
-import { Utils } from "../../../lib/accounts-v2/test/utils/Utils.sol";
+import { UniswapV3AutoCompounder_Fuzz_Test } from
+    "../../auto-compounder/UniswapV3AutoCompounder/_UniswapV3AutoCompounder.fuzz.t.sol";
+import { UniswapV3AutoCompoundHelper } from "../../../../src/auto-compounder/periphery/UniswapV3AutoCompoundHelper.sol";
+import { UniswapV3AutoCompoundHelperExtension } from
+    "../../../utils/extensions/UniswapV3AutoCompoundHelperExtension.sol";
+import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
 
 /**
  * @notice Common logic needed by all "UniswapV3AutoCompoundHelper" fuzz tests.

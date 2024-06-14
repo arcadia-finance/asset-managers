@@ -7,10 +7,10 @@ pragma solidity 0.8.22;
 import { FixedPoint128 } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint128.sol";
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { FullMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
-import { IQuoter } from "../interfaces/IQuoter.sol";
+import { IQuoter } from "../interfaces/UniswapV3/IQuoter.sol";
 import { IUniswapV3AutoCompounder } from "../interfaces/IUniswapV3AutoCompounder.sol";
-import { IUniswapV3Pool } from "../interfaces/IUniswapV3Pool.sol";
-import { QuoteExactOutputSingleParams } from "../interfaces/IQuoter.sol";
+import { IUniswapV3Pool } from "../interfaces/UniswapV3/IUniswapV3Pool.sol";
+import { QuoteExactOutputSingleParams } from "../interfaces/UniswapV3/IQuoter.sol";
 import { UniswapV3Logic } from "../libraries/UniswapV3Logic.sol";
 
 /**
