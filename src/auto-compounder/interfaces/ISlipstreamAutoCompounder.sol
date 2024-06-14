@@ -4,27 +4,27 @@
  */
 pragma solidity 0.8.22;
 
+struct PositionState {
+    address pool;
+    address token0;
+    address token1;
+    int24 tickSpacing;
+    int256 tickLower;
+    int256 tickUpper;
+    int256 currentTick;
+    uint256 sqrtPriceX96;
+    uint256 lowerBoundSqrtPriceX96;
+    uint256 upperBoundSqrtPriceX96;
+    uint256 usdPriceToken0;
+    uint256 usdPriceToken1;
+}
+
+struct Fees {
+    uint256 amount0;
+    uint256 amount1;
+}
+
 interface ISlipstreamAutoCompounder {
-    struct PositionState {
-        address pool;
-        address token0;
-        address token1;
-        int24 tickSpacing;
-        int256 tickLower;
-        int256 tickUpper;
-        int256 currentTick;
-        uint256 sqrtPriceX96;
-        uint256 lowerBoundSqrtPriceX96;
-        uint256 upperBoundSqrtPriceX96;
-        uint256 usdPriceToken0;
-        uint256 usdPriceToken1;
-    }
-
-    struct Fees {
-        uint256 amount0;
-        uint256 amount1;
-    }
-
     function getSwapParameters(PositionState memory position, Fees memory fees)
         external
         view
