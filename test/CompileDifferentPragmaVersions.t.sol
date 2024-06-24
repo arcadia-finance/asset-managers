@@ -19,6 +19,6 @@ import { SlipstreamQuoterV2Extension } from "./utils/extensions/SlipstreamQuoter
 import { SwapRouter } from "../lib/accounts-v2/lib/slipstream/contracts/periphery/SwapRouter.sol";
 import { SwapRouter02 } from "../lib/accounts-v2/lib/swap-router-contracts/contracts/SwapRouter02.sol";
 
-contract IsCompoundable_SlipstreamAutoCompoundHelper_Fuzz_Test is Test {
+contract IsCompoundable_SlipstreamCompounderHelper_Fuzz_Test is Test {
     function test() public { }
 }

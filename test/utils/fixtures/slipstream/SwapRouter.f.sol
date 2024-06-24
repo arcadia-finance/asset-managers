@@ -6,7 +6,7 @@ pragma solidity 0.8.22;
 
 import { Test } from "../../../../lib/accounts-v2/lib/forge-std/src/Test.sol";
 
-import { ISwapRouter } from "../../../../src/auto-compounders/slipstream/interfaces/ISwapRouter.sol";
+import { ISwapRouter } from "../../../../src/compounders/slipstream/interfaces/ISwapRouter.sol";
 import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
 
 contract SwapRouterFixture is Test {
