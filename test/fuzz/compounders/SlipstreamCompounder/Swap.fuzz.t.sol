@@ -25,7 +25,7 @@ contract Swap_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder_Fuzz_Test {
                               TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function testFuzz_success_swap_zeroAmount(SlipstreamCompounder.PositionState memory position, bool zeroToOne)
+    function testFuzz_Success_swap_zeroAmount(SlipstreamCompounder.PositionState memory position, bool zeroToOne)
         public
     {
         // Given : amountOut is 0
@@ -36,7 +36,7 @@ contract Swap_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder_Fuzz_Test {
         assertEq(isPoolUnbalanced, false);
     }
 
-    function testFuzz_success_swap_zeroToOne_UnbalancedPool(
+    function testFuzz_Success_swap_zeroToOne_UnbalancedPool(
         SlipstreamCompounder.PositionState memory position,
         bool zeroToOne
     ) public {
@@ -87,7 +87,7 @@ contract Swap_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder_Fuzz_Test {
         assertEq(isPoolUnbalanced, true);
     }
 
-    function testFuzz_success_swap_oneToZEro_UnbalancedPool(
+    function testFuzz_Success_swap_oneToZEro_UnbalancedPool(
         SlipstreamCompounder.PositionState memory position,
         bool zeroToOne
     ) public {
@@ -138,7 +138,7 @@ contract Swap_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder_Fuzz_Test {
         assertEq(isPoolUnbalanced, true);
     }
 
-    function testFuzz_success_swap_zeroToOne_balancedPool(
+    function testFuzz_Success_swap_zeroToOne_balancedPool(
         SlipstreamCompounder.PositionState memory position,
         bool zeroToOne
     ) public {
@@ -189,7 +189,7 @@ contract Swap_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder_Fuzz_Test {
         assertEq(isPoolUnbalanced, false);
     }
 
-    function testFuzz_success_swap_oneToZero_balancedPool(
+    function testFuzz_Success_swap_oneToZero_balancedPool(
         SlipstreamCompounder.PositionState memory position,
         bool zeroToOne
     ) public {

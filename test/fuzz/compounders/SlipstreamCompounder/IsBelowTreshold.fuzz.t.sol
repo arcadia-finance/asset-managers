@@ -22,7 +22,7 @@ contract IsBelowThreshold_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_success_isBelowTreshold_true(SlipstreamCompounder.PositionState memory position) public {
+    function testFuzz_Success_isBelowTreshold_true(SlipstreamCompounder.PositionState memory position) public {
         // Given : Total value of fees is below COMPOUND_TRESHOLD 9.99$ < 10$
         position.usdPriceToken0 = 1e30;
         position.usdPriceToken1 = 1e18;
@@ -38,7 +38,7 @@ contract IsBelowThreshold_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder
         assertEq(isBelowThreshold, true);
     }
 
-    function testFuzz_success_isBelowTreshold_false(SlipstreamCompounder.PositionState memory position) public {
+    function testFuzz_Success_isBelowTreshold_false(SlipstreamCompounder.PositionState memory position) public {
         // Given : Total value of fees is  above COMPOUND_TRESHOLD 10,01$ > 10$
         position.usdPriceToken0 = 1e30;
         position.usdPriceToken1 = 1e18;

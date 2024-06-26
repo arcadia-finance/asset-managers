@@ -26,7 +26,7 @@ contract GetSwapParameters_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_success_getSwapParameters_currentTickGreaterOrEqualToTickUpper(TestVariables memory testVars)
+    function testFuzz_Success_getSwapParameters_currentTickGreaterOrEqualToTickUpper(TestVariables memory testVars)
         public
     {
         // Given : Valid State
@@ -61,7 +61,7 @@ contract GetSwapParameters_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_
         assertEq(amountOut, amountOutExpected);
     }
 
-    function testFuzz_success_getSwapParameters_currentTickSmallerOrEqualToTickLower(TestVariables memory testVars)
+    function testFuzz_Success_getSwapParameters_currentTickSmallerOrEqualToTickLower(TestVariables memory testVars)
         public
     {
         // Given : Valid State
@@ -96,7 +96,7 @@ contract GetSwapParameters_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_
         assertEq(amountOut, amountOutExpected);
     }
 
-    function testFuzz_success_getSwapParameters_tickInRangeWithExcessToken0Fees(TestVariables memory testVars) public {
+    function testFuzz_Success_getSwapParameters_tickInRangeWithExcessToken0Fees(TestVariables memory testVars) public {
         // Given : Valid State
         (testVars,) = givenValidBalancedState(testVars);
 
@@ -144,7 +144,7 @@ contract GetSwapParameters_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_
         // And : Further testing will validate the swap results based on above ratios in compoundFees testing.
     }
 
-    function testFuzz_success_getSwapParameters_tickInRangeWithExcessToken1Fees(TestVariables memory testVars) public {
+    function testFuzz_Success_getSwapParameters_tickInRangeWithExcessToken1Fees(TestVariables memory testVars) public {
         // Given : Valid State
         (testVars,) = givenValidBalancedState(testVars);
 

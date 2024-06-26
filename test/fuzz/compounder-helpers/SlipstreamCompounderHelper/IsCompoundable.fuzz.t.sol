@@ -26,7 +26,7 @@ contract IsCompoundable_SlipstreamCompounderHelper_Fuzz_Test is SlipstreamCompou
                               TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function testFuzz_success_isCompoundable_false_initiallyUnbalanced(
+    function testFuzz_Success_isCompoundable_false_initiallyUnbalanced(
         SlipstreamCompounder.PositionState memory position
     ) public {
         // Given : New balanced stable pool 1:1
@@ -74,7 +74,7 @@ contract IsCompoundable_SlipstreamCompounderHelper_Fuzz_Test is SlipstreamCompou
         assertEq(isCompoundable_, false);
     }
 
-    function testFuzz_success_isCompoundable_false_feesBelowThreshold(
+    function testFuzz_Success_isCompoundable_false_feesBelowThreshold(
         SlipstreamCompounder.PositionState memory position
     ) public {
         // Given : New balanced stable pool 1:1
@@ -116,7 +116,7 @@ contract IsCompoundable_SlipstreamCompounderHelper_Fuzz_Test is SlipstreamCompou
         assertEq(isCompoundable_, false);
     }
 
-    function testFuzz_success_isCompoundable_false_unbalancedAfterFeeSwap(
+    function testFuzz_Success_isCompoundable_false_unbalancedAfterFeeSwap(
         SlipstreamCompounder.PositionState memory position
     ) public {
         // Given : New balanced stable pool 1:1
@@ -168,7 +168,7 @@ contract IsCompoundable_SlipstreamCompounderHelper_Fuzz_Test is SlipstreamCompou
         assertEq(isCompoundable_, false);
     }
 
-    function testFuzz_success_isCompoundable_true(SlipstreamCompounder.PositionState memory position) public {
+    function testFuzz_Success_isCompoundable_true(SlipstreamCompounder.PositionState memory position) public {
         // Given : New balanced stable pool 1:1
         token0 = new ERC20Mock("Token0", "TOK0", 18);
         token1 = new ERC20Mock("Token1", "TOK1", 18);

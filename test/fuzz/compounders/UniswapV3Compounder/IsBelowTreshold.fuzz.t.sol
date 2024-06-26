@@ -22,7 +22,7 @@ contract IsBelowThreshold_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_F
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_success_isBelowTreshold_true(UniswapV3Compounder.PositionState memory position) public {
+    function testFuzz_Success_isBelowTreshold_true(UniswapV3Compounder.PositionState memory position) public {
         // Given : Total value of fees is below COMPOUND_TRESHOLD 9.99$ < 10$
         position.usdPriceToken0 = 1e30;
         position.usdPriceToken1 = 1e18;
@@ -38,7 +38,7 @@ contract IsBelowThreshold_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_F
         assertEq(isBelowThreshold, true);
     }
 
-    function testFuzz_success_isBelowTreshold_false(UniswapV3Compounder.PositionState memory position) public {
+    function testFuzz_Success_isBelowTreshold_false(UniswapV3Compounder.PositionState memory position) public {
         // Given : Total value of fees is  above COMPOUND_TRESHOLD 10,01$ > 10$
         position.usdPriceToken0 = 1e30;
         position.usdPriceToken1 = 1e18;

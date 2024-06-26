@@ -28,7 +28,7 @@ contract Quote_SlipstreamCompounderHelper_Fuzz_Test is SlipstreamCompounderHelpe
                               TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function testFuzz_success_quote_false_poolIsUnbalanced(PositionState memory position) public {
+    function testFuzz_Success_quote_false_poolIsUnbalanced(PositionState memory position) public {
         // Given : New balanced stable pool 1:1
         token0 = new ERC20Mock("Token0", "TOK0", 18);
         token1 = new ERC20Mock("Token1", "TOK1", 18);
@@ -68,7 +68,7 @@ contract Quote_SlipstreamCompounderHelper_Fuzz_Test is SlipstreamCompounderHelpe
         assertEq(isPoolUnbalanced, true);
     }
 
-    function testFuzz_success_quote(PositionState memory position) public {
+    function testFuzz_Success_quote(PositionState memory position) public {
         // Given : New balanced stable pool 1:1
         token0 = new ERC20Mock("Token0", "TOK0", 18);
         token1 = new ERC20Mock("Token1", "TOK1", 18);
