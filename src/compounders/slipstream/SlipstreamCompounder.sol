@@ -82,6 +82,7 @@ contract SlipstreamCompounder is IActionBase {
     error NotAnAccount();
     error OnlyAccount();
     error OnlyPool();
+    error OnlyPositionManager();
     error Reentered();
     error UnbalancedPool();
 
@@ -393,5 +394,18 @@ contract SlipstreamCompounder is IActionBase {
      */
     function onERC721Received(address, address, uint256, bytes calldata) public pure returns (bytes4) {
         return this.onERC721Received.selector;
+    }
+
+    /* ///////////////////////////////////////////////////////////////
+                      NATIVE ETH HANDLER
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Receives native ether.
+     * @dev Required since the Slipstream Non Fungible Position Manager sends full ether balance to caller
+     * on an increaseLiquidity.
+     */
+    receive() external payable {
+        if (msg.sender != address(SlipstreamLogic.POSITION_MANAGER)) revert OnlyPositionManager();
     }
 }
