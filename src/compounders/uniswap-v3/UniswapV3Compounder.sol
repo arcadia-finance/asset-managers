@@ -221,7 +221,7 @@ contract UniswapV3Compounder is IActionBase {
         if (balance0 > 0) ERC20(position.token0).safeTransfer(initiator, balance0);
         if (balance1 > 0) ERC20(position.token1).safeTransfer(initiator, balance1);
 
-        // Approve Account to deposited Liquidity Position back into the Account.
+        // Approve Account to deposit Liquidity Position back into the Account.
         UniswapV3Logic.POSITION_MANAGER.approve(msg.sender, id);
     }
 
