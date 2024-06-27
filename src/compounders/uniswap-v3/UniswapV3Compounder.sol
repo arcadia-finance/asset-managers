@@ -151,7 +151,7 @@ contract UniswapV3Compounder is IActionBase {
      * - Transfers a reward + dust amounts to the initiator.
      */
     function executeAction(bytes calldata compoundData) external override returns (ActionData memory assetData) {
-        // Caller should be the Account provided as input in compoundFees()
+        // Caller should be the Account, provided as input in compoundFees().
         if (msg.sender != account) revert OnlyAccount();
 
         // Decode compoundData.
@@ -216,10 +216,12 @@ contract UniswapV3Compounder is IActionBase {
         );
 
         // Initiator rewards are transferred to the initiator.
-        ERC20(position.token0).safeTransfer(initiator, ERC20(position.token0).balanceOf(address(this)));
-        ERC20(position.token1).safeTransfer(initiator, ERC20(position.token1).balanceOf(address(this)));
+        uint256 balance0 = ERC20(position.token0).balanceOf(address(this));
+        uint256 balance1 = ERC20(position.token1).balanceOf(address(this));
+        if (balance0 > 0) ERC20(position.token0).safeTransfer(initiator, balance0);
+        if (balance1 > 0) ERC20(position.token1).safeTransfer(initiator, balance1);
 
-        // Approve Account to deposited Liquidity Position back into the Account
+        // Approve Account to deposit Liquidity Position back into the Account.
         UniswapV3Logic.POSITION_MANAGER.approve(msg.sender, id);
     }
 
@@ -321,7 +323,7 @@ contract UniswapV3Compounder is IActionBase {
 
         if (amount0Delta > 0) {
             ERC20(token0).safeTransfer(msg.sender, uint256(amount0Delta));
-        } else {
+        } else if (amount1Delta > 0) {
             ERC20(token1).safeTransfer(msg.sender, uint256(amount1Delta));
         }
     }
