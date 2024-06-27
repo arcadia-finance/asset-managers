@@ -4,6 +4,8 @@
  */
 pragma solidity 0.8.22;
 
+import { SlipstreamCompounder_Fuzz_Test } from "./_SlipstreamCompounder.fuzz.t.sol";
+
 import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { ExactInputSingleParams } from "../../../../src/compounders/slipstream/interfaces/ISwapRouter.sol";
@@ -11,7 +13,6 @@ import { ISwapRouter } from "./_SlipstreamCompounder.fuzz.t.sol";
 import { ICLPoolExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/extensions/interfaces/ICLPoolExtension.sol";
 import { SlipstreamCompounder } from "../../../../src/compounders/slipstream/SlipstreamCompounder.sol";
-import { SlipstreamCompounder_Fuzz_Test } from "./_SlipstreamCompounder.fuzz.t.sol";
 
 /**
  * @notice Fuzz tests for the function "compoundFees" of contract "SlipstreamCompounder".

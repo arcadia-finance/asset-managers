@@ -5,7 +5,7 @@
 pragma solidity 0.8.22;
 
 library Compounders {
-    address constant SLIPSTREAM = address(0);
+    address payable constant SLIPSTREAM = payable(address(0));
     address constant UNISWAP_V3 = address(0);
 }
 

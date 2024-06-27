@@ -22,7 +22,7 @@ contract IsPoolUnbalanced_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_success_isPoolUnbalanced_true_lowerBound() public {
+    function testFuzz_Success_isPoolUnbalanced_true_lowerBound() public {
         // Given : sqrtPriceX96 < lowerBoundSqrtPriceX96
         SlipstreamCompounder.PositionState memory position;
         position.sqrtPriceX96 = 0;
@@ -35,7 +35,7 @@ contract IsPoolUnbalanced_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder
         assertEq(isPoolUnbalanced, true);
     }
 
-    function testFuzz_success_isPoolUnbalanced_true_upperBound() public {
+    function testFuzz_Success_isPoolUnbalanced_true_upperBound() public {
         // Given : sqrtPriceX96 > upperBoundSqrtPriceX96
         SlipstreamCompounder.PositionState memory position;
         position.sqrtPriceX96 = 1;
@@ -48,7 +48,7 @@ contract IsPoolUnbalanced_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder
         assertEq(isPoolUnbalanced, true);
     }
 
-    function testFuzz_success_isPoolUnbalanced_false() public {
+    function testFuzz_Success_isPoolUnbalanced_false() public {
         // Given : sqrtPriceX96 is between lower and upper bounds.
         SlipstreamCompounder.PositionState memory position;
         position.sqrtPriceX96 = 1;
