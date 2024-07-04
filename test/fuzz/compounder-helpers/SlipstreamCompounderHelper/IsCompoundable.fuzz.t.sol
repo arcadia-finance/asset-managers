@@ -43,8 +43,8 @@ contract IsCompoundable_SlipstreamCompounderHelper_Fuzz_Test is SlipstreamCompou
         // Liquidity has been added for both tokens
         (uint256 tokenId,,) = addLiquidityCL(
             usdStablePool,
-            100_000 * 10 ** token0.decimals(),
-            100_000 * 10 ** token1.decimals(),
+            1_000_000 * 10 ** token0.decimals(),
+            1_000_000 * 10 ** token1.decimals(),
             users.liquidityProvider,
             -1000,
             1000,
@@ -91,8 +91,8 @@ contract IsCompoundable_SlipstreamCompounderHelper_Fuzz_Test is SlipstreamCompou
         // Liquidity has been added for both tokens
         (uint256 tokenId,,) = addLiquidityCL(
             usdStablePool,
-            100_000 * 10 ** token0.decimals(),
-            100_000 * 10 ** token1.decimals(),
+            1_000_000 * 10 ** token0.decimals(),
+            1_000_000 * 10 ** token1.decimals(),
             users.liquidityProvider,
             -1000,
             1000,
@@ -133,8 +133,8 @@ contract IsCompoundable_SlipstreamCompounderHelper_Fuzz_Test is SlipstreamCompou
         // Liquidity has been added for both tokens
         (uint256 tokenId,,) = addLiquidityCL(
             usdStablePool,
-            100_000 * 10 ** token0.decimals(),
-            100_000 * 10 ** token1.decimals(),
+            1_000_000 * 10 ** token0.decimals(),
+            1_000_000 * 10 ** token1.decimals(),
             users.liquidityProvider,
             -1000,
             1000,
@@ -168,6 +168,84 @@ contract IsCompoundable_SlipstreamCompounderHelper_Fuzz_Test is SlipstreamCompou
         assertEq(isCompoundable_, false);
     }
 
+    function testFuzz_Success_isCompoundable_false_InsufficientToken0() public {
+        // Given : New balanced stable pool 1:1
+        token0 = new ERC20Mock("Token0", "TOK0", 18);
+        token1 = new ERC20Mock("Token1", "TOK1", 18);
+        (token0, token1) = token0 < token1 ? (token0, token1) : (token1, token0);
+
+        addAssetToArcadia(address(token0), int256(10 ** token0.decimals()));
+        addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
+
+        // Create pool with 1% trade fee.
+        uint160 sqrtPriceX96 = SlipstreamLogic._getSqrtPriceX96(1e18, 1e18);
+        usdStablePool = createPoolCL(address(token0), address(token1), 200, sqrtPriceX96, 300);
+
+        // Redeploy compounder with small initiator share
+        uint256 initiatorShare = 0.005 * 1e18;
+        deployCompounder(COMPOUND_THRESHOLD, initiatorShare, TOLERANCE);
+        deployCompounderHelper();
+
+        // Liquidity has been added for both tokens
+        (uint256 tokenId,,) = addLiquidityCL(
+            usdStablePool,
+            1_000_000 * 10 ** token0.decimals(),
+            1_000_000 * 10 ** token1.decimals(),
+            users.liquidityProvider,
+            -1000,
+            1000,
+            true
+        );
+
+        // And : Generate on one side.
+        generateFees(20, 0);
+
+        // When : Calling isCompoundable()
+        bool isCompoundable_ = compounderHelper.isCompoundable(tokenId);
+
+        // Then : It should return "false"
+        assertEq(isCompoundable_, false);
+    }
+
+    function testFuzz_Success_isCompoundable_false_InsufficientToken1() public {
+        // Given : New balanced stable pool 1:1
+        token0 = new ERC20Mock("Token0", "TOK0", 18);
+        token1 = new ERC20Mock("Token1", "TOK1", 18);
+        (token0, token1) = token0 < token1 ? (token0, token1) : (token1, token0);
+
+        addAssetToArcadia(address(token0), int256(10 ** token0.decimals()));
+        addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
+
+        // Create pool with 1% trade fee.
+        uint160 sqrtPriceX96 = SlipstreamLogic._getSqrtPriceX96(1e18, 1e18);
+        usdStablePool = createPoolCL(address(token0), address(token1), 200, sqrtPriceX96, 300);
+
+        // Redeploy compounder with small initiator share
+        uint256 initiatorShare = 0.005 * 1e18;
+        deployCompounder(COMPOUND_THRESHOLD, initiatorShare, TOLERANCE);
+        deployCompounderHelper();
+
+        // Liquidity has been added for both tokens
+        (uint256 tokenId,,) = addLiquidityCL(
+            usdStablePool,
+            1_000_000 * 10 ** token0.decimals(),
+            1_000_000 * 10 ** token1.decimals(),
+            users.liquidityProvider,
+            -1000,
+            1000,
+            true
+        );
+
+        // And : Generate on one side.
+        generateFees(0, 20);
+
+        // When : Calling isCompoundable()
+        bool isCompoundable_ = compounderHelper.isCompoundable(tokenId);
+
+        // Then : It should return "false"
+        assertEq(isCompoundable_, false);
+    }
+
     function testFuzz_Success_isCompoundable_true(SlipstreamCompounder.PositionState memory position) public {
         // Given : New balanced stable pool 1:1
         token0 = new ERC20Mock("Token0", "TOK0", 18);
@@ -183,8 +261,8 @@ contract IsCompoundable_SlipstreamCompounderHelper_Fuzz_Test is SlipstreamCompou
         // Liquidity has been added for both tokens
         (uint256 tokenId,,) = addLiquidityCL(
             usdStablePool,
-            100_000 * 10 ** token0.decimals(),
-            100_000 * 10 ** token1.decimals(),
+            1_000_000 * 10 ** token0.decimals(),
+            1_000_000 * 10 ** token1.decimals(),
             users.liquidityProvider,
             -1000,
             1000,

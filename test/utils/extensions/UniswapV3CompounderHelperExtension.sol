@@ -14,8 +14,8 @@ contract UniswapV3CompounderHelperExtension is UniswapV3CompounderHelper {
 
     function quote(PositionState memory position, bool zeroToOne, uint256 amountOut)
         public
-        returns (bool isPoolUnbalanced)
+        returns (bool isPoolUnbalanced, uint256 amountIn)
     {
-        isPoolUnbalanced = _quote(position, zeroToOne, amountOut);
+        return _quote(position, zeroToOne, amountOut);
     }
 }

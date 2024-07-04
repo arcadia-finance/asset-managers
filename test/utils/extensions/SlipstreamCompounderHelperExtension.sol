@@ -15,8 +15,8 @@ contract SlipstreamCompounderHelperExtension is SlipstreamCompounderHelper {
 
     function quote(PositionState memory position, bool zeroToOne, uint256 amountOut)
         public
-        returns (bool isPoolUnbalanced)
+        returns (bool isPoolUnbalanced, uint256 amountIn)
     {
-        isPoolUnbalanced = _quote(position, zeroToOne, amountOut);
+        return _quote(position, zeroToOne, amountOut);
     }
 }
