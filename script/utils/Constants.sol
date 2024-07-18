@@ -10,8 +10,8 @@ library Compounders {
 }
 
 library CompounderHelpers {
-    address constant SLIPSTREAM = address(0);
-    address constant UNISWAP_V3 = address(0);
+    address constant SLIPSTREAM = address(0xc8b3fe522e63671B4E1E43329b2d71Db89D4d653);
+    address constant UNISWAP_V3 = address(0x57Ec4F66a380b8f53D99c55D42c9B71FeB14FA15);
 }
 
 library Parameters {
