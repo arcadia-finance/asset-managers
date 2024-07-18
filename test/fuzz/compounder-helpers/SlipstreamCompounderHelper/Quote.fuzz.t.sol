@@ -62,7 +62,7 @@ contract Quote_SlipstreamCompounderHelper_Fuzz_Test is SlipstreamCompounderHelpe
 
         // When : Calling quote()
         // AmountOut of 42_000 will move the ticks to the right by 392 which exceeds the tolerance of 4% (1 tick +- 0,01%).
-        bool isPoolUnbalanced = compounderHelper.quote(position, true, 42_000 * 1e18);
+        (bool isPoolUnbalanced,) = compounderHelper.quote(position, true, 42_000 * 1e18);
 
         // Then : It should return "true"
         assertEq(isPoolUnbalanced, true);
@@ -102,7 +102,7 @@ contract Quote_SlipstreamCompounderHelper_Fuzz_Test is SlipstreamCompounderHelpe
 
         // When : Calling quote()
         // AmountOut of 40_000 will move the ticks to the right by 392 at limit of tolerance (still in limits)
-        bool isPoolUnbalanced = compounderHelper.quote(position, true, 40_000 * 1e18);
+        (bool isPoolUnbalanced,) = compounderHelper.quote(position, true, 40_000 * 1e18);
 
         // Then : It should return "false"
         assertEq(isPoolUnbalanced, false);

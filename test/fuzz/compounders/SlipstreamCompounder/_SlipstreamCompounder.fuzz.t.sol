@@ -182,45 +182,51 @@ abstract contract SlipstreamCompounder_Fuzz_Test is
     }
 
     function generateFees(uint256 amount0ToGenerate, uint256 amount1ToGenerate) public {
-        // Swap token0 for token1
-        uint256 amount0ToSwap = ((amount0ToGenerate * (1e6 / POOL_FEE)) * 10 ** token0.decimals());
-
-        deal(address(token0), users.liquidityProvider, amount0ToSwap, true);
-
         vm.startPrank(users.liquidityProvider);
-        token0.approve(address(swapRouter), amount0ToSwap);
+        ExactInputSingleParams memory exactInputParams;
+        // Swap token0 for token1
+        if (amount0ToGenerate > 0) {
+            uint256 amount0ToSwap = ((amount0ToGenerate * (1e6 / usdStablePool.fee())) * 10 ** token0.decimals());
 
-        ExactInputSingleParams memory exactInputParams = ExactInputSingleParams({
-            tokenIn: address(token0),
-            tokenOut: address(token1),
-            tickSpacing: TICK_SPACING,
-            recipient: users.liquidityProvider,
-            deadline: block.timestamp,
-            amountIn: amount0ToSwap,
-            amountOutMinimum: 0,
-            sqrtPriceLimitX96: 0
-        });
+            deal(address(token0), users.liquidityProvider, amount0ToSwap, true);
 
-        swapRouter.exactInputSingle(exactInputParams);
+            vm.startPrank(users.liquidityProvider);
+            token0.approve(address(swapRouter), amount0ToSwap);
+
+            exactInputParams = ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                tickSpacing: usdStablePool.tickSpacing(),
+                recipient: users.liquidityProvider,
+                deadline: block.timestamp,
+                amountIn: amount0ToSwap,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            });
+
+            swapRouter.exactInputSingle(exactInputParams);
+        }
 
         // Swap token1 for token0
-        uint256 amount1ToSwap = ((amount1ToGenerate * (1e6 / POOL_FEE)) * 10 ** token1.decimals());
+        if (amount1ToGenerate > 0) {
+            uint256 amount1ToSwap = ((amount1ToGenerate * (1e6 / usdStablePool.fee())) * 10 ** token1.decimals());
 
-        deal(address(token1), users.liquidityProvider, amount1ToSwap, true);
-        token1.approve(address(swapRouter), amount1ToSwap);
+            deal(address(token1), users.liquidityProvider, amount1ToSwap, true);
+            token1.approve(address(swapRouter), amount1ToSwap);
 
-        exactInputParams = ExactInputSingleParams({
-            tokenIn: address(token1),
-            tokenOut: address(token0),
-            tickSpacing: TICK_SPACING,
-            recipient: users.liquidityProvider,
-            deadline: block.timestamp,
-            amountIn: amount1ToSwap,
-            amountOutMinimum: 0,
-            sqrtPriceLimitX96: 0
-        });
+            exactInputParams = ExactInputSingleParams({
+                tokenIn: address(token1),
+                tokenOut: address(token0),
+                tickSpacing: usdStablePool.tickSpacing(),
+                recipient: users.liquidityProvider,
+                deadline: block.timestamp,
+                amountIn: amount1ToSwap,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            });
 
-        swapRouter.exactInputSingle(exactInputParams);
+            swapRouter.exactInputSingle(exactInputParams);
+        }
 
         vm.stopPrank();
     }

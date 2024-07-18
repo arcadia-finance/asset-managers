@@ -10,6 +10,8 @@ import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/u
 import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
 import { ICLPool } from "../interfaces/ICLPool.sol";
 import { IQuoter, QuoteExactOutputSingleParams } from "../interfaces/IQuoter.sol";
+import { LiquidityAmounts } from "../../libraries/LiquidityAmounts.sol";
+import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { SlipstreamLogic } from "../libraries/SlipstreamLogic.sol";
 
 /**
@@ -49,7 +51,7 @@ contract SlipstreamCompounderHelper {
      * @param id The id of the Liquidity Position.
      * @return isCompoundable_ Bool indicating if the fees can be compounded.
      * @dev While this function does not persist state changes, it cannot be declared as view function.
-     * Since quoteExactOutputSingle() of Slipstream's Quoter02.sol uses a try - except pattern where it first
+     * Since quoteExactOutputSingle() of Uniswap's Quoter02.sol uses a try - except pattern where it first
      * does the swap (with state changes), next it reverts (state changes are not persisted) and information about
      * the final state is passed via the error message in the expect.
      */
@@ -62,31 +64,51 @@ contract SlipstreamCompounderHelper {
         if (COMPOUNDER.isPoolUnbalanced(position)) return false;
 
         // Get fee amounts
-        Fees memory fees;
-        (fees.amount0, fees.amount1) = _getFeeAmounts(id);
+        Fees memory balances;
+        (balances.amount0, balances.amount1) = _getFeeAmounts(id);
 
         // Total value of the fees must be greater than the threshold.
-        if (COMPOUNDER.isBelowThreshold(position, fees)) return false;
+        if (COMPOUNDER.isBelowThreshold(position, balances)) return false;
 
         // Remove initiator reward from fees, these will be send to the initiator.
+        Fees memory desiredAmounts;
         uint256 initiatorShare = COMPOUNDER.INITIATOR_SHARE();
-        fees.amount0 -= fees.amount0.mulDivDown(initiatorShare, 1e18);
-        fees.amount1 -= fees.amount1.mulDivDown(initiatorShare, 1e18);
+        desiredAmounts.amount0 = balances.amount0 - balances.amount0.mulDivDown(initiatorShare, 1e18);
+        desiredAmounts.amount1 = balances.amount1 - balances.amount1.mulDivDown(initiatorShare, 1e18);
 
         // Calculate fee amounts to match ratios of current pool tick relative to ticks of the position.
-        // Pool should still be balanced after the swap.
-        (bool zeroToOne, uint256 amountOut) = COMPOUNDER.getSwapParameters(position, fees);
-        bool isPoolUnbalanced = _quote(position, zeroToOne, amountOut);
+        (bool zeroToOne, uint256 amountOut) = COMPOUNDER.getSwapParameters(position, desiredAmounts);
+        (bool isPoolUnbalanced, uint256 amountIn) = _quote(position, zeroToOne, amountOut);
 
-        isCompoundable_ = !isPoolUnbalanced;
+        // Pool should still be balanced after the swap.
+        if (isPoolUnbalanced) return false;
+
+        // Calculate balances after swap.
+        // Note that for the desiredAmounts only tokenOut is updated in SlipstreamCompounder,
+        // but not tokenIn.
+        if (zeroToOne) {
+            desiredAmounts.amount1 += amountOut;
+            balances.amount0 -= amountIn;
+            balances.amount1 += amountOut;
+        } else {
+            desiredAmounts.amount0 += amountOut;
+            balances.amount0 += amountOut;
+            balances.amount1 -= amountIn;
+        }
+
+        // The balances of the fees after swapping must be bigger than the actual input amount when increasing liquidity.
+        // Due to slippage, or for pools with high swapping fees this might not always hold.
+        (uint256 amount0, uint256 amount1) = _getLiquidityAmounts(position, desiredAmounts);
+        return (balances.amount0 > amount0 && balances.amount1 > amount1);
     }
 
     /**
      * @notice Off-chain view function to get the quote of a swap.
      * @param position Struct with the position data.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
-     * @param amountOut The amount that of tokenOut that must be swapped to.
+     * @param amountOut The amount of tokenOut that must be swapped to.
      * @return isPoolUnbalanced Bool indicating if the pool is unbalanced due to slippage after the swap.
+     * @return amountIn The amount of tokenIn that is swapped to tokenOut.
      * @dev While this function does not persist state changes, it cannot be declared as view function,
      * since quoteExactOutputSingle() of Slipstream's Quoter02.sol uses a try - except pattern where it first
      * does the swap (with state changes), next it reverts (state changes are not persisted) and information about
@@ -94,16 +116,17 @@ contract SlipstreamCompounderHelper {
      */
     function _quote(PositionState memory position, bool zeroToOne, uint256 amountOut)
         internal
-        returns (bool isPoolUnbalanced)
+        returns (bool isPoolUnbalanced, uint256 amountIn)
     {
         // Don't get quote for swaps with zero amount.
-        if (amountOut == 0) return false;
+        if (amountOut == 0) return (false, 0);
 
         // Max slippage: Pool should still be balanced after the swap.
         uint256 sqrtPriceLimitX96 = zeroToOne ? position.lowerBoundSqrtPriceX96 : position.upperBoundSqrtPriceX96;
 
         // Quote the swap.
-        (, uint160 sqrtPriceX96After,,) = QUOTER.quoteExactOutputSingle(
+        uint160 sqrtPriceX96After;
+        (amountIn, sqrtPriceX96After,,) = QUOTER.quoteExactOutputSingle(
             QuoteExactOutputSingleParams({
                 tokenIn: zeroToOne ? position.token0 : position.token1,
                 tokenOut: zeroToOne ? position.token1 : position.token0,
@@ -115,6 +138,9 @@ contract SlipstreamCompounderHelper {
 
         // Check if max slippage was exceeded (sqrtPriceLimitX96 is reached).
         isPoolUnbalanced = sqrtPriceX96After == sqrtPriceLimitX96 ? true : false;
+
+        // Update the sqrtPriceX96 of the pool.
+        position.sqrtPriceX96 = sqrtPriceX96After;
     }
 
     /**
@@ -196,5 +222,28 @@ contract SlipstreamCompounderHelper {
                 feeGrowthInside1X128 = upperFeeGrowthOutside1X128 - lowerFeeGrowthOutside1X128;
             }
         }
+    }
+
+    /**
+     * @notice returns the actual amounts of token0 and token1 when increasing liquidity,
+     * for a given position and desired amount of tokens.
+     * @param position Struct with the position data.
+     * @param amountsDesired Struct with the desired amounts of tokens supplied.
+     * @return amount0 The actual amount of token0 supplied.
+     * @return amount1 The actual amount of token1 supplied.
+     */
+    function _getLiquidityAmounts(PositionState memory position, Fees memory amountsDesired)
+        internal
+        pure
+        returns (uint256 amount0, uint256 amount1)
+    {
+        uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(int24(position.tickLower));
+        uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(int24(position.tickUpper));
+        uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
+            uint160(position.sqrtPriceX96), sqrtRatioAX96, sqrtRatioBX96, amountsDesired.amount0, amountsDesired.amount1
+        );
+        (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
+            uint160(position.sqrtPriceX96), sqrtRatioAX96, sqrtRatioBX96, liquidity
+        );
     }
 }
