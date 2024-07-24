@@ -141,6 +141,16 @@ contract IsCompoundable_SlipstreamCompounderHelper_Fuzz_Test is SlipstreamCompou
             true
         );
 
+        addLiquidityCL(
+            usdStablePool,
+            10_000_000 * 10 ** token0.decimals(),
+            10_000_000 * 10 ** token1.decimals(),
+            users.liquidityProvider,
+            -10_000,
+            10_000,
+            true
+        );
+
         {
             position.token0 = address(token0);
             position.token1 = address(token1);
@@ -154,9 +164,9 @@ contract IsCompoundable_SlipstreamCompounderHelper_Fuzz_Test is SlipstreamCompou
         generateFees(20, 20);
 
         // And : Swap to limit of tolerance (still within limits) in order for the next fee swap to exceed tolerance
-        uint256 amount0 = 100_000 * 10 ** token0.decimals();
+        uint256 amount0 = 1e18 * 10 ** token0.decimals();
         // This amount will move the ticks to the left by 395 which is at the limit of the tolerance of 4% (1 tick +- 0,01%).
-        uint256 amountOut = 40_000 * 10 ** token1.decimals();
+        uint256 amountOut = 928_660 * 10 ** token1.decimals();
 
         token0.mint(address(compounder), amount0);
         compounder.swap(position, true, amountOut);
@@ -179,7 +189,8 @@ contract IsCompoundable_SlipstreamCompounderHelper_Fuzz_Test is SlipstreamCompou
 
         // Create pool with 1% trade fee.
         uint160 sqrtPriceX96 = SlipstreamLogic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPoolCL(address(token0), address(token1), 200, sqrtPriceX96, 300);
+        usdStablePool = createPoolCL(address(token0), address(token1), 2000, sqrtPriceX96, 300);
+        usdStablePool.fee();
 
         // Redeploy compounder with small initiator share
         uint256 initiatorShare = 0.005 * 1e18;
@@ -192,8 +203,8 @@ contract IsCompoundable_SlipstreamCompounderHelper_Fuzz_Test is SlipstreamCompou
             1_000_000 * 10 ** token0.decimals(),
             1_000_000 * 10 ** token1.decimals(),
             users.liquidityProvider,
-            -1000,
-            1000,
+            -2000,
+            2000,
             true
         );
 
@@ -218,7 +229,7 @@ contract IsCompoundable_SlipstreamCompounderHelper_Fuzz_Test is SlipstreamCompou
 
         // Create pool with 1% trade fee.
         uint160 sqrtPriceX96 = SlipstreamLogic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPoolCL(address(token0), address(token1), 200, sqrtPriceX96, 300);
+        usdStablePool = createPoolCL(address(token0), address(token1), 2000, sqrtPriceX96, 300);
 
         // Redeploy compounder with small initiator share
         uint256 initiatorShare = 0.005 * 1e18;
@@ -231,8 +242,8 @@ contract IsCompoundable_SlipstreamCompounderHelper_Fuzz_Test is SlipstreamCompou
             1_000_000 * 10 ** token0.decimals(),
             1_000_000 * 10 ** token1.decimals(),
             users.liquidityProvider,
-            -1000,
-            1000,
+            -2000,
+            2000,
             true
         );
 

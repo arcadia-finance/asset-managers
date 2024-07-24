@@ -258,10 +258,10 @@ contract SlipstreamCompounder is IActionBase {
             amountOut = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, false, fees.amount1);
         } else {
             // Position is in range.
-            // Rebalance fees so that the ratio of the fee values matches with ratio of the ticks.
-            uint256 ticksCurrentToUpper = uint256(position.tickUpper - position.currentTick);
-            uint256 ticksLowerToUpper = uint256(position.tickUpper - position.tickLower);
-            uint256 targetRatio = ticksCurrentToUpper.mulDivDown(1e18, ticksLowerToUpper);
+            // Rebalance fees so that the ratio of the fee values matches with ratio of the position.
+            uint256 targetRatio = SlipstreamLogic._getTargetRatio(
+                position.sqrtPriceX96, int24(position.tickLower), int24(position.tickUpper)
+            );
 
             // Calculate the total fee value in token1 equivalent:
             uint256 fee0ValueInToken1 = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
