@@ -251,7 +251,7 @@ contract SlipstreamCompounder is IActionBase {
             // Swap full amount of token0 to token1.
             zeroToOne = true;
             amountOut = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
-        } else if (position.currentTick <= position.tickLower) {
+        } else if (position.currentTick < position.tickLower) {
             // Position is out of range and fully in token 0.
             // Swap full amount of token1 to token0.
             zeroToOne = false;

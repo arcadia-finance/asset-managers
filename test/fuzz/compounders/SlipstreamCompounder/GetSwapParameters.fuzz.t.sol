@@ -61,9 +61,7 @@ contract GetSwapParameters_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounde
         assertEq(amountOut, amountOutExpected);
     }
 
-    function testFuzz_Success_getSwapParameters_currentTickSmallerOrEqualToTickLower(TestVariables memory testVars)
-        public
-    {
+    function testFuzz_Success_getSwapParameters_currentTickSmallerThanTickLower(TestVariables memory testVars) public {
         // Given : Valid State
         (testVars,) = givenValidBalancedState(testVars);
 
@@ -71,7 +69,7 @@ contract GetSwapParameters_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounde
         setState(testVars, usdStablePool);
 
         // And : newTick = tickLower
-        int24 newTick = testVars.tickLower;
+        int24 newTick = testVars.tickLower - 1;
         usdStablePool.setCurrentTick(newTick);
 
         uint160 sqrtPriceX96AtCurrentTick = TickMath.getSqrtRatioAtTick(newTick);
