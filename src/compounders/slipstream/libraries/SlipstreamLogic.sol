@@ -116,11 +116,11 @@ library SlipstreamLogic {
         pure
         returns (uint256 targetRatio)
     {
-        uint256 sqrtPriceLower = TickMath.getSqrtRatioAtTick(tickLower);
-        uint256 sqrtPriceUpper = TickMath.getSqrtRatioAtTick(tickUpper);
+        uint256 sqrtRatioLower = TickMath.getSqrtRatioAtTick(tickLower);
+        uint256 sqrtRatioUpper = TickMath.getSqrtRatioAtTick(tickUpper);
 
-        uint256 numerator = sqrtPriceX96 - sqrtPriceLower;
-        uint256 denominator = 2 * sqrtPriceX96 - sqrtPriceLower - sqrtPriceX96 ** 2 / sqrtPriceUpper;
+        uint256 numerator = sqrtPriceX96 - sqrtRatioLower;
+        uint256 denominator = 2 * sqrtPriceX96 - sqrtRatioLower - sqrtPriceX96 ** 2 / sqrtRatioUpper;
 
         targetRatio = numerator.mulDivDown(1e18, denominator);
     }
