@@ -154,7 +154,8 @@ contract GetSwapParameters_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounde
         // And : totalFee1 is greater than totalFee0
         // And : currentTick unchanged (50/50)
         // Case for currentRatio >= targetRatio
-        testVars.feeAmount1 = bound(testVars.feeAmount1, testVars.feeAmount0 + 1000, uint256(type(uint16).max) + 1000);
+        testVars.feeAmount0 = 0;
+        testVars.feeAmount1 = bound(testVars.feeAmount1, 1000, uint256(type(uint16).max));
 
         // And : State is persisted
         setState(testVars, usdStablePool);
