@@ -86,6 +86,12 @@ contract UniswapV3Compounder is IActionBase {
     error UnbalancedPool();
 
     /* //////////////////////////////////////////////////////////////
+                                EVENTS
+    ////////////////////////////////////////////////////////////// */
+
+    event Compound(address indexed account, uint256 id);
+
+    /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
     ////////////////////////////////////////////////////////////// */
 
@@ -134,6 +140,8 @@ contract UniswapV3Compounder is IActionBase {
 
         // Reset account.
         account = address(0);
+
+        emit Compound(account_, id);
     }
 
     /**

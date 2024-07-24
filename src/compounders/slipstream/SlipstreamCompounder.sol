@@ -87,6 +87,12 @@ contract SlipstreamCompounder is IActionBase {
     error UnbalancedPool();
 
     /* //////////////////////////////////////////////////////////////
+                                EVENTS
+    ////////////////////////////////////////////////////////////// */
+
+    event Compound(address indexed account, uint256 id);
+
+    /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
     ////////////////////////////////////////////////////////////// */
 
@@ -135,6 +141,8 @@ contract SlipstreamCompounder is IActionBase {
 
         // Reset account.
         account = address(0);
+
+        emit Compound(account_, id);
     }
 
     /**
