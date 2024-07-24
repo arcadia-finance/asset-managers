@@ -102,7 +102,7 @@ library SlipstreamLogic {
      * @dev Derivation of the formula:
      * 1) The ratio is defined as:
      *    R = valueToken1 / (valueToken0 + valueToken1)
-     *    If we express all values in token1 en use the current pool price to denominate token0 in token1:
+     *    If we express all values in token1 and use the current pool price to denominate token0 in token1:
      *    R = amount1 / (amount0 * sqrtPrice² + amount1)
      * 2) Amount0 for a given liquidity position of a Slipstream pool is given as:
      *    Amount0 = liquidity * (sqrtRatioUpper - sqrtPrice) / (sqrtRatioUpper * sqrtPrice)
