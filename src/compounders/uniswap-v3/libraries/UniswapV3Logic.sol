@@ -88,8 +88,8 @@ library UniswapV3Logic {
     /**
      * @notice Calculates the ratio of how much of the total value of a liquidity position has to be provided in token1.
      * @param sqrtPriceX96 The square root of the current pool price (token1/token0), with 96 binary precision.
-     * @param tickLower The lower tick of the liquidity position.
-     * @param tickUpper The upper tick of the liquidity position.
+     * @param sqrtRatioLower The square root price of the lower tick of the liquidity position.
+     * @param sqrtRatioUpper The square root price of the upper tick of the liquidity position.
      * @return targetRatio The ratio of the value of token1 compared to the total value of the position, with 18 decimals precision.
      * @dev Function will revert for all pools where the sqrtPriceX96 is bigger than type(uint128).max.
      * type(uint128).max is currently more than enough for all supported pools.
@@ -107,14 +107,11 @@ library UniswapV3Logic {
      * 4) Combining 1), 2) and 3) and simplifying we get:
      *    R = [sqrtPrice - sqrtRatioLower] / [2 * sqrtPrice - sqrtRatioLower - sqrtPrice² / sqrtRatioUpper]
      */
-    function _getTargetRatio(uint256 sqrtPriceX96, int24 tickLower, int24 tickUpper)
+    function _getTargetRatio(uint256 sqrtPriceX96, uint256 sqrtRatioLower, uint256 sqrtRatioUpper)
         internal
         pure
         returns (uint256 targetRatio)
     {
-        uint256 sqrtRatioLower = TickMath.getSqrtRatioAtTick(tickLower);
-        uint256 sqrtRatioUpper = TickMath.getSqrtRatioAtTick(tickUpper);
-
         uint256 numerator = sqrtPriceX96 - sqrtRatioLower;
         uint256 denominator = 2 * sqrtPriceX96 - sqrtRatioLower - sqrtPriceX96 ** 2 / sqrtRatioUpper;
 

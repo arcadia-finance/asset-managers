@@ -9,10 +9,9 @@ struct PositionState {
     address token0;
     address token1;
     uint24 fee;
-    int256 tickLower;
-    int256 tickUpper;
-    int256 currentTick;
     uint256 sqrtPriceX96;
+    uint256 sqrtRatioLower;
+    uint256 sqrtRatioUpper;
     uint256 lowerBoundSqrtPriceX96;
     uint256 upperBoundSqrtPriceX96;
     uint256 usdPriceToken0;

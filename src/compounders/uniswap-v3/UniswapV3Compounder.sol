@@ -11,6 +11,7 @@ import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IAccount } from "../interfaces/IAccount.sol";
 import { IUniswapV3Pool } from "./interfaces/IUniswapV3Pool.sol";
+import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
 
 /**
@@ -58,10 +59,9 @@ contract UniswapV3Compounder is IActionBase {
         address token0;
         address token1;
         uint24 fee;
-        int256 tickLower;
-        int256 tickUpper;
-        int256 currentTick;
         uint256 sqrtPriceX96;
+        uint256 sqrtRatioLower;
+        uint256 sqrtRatioUpper;
         uint256 lowerBoundSqrtPriceX96;
         uint256 upperBoundSqrtPriceX96;
         uint256 usdPriceToken0;
@@ -246,12 +246,12 @@ contract UniswapV3Compounder is IActionBase {
         pure
         returns (bool zeroToOne, uint256 amountOut)
     {
-        if (position.currentTick >= position.tickUpper) {
+        if (position.sqrtPriceX96 >= position.sqrtRatioUpper) {
             // Position is out of range and fully in token 1.
             // Swap full amount of token0 to token1.
             zeroToOne = true;
             amountOut = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
-        } else if (position.currentTick < position.tickLower) {
+        } else if (position.sqrtPriceX96 <= position.sqrtRatioLower) {
             // Position is out of range and fully in token 0.
             // Swap full amount of token1 to token0.
             zeroToOne = false;
@@ -259,9 +259,8 @@ contract UniswapV3Compounder is IActionBase {
         } else {
             // Position is in range.
             // Rebalance fees so that the ratio of the fee values matches with ratio of the position.
-            uint256 targetRatio = UniswapV3Logic._getTargetRatio(
-                position.sqrtPriceX96, int24(position.tickLower), int24(position.tickUpper)
-            );
+            uint256 targetRatio =
+                UniswapV3Logic._getTargetRatio(position.sqrtPriceX96, position.sqrtRatioLower, position.sqrtRatioUpper);
 
             // Calculate the total fee value in token1 equivalent:
             uint256 fee0ValueInToken1 = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
@@ -339,8 +338,12 @@ contract UniswapV3Compounder is IActionBase {
      */
     function getPositionState(uint256 id) public view returns (PositionState memory position) {
         // Get data of the Liquidity Position.
-        (,, position.token0, position.token1, position.fee, position.tickLower, position.tickUpper,,,,,) =
+        int24 tickLower;
+        int24 tickUpper;
+        (,, position.token0, position.token1, position.fee, tickLower, tickUpper,,,,,) =
             UniswapV3Logic.POSITION_MANAGER.positions(id);
+        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(tickLower);
+        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(tickUpper);
 
         // Get trusted USD prices for 1e18 gwei of token0 and token1.
         (position.usdPriceToken0, position.usdPriceToken1) =
@@ -348,7 +351,7 @@ contract UniswapV3Compounder is IActionBase {
 
         // Get data of the Liquidity Pool.
         position.pool = UniswapV3Logic._computePoolAddress(position.token0, position.token1, position.fee);
-        (position.sqrtPriceX96, position.currentTick,,,,,) = IUniswapV3Pool(position.pool).slot0();
+        (position.sqrtPriceX96,,,,,,) = IUniswapV3Pool(position.pool).slot0();
 
         // Calculate the square root of the relative rate sqrt(token1/token0) from the trusted USD price of both tokens.
         uint256 trustedSqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(position.usdPriceToken0, position.usdPriceToken1);

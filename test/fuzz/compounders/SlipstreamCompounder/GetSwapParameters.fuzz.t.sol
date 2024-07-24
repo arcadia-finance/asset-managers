@@ -42,9 +42,8 @@ contract GetSwapParameters_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounde
         uint160 sqrtPriceX96AtCurrentTick = TickMath.getSqrtRatioAtTick(newTick);
 
         SlipstreamCompounder.PositionState memory position;
-        position.currentTick = newTick;
-        position.tickLower = testVars.tickLower;
-        position.tickUpper = testVars.tickUpper;
+        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(testVars.tickLower);
+        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(testVars.tickUpper);
         position.sqrtPriceX96 = sqrtPriceX96AtCurrentTick;
 
         SlipstreamCompounder.Fees memory fees;
@@ -75,9 +74,8 @@ contract GetSwapParameters_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounde
         uint160 sqrtPriceX96AtCurrentTick = TickMath.getSqrtRatioAtTick(newTick);
 
         SlipstreamCompounder.PositionState memory position;
-        position.currentTick = newTick;
-        position.tickLower = testVars.tickLower;
-        position.tickUpper = testVars.tickUpper;
+        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(testVars.tickLower);
+        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(testVars.tickUpper);
         position.sqrtPriceX96 = sqrtPriceX96AtCurrentTick;
 
         SlipstreamCompounder.Fees memory fees;
@@ -106,12 +104,11 @@ contract GetSwapParameters_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounde
         // And : State is persisted
         setState(testVars, usdStablePool);
 
-        (uint160 sqrtPriceX96, int24 currentTick,,,,) = usdStablePool.slot0();
+        (uint160 sqrtPriceX96,,,,,) = usdStablePool.slot0();
         SlipstreamCompounder.PositionState memory position;
         position.sqrtPriceX96 = sqrtPriceX96;
-        position.currentTick = currentTick;
-        position.tickLower = testVars.tickLower;
-        position.tickUpper = testVars.tickUpper;
+        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(testVars.tickLower);
+        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(testVars.tickUpper);
 
         SlipstreamCompounder.Fees memory fees;
         fees.amount0 = testVars.feeAmount0 * 10 ** token0.decimals();
@@ -158,12 +155,11 @@ contract GetSwapParameters_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounde
         // And : State is persisted
         setState(testVars, usdStablePool);
 
-        (uint256 sqrtPriceX96, int24 currentTick,,,,) = usdStablePool.slot0();
+        (uint256 sqrtPriceX96,,,,,) = usdStablePool.slot0();
         SlipstreamCompounder.PositionState memory position;
         position.sqrtPriceX96 = sqrtPriceX96;
-        position.currentTick = currentTick;
-        position.tickLower = testVars.tickLower;
-        position.tickUpper = testVars.tickUpper;
+        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(testVars.tickLower);
+        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(testVars.tickUpper);
 
         SlipstreamCompounder.Fees memory fees;
         fees.amount0 = testVars.feeAmount0 * 10 ** token0.decimals();

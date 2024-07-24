@@ -42,9 +42,8 @@ contract GetSwapParameters_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_
         uint160 sqrtPriceX96AtCurrentTick = TickMath.getSqrtRatioAtTick(newTick);
 
         UniswapV3Compounder.PositionState memory position;
-        position.currentTick = newTick;
-        position.tickLower = testVars.tickLower;
-        position.tickUpper = testVars.tickUpper;
+        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(testVars.tickLower);
+        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(testVars.tickUpper);
         position.sqrtPriceX96 = sqrtPriceX96AtCurrentTick;
 
         UniswapV3Compounder.Fees memory fees;
@@ -75,9 +74,8 @@ contract GetSwapParameters_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_
         uint160 sqrtPriceX96AtCurrentTick = TickMath.getSqrtRatioAtTick(newTick);
 
         UniswapV3Compounder.PositionState memory position;
-        position.currentTick = newTick;
-        position.tickLower = testVars.tickLower;
-        position.tickUpper = testVars.tickUpper;
+        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(testVars.tickLower);
+        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(testVars.tickUpper);
         position.sqrtPriceX96 = sqrtPriceX96AtCurrentTick;
 
         UniswapV3Compounder.Fees memory fees;
@@ -106,12 +104,11 @@ contract GetSwapParameters_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_
         // And : State is persisted
         setState(testVars, usdStablePool);
 
-        (uint160 sqrtPriceX96, int24 currentTick,,,,,) = usdStablePool.slot0();
+        (uint160 sqrtPriceX96,,,,,,) = usdStablePool.slot0();
         UniswapV3Compounder.PositionState memory position;
         position.sqrtPriceX96 = sqrtPriceX96;
-        position.currentTick = currentTick;
-        position.tickLower = testVars.tickLower;
-        position.tickUpper = testVars.tickUpper;
+        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(testVars.tickLower);
+        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(testVars.tickUpper);
 
         UniswapV3Compounder.Fees memory fees;
         fees.amount0 = testVars.feeAmount0 * 10 ** token0.decimals();
@@ -158,12 +155,11 @@ contract GetSwapParameters_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_
         // And : State is persisted
         setState(testVars, usdStablePool);
 
-        (uint256 sqrtPriceX96, int24 currentTick,,,,,) = usdStablePool.slot0();
+        (uint256 sqrtPriceX96,,,,,,) = usdStablePool.slot0();
         UniswapV3Compounder.PositionState memory position;
         position.sqrtPriceX96 = sqrtPriceX96;
-        position.currentTick = currentTick;
-        position.tickLower = testVars.tickLower;
-        position.tickUpper = testVars.tickUpper;
+        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(testVars.tickLower);
+        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(testVars.tickUpper);
 
         UniswapV3Compounder.Fees memory fees;
         fees.amount0 = testVars.feeAmount0 * 10 ** token0.decimals();
