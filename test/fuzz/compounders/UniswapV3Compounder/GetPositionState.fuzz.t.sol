@@ -5,6 +5,7 @@
 pragma solidity 0.8.22;
 
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { UniswapV3Compounder } from "./_UniswapV3Compounder.fuzz.t.sol";
 import { UniswapV3Compounder_Fuzz_Test } from "./_UniswapV3Compounder.fuzz.t.sol";
 import { UniswapV3Logic } from "../../../../src/compounders/uniswap-v3/libraries/UniswapV3Logic.sol";
@@ -40,8 +41,8 @@ contract GetPositionState_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_F
         assertEq(position.token0, address(token0));
         assertEq(position.token1, address(token1));
         assertEq(position.fee, POOL_FEE);
-        assertEq(position.tickLower, testVars.tickLower);
-        assertEq(position.tickUpper, testVars.tickUpper);
+        assertEq(position.sqrtRatioLower, TickMath.getSqrtRatioAtTick(testVars.tickLower));
+        assertEq(position.sqrtRatioUpper, TickMath.getSqrtRatioAtTick(testVars.tickUpper));
 
         uint256 priceToken0 = token0HasLowestDecimals ? 1e30 : 1e18;
         uint256 priceToken1 = token0HasLowestDecimals ? 1e18 : 1e30;
@@ -51,10 +52,9 @@ contract GetPositionState_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_F
 
         assertEq(position.pool, address(usdStablePool));
 
-        (uint160 sqrtPriceX96, int24 tick,,,,,) = usdStablePool.slot0();
+        (uint160 sqrtPriceX96,,,,,,) = usdStablePool.slot0();
 
         assertEq(position.sqrtPriceX96, sqrtPriceX96);
-        assertEq(position.currentTick, tick);
 
         uint256 trustedSqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(priceToken0, priceToken1);
         uint256 lowerBoundSqrtPriceX96 = trustedSqrtPriceX96.mulDivDown(compounder.LOWER_SQRT_PRICE_DEVIATION(), 1e18);

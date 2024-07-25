@@ -88,4 +88,37 @@ library SlipstreamLogic {
         // Unsafe cast: Cast will only overflow when priceToken0/priceToken1 >= 2^128.
         sqrtPriceX96 = uint160((sqrtPriceXd14 << FixedPoint96.RESOLUTION) / 1e14);
     }
+
+    /**
+     * @notice Calculates the ratio of how much of the total value of a liquidity position has to be provided in token1.
+     * @param sqrtPriceX96 The square root of the current pool price (token1/token0), with 96 binary precision.
+     * @param sqrtRatioLower The square root price of the lower tick of the liquidity position.
+     * @param sqrtRatioUpper The square root price of the upper tick of the liquidity position.
+     * @return targetRatio The ratio of the value of token1 compared to the total value of the position, with 18 decimals precision.
+     * @dev Function will revert for all pools where the sqrtPriceX96 is bigger than type(uint128).max.
+     * type(uint128).max is currently more than enough for all supported pools.
+     * If ever the sqrtPriceX96 of a pool exceeds type(uint128).max, a different auto compounder has to be deployed,
+     * which does two consecutive mulDivs.
+     * @dev Derivation of the formula:
+     * 1) The ratio is defined as:
+     *    R = valueToken1 / (valueToken0 + valueToken1)
+     *    If we express all values in token1 and use the current pool price to denominate token0 in token1:
+     *    R = amount1 / (amount0 * sqrtPrice² + amount1)
+     * 2) Amount0 for a given liquidity position of a Slipstream pool is given as:
+     *    Amount0 = liquidity * (sqrtRatioUpper - sqrtPrice) / (sqrtRatioUpper * sqrtPrice)
+     * 3) Amount1 for a given liquidity position of a Slipstream pool is given as:
+     *    Amount1 = liquidity * (sqrtPrice - sqrtRatioLower)
+     * 4) Combining 1), 2) and 3) and simplifying we get:
+     *    R = [sqrtPrice - sqrtRatioLower] / [2 * sqrtPrice - sqrtRatioLower - sqrtPrice² / sqrtRatioUpper]
+     */
+    function _getTargetRatio(uint256 sqrtPriceX96, uint256 sqrtRatioLower, uint256 sqrtRatioUpper)
+        internal
+        pure
+        returns (uint256 targetRatio)
+    {
+        uint256 numerator = sqrtPriceX96 - sqrtRatioLower;
+        uint256 denominator = 2 * sqrtPriceX96 - sqrtRatioLower - sqrtPriceX96 ** 2 / sqrtRatioUpper;
+
+        targetRatio = numerator.mulDivDown(1e18, denominator);
+    }
 }

@@ -42,9 +42,8 @@ contract GetSwapParameters_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounde
         uint160 sqrtPriceX96AtCurrentTick = TickMath.getSqrtRatioAtTick(newTick);
 
         SlipstreamCompounder.PositionState memory position;
-        position.currentTick = newTick;
-        position.tickLower = testVars.tickLower;
-        position.tickUpper = testVars.tickUpper;
+        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(testVars.tickLower);
+        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(testVars.tickUpper);
         position.sqrtPriceX96 = sqrtPriceX96AtCurrentTick;
 
         SlipstreamCompounder.Fees memory fees;
@@ -61,9 +60,7 @@ contract GetSwapParameters_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounde
         assertEq(amountOut, amountOutExpected);
     }
 
-    function testFuzz_Success_getSwapParameters_currentTickSmallerOrEqualToTickLower(TestVariables memory testVars)
-        public
-    {
+    function testFuzz_Success_getSwapParameters_currentTickSmallerThanTickLower(TestVariables memory testVars) public {
         // Given : Valid State
         (testVars,) = givenValidBalancedState(testVars);
 
@@ -71,15 +68,14 @@ contract GetSwapParameters_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounde
         setState(testVars, usdStablePool);
 
         // And : newTick = tickLower
-        int24 newTick = testVars.tickLower;
+        int24 newTick = testVars.tickLower - 1;
         usdStablePool.setCurrentTick(newTick);
 
         uint160 sqrtPriceX96AtCurrentTick = TickMath.getSqrtRatioAtTick(newTick);
 
         SlipstreamCompounder.PositionState memory position;
-        position.currentTick = newTick;
-        position.tickLower = testVars.tickLower;
-        position.tickUpper = testVars.tickUpper;
+        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(testVars.tickLower);
+        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(testVars.tickUpper);
         position.sqrtPriceX96 = sqrtPriceX96AtCurrentTick;
 
         SlipstreamCompounder.Fees memory fees;
@@ -108,12 +104,11 @@ contract GetSwapParameters_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounde
         // And : State is persisted
         setState(testVars, usdStablePool);
 
-        (uint160 sqrtPriceX96, int24 currentTick,,,,) = usdStablePool.slot0();
+        (uint160 sqrtPriceX96,,,,,) = usdStablePool.slot0();
         SlipstreamCompounder.PositionState memory position;
         position.sqrtPriceX96 = sqrtPriceX96;
-        position.currentTick = currentTick;
-        position.tickLower = testVars.tickLower;
-        position.tickUpper = testVars.tickUpper;
+        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(testVars.tickLower);
+        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(testVars.tickUpper);
 
         SlipstreamCompounder.Fees memory fees;
         fees.amount0 = testVars.feeAmount0 * 10 ** token0.decimals();
@@ -128,9 +123,12 @@ contract GetSwapParameters_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounde
         uint256 expectedAmountOut;
         {
             // Calculate targetRatio
-            uint256 ticksCurrentToUpper = uint256(position.tickUpper - position.currentTick);
-            uint256 ticksLowerToUpper = uint256(position.tickUpper - position.tickLower);
-            uint256 targetRatio = ticksCurrentToUpper.mulDivDown(1e18, ticksLowerToUpper);
+            uint256 sqrtPriceLower = TickMath.getSqrtRatioAtTick(testVars.tickLower);
+            uint256 sqrtPriceUpper = TickMath.getSqrtRatioAtTick(testVars.tickUpper);
+            uint256 numerator = position.sqrtPriceX96 - sqrtPriceLower;
+            uint256 denominator =
+                2 * position.sqrtPriceX96 - sqrtPriceLower - position.sqrtPriceX96 ** 2 / sqrtPriceUpper;
+            uint256 targetRatio = numerator.mulDivDown(1e18, denominator);
 
             // Calculate the total fee value in token1 equivalent:
             uint256 fee0ValueInToken1 = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
@@ -151,17 +149,17 @@ contract GetSwapParameters_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounde
         // And : totalFee1 is greater than totalFee0
         // And : currentTick unchanged (50/50)
         // Case for currentRatio >= targetRatio
-        testVars.feeAmount1 = bound(testVars.feeAmount1, testVars.feeAmount0 + 1, uint256(type(uint16).max) + 1);
+        testVars.feeAmount0 = 0;
+        testVars.feeAmount1 = bound(testVars.feeAmount1, 1000, uint256(type(uint16).max));
 
         // And : State is persisted
         setState(testVars, usdStablePool);
 
-        (uint160 sqrtPriceX96, int24 currentTick,,,,) = usdStablePool.slot0();
+        (uint256 sqrtPriceX96,,,,,) = usdStablePool.slot0();
         SlipstreamCompounder.PositionState memory position;
         position.sqrtPriceX96 = sqrtPriceX96;
-        position.currentTick = currentTick;
-        position.tickLower = testVars.tickLower;
-        position.tickUpper = testVars.tickUpper;
+        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(testVars.tickLower);
+        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(testVars.tickUpper);
 
         SlipstreamCompounder.Fees memory fees;
         fees.amount0 = testVars.feeAmount0 * 10 ** token0.decimals();
@@ -176,9 +174,12 @@ contract GetSwapParameters_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounde
         uint256 expectedAmountOut;
         {
             // Calculate targetRatio
-            uint256 ticksCurrentToUpper = uint256(position.tickUpper - position.currentTick);
-            uint256 ticksLowerToUpper = uint256(position.tickUpper - position.tickLower);
-            uint256 targetRatio = ticksCurrentToUpper.mulDivDown(1e18, ticksLowerToUpper);
+            uint256 sqrtPriceLower = TickMath.getSqrtRatioAtTick(testVars.tickLower);
+            uint256 sqrtPriceUpper = TickMath.getSqrtRatioAtTick(testVars.tickUpper);
+            uint256 numerator = position.sqrtPriceX96 - sqrtPriceLower;
+            uint256 denominator =
+                2 * position.sqrtPriceX96 - sqrtPriceLower - position.sqrtPriceX96 ** 2 / sqrtPriceUpper;
+            uint256 targetRatio = numerator.mulDivDown(1e18, denominator);
 
             // Calculate the total fee value in token1 equivalent:
             uint256 fee0ValueInToken1 = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
@@ -186,7 +187,7 @@ contract GetSwapParameters_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounde
             uint256 currentRatio = fees.amount1.mulDivDown(1e18, totalFeeValueInToken1);
 
             uint256 amountIn = (currentRatio - targetRatio).mulDivDown(totalFeeValueInToken1, 1e18);
-            expectedAmountOut = amountOut = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, false, amountIn);
+            expectedAmountOut = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, false, amountIn);
         }
 
         assertEq(amountOut, expectedAmountOut);

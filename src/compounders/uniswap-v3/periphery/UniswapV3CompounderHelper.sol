@@ -237,13 +237,18 @@ contract UniswapV3CompounderHelper {
         pure
         returns (uint256 amount0, uint256 amount1)
     {
-        uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(int24(position.tickLower));
-        uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(int24(position.tickUpper));
         uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
-            uint160(position.sqrtPriceX96), sqrtRatioAX96, sqrtRatioBX96, amountsDesired.amount0, amountsDesired.amount1
+            uint160(position.sqrtPriceX96),
+            uint160(position.sqrtRatioLower),
+            uint160(position.sqrtRatioUpper),
+            amountsDesired.amount0,
+            amountsDesired.amount1
         );
         (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
-            uint160(position.sqrtPriceX96), sqrtRatioAX96, sqrtRatioBX96, liquidity
+            uint160(position.sqrtPriceX96),
+            uint160(position.sqrtRatioLower),
+            uint160(position.sqrtRatioUpper),
+            liquidity
         );
     }
 }

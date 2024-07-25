@@ -12,6 +12,7 @@ import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/util
 import { IAccount } from "../interfaces/IAccount.sol";
 import { ICLPool } from "./interfaces/ICLPool.sol";
 import { SlipstreamLogic } from "./libraries/SlipstreamLogic.sol";
+import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 
 /**
  * @title Permissionless and Stateless Compounder for Slipstream Liquidity Positions.
@@ -58,10 +59,9 @@ contract SlipstreamCompounder is IActionBase {
         address token0;
         address token1;
         int24 tickSpacing;
-        int256 tickLower;
-        int256 tickUpper;
-        int256 currentTick;
         uint256 sqrtPriceX96;
+        uint256 sqrtRatioLower;
+        uint256 sqrtRatioUpper;
         uint256 lowerBoundSqrtPriceX96;
         uint256 upperBoundSqrtPriceX96;
         uint256 usdPriceToken0;
@@ -85,6 +85,12 @@ contract SlipstreamCompounder is IActionBase {
     error OnlyPositionManager();
     error Reentered();
     error UnbalancedPool();
+
+    /* //////////////////////////////////////////////////////////////
+                                EVENTS
+    ////////////////////////////////////////////////////////////// */
+
+    event Compound(address indexed account, uint256 id);
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -135,6 +141,8 @@ contract SlipstreamCompounder is IActionBase {
 
         // Reset account.
         account = address(0);
+
+        emit Compound(account_, id);
     }
 
     /**
@@ -246,22 +254,21 @@ contract SlipstreamCompounder is IActionBase {
         pure
         returns (bool zeroToOne, uint256 amountOut)
     {
-        if (position.currentTick >= position.tickUpper) {
+        if (position.sqrtPriceX96 >= position.sqrtRatioUpper) {
             // Position is out of range and fully in token 1.
             // Swap full amount of token0 to token1.
             zeroToOne = true;
             amountOut = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
-        } else if (position.currentTick <= position.tickLower) {
+        } else if (position.sqrtPriceX96 <= position.sqrtRatioLower) {
             // Position is out of range and fully in token 0.
             // Swap full amount of token1 to token0.
             zeroToOne = false;
             amountOut = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, false, fees.amount1);
         } else {
             // Position is in range.
-            // Rebalance fees so that the ratio of the fee values matches with ratio of the ticks.
-            uint256 ticksCurrentToUpper = uint256(position.tickUpper - position.currentTick);
-            uint256 ticksLowerToUpper = uint256(position.tickUpper - position.tickLower);
-            uint256 targetRatio = ticksCurrentToUpper.mulDivDown(1e18, ticksLowerToUpper);
+            // Rebalance fees so that the ratio of the fee values matches with ratio of the position.
+            uint256 targetRatio =
+                SlipstreamLogic._getTargetRatio(position.sqrtPriceX96, position.sqrtRatioLower, position.sqrtRatioUpper);
 
             // Calculate the total fee value in token1 equivalent:
             uint256 fee0ValueInToken1 = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
@@ -339,8 +346,12 @@ contract SlipstreamCompounder is IActionBase {
      */
     function getPositionState(uint256 id) public view returns (PositionState memory position) {
         // Get data of the Liquidity Position.
-        (,, position.token0, position.token1, position.tickSpacing, position.tickLower, position.tickUpper,,,,,) =
+        int24 tickLower;
+        int24 tickUpper;
+        (,, position.token0, position.token1, position.tickSpacing, tickLower, tickUpper,,,,,) =
             SlipstreamLogic.POSITION_MANAGER.positions(id);
+        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(tickLower);
+        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(tickUpper);
 
         // Get trusted USD prices for 1e18 gwei of token0 and token1.
         (position.usdPriceToken0, position.usdPriceToken1) =
@@ -348,7 +359,7 @@ contract SlipstreamCompounder is IActionBase {
 
         // Get data of the Liquidity Pool.
         position.pool = SlipstreamLogic._computePoolAddress(position.token0, position.token1, position.tickSpacing);
-        (position.sqrtPriceX96, position.currentTick,,,,) = ICLPool(position.pool).slot0();
+        (position.sqrtPriceX96,,,,,) = ICLPool(position.pool).slot0();
 
         // Calculate the square root of the relative rate sqrt(token1/token0) from the trusted USD price of both tokens.
         uint256 trustedSqrtPriceX96 = SlipstreamLogic._getSqrtPriceX96(position.usdPriceToken0, position.usdPriceToken1);

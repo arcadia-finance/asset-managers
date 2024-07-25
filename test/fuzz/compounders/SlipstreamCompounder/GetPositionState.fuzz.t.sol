@@ -8,6 +8,7 @@ import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/u
 import { SlipstreamCompounder } from "../../../../src/compounders/slipstream/SlipstreamCompounder.sol";
 import { SlipstreamCompounder_Fuzz_Test } from "./_SlipstreamCompounder.fuzz.t.sol";
 import { SlipstreamLogic } from "../../../../src/compounders/slipstream/libraries/SlipstreamLogic.sol";
+import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 
 /**
  * @notice Fuzz tests for the function "_getPositionState" of contract "SlipstreamCompounder".
@@ -40,8 +41,8 @@ contract GetPositionState_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder
         assertEq(position.token0, address(token0));
         assertEq(position.token1, address(token1));
         assertEq(position.tickSpacing, TICK_SPACING);
-        assertEq(position.tickLower, testVars.tickLower);
-        assertEq(position.tickUpper, testVars.tickUpper);
+        assertEq(position.sqrtRatioLower, TickMath.getSqrtRatioAtTick(testVars.tickLower));
+        assertEq(position.sqrtRatioUpper, TickMath.getSqrtRatioAtTick(testVars.tickUpper));
 
         uint256 priceToken0 = token0HasLowestDecimals ? 1e30 : 1e18;
         uint256 priceToken1 = token0HasLowestDecimals ? 1e18 : 1e30;
@@ -51,10 +52,9 @@ contract GetPositionState_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder
 
         assertEq(position.pool, address(usdStablePool));
 
-        (uint160 sqrtPriceX96, int24 tick,,,,) = usdStablePool.slot0();
+        (uint160 sqrtPriceX96,,,,,) = usdStablePool.slot0();
 
         assertEq(position.sqrtPriceX96, sqrtPriceX96);
-        assertEq(position.currentTick, tick);
 
         uint256 trustedSqrtPriceX96 = SlipstreamLogic._getSqrtPriceX96(priceToken0, priceToken1);
         uint256 lowerBoundSqrtPriceX96 = trustedSqrtPriceX96.mulDivDown(compounder.LOWER_SQRT_PRICE_DEVIATION(), 1e18);
