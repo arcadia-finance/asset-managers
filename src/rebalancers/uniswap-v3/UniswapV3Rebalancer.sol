@@ -20,7 +20,7 @@ import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/l
 import { UniswapV3Logic } from "../../libraries/UniswapV3Logic.sol";
 
 /**
- * @title Permissioned Rebalancer for Uniswap V3 Liquidity Positions.
+ * @title Permissioned rebalancer for Uniswap V3 Liquidity Positions.
  * @author Pragma Labs
  * @notice
  * @dev
@@ -32,8 +32,8 @@ contract UniswapV3Rebalancer is IActionBase {
                                 CONSTANTS
     ////////////////////////////////////////////////////////////// */
 
-    // The share of the fees that are paid as reward to the initiator, with 18 decimals precision.
-    uint256 public immutable REBALANCING_FEE;
+    // The max fees that are paid as reward to the initiator, with 18 decimals precision.
+    uint256 public immutable MAX_INITIATOR_FEE;
     // The maximum lower deviation of the pools actual sqrtPriceX96,
     // relative to the sqrtPriceX96 calculated with trusted price feeds, with 18 decimals precision.
     uint256 public immutable LOWER_SQRT_PRICE_DEVIATION;
@@ -48,10 +48,12 @@ contract UniswapV3Rebalancer is IActionBase {
     // The Account to compound the fees for, used as transient storage.
     address internal account;
 
-    //
-    mapping(address owner => mapping(uint256 positionId => address rebalancer)) public ownerToIdToRebalancer;
+    // A mapping that sets an initiator per position of an owner.
+    // An initiator is approved by the owner to rebalance its specified uniswapV3 position.
+    mapping(address owner => mapping(uint256 positionId => address initiator)) public ownerToIdToInitiator;
 
-    // TODO : mapping rebalancing fee for rebalancer
+    // A mapping from initiator to rebalancing fee.
+    mapping(address initiator => uint256 fee) public initiatorFee;
 
     // A struct with the state of a specific position, only used in memory.
     struct PositionState {
@@ -75,12 +77,14 @@ contract UniswapV3Rebalancer is IActionBase {
                                 ERRORS
     ////////////////////////////////////////////////////////////// */
 
+    error FeeAlreadySet();
+    error MaxInitiatorFee();
     error NotAnAccount();
     error OnlyAccount();
     error OnlyPool();
-    error RebalancerNotValid();
     error Reentered();
     error UnbalancedPool();
+    error InitiatorNotValid();
 
     /* //////////////////////////////////////////////////////////////
                                 EVENTS
@@ -116,7 +120,7 @@ contract UniswapV3Rebalancer is IActionBase {
         // Store Account address, used to validate the caller of the executeAction() callback.
         if (account != address(0)) revert Reentered();
         if (!ArcadiaLogic.FACTORY.isAccount(account_)) revert NotAnAccount();
-        if (ownerToIdToRebalancer[IAccount(account_).owner()][id] != msg.sender) revert RebalancerNotValid();
+        if (ownerToIdToInitiator[IAccount(account_).owner()][id] != msg.sender) revert InitiatorNotValid();
 
         account = account_;
 
@@ -135,7 +139,7 @@ contract UniswapV3Rebalancer is IActionBase {
 
     /**
      * @notice Callback function called by the Arcadia Account during a flashAction.
-     * @param rebalanceData A bytes object containing a struct with the assetData of the position and the address of the rebalancer.
+     * @param rebalanceData A bytes object containing a struct with the assetData of the position and the address of the initiator.
      * @return assetData A struct with the asset data of the Liquidity Position.
      * @dev The Liquidity Position is already transferred to this contract before executeAction() is called.
      */
@@ -146,8 +150,8 @@ contract UniswapV3Rebalancer is IActionBase {
         if (msg.sender != account_) revert OnlyAccount();
 
         // Decode rebalanceData.
-        address rebalancer;
-        (assetData, rebalancer) = abi.decode(rebalanceData, (ActionData, address));
+        address initiator;
+        (assetData, initiator) = abi.decode(rebalanceData, (ActionData, address));
         uint256 id = assetData.assetIds[0];
 
         // Fetch and cache all position related data.
@@ -204,6 +208,20 @@ contract UniswapV3Rebalancer is IActionBase {
 
         // Approve ActionHandler to deposit Liquidity Position back into the Account.
         UniswapV3Logic.POSITION_MANAGER.approve(msg.sender, newTokenId);
+    }
+
+    /* ///////////////////////////////////////////////////////////////
+                        INITIATORS LOGIC
+    /////////////////////////////////////////////////////////////// */
+
+    function setInitiatorForPosition(address initiator, uint256 tokenId) external {
+        ownerToIdToInitiator[msg.sender][tokenId] = initiator;
+    }
+
+    function setInitiatorFee(uint24 fee) external {
+        if (initiatorFee[msg.sender] > 0) revert FeeAlreadySet();
+        if (fee > MAX_INITIATOR_FEE) revert MaxInitiatorFee();
+        initiatorFee[msg.sender] = fee;
     }
 
     /* ///////////////////////////////////////////////////////////////
