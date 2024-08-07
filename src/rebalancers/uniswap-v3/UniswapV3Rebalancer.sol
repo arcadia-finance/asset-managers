@@ -6,7 +6,11 @@ pragma solidity 0.8.22;
 
 import { ActionData, IActionBase } from "../../../lib/accounts-v2/src/interfaces/IActionBase.sol";
 import { ArcadiaLogic } from "../../libraries/ArcadiaLogic.sol";
-import { CollectParams, IncreaseLiquidityParams } from "./interfaces/INonfungiblePositionManager.sol";
+import {
+    CollectParams,
+    DecreaseLiquidityParams,
+    MintParams
+} from "../../interfaces/uniswap-v3/INonfungiblePositionManager.sol";
 import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IAccount } from "../../interfaces/IAccount.sol";
@@ -21,7 +25,7 @@ import { UniswapV3Logic } from "../../libraries/UniswapV3Logic.sol";
  * @notice
  * @dev
  */
-contract UniswapV3Rebalancer {
+contract UniswapV3Rebalancer is IActionBase {
     using FixedPointMathLib for uint256;
     using SafeTransferLib for ERC20;
     /* //////////////////////////////////////////////////////////////
@@ -55,8 +59,8 @@ contract UniswapV3Rebalancer {
         address token0;
         address token1;
         uint24 fee;
-        uint24 newUpperTick;
-        uint24 newLowerTick;
+        int24 newUpperTick;
+        int24 newLowerTick;
         uint128 liquidity;
         uint256 sqrtPriceX96;
         uint256 sqrtRatioLower;
@@ -73,6 +77,7 @@ contract UniswapV3Rebalancer {
 
     error NotAnAccount();
     error OnlyAccount();
+    error OnlyPool();
     error RebalancerNotValid();
     error Reentered();
     error UnbalancedPool();
@@ -87,10 +92,19 @@ contract UniswapV3Rebalancer {
                             CONSTRUCTOR
     ////////////////////////////////////////////////////////////// */
 
-    constructor() { }
+    /**
+     * @param tolerance The maximum deviation of the actual pool price,
+     * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
+     */
+    constructor(uint256 tolerance) {
+        // SQRT_PRICE_DEVIATION is the square root of maximum/minimum price deviation.
+        // Sqrt halves the number of decimals.
+        LOWER_SQRT_PRICE_DEVIATION = FixedPointMathLib.sqrt((1e18 - tolerance) * 1e18);
+        UPPER_SQRT_PRICE_DEVIATION = FixedPointMathLib.sqrt((1e18 + tolerance) * 1e18);
+    }
 
     /* ///////////////////////////////////////////////////////////////
-                             COMPOUNDING LOGIC
+                             REBALANCING LOGIC
     /////////////////////////////////////////////////////////////// */
 
     /**
@@ -121,16 +135,17 @@ contract UniswapV3Rebalancer {
 
     /**
      * @notice Callback function called by the Arcadia Account during a flashAction.
-     * @param rebalanceData ez
-     * @return
-     * @dev
+     * @param rebalanceData A bytes object containing a struct with the assetData of the position and the address of the rebalancer.
+     * @return assetData A struct with the asset data of the Liquidity Position.
+     * @dev The Liquidity Position is already transferred to this contract before executeAction() is called.
      */
     function executeAction(bytes calldata rebalanceData) external override returns (ActionData memory assetData) {
-        // Caller should be the Account, provided as input in compoundFees().
-        if (msg.sender != account) revert OnlyAccount();
+        // Cache account
+        address account_ = account;
+        // Caller should be the Account, provided as input in rebalancePosition().
+        if (msg.sender != account_) revert OnlyAccount();
 
-        // Decode compoundData.
-        // TODO : assetData should be with the new minted tokenId now.
+        // Decode rebalanceData.
         address rebalancer;
         (assetData, rebalancer) = abi.decode(rebalanceData, (ActionData, address));
         uint256 id = assetData.assetIds[0];
@@ -138,13 +153,14 @@ contract UniswapV3Rebalancer {
         // Fetch and cache all position related data.
         PositionState memory position = getPositionState(id);
 
-        // Check that liquidity is not too big compared to total liquidity
+        // TODO: Check that liquidity is not too big compared to total liquidity
 
         // Check that pool is initially balanced.
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
         if (isPoolUnbalanced(position)) revert UnbalancedPool();
 
-        // Rebalance the position so that the maximum liquidity can be added at 50/50 token ratio and same tick spacing.
+        // Rebalance the position so that the maximum liquidity can be added at 50/50 ration around current price.
+        // Use same tick spacing for rebalancing.
         // The Pool must still be balanced after the swap.
         (bool zeroToOne, uint256 amountOut) = getSwapParameters(position, id);
         if (_swap(position, zeroToOne, amountOut)) revert UnbalancedPool();
@@ -153,29 +169,41 @@ contract UniswapV3Rebalancer {
         // The approval for at least one token after increasing liquidity will remain non-zero.
         // We have to set approval first to 0 for ERC20 tokens that require the approval to be set to zero
         // before setting it to a non-zero value.
+        uint256 balance0 = ERC20(position.token0).balanceOf(address(this));
+        uint256 balance1 = ERC20(position.token1).balanceOf(address(this));
         ERC20(position.token0).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), 0);
-        ERC20(position.token0).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), fees.amount0);
+        ERC20(position.token0).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), balance0);
         ERC20(position.token1).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), 0);
-        ERC20(position.token1).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), fees.amount1);
-        UniswapV3Logic.POSITION_MANAGER.increaseLiquidity(
-            IncreaseLiquidityParams({
-                tokenId: id,
-                amount0Desired: fees.amount0,
-                amount1Desired: fees.amount1,
+        ERC20(position.token1).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), balance1);
+
+        (uint256 newTokenId,, uint256 amount0, uint256 amount1) = UniswapV3Logic.POSITION_MANAGER.mint(
+            MintParams({
+                token0: position.token0,
+                token1: position.token1,
+                fee: position.fee,
+                tickLower: position.newLowerTick,
+                tickUpper: position.newUpperTick,
+                amount0Desired: balance0,
+                amount1Desired: balance1,
                 amount0Min: 0,
                 amount1Min: 0,
+                // TODO: send direct to actionHandler ?
+                recipient: address(this),
                 deadline: block.timestamp
             })
         );
 
-        // Initiator rewards are transferred to the initiator.
-        uint256 balance0 = ERC20(position.token0).balanceOf(address(this));
-        uint256 balance1 = ERC20(position.token1).balanceOf(address(this));
-        if (balance0 > 0) ERC20(position.token0).safeTransfer(initiator, balance0);
-        if (balance1 > 0) ERC20(position.token1).safeTransfer(initiator, balance1);
+        // Update the tokenId for newly minted position
+        assetData.assetIds[0] = newTokenId;
 
-        // Approve Account to deposit Liquidity Position back into the Account.
-        UniswapV3Logic.POSITION_MANAGER.approve(msg.sender, id);
+        // Any surplus is transferred to the Account.
+        balance0 -= amount0;
+        balance1 -= amount1;
+        if (balance0 > 0) ERC20(position.token0).safeTransfer(account_, balance0);
+        if (balance1 > 0) ERC20(position.token1).safeTransfer(account_, balance1);
+
+        // Approve ActionHandler to deposit Liquidity Position back into the Account.
+        UniswapV3Logic.POSITION_MANAGER.approve(msg.sender, newTokenId);
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -196,7 +224,6 @@ contract UniswapV3Rebalancer {
      */
     function getSwapParameters(PositionState memory position, uint256 id)
         public
-        pure
         returns (bool zeroToOne, uint256 amountOut)
     {
         // Remove liquidity of the position and claim outstanding fees to get full amounts of token0 and token1
@@ -318,11 +345,11 @@ contract UniswapV3Rebalancer {
 
         // Get data of the Liquidity Pool.
         position.pool = UniswapV3Logic._computePoolAddress(position.token0, position.token1, position.fee);
-        uint24 currentTick;
+        int24 currentTick;
         (position.sqrtPriceX96, currentTick,,,,,) = IUniswapV3Pool(position.pool).slot0();
 
         // Store the new ticks for the rebalance
-        uint24 tickSpacing = uint24((tickUpper - tickLower) / 2);
+        int24 tickSpacing = (tickUpper - tickLower) / 2;
         position.newUpperTick = currentTick + tickSpacing;
         position.newLowerTick = currentTick - tickSpacing;
 
