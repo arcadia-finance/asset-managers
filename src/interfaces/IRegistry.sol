@@ -4,7 +4,7 @@
  */
 pragma solidity 0.8.22;
 
-import { AssetValueAndRiskFactors } from "../../../lib/accounts-v2/src/libraries/AssetValuationLib.sol";
+import { AssetValueAndRiskFactors } from "../../lib/accounts-v2/src/libraries/AssetValuationLib.sol";
 
 interface IRegistry {
     function getValuesInUsd(

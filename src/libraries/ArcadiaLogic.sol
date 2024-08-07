@@ -4,10 +4,10 @@
  */
 pragma solidity 0.8.22;
 
-import { ActionData } from "../../../lib/accounts-v2/src/interfaces/IActionBase.sol";
-import { AssetValueAndRiskFactors } from "../../../lib/accounts-v2/src/libraries/AssetValuationLib.sol";
+import { ActionData } from "../../lib/accounts-v2/src/interfaces/IActionBase.sol";
+import { AssetValueAndRiskFactors } from "../../lib/accounts-v2/src/libraries/AssetValuationLib.sol";
 import { IFactory } from "../interfaces/IFactory.sol";
-import { IPermit2 } from "../../../lib/accounts-v2/src/interfaces/IPermit2.sol";
+import { IPermit2 } from "../../lib/accounts-v2/src/interfaces/IPermit2.sol";
 import { IRegistry } from "../interfaces/IRegistry.sol";
 
 library ArcadiaLogic {

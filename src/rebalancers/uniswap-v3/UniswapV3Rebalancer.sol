@@ -11,34 +11,25 @@ import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IAccount } from "../../interfaces/IAccount.sol";
 import { IUniswapV3Pool } from "./interfaces/IUniswapV3Pool.sol";
+import { LiquidityAmounts } from "../../libraries/LiquidityAmounts.sol";
 import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { UniswapV3Logic } from "../../libraries/UniswapV3Logic.sol";
 
 /**
- * @title Permissionless and Stateless Compounder for UniswapV3 Liquidity Positions.
+ * @title Permissioned Rebalancer for Uniswap V3 Liquidity Positions.
  * @author Pragma Labs
- * @notice The Compounder will act as an Asset Manager for Arcadia Accounts.
- * It will allow third parties to trigger the compounding functionality for a Uniswap V3 Liquidity Position in the Account.
- * Compounding can only be triggered if certain conditions are met and the initiator will get a small fee for the service provided.
- * The compounding will collect the fees earned by a position and increase the liquidity of the position by those fees.
- * Depending on current tick of the pool and the position range, fees will be deposited in appropriate ratio.
- * @dev The contract prevents frontrunning/sandwiching by comparing the actual pool price with a pool price calculated from trusted
- * price feeds (oracles).
- * Some oracles can however deviate from the actual price by a few percent points, this could potentially open attack vectors by manipulating
- * pools and sandwiching the swap and/or increase liquidity. This asset manager should not be used for Arcadia Account that have/will have
- * Uniswap V3 Liquidity Positions where one of the underlying assets is priced with such low precision oracles.
+ * @notice
+ * @dev
  */
-contract UniswapV3Compounder is IActionBase {
+contract UniswapV3Rebalancer {
     using FixedPointMathLib for uint256;
     using SafeTransferLib for ERC20;
     /* //////////////////////////////////////////////////////////////
                                 CONSTANTS
     ////////////////////////////////////////////////////////////// */
 
-    // Minimum fees value in USD to trigger the compounding of a position, with 18 decimals precision.
-    uint256 public immutable COMPOUND_THRESHOLD;
     // The share of the fees that are paid as reward to the initiator, with 18 decimals precision.
-    uint256 public immutable INITIATOR_SHARE;
+    uint256 public immutable REBALANCING_FEE;
     // The maximum lower deviation of the pools actual sqrtPriceX96,
     // relative to the sqrtPriceX96 calculated with trusted price feeds, with 18 decimals precision.
     uint256 public immutable LOWER_SQRT_PRICE_DEVIATION;
@@ -53,12 +44,20 @@ contract UniswapV3Compounder is IActionBase {
     // The Account to compound the fees for, used as transient storage.
     address internal account;
 
+    //
+    mapping(address owner => mapping(uint256 positionId => address rebalancer)) public ownerToIdToRebalancer;
+
+    // TODO : mapping rebalancing fee for rebalancer
+
     // A struct with the state of a specific position, only used in memory.
     struct PositionState {
         address pool;
         address token0;
         address token1;
         uint24 fee;
+        uint24 newUpperTick;
+        uint24 newLowerTick;
+        uint128 liquidity;
         uint256 sqrtPriceX96;
         uint256 sqrtRatioLower;
         uint256 sqrtRatioUpper;
@@ -68,20 +67,13 @@ contract UniswapV3Compounder is IActionBase {
         uint256 usdPriceToken1;
     }
 
-    // A struct with variables to track the fee balances, only used in memory.
-    struct Fees {
-        uint256 amount0;
-        uint256 amount1;
-    }
-
     /* //////////////////////////////////////////////////////////////
                                 ERRORS
     ////////////////////////////////////////////////////////////// */
 
-    error BelowThreshold();
     error NotAnAccount();
     error OnlyAccount();
-    error OnlyPool();
+    error RebalancerNotValid();
     error Reentered();
     error UnbalancedPool();
 
@@ -89,46 +81,29 @@ contract UniswapV3Compounder is IActionBase {
                                 EVENTS
     ////////////////////////////////////////////////////////////// */
 
-    event Compound(address indexed account, uint256 id);
+    event Rebalance(address indexed account, uint256 id);
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
     ////////////////////////////////////////////////////////////// */
 
-    /**
-     * @param compoundThreshold The minimum USD value that the compounded fees should have
-     * before a compoundFees() can be called, with 18 decimals precision.
-     * @param initiatorShare The share of the fees paid to the initiator as reward, with 18 decimals precision.
-     * @param tolerance The maximum deviation of the actual pool price,
-     * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
-     * @dev The tolerance for the pool price will be converted to an upper and lower max sqrtPrice deviation,
-     * using the square root of the basis (one with 18 decimals precision) +- tolerance (18 decimals precision).
-     * The tolerance boundaries are symmetric around the price, but taking the square root will result in a different
-     * allowed deviation of the sqrtPriceX96 for the lower and upper boundaries.
-     */
-    constructor(uint256 compoundThreshold, uint256 initiatorShare, uint256 tolerance) {
-        COMPOUND_THRESHOLD = compoundThreshold;
-        INITIATOR_SHARE = initiatorShare;
-
-        // SQRT_PRICE_DEVIATION is the square root of maximum/minimum price deviation.
-        // Sqrt halves the number of decimals.
-        LOWER_SQRT_PRICE_DEVIATION = FixedPointMathLib.sqrt((1e18 - tolerance) * 1e18);
-        UPPER_SQRT_PRICE_DEVIATION = FixedPointMathLib.sqrt((1e18 + tolerance) * 1e18);
-    }
+    constructor() { }
 
     /* ///////////////////////////////////////////////////////////////
                              COMPOUNDING LOGIC
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Compounds the fees earned by a UniswapV3 Liquidity Position owned by an Arcadia Account.
+     * @notice
      * @param account_ The Arcadia Account owning the position.
      * @param id The id of the Liquidity Position.
      */
-    function compoundFees(address account_, uint256 id) external {
+    function rebalancePosition(address account_, uint256 id) external {
         // Store Account address, used to validate the caller of the executeAction() callback.
         if (account != address(0)) revert Reentered();
         if (!ArcadiaLogic.FACTORY.isAccount(account_)) revert NotAnAccount();
+        if (ownerToIdToRebalancer[IAccount(account_).owner()][id] != msg.sender) revert RebalancerNotValid();
+
         account = account_;
 
         // Encode data for the flash-action.
@@ -141,68 +116,38 @@ contract UniswapV3Compounder is IActionBase {
         // Reset account.
         account = address(0);
 
-        emit Compound(account_, id);
+        emit Rebalance(account_, id);
     }
 
     /**
      * @notice Callback function called by the Arcadia Account during a flashAction.
-     * @param compoundData A bytes object containing a struct with the assetData of the position and the address of the initiator.
-     * @return assetData A struct with the asset data of the Liquidity Position.
-     * @dev The Liquidity Position is already transferred to this contract before executeAction() is called.
-     * @dev This function will trigger the following actions:
-     * - Verify that the pool's current price is initially within the defined tolerance price range.
-     * - Collects the fees earned by the position.
-     * - Verify that the fee value is bigger than the threshold required to trigger a compoundFees.
-     * - Rebalance the fee amounts so that the maximum amount of liquidity can be added, swaps one token to another if needed.
-     * - Verify that the pool's price is still within the defined tolerance price range after the swap.
-     * - Increases the liquidity of the current position with those fees.
-     * - Transfers a reward + dust amounts to the initiator.
+     * @param rebalanceData ez
+     * @return
+     * @dev
      */
-    function executeAction(bytes calldata compoundData) external override returns (ActionData memory assetData) {
+    function executeAction(bytes calldata rebalanceData) external override returns (ActionData memory assetData) {
         // Caller should be the Account, provided as input in compoundFees().
         if (msg.sender != account) revert OnlyAccount();
 
         // Decode compoundData.
-        address initiator;
-        (assetData, initiator) = abi.decode(compoundData, (ActionData, address));
+        // TODO : assetData should be with the new minted tokenId now.
+        address rebalancer;
+        (assetData, rebalancer) = abi.decode(rebalanceData, (ActionData, address));
         uint256 id = assetData.assetIds[0];
 
         // Fetch and cache all position related data.
         PositionState memory position = getPositionState(id);
 
+        // Check that liquidity is not too big compared to total liquidity
+
         // Check that pool is initially balanced.
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
         if (isPoolUnbalanced(position)) revert UnbalancedPool();
 
-        // Collect fees.
-        Fees memory fees;
-        (fees.amount0, fees.amount1) = UniswapV3Logic.POSITION_MANAGER.collect(
-            CollectParams({
-                tokenId: id,
-                recipient: address(this),
-                amount0Max: type(uint128).max,
-                amount1Max: type(uint128).max
-            })
-        );
-
-        // Total value of the fees must be greater than the threshold.
-        if (isBelowThreshold(position, fees)) revert BelowThreshold();
-
-        // Subtract initiator reward from fees, these will be send to the initiator.
-        fees.amount0 -= fees.amount0.mulDivDown(INITIATOR_SHARE, 1e18);
-        fees.amount1 -= fees.amount1.mulDivDown(INITIATOR_SHARE, 1e18);
-
-        // Rebalance the fee amounts so that the maximum amount of liquidity can be added.
+        // Rebalance the position so that the maximum liquidity can be added at 50/50 token ratio and same tick spacing.
         // The Pool must still be balanced after the swap.
-        (bool zeroToOne, uint256 amountOut) = getSwapParameters(position, fees);
+        (bool zeroToOne, uint256 amountOut) = getSwapParameters(position, id);
         if (_swap(position, zeroToOne, amountOut)) revert UnbalancedPool();
-
-        // We increase the fee amount of tokenOut, but we do not decrease the fee amount of tokenIn.
-        // This guarantees that tokenOut is the limiting factor when increasing liquidity and not tokenIn.
-        // As a consequence, slippage will result in less tokenIn going to the initiator,
-        // instead of more tokenOut going to the initiator.
-        if (zeroToOne) fees.amount1 += amountOut;
-        else fees.amount0 += amountOut;
 
         // Increase liquidity of the position.
         // The approval for at least one token after increasing liquidity will remain non-zero.
@@ -240,7 +185,7 @@ contract UniswapV3Compounder is IActionBase {
     /**
      * @notice returns the swap parameters to optimize the total value of fees that can be added as liquidity.
      * @param position Struct with the position data.
-     * @param fees Struct with the fee balances.
+     * @param id St
      * @return zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @return amountOut The amount of tokenOut.
      * @dev We assume the fees amount are small compared to the liquidity of the pool,
@@ -249,42 +194,56 @@ contract UniswapV3Compounder is IActionBase {
      * since we use swaps with amountOut, slippage will result in less reward of tokenIn for the initiator,
      * not less liquidity increased.
      */
-    function getSwapParameters(PositionState memory position, Fees memory fees)
+    function getSwapParameters(PositionState memory position, uint256 id)
         public
         pure
         returns (bool zeroToOne, uint256 amountOut)
     {
-        if (position.sqrtPriceX96 >= position.sqrtRatioUpper) {
-            // Position is out of range and fully in token 1.
-            // Swap full amount of token0 to token1.
+        // Remove liquidity of the position and claim outstanding fees to get full amounts of token0 and token1
+        // for rebalance.
+        UniswapV3Logic.POSITION_MANAGER.decreaseLiquidity(
+            DecreaseLiquidityParams({
+                tokenId: id,
+                liquidity: position.liquidity,
+                amount0Min: 0,
+                amount1Min: 0,
+                deadline: block.timestamp
+            })
+        );
+
+        (uint256 amount0, uint256 amount1) = UniswapV3Logic.POSITION_MANAGER.collect(
+            CollectParams({
+                tokenId: id,
+                recipient: address(this),
+                amount0Max: type(uint128).max,
+                amount1Max: type(uint128).max
+            })
+        );
+
+        // Burn the position
+        UniswapV3Logic.POSITION_MANAGER.burn(id);
+
+        // Get target ratio in token1 terms
+        uint256 targetRatio = UniswapV3Logic._getTargetRatio(
+            position.sqrtPriceX96,
+            TickMath.getSqrtRatioAtTick(position.newLowerTick),
+            TickMath.getSqrtRatioAtTick(position.newUpperTick)
+        );
+
+        // Calculate the total fee value in token1 equivalent:
+        uint256 token0ValueInToken1 = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, amount0);
+        uint256 totalValueInToken1 = amount1 + token0ValueInToken1;
+        uint256 currentRatio = amount1.mulDivDown(1e18, totalValueInToken1);
+
+        if (currentRatio < targetRatio) {
+            // Swap token0 partially to token1.
             zeroToOne = true;
-            amountOut = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
-        } else if (position.sqrtPriceX96 <= position.sqrtRatioLower) {
-            // Position is out of range and fully in token 0.
-            // Swap full amount of token1 to token0.
-            zeroToOne = false;
-            amountOut = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, false, fees.amount1);
+            amountOut = (targetRatio - currentRatio).mulDivDown(totalValueInToken1, 1e18);
         } else {
-            // Position is in range.
-            // Rebalance fees so that the ratio of the fee values matches with ratio of the position.
-            uint256 targetRatio =
-                UniswapV3Logic._getTargetRatio(position.sqrtPriceX96, position.sqrtRatioLower, position.sqrtRatioUpper);
-
-            // Calculate the total fee value in token1 equivalent:
-            uint256 fee0ValueInToken1 = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
-            uint256 totalFeeValueInToken1 = fees.amount1 + fee0ValueInToken1;
-            uint256 currentRatio = fees.amount1.mulDivDown(1e18, totalFeeValueInToken1);
-
-            if (currentRatio < targetRatio) {
-                // Swap token0 partially to token1.
-                zeroToOne = true;
-                amountOut = (targetRatio - currentRatio).mulDivDown(totalFeeValueInToken1, 1e18);
-            } else {
-                // Swap token1 partially to token0.
-                zeroToOne = false;
-                uint256 amountIn = (currentRatio - targetRatio).mulDivDown(totalFeeValueInToken1, 1e18);
-                amountOut = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, false, amountIn);
-            }
+            // Swap token1 partially to token0.
+            zeroToOne = false;
+            uint256 amountIn = (currentRatio - targetRatio).mulDivDown(totalValueInToken1, 1e18);
+            amountOut = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, false, amountIn);
         }
     }
 
@@ -348,7 +307,7 @@ contract UniswapV3Compounder is IActionBase {
         // Get data of the Liquidity Position.
         int24 tickLower;
         int24 tickUpper;
-        (,, position.token0, position.token1, position.fee, tickLower, tickUpper,,,,,) =
+        (,, position.token0, position.token1, position.fee, tickLower, tickUpper, position.liquidity,,,,) =
             UniswapV3Logic.POSITION_MANAGER.positions(id);
         position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(tickLower);
         position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(tickUpper);
@@ -359,7 +318,13 @@ contract UniswapV3Compounder is IActionBase {
 
         // Get data of the Liquidity Pool.
         position.pool = UniswapV3Logic._computePoolAddress(position.token0, position.token1, position.fee);
-        (position.sqrtPriceX96,,,,,,) = IUniswapV3Pool(position.pool).slot0();
+        uint24 currentTick;
+        (position.sqrtPriceX96, currentTick,,,,,) = IUniswapV3Pool(position.pool).slot0();
+
+        // Store the new ticks for the rebalance
+        uint24 tickSpacing = uint24((tickUpper - tickLower) / 2);
+        position.newUpperTick = currentTick + tickSpacing;
+        position.newLowerTick = currentTick - tickSpacing;
 
         // Calculate the square root of the relative rate sqrt(token1/token0) from the trusted USD price of both tokens.
         uint256 trustedSqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(position.usdPriceToken0, position.usdPriceToken1);
@@ -367,23 +332,6 @@ contract UniswapV3Compounder is IActionBase {
         // Calculate the upper and lower bounds of sqrtPriceX96 for the Pool to be balanced.
         position.lowerBoundSqrtPriceX96 = trustedSqrtPriceX96.mulDivDown(LOWER_SQRT_PRICE_DEVIATION, 1e18);
         position.upperBoundSqrtPriceX96 = trustedSqrtPriceX96.mulDivDown(UPPER_SQRT_PRICE_DEVIATION, 1e18);
-    }
-
-    /**
-     * @notice Returns if the total fee value in USD is below the rebalancing threshold.
-     * @param position Struct with the position data.
-     * @param fees Struct with the fees accumulated by a position.
-     * @return isBelowThreshold_ Bool indicating if the total fee value in USD is below the threshold.
-     */
-    function isBelowThreshold(PositionState memory position, Fees memory fees)
-        public
-        view
-        returns (bool isBelowThreshold_)
-    {
-        uint256 totalValueFees = position.usdPriceToken0.mulDivDown(fees.amount0, 1e18)
-            + position.usdPriceToken1.mulDivDown(fees.amount1, 1e18);
-
-        isBelowThreshold_ = totalValueFees < COMPOUND_THRESHOLD;
     }
 
     /**
