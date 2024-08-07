@@ -40,6 +40,8 @@ contract UniswapV3Rebalancer is IActionBase {
     // The maximum upper deviation of the pools actual sqrtPriceX96,
     // relative to the sqrtPriceX96 calculated with trusted price feeds, with 18 decimals precision.
     uint256 public immutable UPPER_SQRT_PRICE_DEVIATION;
+    uint256 public immutable LIQUIDITY_TRESHOLD;
+    uint256 internal constant BIPS = 10_000;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
@@ -78,6 +80,7 @@ contract UniswapV3Rebalancer is IActionBase {
     ////////////////////////////////////////////////////////////// */
 
     error FeeAlreadySet();
+    error LiquidityTresholdExceeded();
     error MaxInitiatorFee();
     error NotAnAccount();
     error OnlyAccount();
@@ -99,12 +102,15 @@ contract UniswapV3Rebalancer is IActionBase {
     /**
      * @param tolerance The maximum deviation of the actual pool price,
      * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
+     * @param liquidityTreshold .
      */
-    constructor(uint256 tolerance) {
+    constructor(uint256 tolerance, uint256 liquidityTreshold) {
         // SQRT_PRICE_DEVIATION is the square root of maximum/minimum price deviation.
         // Sqrt halves the number of decimals.
         LOWER_SQRT_PRICE_DEVIATION = FixedPointMathLib.sqrt((1e18 - tolerance) * 1e18);
         UPPER_SQRT_PRICE_DEVIATION = FixedPointMathLib.sqrt((1e18 + tolerance) * 1e18);
+
+        LIQUIDITY_TRESHOLD = liquidityTreshold;
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -157,11 +163,15 @@ contract UniswapV3Rebalancer is IActionBase {
         // Fetch and cache all position related data.
         PositionState memory position = getPositionState(id);
 
-        // TODO: Check that liquidity is not too big compared to total liquidity
-
         // Check that pool is initially balanced.
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
         if (isPoolUnbalanced(position)) revert UnbalancedPool();
+
+        {
+            uint256 totalLiquidity = uint256(IUniswapV3Pool(position.pool).liquidity());
+            uint256 maxLiquidity = totalLiquidity.mulDivDown(LIQUIDITY_TRESHOLD, BIPS);
+            if (position.liquidity > maxLiquidity) revert LiquidityTresholdExceeded();
+        }
 
         // Rebalance the position so that the maximum liquidity can be added at 50/50 ration around current price.
         // Use same tick spacing for rebalancing.

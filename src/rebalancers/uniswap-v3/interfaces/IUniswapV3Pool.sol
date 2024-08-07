@@ -40,4 +40,6 @@ interface IUniswapV3Pool {
     function feeGrowthGlobal0X128() external view returns (uint256 feeGrowthGlobal0X128);
 
     function feeGrowthGlobal1X128() external view returns (uint256 feeGrowthGlobal1X128);
+
+    function liquidity() external returns (uint128 liquidity);
 }
