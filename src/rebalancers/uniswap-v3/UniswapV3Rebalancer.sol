@@ -169,7 +169,7 @@ contract UniswapV3Rebalancer is IActionBase {
 
         {
             uint256 totalLiquidity = uint256(IUniswapV3Pool(position.pool).liquidity());
-            uint256 maxLiquidity = totalLiquidity.mulDivDown(LIQUIDITY_TRESHOLD, BIPS);
+            uint256 maxLiquidity = totalLiquidity.mulDivDown(LIQUIDITY_TRESHOLD, 1e18);
             if (position.liquidity > maxLiquidity) revert LiquidityTresholdExceeded();
         }
 

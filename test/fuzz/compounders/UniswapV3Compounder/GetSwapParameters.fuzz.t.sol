@@ -8,7 +8,7 @@ import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/u
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { UniswapV3Compounder } from "./_UniswapV3Compounder.fuzz.t.sol";
 import { UniswapV3Compounder_Fuzz_Test } from "./_UniswapV3Compounder.fuzz.t.sol";
-import { UniswapV3Logic } from "../../../../src/compounders/uniswap-v3/libraries/UniswapV3Logic.sol";
+import { UniswapV3Logic } from "../../../../src/libraries/UniswapV3Logic.sol";
 
 /**
  * @notice Fuzz tests for the function "_getSwapParameters" of contract "UniswapV3Compounder".

@@ -4,12 +4,12 @@
  */
 pragma solidity 0.8.22;
 
-import { UniswapV3Compounder } from "../../../src/compounders/uniswap-v3/UniswapV3Compounder.sol";
+import { UniswapV3Rebalancer } from "../../../src/rebalancers/uniswap-v3/UniswapV3Rebalancer.sol";
 import { UniswapV3Logic } from "../../../src/libraries/UniswapV3Logic.sol";
 
-contract UniswapV3CompounderExtension is UniswapV3Compounder {
-    constructor(uint256 compoundThreshold, uint256 initiatorShare, uint256 tolerance)
-        UniswapV3Compounder(compoundThreshold, initiatorShare, tolerance)
+contract UniswapV3RebalancerExtension is UniswapV3Rebalancer {
+    constructor(uint256 tolerance, uint256 liquidityTreshold)
+        UniswapV3Rebalancer(tolerance, liquidityTreshold)
     { }
 
     function getSqrtPriceX96(uint256 priceToken0, uint256 priceToken1) public pure returns (uint256) {

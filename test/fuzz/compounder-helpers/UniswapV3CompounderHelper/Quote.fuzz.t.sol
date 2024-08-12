@@ -9,7 +9,7 @@ import { IUniswapV3Compounder } from "../../../../src/compounders/uniswap-v3/int
 import { PositionState } from "../../../../src/compounders/uniswap-v3/interfaces/IUniswapV3Compounder.sol";
 import { UniswapV3Compounder } from "../../../../src/compounders/uniswap-v3/UniswapV3Compounder.sol";
 import { UniswapV3CompounderHelper_Fuzz_Test } from "./_UniswapV3CompounderHelper.fuzz.t.sol";
-import { UniswapV3Logic } from "../../../../src/compounders/uniswap-v3/libraries/UniswapV3Logic.sol";
+import { UniswapV3Logic } from "../../../../src/libraries/UniswapV3Logic.sol";
 import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
 
 /**
