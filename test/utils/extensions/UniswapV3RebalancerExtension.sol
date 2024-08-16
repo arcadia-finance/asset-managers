@@ -8,9 +8,7 @@ import { UniswapV3Rebalancer } from "../../../src/rebalancers/uniswap-v3/Uniswap
 import { UniswapV3Logic } from "../../../src/libraries/UniswapV3Logic.sol";
 
 contract UniswapV3RebalancerExtension is UniswapV3Rebalancer {
-    constructor(uint256 tolerance, uint256 liquidityTreshold)
-        UniswapV3Rebalancer(tolerance, liquidityTreshold)
-    { }
+    constructor(uint256 tolerance, uint256 liquidityTreshold) UniswapV3Rebalancer(tolerance, liquidityTreshold) { }
 
     function getSqrtPriceX96(uint256 priceToken0, uint256 priceToken1) public pure returns (uint256) {
         return UniswapV3Logic._getSqrtPriceX96(priceToken0, priceToken1);

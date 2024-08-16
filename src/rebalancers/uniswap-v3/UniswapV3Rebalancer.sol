@@ -32,7 +32,7 @@ contract UniswapV3Rebalancer is IActionBase {
                                 CONSTANTS
     ////////////////////////////////////////////////////////////// */
 
-    // The max fees that are paid as reward to the initiator, with 18 decimals precision.
+    // TODO The max fees that are paid as reward to the initiator, with 18 decimals precision.
     uint256 public immutable MAX_INITIATOR_FEE;
     // The maximum lower deviation of the pools actual sqrtPriceX96,
     // relative to the sqrtPriceX96 calculated with trusted price feeds, with 18 decimals precision.
@@ -41,7 +41,6 @@ contract UniswapV3Rebalancer is IActionBase {
     // relative to the sqrtPriceX96 calculated with trusted price feeds, with 18 decimals precision.
     uint256 public immutable UPPER_SQRT_PRICE_DEVIATION;
     uint256 public immutable LIQUIDITY_TRESHOLD;
-    uint256 internal constant BIPS = 10_000;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
@@ -71,8 +70,6 @@ contract UniswapV3Rebalancer is IActionBase {
         uint256 sqrtRatioUpper;
         uint256 lowerBoundSqrtPriceX96;
         uint256 upperBoundSqrtPriceX96;
-        uint256 usdPriceToken0;
-        uint256 usdPriceToken1;
     }
 
     /* //////////////////////////////////////////////////////////////
@@ -110,6 +107,7 @@ contract UniswapV3Rebalancer is IActionBase {
         LOWER_SQRT_PRICE_DEVIATION = FixedPointMathLib.sqrt((1e18 - tolerance) * 1e18);
         UPPER_SQRT_PRICE_DEVIATION = FixedPointMathLib.sqrt((1e18 + tolerance) * 1e18);
 
+        // TODO: max treshold ?
         LIQUIDITY_TRESHOLD = liquidityTreshold;
     }
 
@@ -368,7 +366,7 @@ contract UniswapV3Rebalancer is IActionBase {
         position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(tickUpper);
 
         // Get trusted USD prices for 1e18 gwei of token0 and token1.
-        (position.usdPriceToken0, position.usdPriceToken1) =
+        (uint256 usdPriceToken0, uint256 usdPriceToken1) =
             ArcadiaLogic._getValuesInUsd(position.token0, position.token1);
 
         // Get data of the Liquidity Pool.
@@ -377,12 +375,13 @@ contract UniswapV3Rebalancer is IActionBase {
         (position.sqrtPriceX96, currentTick,,,,,) = IUniswapV3Pool(position.pool).slot0();
 
         // Store the new ticks for the rebalance
+        // TODO: validate if ok to divide by 2 for uneven numbers
         int24 tickSpacing = (tickUpper - tickLower) / 2;
         position.newUpperTick = currentTick + tickSpacing;
         position.newLowerTick = currentTick - tickSpacing;
 
         // Calculate the square root of the relative rate sqrt(token1/token0) from the trusted USD price of both tokens.
-        uint256 trustedSqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(position.usdPriceToken0, position.usdPriceToken1);
+        uint256 trustedSqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(usdPriceToken0, usdPriceToken1);
 
         // Calculate the upper and lower bounds of sqrtPriceX96 for the Pool to be balanced.
         position.lowerBoundSqrtPriceX96 = trustedSqrtPriceX96.mulDivDown(LOWER_SQRT_PRICE_DEVIATION, 1e18);
