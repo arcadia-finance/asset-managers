@@ -78,7 +78,7 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         uint256 priceToken1;
     }
 
-    struct TestVariables {
+    struct LpVariables {
         int24 tickLower;
         int24 tickUpper;
         uint128 liquidity;
@@ -175,10 +175,21 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         vm.etch(address(rebalancer), bytecode);
     }
 
-    function initPool(InitVariables memory initVars)
+    function initPoolAndCreatePositionWithFees(InitVariables memory initVars, LpVariables memory lpVars)
         public
-        returns (InitVariables memory initVars_, bool token0HasLowestDecimals, uint256 tokenId)
+        returns (InitVariables memory initVars_, LpVariables memory lpVars_, uint256 tokenId)
     {
+        // Given : Initialize a uniswapV3 pool
+        initVars_ = initPool(initVars);
+
+        // And : get valid position vars
+        lpVars_ = givenValidTestVars(lpVars, initVars);
+
+        // And : Create new position and generate fees
+        tokenId = createNewPositionAndGenerateFees(lpVars_, uniV3Pool);
+    }
+
+    function initPool(InitVariables memory initVars) public returns (InitVariables memory initVars_) {
         // Given : Tokens have min 6 and max 18 decimals
         initVars.token0Decimals = uint8(bound(initVars.token0Decimals, 6, 18));
         initVars.token1Decimals = uint8(bound(initVars.token1Decimals, 6, 18));
@@ -201,12 +212,14 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         // And : add new pool tokens to Arcadia
         token0 = new ERC20Mock("TokenA", "TOKA", initVars.token0Decimals);
         token1 = new ERC20Mock("TokenB", "TOKB", initVars.token1Decimals);
-        (token0, token1) = token0 < token1 ? (token0, token1) : (token1, token0);
+        if (token0 > token1) {
+            (token0, token1) = (token1, token0);
+            (initVars.token0Decimals, initVars.token1Decimals) = (initVars.token0Decimals, initVars.token1Decimals);
+            (initVars.priceToken0, initVars.priceToken1) = (initVars.priceToken1, initVars.priceToken0);
+        }
 
-        token0HasLowestDecimals = token0.decimals() < token1.decimals() ? true : false;
-
-        addAssetToArcadia(address(token0), int256(10 ** MOCK_ORACLE_DECIMALS));
-        addAssetToArcadia(address(token1), int256(10 ** MOCK_ORACLE_DECIMALS));
+        addAssetToArcadia(address(token0), int256(initVars.priceToken0));
+        addAssetToArcadia(address(token1), int256(initVars.priceToken1));
 
         // And : Create new uniV3 pool
         uniV3Pool = createPoolUniV3(address(token0), address(token1), POOL_FEE, uint160(sqrtPriceX96), 300);
@@ -223,7 +236,7 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         initVars.initToken1Amount = bound(initVars.initToken1Amount, 1e18, type(uint80).max);
 
         // And : Mint initial position
-        (tokenId, initVars.initToken0Amount, initVars.initToken1Amount) = addLiquidityUniV3(
+        (, initVars.initToken0Amount, initVars.initToken1Amount) = addLiquidityUniV3(
             uniV3Pool,
             initVars.initToken0Amount,
             initVars.initToken1Amount,
@@ -236,63 +249,57 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         initVars_ = initVars;
     }
 
-    function givenValidTestVars(TestVariables memory testVars, InitVariables memory initVars)
+    function givenValidTestVars(LpVariables memory lpVars, InitVariables memory initVars)
         public
-        returns (TestVariables memory testVars_)
+        returns (LpVariables memory lpVars_)
     {
         // Given : Liquidity for new position is in limits
         uint128 currentLiquidity = uniV3Pool.liquidity();
         uint256 minLiquidity = currentLiquidity.mulDivDown(MIN_LIQUIDITY, 1e18);
         uint256 maxLiquidity = currentLiquidity.mulDivDown(LIQUIDITY_TRESHOLD, 1e18);
-        testVars.liquidity = uint128(bound(testVars.liquidity, minLiquidity, maxLiquidity));
+        lpVars.liquidity = uint128(bound(lpVars.liquidity, minLiquidity, maxLiquidity));
 
         // And : Lower and upper ticks of the position are within the initial liquidity range
         int24 currentTick = uniV3Pool.getCurrentTick();
 
-        testVars.tickLower = int24(bound(testVars.tickLower, initVars.tickLower, currentTick - MIN_TICK_SPACING));
-        testVars.tickUpper = int24(bound(testVars.tickUpper, currentTick + MIN_TICK_SPACING, initVars.tickUpper - 1));
+        lpVars.tickLower = int24(bound(lpVars.tickLower, initVars.tickLower, currentTick - MIN_TICK_SPACING));
+        lpVars.tickUpper = int24(bound(lpVars.tickUpper, currentTick + MIN_TICK_SPACING, initVars.tickUpper - 1));
 
-        testVars_ = testVars;
+        lpVars_ = lpVars;
     }
 
-    function createNewPositionAndGenerateFees(TestVariables memory testVars, IUniswapV3PoolExtension pool)
+    function createNewPositionAndGenerateFees(LpVariables memory lpVars, IUniswapV3PoolExtension pool)
         public
         returns (uint256 tokenId)
     {
         // Given : Calculate amount of token0 and token1 needed to deposit specific liquidity
         (uint160 sqrtPrice,,,,,,) = uniV3Pool.slot0();
-        (testVars.amount0, testVars.amount1) = LiquidityAmounts.getAmountsForLiquidity(
+        (lpVars.amount0, lpVars.amount1) = LiquidityAmounts.getAmountsForLiquidity(
             sqrtPrice,
-            TickMath.getSqrtRatioAtTick(testVars.tickLower),
-            TickMath.getSqrtRatioAtTick(testVars.tickUpper),
-            testVars.liquidity
+            TickMath.getSqrtRatioAtTick(lpVars.tickLower),
+            TickMath.getSqrtRatioAtTick(lpVars.tickUpper),
+            lpVars.liquidity
         );
 
         // And : assume the amounts are at least 1000 so that in generateFees(), using those amounts, it indeed generates a positive fee
-        vm.assume(testVars.amount0 > 1000 && testVars.amount1 > 1000);
+        vm.assume(lpVars.amount0 > 1000 && lpVars.amount1 > 1000);
 
         // Given : Mint new position
         (tokenId,,) = addLiquidityUniV3(
-            pool,
-            testVars.amount0,
-            testVars.amount1,
-            users.liquidityProvider,
-            testVars.tickLower,
-            testVars.tickUpper,
-            true
+            pool, lpVars.amount0, lpVars.amount1, users.liquidityProvider, lpVars.tickLower, lpVars.tickUpper, true
         );
 
         // And : Generate fees for the position
         // We use the amount0 and amount1 of the latest LP, as it should be smaller than the initial LP,
         // and not have too big impact on price. The fee amount is not relevant for testing.
-        generateFees(testVars);
+        generateFees(lpVars);
     }
 
-    function generateFees(TestVariables memory testVars) public {
+    function generateFees(LpVariables memory lpVars) public {
         vm.startPrank(users.liquidityProvider);
         ISwapRouter02.ExactInputSingleParams memory exactInputParams;
         // Swap token0 for token1
-        uint256 amount0ToSwap = testVars.amount0;
+        uint256 amount0ToSwap = lpVars.amount0;
 
         deal(address(token0), users.liquidityProvider, amount0ToSwap, true);
 
@@ -311,7 +318,7 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         swapRouter.exactInputSingle(exactInputParams);
 
         // Swap token1 for token0
-        uint256 amount1ToSwap = testVars.amount1;
+        uint256 amount1ToSwap = lpVars.amount1;
 
         deal(address(token1), users.liquidityProvider, amount1ToSwap, true);
         token1.approve(address(swapRouter), amount1ToSwap);
