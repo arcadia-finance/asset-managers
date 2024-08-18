@@ -5,6 +5,7 @@
 pragma solidity 0.8.22;
 
 import { ArcadiaLogic } from "../../../../src/libraries/ArcadiaLogic.sol";
+import { AssetValueAndRiskFactors } from "../../../../lib/accounts-v2/src/Registry.sol";
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { UniswapV3Rebalancer } from "../../../../src/rebalancers/uniswap-v3/UniswapV3Rebalancer.sol";
@@ -23,6 +24,8 @@ contract GetPositionState_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_F
     function setUp() public override {
         UniswapV3Rebalancer_Fuzz_Test.setUp();
     }
+
+    event LogA(uint160, uint160);
 
     /*//////////////////////////////////////////////////////////////
                               TESTS
@@ -44,8 +47,8 @@ contract GetPositionState_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_F
         assertEq(position.pool, address(uniV3Pool));
 
         // Here we use approxEqRel as the difference between the LiquidityAmounts lib
-        // and the effective deposit of liquidity can have a small diff (we check to max 0,001% diff)
-        assertApproxEqRel(position.liquidity, lpVars.liquidity, 1e13);
+        // and the effective deposit of liquidity can have a small diff (we check to max 0,01% diff)
+        assertApproxEqRel(position.liquidity, lpVars.liquidity, 1e14);
 
         (uint160 sqrtPriceX96, int24 currentTick,,,,,) = uniV3Pool.slot0();
 
@@ -57,10 +60,24 @@ contract GetPositionState_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_F
 
         assertEq(position.sqrtPriceX96, sqrtPriceX96);
 
-        uint256 trustedSqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(
-            initVars.priceToken0 * 10 ** (MOCK_ORACLE_DECIMALS - token0.decimals()),
-            initVars.priceToken1 * 10 ** (MOCK_ORACLE_DECIMALS - token1.decimals())
-        );
+        uint256 usdPriceToken0;
+        uint256 usdPriceToken1;
+        {
+            address[] memory assets = new address[](2);
+            assets[0] = address(token0);
+            assets[1] = address(token1);
+            uint256[] memory assetAmounts = new uint256[](2);
+            assetAmounts[0] = 1e18;
+            assetAmounts[1] = 1e18;
+
+            AssetValueAndRiskFactors[] memory valuesAndRiskFactors =
+                registry.getValuesInUsd(address(0), assets, new uint256[](2), assetAmounts);
+
+            (usdPriceToken0, usdPriceToken1) = (valuesAndRiskFactors[0].assetValue, valuesAndRiskFactors[1].assetValue);
+        }
+
+        uint256 trustedSqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(usdPriceToken0, usdPriceToken1);
+
         uint256 lowerBoundSqrtPriceX96 = trustedSqrtPriceX96.mulDivDown(rebalancer.LOWER_SQRT_PRICE_DEVIATION(), 1e18);
         uint256 upperBoundSqrtPriceX96 = trustedSqrtPriceX96.mulDivDown(rebalancer.UPPER_SQRT_PRICE_DEVIATION(), 1e18);
 

@@ -44,6 +44,7 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
     uint24 internal POOL_FEE = 100;
 
     // 4 % price diff for testing
+    // TODO : fuzz ?
     uint256 internal TOLERANCE = 0.04 * 1e18;
 
     // 2 % liquidity treshold for rebalancer
@@ -76,6 +77,7 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         uint8 token1Decimals;
         uint256 priceToken0;
         uint256 priceToken1;
+        uint256 decimalsDiff;
     }
 
     struct LpVariables {
@@ -194,28 +196,40 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         initVars.token0Decimals = uint8(bound(initVars.token0Decimals, 6, 18));
         initVars.token1Decimals = uint8(bound(initVars.token1Decimals, 6, 18));
 
-        uint256 sqrtPriceX96;
-        {
-            // And : Avoid too big price diffs, this should not have impact on test objective
-            initVars.priceToken0 = bound(initVars.priceToken0, 1, type(uint256).max / 10 ** 64);
-            initVars.priceToken1 = bound(initVars.priceToken1, 1, type(uint256).max / 10 ** 64);
-            // And : Cast to uint160 will overflow, not realistic.
-            vm.assume(initVars.priceToken0 / initVars.priceToken1 < 2 ** 128);
-            // sqrtPriceX96 must be within ranges, or TickMath reverts.
-            uint256 priceXd28 = initVars.priceToken0 * 1e28 / initVars.priceToken1;
-            uint256 sqrtPriceXd14 = FixedPointMathLib.sqrt(priceXd28);
-            sqrtPriceX96 = sqrtPriceXd14 * 2 ** 96 / 1e14;
-            vm.assume(sqrtPriceX96 >= 4_295_128_739);
-            vm.assume(sqrtPriceX96 <= 1_461_446_703_485_210_103_287_273_052_203_988_822_378_723_970_342);
-        }
-
         // And : add new pool tokens to Arcadia
         token0 = new ERC20Mock("TokenA", "TOKA", initVars.token0Decimals);
         token1 = new ERC20Mock("TokenB", "TOKB", initVars.token1Decimals);
         if (token0 > token1) {
             (token0, token1) = (token1, token0);
             (initVars.token0Decimals, initVars.token1Decimals) = (initVars.token0Decimals, initVars.token1Decimals);
-            (initVars.priceToken0, initVars.priceToken1) = (initVars.priceToken1, initVars.priceToken0);
+        }
+
+        uint256 sqrtPriceX96;
+        {
+            // And : Avoid too big price diffs, this should not have impact on test objective
+            initVars.priceToken0 = bound(initVars.priceToken0, 1, type(uint256).max / 10 ** 64);
+            initVars.priceToken1 = bound(initVars.priceToken1, 1, type(uint256).max / 10 ** 64);
+
+            uint256 priceToken0ScaledForDecimals;
+            uint256 priceToken1ScaledForDecimals;
+            if (token0.decimals() < token1.decimals()) {
+                priceToken0ScaledForDecimals = initVars.priceToken0;
+                priceToken1ScaledForDecimals = initVars.priceToken1 * 10 ** (token1.decimals() - token0.decimals());
+                initVars.decimalsDiff = token1.decimals() - token0.decimals();
+            } else {
+                priceToken0ScaledForDecimals = initVars.priceToken0 * 10 ** (token0.decimals() - token1.decimals());
+                priceToken1ScaledForDecimals = initVars.priceToken1;
+                initVars.decimalsDiff = token0.decimals() - token1.decimals();
+            }
+
+            // And : Cast to uint160 will overflow, not realistic.
+            vm.assume(priceToken0ScaledForDecimals / priceToken1ScaledForDecimals < 2 ** 128);
+            // sqrtPriceX96 must be within ranges, or TickMath reverts.
+            uint256 priceXd28 = priceToken0ScaledForDecimals * 1e28 / priceToken1ScaledForDecimals;
+            uint256 sqrtPriceXd14 = FixedPointMathLib.sqrt(priceXd28);
+            sqrtPriceX96 = sqrtPriceXd14 * 2 ** 96 / 1e14;
+            vm.assume(sqrtPriceX96 >= 4_295_128_739);
+            vm.assume(sqrtPriceX96 <= 1_461_446_703_485_210_103_287_273_052_203_988_822_378_723_970_342);
         }
 
         addAssetToArcadia(address(token0), int256(initVars.priceToken0));
