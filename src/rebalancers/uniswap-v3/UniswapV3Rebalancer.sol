@@ -33,13 +33,10 @@ contract UniswapV3Rebalancer is IActionBase {
     ////////////////////////////////////////////////////////////// */
 
     // TODO The max fees that are paid as reward to the initiator, with 18 decimals precision.
-    uint256 public immutable MAX_INITIATOR_FEE;
+    uint256 public immutable MAX_INITIATOR_FEE = 0.01 * 1e18;
     // The maximum lower deviation of the pools actual sqrtPriceX96,
-    // relative to the sqrtPriceX96 calculated with trusted price feeds, with 18 decimals precision.
-    uint256 public immutable LOWER_SQRT_PRICE_DEVIATION;
-    // The maximum upper deviation of the pools actual sqrtPriceX96,
-    // relative to the sqrtPriceX96 calculated with trusted price feeds, with 18 decimals precision.
-    uint256 public immutable UPPER_SQRT_PRICE_DEVIATION;
+    // The maximum deviation of the actual pool price, in % with 18 decimals precision.
+    uint256 public immutable MAX_TOLERANCE = 0.02 * 1e18;
     uint256 public immutable LIQUIDITY_TRESHOLD;
 
     /* //////////////////////////////////////////////////////////////
@@ -51,10 +48,10 @@ contract UniswapV3Rebalancer is IActionBase {
 
     // A mapping that sets an initiator per position of an owner.
     // An initiator is approved by the owner to rebalance its specified uniswapV3 position.
-    mapping(address owner => mapping(uint256 positionId => address initiator)) public ownerToIdToInitiator;
+    mapping(address owner => address initiator) public ownerToInitiator;
 
     // A mapping from initiator to rebalancing fee.
-    mapping(address initiator => uint256 fee) public initiatorFee;
+    mapping(address initiator => InitiatorInfo) public initiatorInfo;
 
     // A struct with the state of a specific position, only used in memory.
     struct PositionState {
@@ -72,13 +69,22 @@ contract UniswapV3Rebalancer is IActionBase {
         uint256 upperBoundSqrtPriceX96;
     }
 
+    struct InitiatorInfo {
+        uint256 upperSqrtPriceDeviation;
+        uint256 lowerSqrtPriceDeviation;
+        uint256 fee;
+    }
+
     /* //////////////////////////////////////////////////////////////
                                 ERRORS
     ////////////////////////////////////////////////////////////// */
 
+    error DecreaseFeeOnly();
+    error DecreaseToleranceOnly();
     error FeeAlreadySet();
     error LiquidityTresholdExceeded();
     error MaxInitiatorFee();
+    error MaxTolerance();
     error NotAnAccount();
     error OnlyAccount();
     error OnlyPool();
@@ -97,16 +103,9 @@ contract UniswapV3Rebalancer is IActionBase {
     ////////////////////////////////////////////////////////////// */
 
     /**
-     * @param tolerance The maximum deviation of the actual pool price,
-     * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
      * @param liquidityTreshold .
      */
-    constructor(uint256 tolerance, uint256 liquidityTreshold) {
-        // SQRT_PRICE_DEVIATION is the square root of maximum/minimum price deviation.
-        // Sqrt halves the number of decimals.
-        LOWER_SQRT_PRICE_DEVIATION = FixedPointMathLib.sqrt((1e18 - tolerance) * 1e18);
-        UPPER_SQRT_PRICE_DEVIATION = FixedPointMathLib.sqrt((1e18 + tolerance) * 1e18);
-
+    constructor(uint256 liquidityTreshold) {
         // TODO: max treshold ?
         LIQUIDITY_TRESHOLD = liquidityTreshold;
     }
@@ -119,18 +118,22 @@ contract UniswapV3Rebalancer is IActionBase {
      * @notice
      * @param account_ The Arcadia Account owning the position.
      * @param id The id of the Liquidity Position.
+     * @param lowerTick .
+     * @param upperTick .
+     * @dev When both lowerTick and upperTick are zero, ticks will be updated with same tick-spacing as current position.
      */
-    function rebalancePosition(address account_, uint256 id) external {
+    function rebalancePosition(address account_, uint256 id, int24 lowerTick, int24 upperTick) external {
         // Store Account address, used to validate the caller of the executeAction() callback.
         if (account != address(0)) revert Reentered();
         if (!ArcadiaLogic.FACTORY.isAccount(account_)) revert NotAnAccount();
-        if (ownerToIdToInitiator[IAccount(account_).owner()][id] != msg.sender) revert InitiatorNotValid();
+        if (ownerToInitiator[IAccount(account_).owner()] != msg.sender) revert InitiatorNotValid();
 
         account = account_;
 
         // Encode data for the flash-action.
-        bytes memory actionData =
-            ArcadiaLogic._encodeActionData(msg.sender, address(UniswapV3Logic.POSITION_MANAGER), id);
+        bytes memory actionData = ArcadiaLogic._encodeActionDataRebalancer(
+            msg.sender, address(UniswapV3Logic.POSITION_MANAGER), id, lowerTick, upperTick
+        );
 
         // Call flashAction() with this contract as actionTarget.
         IAccount(account_).flashAction(address(this), actionData);
@@ -155,11 +158,13 @@ contract UniswapV3Rebalancer is IActionBase {
 
         // Decode rebalanceData.
         address initiator;
-        (assetData, initiator) = abi.decode(rebalanceData, (ActionData, address));
+        int24 lowerTick;
+        int24 upperTick;
+        (assetData, initiator, lowerTick, upperTick) = abi.decode(rebalanceData, (ActionData, address, int24, int24));
         uint256 id = assetData.assetIds[0];
 
         // Fetch and cache all position related data.
-        PositionState memory position = getPositionState(id);
+        PositionState memory position = getPositionState(id, lowerTick, upperTick, initiator);
 
         // Check that pool is initially balanced.
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
@@ -222,14 +227,32 @@ contract UniswapV3Rebalancer is IActionBase {
                         INITIATORS LOGIC
     /////////////////////////////////////////////////////////////// */
 
-    function setInitiatorForPosition(address initiator, uint256 tokenId) external {
-        ownerToIdToInitiator[msg.sender][tokenId] = initiator;
+    function setInitiator(address initiator) external {
+        ownerToInitiator[msg.sender] = initiator;
     }
 
-    function setInitiatorFee(uint24 fee) external {
-        if (initiatorFee[msg.sender] > 0) revert FeeAlreadySet();
+    function setInitiatorInfo(uint256 tolerance, uint256 fee) external {
+        // Cache struct
+        InitiatorInfo memory initiatorInfo_ = initiatorInfo[msg.sender];
+
+        if (initiatorInfo_.fee > 0 && fee > initiatorInfo_.fee) revert DecreaseFeeOnly();
         if (fee > MAX_INITIATOR_FEE) revert MaxInitiatorFee();
-        initiatorFee[msg.sender] = fee;
+        if (tolerance > MAX_TOLERANCE) revert MaxTolerance();
+
+        initiatorInfo_.fee = fee;
+
+        // SQRT_PRICE_DEVIATION is the square root of maximum/minimum price deviation.
+        // Sqrt halves the number of decimals.
+        uint256 upperSqrtPriceDeviation = FixedPointMathLib.sqrt((1e18 + tolerance) * 1e18);
+        if (
+            initiatorInfo_.upperSqrtPriceDeviation > 0
+                && upperSqrtPriceDeviation > initiatorInfo_.upperSqrtPriceDeviation
+        ) revert DecreaseToleranceOnly();
+
+        initiatorInfo_.lowerSqrtPriceDeviation = FixedPointMathLib.sqrt((1e18 - tolerance) * 1e18);
+        initiatorInfo_.upperSqrtPriceDeviation = upperSqrtPriceDeviation;
+
+        initiatorInfo[msg.sender] = initiatorInfo_;
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -356,14 +379,18 @@ contract UniswapV3Rebalancer is IActionBase {
      * @param id The id of the Liquidity Position.
      * @return position Struct with the position data.
      */
-    function getPositionState(uint256 id) public view returns (PositionState memory position) {
+    function getPositionState(uint256 id, int24 lowerTick, int24 upperTick, address initiator)
+        public
+        view
+        returns (PositionState memory position)
+    {
         // Get data of the Liquidity Position.
-        int24 tickLower;
-        int24 tickUpper;
-        (,, position.token0, position.token1, position.fee, tickLower, tickUpper, position.liquidity,,,,) =
-            UniswapV3Logic.POSITION_MANAGER.positions(id);
-        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(tickLower);
-        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(tickUpper);
+        int24 currentLowerTick;
+        int24 currentUpperTick;
+        (,, position.token0, position.token1, position.fee, currentLowerTick, currentUpperTick, position.liquidity,,,,)
+        = UniswapV3Logic.POSITION_MANAGER.positions(id);
+        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(currentLowerTick);
+        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(currentUpperTick);
 
         // Get trusted USD prices for 1e18 gwei of token0 and token1.
         (uint256 usdPriceToken0, uint256 usdPriceToken1) =
@@ -376,16 +403,23 @@ contract UniswapV3Rebalancer is IActionBase {
 
         // Store the new ticks for the rebalance
         // TODO: validate if ok to divide by 2 for uneven numbers
-        int24 tickSpacing = (tickUpper - tickLower) / 2;
-        position.newUpperTick = currentTick + tickSpacing;
-        position.newLowerTick = currentTick - tickSpacing;
+        if (lowerTick == 0 && upperTick == 0) {
+            int24 tickSpacing = (currentUpperTick - currentLowerTick) / 2;
+            position.newUpperTick = currentTick + tickSpacing;
+            position.newLowerTick = currentTick - tickSpacing;
+        } else {
+            position.newUpperTick = upperTick;
+            position.newLowerTick = lowerTick;
+        }
 
         // Calculate the square root of the relative rate sqrt(token1/token0) from the trusted USD price of both tokens.
         uint256 trustedSqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(usdPriceToken0, usdPriceToken1);
 
         // Calculate the upper and lower bounds of sqrtPriceX96 for the Pool to be balanced.
-        position.lowerBoundSqrtPriceX96 = trustedSqrtPriceX96.mulDivDown(LOWER_SQRT_PRICE_DEVIATION, 1e18);
-        position.upperBoundSqrtPriceX96 = trustedSqrtPriceX96.mulDivDown(UPPER_SQRT_PRICE_DEVIATION, 1e18);
+        position.lowerBoundSqrtPriceX96 =
+            trustedSqrtPriceX96.mulDivDown(initiatorInfo[initiator].lowerSqrtPriceDeviation, 1e18);
+        position.upperBoundSqrtPriceX96 =
+            trustedSqrtPriceX96.mulDivDown(initiatorInfo[initiator].upperSqrtPriceDeviation, 1e18);
     }
 
     /**

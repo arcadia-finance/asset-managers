@@ -77,4 +77,45 @@ library ArcadiaLogic {
         // Encode the actionData.
         actionData = abi.encode(assetData, transferFromOwner, permit, signature, compoundData);
     }
+
+    /**
+     * @notice Encodes the action data for the flash-action used to rebalance a Uniswap V3 Liquidity Position.
+     * @param initiator The address of the initiator.
+     * @param nonfungiblePositionManager The contract address of the UniswapV3 NonfungiblePositionManager.
+     * @param id The id of the Liquidity Position.
+     * @param lowerTick The new lower tick to rebalance the position to.
+     * @param upperTick The new upper tick to rebalancer the position to.
+     * @return actionData Bytes string with the encoded actionData.
+     */
+    function _encodeActionDataRebalancer(
+        address initiator,
+        address nonfungiblePositionManager,
+        uint256 id,
+        int24 lowerTick,
+        int24 upperTick
+    ) internal pure returns (bytes memory actionData) {
+        // Encode Uniswap V3 position that has to be withdrawn from and deposited back into the Account.
+        address[] memory assets_ = new address[](1);
+        assets_[0] = nonfungiblePositionManager;
+        uint256[] memory assetIds_ = new uint256[](1);
+        assetIds_[0] = id;
+        uint256[] memory assetAmounts_ = new uint256[](1);
+        assetAmounts_[0] = 1;
+        uint256[] memory assetTypes_ = new uint256[](1);
+        assetTypes_[0] = 2;
+
+        ActionData memory assetData =
+            ActionData({ assets: assets_, assetIds: assetIds_, assetAmounts: assetAmounts_, assetTypes: assetTypes_ });
+
+        // Empty data objects that have to be encoded when calling flashAction(), but that are not used for this specific flash-action.
+        bytes memory signature;
+        ActionData memory transferFromOwner;
+        IPermit2.PermitBatchTransferFrom memory permit;
+
+        // Data required by this contract when Account does the executeAction() callback during the flash-action.
+        bytes memory rebalanceData = abi.encode(assetData, initiator, lowerTick, upperTick);
+
+        // Encode the actionData.
+        actionData = abi.encode(assetData, transferFromOwner, permit, signature, rebalanceData);
+    }
 }

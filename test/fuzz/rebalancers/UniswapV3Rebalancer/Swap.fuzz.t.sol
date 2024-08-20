@@ -123,11 +123,11 @@ contract Swap_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
         uint128 liquidity = uniV3Pool.liquidity();
 
         {
+            (uint256 upperSqrtPriceDeviation,,) = rebalancer.initiatorInfo(initVars.initiator);
             position.token0 = address(token0);
             position.token1 = address(token1);
             position.fee = POOL_FEE;
-            position.upperBoundSqrtPriceX96 =
-                uint256(sqrtPriceX96).mulDivDown(rebalancer.UPPER_SQRT_PRICE_DEVIATION(), 1e18);
+            position.upperBoundSqrtPriceX96 = uint256(sqrtPriceX96).mulDivDown(upperSqrtPriceDeviation, 1e18);
             position.pool = address(uniV3Pool);
         }
 
@@ -136,13 +136,22 @@ contract Swap_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
             FullMath.mulDiv(uint256(liquidity), position.upperBoundSqrtPriceX96 - uint256(sqrtPriceX96), uint256(sqrtPriceX96)); */
         uint256 deltaToken0 = FullMath.mulDiv(
             uint256(liquidity),
-            (position.upperBoundSqrtPriceX96 - sqrtPriceX96) * 1e18,
+            (position.upperBoundSqrtPriceX96 - sqrtPriceX96),
             position.upperBoundSqrtPriceX96 * sqrtPriceX96
         );
 
-        emit LogHere(deltaToken0 / 1e18);
+        uint256 deltaToken1 = FullMath.mulDiv(deltaToken0, sqrtPriceX96, 10 ** 34);
 
-        uint256 amountOut = deltaToken0 + (10 ** token0.decimals());
+        deltaToken1 *= position.upperBoundSqrtPriceX96;
+
+        emit LogHere(uint256(liquidity));
+        emit LogHere(uint256(sqrtPriceX96));
+        emit LogHere(uint256(position.upperBoundSqrtPriceX96));
+        emit LogHere(uint256(position.upperBoundSqrtPriceX96 - sqrtPriceX96));
+        emit LogHere(deltaToken0);
+        emit LogHere(deltaToken1);
+
+        uint256 amountOut = deltaToken1;
 
         bool isPoolUnbalanced = rebalancer.swap(position, zeroToOne, amountOut);
 

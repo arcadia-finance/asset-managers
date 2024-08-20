@@ -22,26 +22,10 @@ contract Constructor_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_T
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Revert_Constructor_UnderflowTolerance(uint256 tolerance, uint256 liquidityTreshold) public {
-        tolerance = bound(tolerance, 1e18 + 1, type(uint256).max);
-
+    function testFuzz_Success_Constructor(uint256 liquidityTreshold) public {
         vm.prank(users.owner);
-        vm.expectRevert(stdError.arithmeticError);
-        new UniswapV3Rebalancer(tolerance, liquidityTreshold);
-    }
-
-    function testFuzz_Success_Constructor(uint256 tolerance, uint256 liquidityTreshold) public {
-        tolerance = bound(tolerance, 0, 1e18);
-
-        vm.prank(users.owner);
-        UniswapV3Rebalancer rebalancer_ = new UniswapV3Rebalancer(tolerance, liquidityTreshold);
+        UniswapV3Rebalancer rebalancer_ = new UniswapV3Rebalancer(liquidityTreshold);
 
         assertEq(rebalancer_.LIQUIDITY_TRESHOLD(), liquidityTreshold);
-
-        uint256 lowerDeviation = FixedPointMathLib.sqrt((1e18 - tolerance) * 1e18);
-        uint256 upperDeviation = FixedPointMathLib.sqrt((1e18 + tolerance) * 1e18);
-
-        assertEq(rebalancer_.LOWER_SQRT_PRICE_DEVIATION(), lowerDeviation);
-        assertEq(rebalancer_.UPPER_SQRT_PRICE_DEVIATION(), upperDeviation);
     }
 }

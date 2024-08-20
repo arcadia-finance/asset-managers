@@ -78,6 +78,9 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         uint256 priceToken0;
         uint256 priceToken1;
         uint256 decimalsDiff;
+        address initiator;
+        uint256 tolerance;
+        uint256 fee;
     }
 
     struct LpVariables {
@@ -108,7 +111,7 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         QuoterV2Fixture.deployQuoterV2(address(uniswapV3Factory), address(weth9));
 
         deployUniswapV3AM();
-        deployRebalancer(TOLERANCE, LIQUIDITY_TRESHOLD);
+        deployRebalancer(LIQUIDITY_TRESHOLD);
 
         // And : Rebalancer is allowed as Asset Manager
         vm.prank(users.accountOwner);
@@ -138,9 +141,9 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         vm.etch(address(uniV3AM), bytecode);
     }
 
-    function deployRebalancer(uint256 tolerance, uint256 liquidityTreshold) public {
+    function deployRebalancer(uint256 liquidityTreshold) public {
         vm.prank(users.owner);
-        rebalancer = new UniswapV3RebalancerExtension(tolerance, liquidityTreshold);
+        rebalancer = new UniswapV3RebalancerExtension(liquidityTreshold);
 
         // Get the bytecode of the UniswapV3PoolExtension.
         bytes memory args = abi.encode();
@@ -184,11 +187,29 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         // Given : Initialize a uniswapV3 pool
         initVars_ = initPool(initVars);
 
+        // And : An initiator is set
+        (uint256 tolerance, uint256 fee) = setInitiatorInfo(initVars_.initiator, initVars_.tolerance, initVars_.fee);
+        initVars_.tolerance = tolerance;
+        initVars_.fee = fee;
+
         // And : get valid position vars
         lpVars_ = givenValidTestVars(lpVars, initVars);
 
         // And : Create new position and generate fees
         tokenId = createNewPositionAndGenerateFees(lpVars_, uniV3Pool);
+    }
+
+    function setInitiatorInfo(address initiator, uint256 tolerance, uint256 fee)
+        public
+        returns (uint256 tolerance_, uint256 fee_)
+    {
+        tolerance = bound(tolerance, 0.001 * 1e18, 0.0199 * 1e18);
+        fee = bound(fee, 0, 0.0099 * 1e18);
+
+        vm.prank(initiator);
+        rebalancer.setInitiatorInfo(tolerance, fee);
+
+        return (tolerance, fee);
     }
 
     function initPool(InitVariables memory initVars) public returns (InitVariables memory initVars_) {
@@ -210,6 +231,7 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
             initVars.priceToken0 = bound(initVars.priceToken0, 1, type(uint256).max / 10 ** 64);
             initVars.priceToken1 = bound(initVars.priceToken1, 1, type(uint256).max / 10 ** 64);
 
+            // And : Scale the price with the token decimals, in order to obtain valid sqrtPriceX96
             uint256 priceToken0ScaledForDecimals;
             uint256 priceToken1ScaledForDecimals;
             if (token0.decimals() < token1.decimals()) {
@@ -224,7 +246,7 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
 
             // And : Cast to uint160 will overflow, not realistic.
             vm.assume(priceToken0ScaledForDecimals / priceToken1ScaledForDecimals < 2 ** 128);
-            // sqrtPriceX96 must be within ranges, or TickMath reverts.
+            // And : sqrtPriceX96 must be within ranges, or TickMath reverts.
             uint256 priceXd28 = priceToken0ScaledForDecimals * 1e28 / priceToken1ScaledForDecimals;
             uint256 sqrtPriceXd14 = FixedPointMathLib.sqrt(priceXd28);
             sqrtPriceX96 = sqrtPriceXd14 * 2 ** 96 / 1e14;
