@@ -236,18 +236,9 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
             initVars.priceToken0 = bound(initVars.priceToken0, 1, type(uint256).max / 10 ** 64);
             initVars.priceToken1 = bound(initVars.priceToken1, 1, type(uint256).max / 10 ** 64);
 
-            // And : Scale the price with the token decimals, in order to obtain valid sqrtPriceX96
-            uint256 priceToken0ScaledForDecimals;
-            uint256 priceToken1ScaledForDecimals;
-            if (token0.decimals() < token1.decimals()) {
-                priceToken0ScaledForDecimals = initVars.priceToken0;
-                priceToken1ScaledForDecimals = initVars.priceToken1 * 10 ** (token1.decimals() - token0.decimals());
-                initVars.decimalsDiff = token1.decimals() - token0.decimals();
-            } else {
-                priceToken0ScaledForDecimals = initVars.priceToken0 * 10 ** (token0.decimals() - token1.decimals());
-                priceToken1ScaledForDecimals = initVars.priceToken1;
-                initVars.decimalsDiff = token0.decimals() - token1.decimals();
-            }
+            // And : Use price for 1e18 wei assets, in order to obtain valid ratio of sqrtPriceX96
+            uint256 priceToken0ScaledForDecimals = initVars.priceToken0 * 10 ** (18 - token0.decimals());
+            uint256 priceToken1ScaledForDecimals = initVars.priceToken1 * 10 ** (18 - token1.decimals());
 
             // And : Cast to uint160 will overflow, not realistic.
             vm.assume(priceToken0ScaledForDecimals / priceToken1ScaledForDecimals < 2 ** 128);

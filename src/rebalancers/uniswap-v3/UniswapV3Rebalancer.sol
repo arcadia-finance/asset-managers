@@ -95,6 +95,8 @@ contract UniswapV3Rebalancer is IActionBase {
     ////////////////////////////////////////////////////////////// */
 
     event Rebalance(address indexed account, uint256 id);
+    // TODO: delete
+    event Logg(uint256);
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -379,7 +381,6 @@ contract UniswapV3Rebalancer is IActionBase {
      */
     function getPositionState(uint256 id, int24 lowerTick, int24 upperTick, address initiator)
         public
-        view
         returns (PositionState memory position)
     {
         // Get data of the Liquidity Position.
@@ -416,6 +417,10 @@ contract UniswapV3Rebalancer is IActionBase {
             trustedSqrtPriceX96.mulDivDown(initiatorInfo[initiator].lowerSqrtPriceDeviation, 1e18);
         position.upperBoundSqrtPriceX96 =
             trustedSqrtPriceX96.mulDivDown(initiatorInfo[initiator].upperSqrtPriceDeviation, 1e18);
+
+        emit Logg(uint256(position.sqrtPriceX96));
+        emit Logg(uint256(position.lowerBoundSqrtPriceX96));
+        emit Logg(uint256(position.upperBoundSqrtPriceX96));
     }
 
     /**
