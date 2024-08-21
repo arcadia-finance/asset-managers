@@ -322,7 +322,7 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
             lpVars.liquidity
         );
 
-        // And : assume the amounts are at least 1000 so that in generateFees(), using those amounts, it indeed generates a positive fee
+        // And : assume the amounts are at least 1e9 so that in generateFees(), using those amounts, it indeed generates a positive fee
         vm.assume(lpVars.amount0 > 1e9 && lpVars.amount1 > 1e9);
 
         // Given : Mint new position

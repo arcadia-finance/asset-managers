@@ -29,6 +29,6 @@ contract SetInitiatorForAccount_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebala
         rebalancer.setInitiatorForAccount(initiator, account_);
 
         // Then : Initiator should be set for that address
-        assertEq(rebalancer.ownerToAccountToInitiator(owner), initiator);
+        assertEq(rebalancer.ownerToAccountToInitiator(owner, account_), initiator);
     }
 }

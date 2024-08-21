@@ -24,8 +24,6 @@ contract Swap_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
         UniswapV3Rebalancer_Fuzz_Test.setUp();
     }
 
-    event LogHere(uint256);
-
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
@@ -143,13 +141,6 @@ contract Swap_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
         uint256 deltaToken1 = FullMath.mulDiv(deltaToken0, sqrtPriceX96, 10 ** 34);
 
         deltaToken1 *= position.upperBoundSqrtPriceX96;
-
-        emit LogHere(uint256(liquidity));
-        emit LogHere(uint256(sqrtPriceX96));
-        emit LogHere(uint256(position.upperBoundSqrtPriceX96));
-        emit LogHere(uint256(position.upperBoundSqrtPriceX96 - sqrtPriceX96));
-        emit LogHere(deltaToken0);
-        emit LogHere(deltaToken1);
 
         uint256 amountOut = deltaToken1;
 

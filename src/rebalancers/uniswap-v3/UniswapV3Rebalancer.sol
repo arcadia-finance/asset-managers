@@ -226,7 +226,7 @@ contract UniswapV3Rebalancer is IActionBase {
     /////////////////////////////////////////////////////////////// */
 
     function setInitiatorForAccount(address initiator, address account_) external {
-        ownerToAccountInitiator[msg.sender][account_] = initiator;
+        ownerToAccountToInitiator[msg.sender][account_] = initiator;
     }
 
     function setInitiatorInfo(uint256 tolerance, uint256 fee) external {
