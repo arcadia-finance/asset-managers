@@ -48,7 +48,7 @@ contract UniswapV3Rebalancer is IActionBase {
 
     // A mapping that sets an initiator per position of an owner.
     // An initiator is approved by the owner to rebalance its specified uniswapV3 position.
-    mapping(address owner => address initiator) public ownerToInitiator;
+    mapping(address owner => mapping(address account => address initiator)) public ownerToAccountToInitiator;
 
     // A mapping from initiator to rebalancing fee.
     mapping(address initiator => InitiatorInfo) public initiatorInfo;
@@ -63,8 +63,6 @@ contract UniswapV3Rebalancer is IActionBase {
         int24 newLowerTick;
         uint128 liquidity;
         uint256 sqrtPriceX96;
-        uint256 sqrtRatioLower;
-        uint256 sqrtRatioUpper;
         uint256 lowerBoundSqrtPriceX96;
         uint256 upperBoundSqrtPriceX96;
     }
@@ -126,7 +124,7 @@ contract UniswapV3Rebalancer is IActionBase {
         // Store Account address, used to validate the caller of the executeAction() callback.
         if (account != address(0)) revert Reentered();
         if (!ArcadiaLogic.FACTORY.isAccount(account_)) revert NotAnAccount();
-        if (ownerToInitiator[IAccount(account_).owner()] != msg.sender) revert InitiatorNotValid();
+        if (ownerToAccountToInitiator[IAccount(account_).owner()][account_] != msg.sender) revert InitiatorNotValid();
 
         account = account_;
 
@@ -227,8 +225,8 @@ contract UniswapV3Rebalancer is IActionBase {
                         INITIATORS LOGIC
     /////////////////////////////////////////////////////////////// */
 
-    function setInitiator(address initiator) external {
-        ownerToInitiator[msg.sender] = initiator;
+    function setInitiatorForAccount(address initiator, address account_) external {
+        ownerToAccountInitiator[msg.sender][account_] = initiator;
     }
 
     function setInitiatorInfo(uint256 tolerance, uint256 fee) external {
@@ -389,8 +387,6 @@ contract UniswapV3Rebalancer is IActionBase {
         int24 currentUpperTick;
         (,, position.token0, position.token1, position.fee, currentLowerTick, currentUpperTick, position.liquidity,,,,)
         = UniswapV3Logic.POSITION_MANAGER.positions(id);
-        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(currentLowerTick);
-        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(currentUpperTick);
 
         // Get trusted USD prices for 1e18 gwei of token0 and token1.
         (uint256 usdPriceToken0, uint256 usdPriceToken1) =

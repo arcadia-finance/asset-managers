@@ -8,9 +8,9 @@ import { UniswapV3Rebalancer } from "../../../../src/rebalancers/uniswap-v3/Unis
 import { UniswapV3Rebalancer_Fuzz_Test } from "./_UniswapV3Rebalancer.fuzz.t.sol";
 
 /**
- * @notice Fuzz tests for the function "setInitiator" of contract "UniswapV3Rebalancer".
+ * @notice Fuzz tests for the function "setInitiatorForAccount" of contract "UniswapV3Rebalancer".
  */
-contract SetInitiator_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
+contract SetInitiatorForAccount_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
@@ -23,12 +23,12 @@ contract SetInitiator_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_
                               TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function testFuzz_Success_setInitiator(address owner, address initiator) public {
+    function testFuzz_Success_setInitiatorForAccount(address owner, address initiator, address account_) public {
         // When : A randon address calls setInitiator on the rebalancer
         vm.prank(owner);
-        rebalancer.setInitiator(initiator);
+        rebalancer.setInitiatorForAccount(initiator, account_);
 
         // Then : Initiator should be set for that address
-        assertEq(rebalancer.ownerToInitiator(owner), initiator);
+        assertEq(rebalancer.ownerToAccountToInitiator(owner), initiator);
     }
 }

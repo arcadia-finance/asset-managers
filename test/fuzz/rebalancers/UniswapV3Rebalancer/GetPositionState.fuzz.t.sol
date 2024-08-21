@@ -43,8 +43,6 @@ contract GetPositionState_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_F
         assertEq(position.token0, address(token0));
         assertEq(position.token1, address(token1));
         assertEq(position.fee, POOL_FEE);
-        assertEq(position.sqrtRatioLower, TickMath.getSqrtRatioAtTick(lpVars.tickLower));
-        assertEq(position.sqrtRatioUpper, TickMath.getSqrtRatioAtTick(lpVars.tickUpper));
         assertEq(position.pool, address(uniV3Pool));
 
         // Here we use approxEqRel as the difference between the LiquidityAmounts lib
@@ -110,8 +108,6 @@ contract GetPositionState_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_F
         assertEq(position.token0, address(token0));
         assertEq(position.token1, address(token1));
         assertEq(position.fee, POOL_FEE);
-        assertEq(position.sqrtRatioLower, TickMath.getSqrtRatioAtTick(lpVars.tickLower));
-        assertEq(position.sqrtRatioUpper, TickMath.getSqrtRatioAtTick(lpVars.tickUpper));
         assertEq(position.pool, address(uniV3Pool));
 
         // Here we use approxEqRel as the difference between the LiquidityAmounts lib

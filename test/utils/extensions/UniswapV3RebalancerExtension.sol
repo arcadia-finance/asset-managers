@@ -17,4 +17,8 @@ contract UniswapV3RebalancerExtension is UniswapV3Rebalancer {
     function swap(PositionState memory position, bool zeroToOne, uint256 amountOut) public returns (bool) {
         return _swap(position, zeroToOne, amountOut);
     }
+
+    function setAccount(address account_) public {
+        account = account_;
+    }
 }
