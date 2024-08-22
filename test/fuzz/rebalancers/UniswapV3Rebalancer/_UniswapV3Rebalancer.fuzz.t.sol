@@ -19,6 +19,7 @@ import { ISwapRouter02 } from
     "../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/interfaces/ISwapRouter02.sol";
 import { LiquidityAmounts } from "../../../../src/libraries/LiquidityAmounts.sol";
 import { QuoterV2Fixture } from "../../../utils/fixtures/uniswap-v3/QuoterV2Fixture.f.sol";
+import { SwapMath } from "../../../../src/libraries/SwapMath.sol";
 import { SwapRouter02Fixture } from
     "../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/SwapRouter02Fixture.f.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
@@ -267,8 +268,8 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
 
         // And : Supply a minimal amount of tokens such that the next LP that we will deposit would not be too small
         // compared to the value of the initial one.
-        initVars.initToken0Amount = bound(initVars.initToken0Amount, 1000 * 1e18, type(uint80).max);
-        initVars.initToken1Amount = bound(initVars.initToken1Amount, 1000 * 1e18, type(uint80).max);
+        initVars.initToken0Amount = bound(initVars.initToken0Amount, 1e21, type(uint80).max);
+        initVars.initToken1Amount = bound(initVars.initToken1Amount, 1e21, type(uint80).max);
 
         // And : Mint initial position
         (, initVars.initToken0Amount, initVars.initToken1Amount) = addLiquidityUniV3(
@@ -331,6 +332,9 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
     }
 
     function generateFees(LpVariables memory lpVars) public {
+        // Cache initial sqrtPrice
+        (uint160 initSqrtPriceX96,,,,,,) = uniV3Pool.slot0();
+
         vm.startPrank(users.liquidityProvider);
         ISwapRouter02.ExactInputSingleParams memory exactInputParams;
         // Swap token0 for token1
@@ -353,17 +357,24 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         swapRouter.exactInputSingle(exactInputParams);
 
         // Swap token1 for token0
-        uint256 amount1ToSwap = lpVars.amount1;
+        // Swap enough to get lp back to initial tick
+        (uint160 sqrtPriceX96,,,,,,) = uniV3Pool.slot0();
+        uint128 liquidity = uniV3Pool.liquidity();
 
-        deal(address(token1), users.liquidityProvider, amount1ToSwap, true);
-        token1.approve(address(swapRouter), amount1ToSwap);
+        int256 amountRemaining = type(int128).max;
+        // Calculate the amount of token1 to swap to arrive to target price
+        (uint160 sqrtRatioNextX96, uint256 amountIn,,) =
+            SwapMath.computeSwapStep(sqrtPriceX96, initSqrtPriceX96, liquidity, amountRemaining, 100 * POOL_FEE);
+
+        deal(address(token1), users.liquidityProvider, amountIn, true);
+        token1.approve(address(swapRouter), type(uint128).max);
 
         exactInputParams = ISwapRouter02.ExactInputSingleParams({
             tokenIn: address(token1),
             tokenOut: address(token0),
             fee: uniV3Pool.fee(),
             recipient: users.liquidityProvider,
-            amountIn: amount1ToSwap,
+            amountIn: amountIn,
             amountOutMinimum: 0,
             sqrtPriceLimitX96: 0
         });

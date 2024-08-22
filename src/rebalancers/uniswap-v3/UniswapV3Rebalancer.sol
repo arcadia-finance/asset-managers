@@ -301,7 +301,7 @@ contract UniswapV3Rebalancer is IActionBase {
 
         uint256 sqrtRatioUpperTick = TickMath.getSqrtRatioAtTick(position.newUpperTick);
         uint256 sqrtRatioLowerTick = TickMath.getSqrtRatioAtTick(position.newLowerTick);
-
+        emit LogHere(1);
         if (position.sqrtPriceX96 >= sqrtRatioUpperTick) {
             // Position is out of range and fully in token 1.
             // Swap full amount of token0 to token1.
@@ -313,11 +313,8 @@ contract UniswapV3Rebalancer is IActionBase {
             amountOut = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, false, amount1);
         } else {
             // Get target ratio in token1 terms
-            uint256 targetRatio = UniswapV3Logic._getTargetRatio(
-                position.sqrtPriceX96,
-                TickMath.getSqrtRatioAtTick(position.newLowerTick),
-                TickMath.getSqrtRatioAtTick(position.newUpperTick)
-            );
+            uint256 targetRatio =
+                UniswapV3Logic._getTargetRatio(position.sqrtPriceX96, sqrtRatioLowerTick, sqrtRatioUpperTick);
 
             // Calculate the total fee value in token1 equivalent:
             uint256 token0ValueInToken1 = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, amount0);
