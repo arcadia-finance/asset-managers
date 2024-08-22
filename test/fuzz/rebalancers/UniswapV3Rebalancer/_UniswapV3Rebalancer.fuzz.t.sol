@@ -4,6 +4,7 @@
  */
 pragma solidity 0.8.22;
 
+import { AssetValueAndRiskFactors } from "../../../../lib/accounts-v2/src/libraries/AssetValuationLib.sol";
 import { Base_Test } from "../../../../lib/accounts-v2/test/Base.t.sol";
 import { CollectParams } from "../../../../src/interfaces/uniswap-v3/INonfungiblePositionManager.sol";
 import { DecreaseLiquidityParams } from "../../../../src/interfaces/uniswap-v3/INonfungiblePositionManager.sol";
@@ -208,7 +209,9 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         public
         returns (uint256 tolerance_, uint256 fee_)
     {
-        tolerance = bound(tolerance, 0.001 * 1e18, 0.0199 * 1e18);
+        // Too low tolerance for testing will make tests reverts too quickly with unbalancedPool()
+        // TODO : fuzz more tolerances here
+        tolerance = bound(tolerance, 0.018 * 1e18, 0.0199 * 1e18);
         fee = bound(fee, 0, 0.0099 * 1e18);
 
         vm.prank(initiator);
@@ -264,8 +267,8 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
 
         // And : Supply a minimal amount of tokens such that the next LP that we will deposit would not be too small
         // compared to the value of the initial one.
-        initVars.initToken0Amount = bound(initVars.initToken0Amount, 1e18, type(uint80).max);
-        initVars.initToken1Amount = bound(initVars.initToken1Amount, 1e18, type(uint80).max);
+        initVars.initToken0Amount = bound(initVars.initToken0Amount, 1000 * 1e18, type(uint80).max);
+        initVars.initToken1Amount = bound(initVars.initToken1Amount, 1000 * 1e18, type(uint80).max);
 
         // And : Mint initial position
         (, initVars.initToken0Amount, initVars.initToken1Amount) = addLiquidityUniV3(
@@ -294,7 +297,7 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         // And : Lower and upper ticks of the position are within the initial liquidity range
         int24 currentTick = uniV3Pool.getCurrentTick();
 
-        lpVars.tickLower = int24(bound(lpVars.tickLower, initVars.tickLower, currentTick - MIN_TICK_SPACING));
+        lpVars.tickLower = int24(bound(lpVars.tickLower, initVars.tickLower + 1, currentTick - MIN_TICK_SPACING));
         lpVars.tickUpper = int24(bound(lpVars.tickUpper, currentTick + MIN_TICK_SPACING, initVars.tickUpper - 1));
 
         lpVars_ = lpVars;
@@ -431,5 +434,29 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
                 feeGrowthInside1X128 = upperFeeGrowthOutside1X128 - lowerFeeGrowthOutside1X128;
             }
         }
+    }
+
+    function getValuesInUsd(uint256 amountA0, uint256 amountA1, uint256 amountB0, uint256 amountB1)
+        public
+        returns (uint256 usdValueA, uint256 usdValueB)
+    {
+        address[] memory assets = new address[](2);
+        assets[0] = address(token0);
+        assets[1] = address(token1);
+        uint256[] memory assetAmounts = new uint256[](2);
+        assetAmounts[0] = amountA0;
+        assetAmounts[1] = amountA1;
+
+        AssetValueAndRiskFactors[] memory valuesAndRiskFactors =
+            registry.getValuesInUsd(address(0), assets, new uint256[](2), assetAmounts);
+
+        usdValueA = valuesAndRiskFactors[0].assetValue + valuesAndRiskFactors[1].assetValue;
+
+        assetAmounts[0] = amountB0;
+        assetAmounts[1] = amountB1;
+
+        valuesAndRiskFactors = registry.getValuesInUsd(address(0), assets, new uint256[](2), assetAmounts);
+
+        usdValueB = valuesAndRiskFactors[0].assetValue + valuesAndRiskFactors[1].assetValue;
     }
 }

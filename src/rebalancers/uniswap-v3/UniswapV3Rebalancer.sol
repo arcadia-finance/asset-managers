@@ -95,8 +95,8 @@ contract UniswapV3Rebalancer is IActionBase {
     ////////////////////////////////////////////////////////////// */
 
     event Rebalance(address indexed account, uint256 id);
-    // TODO: delete
-    event Logg(uint256);
+
+    event LogHere(uint256);
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -299,27 +299,41 @@ contract UniswapV3Rebalancer is IActionBase {
         // Burn the position
         UniswapV3Logic.POSITION_MANAGER.burn(id);
 
-        // Get target ratio in token1 terms
-        uint256 targetRatio = UniswapV3Logic._getTargetRatio(
-            position.sqrtPriceX96,
-            TickMath.getSqrtRatioAtTick(position.newLowerTick),
-            TickMath.getSqrtRatioAtTick(position.newUpperTick)
-        );
+        uint256 sqrtRatioUpperTick = TickMath.getSqrtRatioAtTick(position.newUpperTick);
+        uint256 sqrtRatioLowerTick = TickMath.getSqrtRatioAtTick(position.newLowerTick);
 
-        // Calculate the total fee value in token1 equivalent:
-        uint256 token0ValueInToken1 = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, amount0);
-        uint256 totalValueInToken1 = amount1 + token0ValueInToken1;
-        uint256 currentRatio = amount1.mulDivDown(1e18, totalValueInToken1);
-
-        if (currentRatio < targetRatio) {
-            // Swap token0 partially to token1.
+        if (position.sqrtPriceX96 >= sqrtRatioUpperTick) {
+            // Position is out of range and fully in token 1.
+            // Swap full amount of token0 to token1.
             zeroToOne = true;
-            amountOut = (targetRatio - currentRatio).mulDivDown(totalValueInToken1, 1e18);
+            amountOut = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, amount0);
+        } else if (position.sqrtPriceX96 <= sqrtRatioLowerTick) {
+            // Position is out of range and fully in token 0.
+            // Swap full amount of token1 to token0.
+            amountOut = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, false, amount1);
         } else {
-            // Swap token1 partially to token0.
-            zeroToOne = false;
-            uint256 amountIn = (currentRatio - targetRatio).mulDivDown(totalValueInToken1, 1e18);
-            amountOut = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, false, amountIn);
+            // Get target ratio in token1 terms
+            uint256 targetRatio = UniswapV3Logic._getTargetRatio(
+                position.sqrtPriceX96,
+                TickMath.getSqrtRatioAtTick(position.newLowerTick),
+                TickMath.getSqrtRatioAtTick(position.newUpperTick)
+            );
+
+            // Calculate the total fee value in token1 equivalent:
+            uint256 token0ValueInToken1 = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, amount0);
+            uint256 totalValueInToken1 = amount1 + token0ValueInToken1;
+            uint256 currentRatio = amount1.mulDivDown(1e18, totalValueInToken1);
+
+            if (currentRatio < targetRatio) {
+                // Swap token0 partially to token1.
+                zeroToOne = true;
+                amountOut = (targetRatio - currentRatio).mulDivDown(totalValueInToken1, 1e18);
+            } else {
+                // Swap token1 partially to token0.
+                zeroToOne = false;
+                uint256 amountIn = (currentRatio - targetRatio).mulDivDown(totalValueInToken1, 1e18);
+                amountOut = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, false, amountIn);
+            }
         }
     }
 
@@ -417,10 +431,6 @@ contract UniswapV3Rebalancer is IActionBase {
             trustedSqrtPriceX96.mulDivDown(initiatorInfo[initiator].lowerSqrtPriceDeviation, 1e18);
         position.upperBoundSqrtPriceX96 =
             trustedSqrtPriceX96.mulDivDown(initiatorInfo[initiator].upperSqrtPriceDeviation, 1e18);
-
-        emit Logg(uint256(position.sqrtPriceX96));
-        emit Logg(uint256(position.lowerBoundSqrtPriceX96));
-        emit Logg(uint256(position.upperBoundSqrtPriceX96));
     }
 
     /**

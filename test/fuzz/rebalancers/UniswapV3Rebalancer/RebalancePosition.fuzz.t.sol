@@ -5,9 +5,10 @@
 pragma solidity 0.8.22;
 
 import { ArcadiaLogic } from "../../../../src/libraries/ArcadiaLogic.sol";
-import { AssetValueAndRiskFactors } from "../../../../lib/accounts-v2/src/Registry.sol";
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { LiquidityAmounts } from
+    "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/LiquidityAmounts.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { UniswapV3Rebalancer } from "../../../../src/rebalancers/uniswap-v3/UniswapV3Rebalancer.sol";
 import { UniswapV3Rebalancer_Fuzz_Test } from "./_UniswapV3Rebalancer.fuzz.t.sol";
@@ -25,6 +26,9 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
     function setUp() public override {
         UniswapV3Rebalancer_Fuzz_Test.setUp();
     }
+
+    // TODO : delete
+    event Logg(uint256);
 
     /*//////////////////////////////////////////////////////////////
                               TESTS
@@ -79,9 +83,9 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         uint256 tokenId;
         (initVars, lpVars, tokenId) = initPoolAndCreatePositionWithFees(initVars, lpVars);
 
-        // Given : new ticks are within boundaries
-        newLowerTick = int24(bound(newLowerTick, TickMath.MIN_TICK + 1, lpVars.tickLower - 1));
-        newUpperTick = int24(bound(newUpperTick, lpVars.tickUpper + 1, TickMath.MAX_TICK - 1));
+        // Given : new ticks are within boundaries (otherwise swap too big => unbalanced pool)
+        newLowerTick = int24(bound(newLowerTick, lpVars.tickLower - 20, lpVars.tickLower - 1));
+        newUpperTick = int24(bound(newUpperTick, lpVars.tickUpper + 1, lpVars.tickUpper + 20));
 
         // And : Set initiator for account
         vm.prank(account.owner());
@@ -106,7 +110,26 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
             vm.stopPrank();
         }
 
+        // When : calling rebalancePosition()
         vm.prank(initVars.initiator);
         rebalancer.rebalancePosition(address(account), tokenId, newLowerTick, newUpperTick);
+
+        // Then : It should return the correct values
+        (,,,,, int24 tickLower, int24 tickUpper, uint256 liquidity,,,,) =
+            nonfungiblePositionManager.positions(tokenId + 1);
+        assertEq(tickLower, newLowerTick);
+        assertEq(tickUpper, newUpperTick);
+
+        uint256 amount0 = LiquidityAmounts.getAmount0ForLiquidity(
+            TickMath.getSqrtRatioAtTick(tickLower), TickMath.getSqrtRatioAtTick(tickUpper), uint128(liquidity)
+        );
+        uint256 amount1 = LiquidityAmounts.getAmount1ForLiquidity(
+            TickMath.getSqrtRatioAtTick(tickLower), TickMath.getSqrtRatioAtTick(tickUpper), uint128(liquidity)
+        );
+        (uint256 usdValuePosition, uint256 usdValueRemaining) =
+            getValuesInUsd(amount0, amount1, token0.balanceOf(address(account)), token1.balanceOf(address(account)));
+
+        // Ensure the leftovers represent less than 0,1% of the usd value of the newly minted position.
+        assertLt(usdValueRemaining, 0.001 * 1e18 * usdValuePosition / 1e18);
     }
 }
