@@ -477,4 +477,18 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
 
         usdValueB = valuesAndRiskFactors[0].assetValue + valuesAndRiskFactors[1].assetValue;
     }
+
+    function getValuesInUsd() public returns (uint256 usdPriceToken0, uint256 usdPriceToken1) {
+        address[] memory assets = new address[](2);
+        assets[0] = address(token0);
+        assets[1] = address(token1);
+        uint256[] memory assetAmounts = new uint256[](2);
+        assetAmounts[0] = 1e18;
+        assetAmounts[1] = 1e18;
+
+        AssetValueAndRiskFactors[] memory valuesAndRiskFactors =
+            registry.getValuesInUsd(address(0), assets, new uint256[](2), assetAmounts);
+
+        (usdPriceToken0, usdPriceToken1) = (valuesAndRiskFactors[0].assetValue, valuesAndRiskFactors[1].assetValue);
+    }
 }

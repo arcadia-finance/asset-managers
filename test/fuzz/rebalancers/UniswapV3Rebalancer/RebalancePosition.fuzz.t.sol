@@ -138,16 +138,18 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
 
     function testFuzz_Success_rebalancePosition_MoveTickRight_BalancedWithSameTickSpacing(
         InitVariables memory initVars,
-        LpVariables memory lpVars,
-        int24 upperTick
+        LpVariables memory lpVars
     ) public {
         // Given : deploy new rebalancer with a high maxTolerance to avoid unbalancedPool due to external usd prices not aligned
-        uint256 maxTolerance = 1e18 * 10;
+        uint256 maxTolerance = 1e18;
         deployRebalancer(LIQUIDITY_TRESHOLD, maxTolerance);
 
         // And : Rebalancer is allowed as Asset Manager
         vm.prank(users.accountOwner);
         account.setAssetManager(address(rebalancer), true);
+
+        // And : Allow to test with increased tolerance
+        increaseTolerance = true;
 
         // And : Initialize a uniswapV3 pool and a lp position with valid test variables. Also generate fees for that position.
         uint256 tokenId;
@@ -181,13 +183,21 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
             (uint160 sqrtPriceX96, int24 currentTick,,,,,) = uniV3Pool.slot0();
             uint128 liquidity = uniV3Pool.liquidity();
 
-            upperTick = int24(bound(upperTick, currentTick + 1, initVars.tickUpper - 1));
-            uint160 sqrtPriceX96Target = TickMath.getSqrtRatioAtTick(upperTick);
+            (uint256 usdPriceToken0, uint256 usdPriceToken1) = getValuesInUsd();
+            // Calculate the square root of the relative rate sqrt(token1/token0) from the trusted USD price of both tokens.
+            uint256 trustedSqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(usdPriceToken0, usdPriceToken1);
+            (uint256 upperSqrtPriceDeviation,,) = rebalancer.initiatorInfo(initVars.initiator);
+            // Calculate max sqrtPriceX96 to the right to avoid unbalancedPool()
+            uint256 sqrtPriceX96Target = trustedSqrtPriceX96.mulDivDown(upperSqrtPriceDeviation, 1e18);
+
+            // Take 1 % below to ensure we avoid unbalancedPool
+            sqrtPriceX96Target -= ((sqrtPriceX96Target * (0.01 * 1e18)) / 1e18);
 
             int256 amountRemaining = type(int128).max;
             // Calculate the minimum amount of token 1 to swap to achieve target price
-            (uint160 sqrtRatioNextX96, uint256 amountIn, uint256 amountOut,) =
-                SwapMath.computeSwapStep(sqrtPriceX96, sqrtPriceX96Target, liquidity, amountRemaining, 100 * POOL_FEE);
+            (uint160 sqrtRatioNextX96, uint256 amountIn, uint256 amountOut,) = SwapMath.computeSwapStep(
+                sqrtPriceX96, uint160(sqrtPriceX96Target), liquidity, amountRemaining, 100 * POOL_FEE
+            );
 
             vm.startPrank(users.swapper);
             deal(address(token1), users.swapper, type(uint128).max);
@@ -217,6 +227,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         rebalancer.rebalancePosition(address(account), tokenId, 0, 0);
 
         // Then : It should return correct values
+        // TODO
     }
 
     function testFuzz_Success_rebalancePosition_MoveTickLeft_BalancedWithSameTickSpacing(
