@@ -23,8 +23,6 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         UniswapV3Rebalancer_Fuzz_Test.setUp();
     }
 
-    event LogA(uint256);
-
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/

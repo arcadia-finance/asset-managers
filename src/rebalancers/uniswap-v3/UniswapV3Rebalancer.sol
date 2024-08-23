@@ -36,7 +36,7 @@ contract UniswapV3Rebalancer is IActionBase {
     uint256 public immutable MAX_INITIATOR_FEE = 0.01 * 1e18;
     // The maximum lower deviation of the pools actual sqrtPriceX96,
     // The maximum deviation of the actual pool price, in % with 18 decimals precision.
-    uint256 public immutable MAX_TOLERANCE = 0.02 * 1e18;
+    uint256 public immutable MAX_TOLERANCE;
     uint256 public immutable LIQUIDITY_TRESHOLD;
 
     /* //////////////////////////////////////////////////////////////
@@ -104,10 +104,12 @@ contract UniswapV3Rebalancer is IActionBase {
 
     /**
      * @param liquidityTreshold .
+     * @param maxTolerance .
      */
-    constructor(uint256 liquidityTreshold) {
+    constructor(uint256 liquidityTreshold, uint256 maxTolerance) {
         // TODO: max treshold ?
         LIQUIDITY_TRESHOLD = liquidityTreshold;
+        MAX_TOLERANCE = maxTolerance;
     }
 
     /* ///////////////////////////////////////////////////////////////

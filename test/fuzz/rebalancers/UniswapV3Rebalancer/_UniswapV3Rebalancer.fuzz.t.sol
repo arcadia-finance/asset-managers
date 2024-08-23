@@ -50,9 +50,9 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
     uint256 internal MOCK_ORACLE_DECIMALS = 18;
     uint24 internal POOL_FEE = 100;
 
-    // 4 % price diff for testing
+    // 2 % price diff for testing
     // TODO : fuzz ?
-    uint256 internal TOLERANCE = 0.04 * 1e18;
+    uint256 internal MAX_TOLERANCE = 0.02 * 1e18;
 
     // 2 % liquidity treshold for rebalancer
     uint256 internal LIQUIDITY_TRESHOLD = 0.02 * 1e18;
@@ -62,6 +62,9 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
 
     int24 internal MIN_TICK_SPACING = 10;
     int24 internal INIT_LP_TICK_RANGE = 20_000;
+
+    // If set to "true" during tests, will enable to mock high tolerance
+    bool public increaseTolerance;
 
     // TODO : 10% initiator fee
     uint256 internal INITIATOR_SHARE = 0.1 * 1e18;
@@ -118,7 +121,7 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         QuoterV2Fixture.deployQuoterV2(address(uniswapV3Factory), address(weth9));
 
         deployUniswapV3AM();
-        deployRebalancer(LIQUIDITY_TRESHOLD);
+        deployRebalancer(LIQUIDITY_TRESHOLD, MAX_TOLERANCE);
 
         // And : Rebalancer is allowed as Asset Manager
         vm.prank(users.accountOwner);
@@ -148,9 +151,9 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         vm.etch(address(uniV3AM), bytecode);
     }
 
-    function deployRebalancer(uint256 liquidityTreshold) public {
+    function deployRebalancer(uint256 liquidityTreshold, uint256 maxTolerance) public {
         vm.prank(users.owner);
-        rebalancer = new UniswapV3RebalancerExtension(liquidityTreshold);
+        rebalancer = new UniswapV3RebalancerExtension(liquidityTreshold, maxTolerance);
 
         // Get the bytecode of the UniswapV3PoolExtension.
         bytes memory args = abi.encode();
@@ -212,8 +215,12 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
     {
         // Too low tolerance for testing will make tests reverts too quickly with unbalancedPool()
         // TODO : fuzz more tolerances here
-        tolerance = bound(tolerance, 0.018 * 1e18, 0.0199 * 1e18);
+        tolerance = bound(tolerance, 0.018 * 1e18, rebalancer.MAX_TOLERANCE() - 1);
         fee = bound(fee, 0, 0.0099 * 1e18);
+
+        if (increaseTolerance == true) {
+            tolerance = rebalancer.MAX_TOLERANCE();
+        }
 
         vm.prank(initiator);
         rebalancer.setInitiatorInfo(tolerance, fee);
