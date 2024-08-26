@@ -101,8 +101,6 @@ contract UniswapV3Rebalancer is IActionBase {
 
     event Rebalance(address indexed account, uint256 id);
 
-    event LogHere(uint256);
-
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
     ////////////////////////////////////////////////////////////// */
@@ -309,7 +307,7 @@ contract UniswapV3Rebalancer is IActionBase {
 
         uint256 sqrtRatioUpperTick = TickMath.getSqrtRatioAtTick(position.newUpperTick);
         uint256 sqrtRatioLowerTick = TickMath.getSqrtRatioAtTick(position.newLowerTick);
-        emit LogHere(1);
+
         if (position.sqrtPriceX96 >= sqrtRatioUpperTick) {
             // Position is out of range and fully in token 1.
             // Swap full amount of token0 to token1.
@@ -447,10 +445,16 @@ contract UniswapV3Rebalancer is IActionBase {
         uint256 trustedSqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(usdPriceToken0, usdPriceToken1);
 
         // Calculate the upper and lower bounds of sqrtPriceX96 for the Pool to be balanced.
-        position.lowerBoundSqrtPriceX96 =
+        uint256 lowerBoundSqrtPriceX96 =
             trustedSqrtPriceX96.mulDivDown(initiatorInfo[initiator].lowerSqrtPriceDeviation, 1e18);
-        position.upperBoundSqrtPriceX96 =
+        uint256 upperBoundSqrtPriceX96 =
             trustedSqrtPriceX96.mulDivDown(initiatorInfo[initiator].upperSqrtPriceDeviation, 1e18);
+        uint256 minSqrtRatio = TickMath.MIN_SQRT_RATIO;
+        uint256 maxSqrtRatio = TickMath.MAX_SQRT_RATIO;
+        position.lowerBoundSqrtPriceX96 =
+            lowerBoundSqrtPriceX96 <= minSqrtRatio ? minSqrtRatio + 1 : lowerBoundSqrtPriceX96;
+        position.upperBoundSqrtPriceX96 =
+            upperBoundSqrtPriceX96 >= maxSqrtRatio ? maxSqrtRatio - 1 : upperBoundSqrtPriceX96;
     }
 
     /**
