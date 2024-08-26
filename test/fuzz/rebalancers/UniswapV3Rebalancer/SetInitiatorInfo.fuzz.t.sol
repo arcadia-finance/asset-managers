@@ -100,8 +100,8 @@ contract SetInitiatorInfo_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_F
         uint256 lowerSqrtPriceDeviation_ = FixedPointMathLib.sqrt((1e18 - tolerance) * 1e18);
         (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation, uint256 fee_) =
             rebalancer.initiatorInfo(initiator);
-        assertEq(upperSqrtPriceDeviation_, upperSqrtPriceDeviation_);
-        assertEq(lowerSqrtPriceDeviation_, lowerSqrtPriceDeviation_);
+        assertEq(upperSqrtPriceDeviation, upperSqrtPriceDeviation_);
+        assertEq(lowerSqrtPriceDeviation, lowerSqrtPriceDeviation_);
         assertEq(fee, fee_);
     }
 }

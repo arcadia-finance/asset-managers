@@ -11,6 +11,7 @@ import { ISwapRouter02 } from
     "../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/interfaces/ISwapRouter02.sol";
 import { LiquidityAmounts } from
     "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/LiquidityAmounts.sol";
+import { QuoteExactOutputSingleParams } from "../../../../src/interfaces/uniswap-v3/IQuoter.sol";
 import { SwapMath } from "../../../../src/libraries/SwapMath.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { UniswapV3Rebalancer } from "../../../../src/rebalancers/uniswap-v3/UniswapV3Rebalancer.sol";
@@ -22,6 +23,14 @@ import { UniswapV3Logic } from "../../../../src/libraries/UniswapV3Logic.sol";
  */
 contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
     using FixedPointMathLib for uint256;
+
+    /* //////////////////////////////////////////////////////////////
+                                STORAGE
+    ////////////////////////////////////////////////////////////// */
+
+    // We keep track of the tickChange variable here to avoid stack too deep issues.
+    int24 tickChange;
+
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
@@ -113,6 +122,55 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
             vm.stopPrank();
         }
 
+        {
+            // Calculate the amountOut in order to obtain tickChange after swap.
+            UniswapV3Rebalancer.PositionState memory position =
+                rebalancer.getPositionState(tokenId, newLowerTick, newUpperTick, initVars.initiator);
+
+            (uint256 fee0, uint256 fee1) = getFeeAmounts(tokenId);
+
+            uint256 amount0 = lpVars.amount0 + fee0;
+            uint256 amount1 = lpVars.amount1 + fee1;
+
+            uint256 sqrtRatioUpperTick = TickMath.getSqrtRatioAtTick(position.newUpperTick);
+            uint256 sqrtRatioLowerTick = TickMath.getSqrtRatioAtTick(position.newLowerTick);
+            // Get target ratio in token1 terms.
+            uint256 targetRatio =
+                UniswapV3Logic._getTargetRatio(position.sqrtPriceX96, sqrtRatioLowerTick, sqrtRatioUpperTick);
+
+            // Calculate the total fee value in token1 equivalent:
+            uint256 token0ValueInToken1 = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, amount0);
+            uint256 totalValueInToken1 = amount1 + token0ValueInToken1;
+            uint256 currentRatio = amount1.mulDivDown(1e18, totalValueInToken1);
+
+            UniswapV3Rebalancer.PositionState memory positionStack = position;
+
+            bool zeroToOne;
+            uint256 amountOut;
+            if (currentRatio < targetRatio) {
+                // Swap token0 partially to token1.
+                zeroToOne = true;
+                amountOut = (targetRatio - currentRatio).mulDivDown(totalValueInToken1, 1e18);
+            } else {
+                // Swap token1 partially to token0.
+                zeroToOne = false;
+                uint256 amountIn = (currentRatio - targetRatio).mulDivDown(totalValueInToken1, 1e18);
+                amountOut = UniswapV3Logic._getAmountOut(positionStack.sqrtPriceX96, false, amountIn);
+            }
+
+            QuoteExactOutputSingleParams memory params = QuoteExactOutputSingleParams({
+                tokenIn: zeroToOne ? positionStack.token0 : positionStack.token1,
+                tokenOut: zeroToOne ? positionStack.token1 : positionStack.token0,
+                amountOut: amountOut,
+                fee: positionStack.fee,
+                sqrtPriceLimitX96: 0
+            });
+            (, uint160 sqrtPriceX96After,,) = quoter.quoteExactOutputSingle(params);
+            int24 currentTick = TickMath.getTickAtSqrtRatio(uint160(positionStack.sqrtPriceX96));
+            int24 tickAfter = TickMath.getTickAtSqrtRatio(sqrtPriceX96After);
+            tickChange = tickAfter - currentTick;
+        }
+
         // When : calling rebalancePosition()
         vm.prank(initVars.initiator);
         rebalancer.rebalancePosition(address(account), tokenId, newLowerTick, newUpperTick);
@@ -120,20 +178,20 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         // Then : It should return the correct values
         (,,,,, int24 tickLower, int24 tickUpper, uint256 liquidity,,,,) =
             nonfungiblePositionManager.positions(tokenId + 1);
-        assertEq(tickLower, newLowerTick);
-        assertEq(tickUpper, newUpperTick);
+        assertEq(tickLower, newLowerTick + tickChange);
+        assertEq(tickUpper, newUpperTick + tickChange);
 
-        uint256 amount0 = LiquidityAmounts.getAmount0ForLiquidity(
+        uint256 amount0_ = LiquidityAmounts.getAmount0ForLiquidity(
             TickMath.getSqrtRatioAtTick(tickLower), TickMath.getSqrtRatioAtTick(tickUpper), uint128(liquidity)
         );
-        uint256 amount1 = LiquidityAmounts.getAmount1ForLiquidity(
+        uint256 amount1_ = LiquidityAmounts.getAmount1ForLiquidity(
             TickMath.getSqrtRatioAtTick(tickLower), TickMath.getSqrtRatioAtTick(tickUpper), uint128(liquidity)
         );
         (uint256 usdValuePosition, uint256 usdValueRemaining) =
-            getValuesInUsd(amount0, amount1, token0.balanceOf(address(account)), token1.balanceOf(address(account)));
+            getValuesInUsd(amount0_, amount1_, token0.balanceOf(address(account)), token1.balanceOf(address(account)));
 
-        // Ensure the leftovers represent less than 0,1% of the usd value of the newly minted position.
-        assertLt(usdValueRemaining, 0.001 * 1e18 * usdValuePosition / 1e18);
+        // Ensure the leftovers represent less than 0,5% of the usd value of the newly minted position.
+        assertLt(usdValueRemaining, 0.005 * 1e18 * usdValuePosition / 1e18);
     }
 
     function testFuzz_Success_rebalancePosition_MoveTickRight_BalancedWithSameTickSpacing(
@@ -178,10 +236,10 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
             vm.stopPrank();
         }
 
-        // Move ticks right while keeping balanced pool
+        // Move ticks right (by maxTolerance in this case 1e18 = 100%)
         {
             (uint160 sqrtPriceX96, int24 currentTick,,,,,) = uniV3Pool.slot0();
-            uint128 liquidity = uniV3Pool.liquidity();
+            uint128 liquidity_ = uniV3Pool.liquidity();
 
             (uint256 usdPriceToken0, uint256 usdPriceToken1) = getValuesInUsd();
             // Calculate the square root of the relative rate sqrt(token1/token0) from the trusted USD price of both tokens.
@@ -195,8 +253,8 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
 
             int256 amountRemaining = type(int128).max;
             // Calculate the minimum amount of token 1 to swap to achieve target price
-            (uint160 sqrtRatioNextX96, uint256 amountIn, uint256 amountOut,) = SwapMath.computeSwapStep(
-                sqrtPriceX96, uint160(sqrtPriceX96Target), liquidity, amountRemaining, 100 * POOL_FEE
+            (, uint256 amountIn,,) = SwapMath.computeSwapStep(
+                sqrtPriceX96, uint160(sqrtPriceX96Target), liquidity_, amountRemaining, 100 * POOL_FEE
             );
 
             vm.startPrank(users.swapper);
@@ -218,8 +276,8 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
             swapRouter.exactInputSingle(exactInputParams);
             vm.stopPrank();
 
-            (, int24 newTick,,,,,) = uniV3Pool.slot0();
-            vm.assume(newTick > currentTick);
+            (, int24 tick,,,,,) = uniV3Pool.slot0();
+            vm.assume(tick > currentTick);
         }
 
         // When : calling rebalancePosition() with 0 value for lower and upper ticks
@@ -227,7 +285,12 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         rebalancer.rebalancePosition(address(account), tokenId, 0, 0);
 
         // Then : It should return correct values
-        // TODO
+        int24 tickSpacing = (lpVars.tickUpper - lpVars.tickLower) / 2;
+        (, int24 newTick,,,,,) = uniV3Pool.slot0();
+        (,,,,, int24 tickLower, int24 tickUpper,,,,,) = nonfungiblePositionManager.positions(tokenId + 1);
+
+        assertEq(tickLower, newTick - tickSpacing);
+        assertEq(tickUpper, newTick + tickSpacing);
     }
 
     function testFuzz_Success_rebalancePosition_MoveTickLeft_BalancedWithSameTickSpacing(

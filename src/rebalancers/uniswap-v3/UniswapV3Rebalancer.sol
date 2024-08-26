@@ -14,8 +14,10 @@ import {
 import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IAccount } from "../../interfaces/IAccount.sol";
+import { IQuoter } from "../../interfaces/uniswap-v3/IQuoter.sol";
 import { IUniswapV3Pool } from "./interfaces/IUniswapV3Pool.sol";
 import { LiquidityAmounts } from "../../libraries/LiquidityAmounts.sol";
+import { QuoteExactOutputSingleParams } from "../../interfaces/uniswap-v3/IQuoter.sol";
 import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { UniswapV3Logic } from "../../libraries/UniswapV3Logic.sol";
 
@@ -38,6 +40,9 @@ contract UniswapV3Rebalancer is IActionBase {
     // The maximum deviation of the actual pool price, in % with 18 decimals precision.
     uint256 public immutable MAX_TOLERANCE;
     uint256 public immutable LIQUIDITY_TRESHOLD;
+
+    // The Uniswap V3 Quoter contract.
+    IQuoter internal constant QUOTER = IQuoter(0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a);
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
@@ -178,10 +183,11 @@ contract UniswapV3Rebalancer is IActionBase {
             if (position.liquidity > maxLiquidity) revert LiquidityTresholdExceeded();
         }
 
-        // Rebalance the position so that the maximum liquidity can be added at 50/50 ration around current price.
-        // Use same tick spacing for rebalancing.
+        // Rebalance the position so that the maximum liquidity can be added for new ticks.
         // The Pool must still be balanced after the swap.
-        (bool zeroToOne, uint256 amountOut) = getSwapParameters(position, id);
+        (bool zeroToOne, uint256 amountOut, int24 tickChange) = getSwapParameters(position, id);
+        position.newLowerTick += tickChange;
+        position.newUpperTick += tickChange;
         if (_swap(position, zeroToOne, amountOut)) revert UnbalancedPool();
 
         // Increase liquidity of the position.
@@ -275,7 +281,7 @@ contract UniswapV3Rebalancer is IActionBase {
      */
     function getSwapParameters(PositionState memory position, uint256 id)
         public
-        returns (bool zeroToOne, uint256 amountOut)
+        returns (bool zeroToOne, uint256 amountOut, int24 tickChange)
     {
         // Remove liquidity of the position and claim outstanding fees to get full amounts of token0 and token1
         // for rebalance.
@@ -314,7 +320,7 @@ contract UniswapV3Rebalancer is IActionBase {
             // Swap full amount of token1 to token0.
             amountOut = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, false, amount1);
         } else {
-            // Get target ratio in token1 terms
+            // Get target ratio in token1 terms.
             uint256 targetRatio =
                 UniswapV3Logic._getTargetRatio(position.sqrtPriceX96, sqrtRatioLowerTick, sqrtRatioUpperTick);
 
@@ -333,6 +339,21 @@ contract UniswapV3Rebalancer is IActionBase {
                 uint256 amountIn = (currentRatio - targetRatio).mulDivDown(totalValueInToken1, 1e18);
                 amountOut = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, false, amountIn);
             }
+        }
+
+        // As the swap will move the price, update position ticks according to the expected price move.
+        {
+            QuoteExactOutputSingleParams memory params = QuoteExactOutputSingleParams({
+                tokenIn: zeroToOne ? position.token0 : position.token1,
+                tokenOut: zeroToOne ? position.token1 : position.token0,
+                amountOut: amountOut,
+                fee: position.fee,
+                sqrtPriceLimitX96: 0
+            });
+            (, uint160 sqrtPriceX96After,,) = QUOTER.quoteExactOutputSingle(params);
+            int24 currentTick = TickMath.getTickAtSqrtRatio(uint160(position.sqrtPriceX96));
+            int24 tickAfter = TickMath.getTickAtSqrtRatio(sqrtPriceX96After);
+            tickChange = tickAfter - currentTick;
         }
     }
 

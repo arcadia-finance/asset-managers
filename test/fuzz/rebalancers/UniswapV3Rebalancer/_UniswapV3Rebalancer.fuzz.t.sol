@@ -370,7 +370,7 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
 
         int256 amountRemaining = type(int128).max;
         // Calculate the amount of token1 to swap to arrive to target price
-        (uint160 sqrtRatioNextX96, uint256 amountIn,,) =
+        (, uint256 amountIn,,) =
             SwapMath.computeSwapStep(sqrtPriceX96, initSqrtPriceX96, liquidity, amountRemaining, 100 * POOL_FEE);
 
         deal(address(token1), users.liquidityProvider, amountIn, true);
@@ -456,6 +456,7 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
 
     function getValuesInUsd(uint256 amountA0, uint256 amountA1, uint256 amountB0, uint256 amountB1)
         public
+        view
         returns (uint256 usdValueA, uint256 usdValueB)
     {
         address[] memory assets = new address[](2);
@@ -478,7 +479,7 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         usdValueB = valuesAndRiskFactors[0].assetValue + valuesAndRiskFactors[1].assetValue;
     }
 
-    function getValuesInUsd() public returns (uint256 usdPriceToken0, uint256 usdPriceToken1) {
+    function getValuesInUsd() public view returns (uint256 usdPriceToken0, uint256 usdPriceToken1) {
         address[] memory assets = new address[](2);
         assets[0] = address(token0);
         assets[1] = address(token1);

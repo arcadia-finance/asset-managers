@@ -69,7 +69,7 @@ contract Swap_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
 
         int256 amountRemaining = -int256((token0.balanceOf(address(uniV3Pool))));
         // Calculate the minimum amount of token 1 to swap to achieve target price
-        (uint160 sqrtRatioNextX96, uint256 amountIn, uint256 amountOut,) = SwapMath.computeSwapStep(
+        (, uint256 amountIn, uint256 amountOut,) = SwapMath.computeSwapStep(
             sqrtPriceX96, uint160(sqrtPriceX96Target), liquidity, amountRemaining, 100 * POOL_FEE
         );
 
@@ -112,7 +112,7 @@ contract Swap_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
 
         int256 amountRemaining = -int256((token0.balanceOf(address(uniV3Pool))));
         // Calculate the minimum amount of token 1 to swap to achieve target price
-        (uint160 sqrtRatioNextX96, uint256 amountIn, uint256 amountOut,) = SwapMath.computeSwapStep(
+        (,, uint256 amountOut,) = SwapMath.computeSwapStep(
             sqrtPriceX96, uint160(sqrtPriceX96Target), liquidity, amountRemaining, 100 * POOL_FEE
         );
 
@@ -155,7 +155,7 @@ contract Swap_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
 
         int256 amountRemaining = -int256((token1.balanceOf(address(uniV3Pool))));
         // Calculate the minimum amount of token 0 to swap to achieve target price
-        (uint160 sqrtRatioNextX96, uint256 amountIn, uint256 amountOut,) = SwapMath.computeSwapStep(
+        (, uint256 amountIn, uint256 amountOut,) = SwapMath.computeSwapStep(
             sqrtPriceX96, uint160(sqrtPriceX96Target), liquidity, amountRemaining, 100 * POOL_FEE
         );
 
@@ -198,7 +198,7 @@ contract Swap_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
 
         int256 amountRemaining = -int256((token1.balanceOf(address(uniV3Pool))));
         // Calculate the minimum amount of token 0 to swap to achieve target price
-        (uint160 sqrtRatioNextX96, uint256 amountIn, uint256 amountOut,) = SwapMath.computeSwapStep(
+        (,, uint256 amountOut,) = SwapMath.computeSwapStep(
             sqrtPriceX96, uint160(sqrtPriceX96Target), liquidity, amountRemaining, 100 * POOL_FEE
         );
 
