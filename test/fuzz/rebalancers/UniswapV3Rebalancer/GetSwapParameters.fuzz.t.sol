@@ -57,13 +57,12 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         nonfungiblePositionManager.approve(address(rebalancer), tokenId);
 
         // When : calling getSwapParameters
-        (bool zeroToOne, uint256 amountOut, int24 tickChange) = rebalancer.getSwapParameters(position, tokenId);
+        (bool zeroToOne, uint256 amountOut) = rebalancer.getSwapParameters(position, tokenId);
 
         // Then : It should return correct values
         assertEq(zeroToOne, false);
         // We test in rebalancePosition() that new position is fully in token0
         assertGt(amountOut, 0);
-        // TODO : tickChange
     }
 
     function testFuzz_Success_getSwapParameters_singleSidedToken1(
@@ -96,13 +95,12 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         nonfungiblePositionManager.approve(address(rebalancer), tokenId);
 
         // When : calling getSwapParameters
-        (bool zeroToOne, uint256 amountOut, int24 tickChange) = rebalancer.getSwapParameters(position, tokenId);
+        (bool zeroToOne, uint256 amountOut) = rebalancer.getSwapParameters(position, tokenId);
 
         // Then : It should return correct values
         assertEq(zeroToOne, true);
         // We test in rebalancePosition() that new position is fully in token1
         assertGt(amountOut, 0);
-        // TODO : tickChange
     }
 
     function testFuzz_Success_getSwapParameters_currentRatioLowerThanTarget(
@@ -156,7 +154,7 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         }
 
         // When : calling getSwapParameters
-        (bool zeroToOne, uint256 amountOut, int24 tickChange) = rebalancer.getSwapParameters(position, tokenId);
+        (bool zeroToOne, uint256 amountOut) = rebalancer.getSwapParameters(position, tokenId);
 
         // Then : It should return correct values
         assertEq(zeroToOne, true);
@@ -164,7 +162,6 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         // might slightly differ (we check to max 1% diff)
         // TODO: validate why diff (first do full testing ?)
         //assertApproxEqRel(amountOut, expectedAmountOut, 1e16);
-        // TODO : tickChange
     }
 
     function testFuzz_Success_getSwapParameters_targetRatioLowerThanCurrent(
@@ -219,7 +216,7 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         }
 
         // When : calling getSwapParameters
-        (bool zeroToOne, uint256 amountOut, int24 tickChange) = rebalancer.getSwapParameters(position, tokenId);
+        (bool zeroToOne, uint256 amountOut) = rebalancer.getSwapParameters(position, tokenId);
 
         // Then : It should return correct values
         assertEq(zeroToOne, false);
@@ -227,6 +224,5 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         // might slightly differ (we check to max 1% diff)
         // TODO: validate why diff (first do full testing ?)
         //assertApproxEqRel(amountOut, expectedAmountOut, 1e16);
-        // TODO : tickChange
     }
 }

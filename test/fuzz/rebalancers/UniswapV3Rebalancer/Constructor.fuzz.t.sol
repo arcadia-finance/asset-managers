@@ -22,11 +22,10 @@ contract Constructor_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_T
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_Constructor(uint256 liquidityTreshold, uint256 maxTolerance) public {
+    function testFuzz_Success_Constructor(uint256 maxTolerance) public {
         vm.prank(users.owner);
-        UniswapV3Rebalancer rebalancer_ = new UniswapV3Rebalancer(liquidityTreshold, maxTolerance);
+        UniswapV3Rebalancer rebalancer_ = new UniswapV3Rebalancer(maxTolerance);
 
-        assertEq(rebalancer_.LIQUIDITY_TRESHOLD(), liquidityTreshold);
         assertEq(rebalancer_.MAX_TOLERANCE(), maxTolerance);
     }
 }

@@ -54,11 +54,11 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
     // TODO : fuzz ?
     uint256 internal MAX_TOLERANCE = 0.02 * 1e18;
 
-    // 2 % liquidity treshold for rebalancer
-    uint256 internal LIQUIDITY_TRESHOLD = 0.02 * 1e18;
-
-    // Minimum liquidity amount to use for tests
+    // Minimum liquidity ratio for minted position, 0,5%
     uint256 internal MIN_LIQUIDITY = 0.005 * 1e18;
+
+    // Max liquidity ratio of minted position, 10%
+    uint256 internal LIQUIDITY_TRESHOLD = 0.1 * 1e18;
 
     int24 internal MIN_TICK_SPACING = 10;
     int24 internal INIT_LP_TICK_RANGE = 20_000;
@@ -121,7 +121,7 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         QuoterV2Fixture.deployQuoterV2(address(uniswapV3Factory), address(weth9));
 
         deployUniswapV3AM();
-        deployRebalancer(LIQUIDITY_TRESHOLD, MAX_TOLERANCE);
+        deployRebalancer(MAX_TOLERANCE);
 
         // And : Rebalancer is allowed as Asset Manager
         vm.prank(users.accountOwner);
@@ -151,9 +151,9 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         vm.etch(address(uniV3AM), bytecode);
     }
 
-    function deployRebalancer(uint256 liquidityTreshold, uint256 maxTolerance) public {
+    function deployRebalancer(uint256 maxTolerance) public {
         vm.prank(users.owner);
-        rebalancer = new UniswapV3RebalancerExtension(liquidityTreshold, maxTolerance);
+        rebalancer = new UniswapV3RebalancerExtension(maxTolerance);
 
         // Get the bytecode of the UniswapV3PoolExtension.
         bytes memory args = abi.encode();
@@ -299,6 +299,7 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         // Given : Liquidity for new position is in limits
         uint128 currentLiquidity = uniV3Pool.liquidity();
         uint256 minLiquidity = currentLiquidity.mulDivDown(MIN_LIQUIDITY, 1e18);
+        // And : Use max liquidity treshold in order to avoid excessive slippage in tests
         uint256 maxLiquidity = currentLiquidity.mulDivDown(LIQUIDITY_TRESHOLD, 1e18);
         lpVars.liquidity = uint128(bound(lpVars.liquidity, minLiquidity, maxLiquidity));
 

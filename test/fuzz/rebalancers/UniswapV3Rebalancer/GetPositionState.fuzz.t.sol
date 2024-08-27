@@ -97,7 +97,7 @@ contract GetPositionState_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_F
         vm.assume(!(tickLower == 0 && tickUpper == 0));
 
         // And : Rebalancer is deployed
-        deployRebalancer(LIQUIDITY_TRESHOLD, MAX_TOLERANCE);
+        deployRebalancer(MAX_TOLERANCE);
 
         // And : Initialize a uniswapV3 pool and a lp position with valid test variables. Also generate fees for that position.
         uint256 tokenId;

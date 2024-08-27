@@ -17,7 +17,7 @@ import { IAccount } from "../../interfaces/IAccount.sol";
 import { IQuoter } from "../../interfaces/uniswap-v3/IQuoter.sol";
 import { IUniswapV3Pool } from "./interfaces/IUniswapV3Pool.sol";
 import { LiquidityAmounts } from "../../libraries/LiquidityAmounts.sol";
-import { QuoteExactOutputSingleParams } from "../../interfaces/uniswap-v3/IQuoter.sol";
+import { QuoteExactInputSingleParams } from "../../interfaces/uniswap-v3/IQuoter.sol";
 import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { UniswapV3Logic } from "../../libraries/UniswapV3Logic.sol";
 
@@ -39,7 +39,6 @@ contract UniswapV3Rebalancer is IActionBase {
     // The maximum lower deviation of the pools actual sqrtPriceX96,
     // The maximum deviation of the actual pool price, in % with 18 decimals precision.
     uint256 public immutable MAX_TOLERANCE;
-    uint256 public immutable LIQUIDITY_TRESHOLD;
 
     // The Uniswap V3 Quoter contract.
     IQuoter internal constant QUOTER = IQuoter(0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a);
@@ -101,17 +100,16 @@ contract UniswapV3Rebalancer is IActionBase {
 
     event Rebalance(address indexed account, uint256 id);
 
+    event LogHere(uint256);
+
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
     ////////////////////////////////////////////////////////////// */
 
     /**
-     * @param liquidityTreshold .
      * @param maxTolerance .
      */
-    constructor(uint256 liquidityTreshold, uint256 maxTolerance) {
-        // TODO: max treshold ?
-        LIQUIDITY_TRESHOLD = liquidityTreshold;
+    constructor(uint256 maxTolerance) {
         MAX_TOLERANCE = maxTolerance;
     }
 
@@ -175,18 +173,10 @@ contract UniswapV3Rebalancer is IActionBase {
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
         if (isPoolUnbalanced(position)) revert UnbalancedPool();
 
-        {
-            uint256 totalLiquidity = uint256(IUniswapV3Pool(position.pool).liquidity());
-            uint256 maxLiquidity = totalLiquidity.mulDivDown(LIQUIDITY_TRESHOLD, 1e18);
-            if (position.liquidity > maxLiquidity) revert LiquidityTresholdExceeded();
-        }
-
         // Rebalance the position so that the maximum liquidity can be added for new ticks.
         // The Pool must still be balanced after the swap.
-        (bool zeroToOne, uint256 amountOut, int24 tickChange) = getSwapParameters(position, id);
-        position.newLowerTick += tickChange;
-        position.newUpperTick += tickChange;
-        if (_swap(position, zeroToOne, amountOut)) revert UnbalancedPool();
+        (bool zeroToOne, uint256 amountIn) = getSwapParameters(position, id);
+        if (_swap(position, zeroToOne, amountIn)) revert UnbalancedPool();
 
         // Increase liquidity of the position.
         // The approval for at least one token after increasing liquidity will remain non-zero.
@@ -270,7 +260,7 @@ contract UniswapV3Rebalancer is IActionBase {
      * @param position Struct with the position data.
      * @param id St
      * @return zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
-     * @return amountOut The amount of tokenOut.
+     * @return amountIn The amount of tokenIn.
      * @dev We assume the fees amount are small compared to the liquidity of the pool,
      * hence we neglect slippage when optimizing the swap amounts.
      * Slippage must be limited, the contract enforces that the pool is still balanced after the swap and
@@ -279,7 +269,7 @@ contract UniswapV3Rebalancer is IActionBase {
      */
     function getSwapParameters(PositionState memory position, uint256 id)
         public
-        returns (bool zeroToOne, uint256 amountOut, int24 tickChange)
+        returns (bool zeroToOne, uint256 amountIn)
     {
         // Remove liquidity of the position and claim outstanding fees to get full amounts of token0 and token1
         // for rebalance.
@@ -302,6 +292,11 @@ contract UniswapV3Rebalancer is IActionBase {
             })
         );
 
+        emit LogHere(amount0);
+        emit LogHere(amount1);
+        emit LogHere(ERC20(position.token0).balanceOf(address(this)));
+        emit LogHere(ERC20(position.token1).balanceOf(address(this)));
+
         // Burn the position
         UniswapV3Logic.POSITION_MANAGER.burn(id);
 
@@ -312,46 +307,38 @@ contract UniswapV3Rebalancer is IActionBase {
             // Position is out of range and fully in token 1.
             // Swap full amount of token0 to token1.
             zeroToOne = true;
-            amountOut = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, amount0);
+            amountIn = amount0;
         } else if (position.sqrtPriceX96 <= sqrtRatioLowerTick) {
             // Position is out of range and fully in token 0.
             // Swap full amount of token1 to token0.
-            amountOut = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, false, amount1);
+            amountIn = amount1;
         } else {
             // Get target ratio in token1 terms.
             uint256 targetRatio =
                 UniswapV3Logic._getTargetRatio(position.sqrtPriceX96, sqrtRatioLowerTick, sqrtRatioUpperTick);
 
             // Calculate the total fee value in token1 equivalent:
-            uint256 token0ValueInToken1 = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, amount0);
+            uint256 token0ValueInToken1 =
+                UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, amount0, position.fee);
             uint256 totalValueInToken1 = amount1 + token0ValueInToken1;
             uint256 currentRatio = amount1.mulDivDown(1e18, totalValueInToken1);
+
+            // Cache fee to avoid stack too deep.
+            uint24 fee = position.fee;
 
             if (currentRatio < targetRatio) {
                 // Swap token0 partially to token1.
                 zeroToOne = true;
-                amountOut = (targetRatio - currentRatio).mulDivDown(totalValueInToken1, 1e18);
+                uint256 denominator = 1e18 - targetRatio.mulDivDown(position.fee, 1e6);
+                uint256 amountOut = (targetRatio - currentRatio).mulDivDown(totalValueInToken1, denominator);
+                // convert to amountIn
+                amountIn = UniswapV3Logic._getAmountIn(position.sqrtPriceX96, zeroToOne, amountOut, fee);
             } else {
                 // Swap token1 partially to token0.
                 zeroToOne = false;
-                uint256 amountIn = (currentRatio - targetRatio).mulDivDown(totalValueInToken1, 1e18);
-                amountOut = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, false, amountIn);
+                uint256 denominator = 1e18 + targetRatio.mulDivDown(fee, 1e6 - fee);
+                amountIn = (currentRatio - targetRatio).mulDivDown(totalValueInToken1, denominator);
             }
-        }
-
-        // As the swap will move the price, update position ticks according to the expected price move.
-        {
-            QuoteExactOutputSingleParams memory params = QuoteExactOutputSingleParams({
-                tokenIn: zeroToOne ? position.token0 : position.token1,
-                tokenOut: zeroToOne ? position.token1 : position.token0,
-                amountOut: amountOut,
-                fee: position.fee,
-                sqrtPriceLimitX96: 0
-            });
-            (, uint160 sqrtPriceX96After,,) = QUOTER.quoteExactOutputSingle(params);
-            int24 currentTick = TickMath.getTickAtSqrtRatio(uint160(position.sqrtPriceX96));
-            int24 tickAfter = TickMath.getTickAtSqrtRatio(sqrtPriceX96After);
-            tickChange = tickAfter - currentTick;
         }
     }
 
@@ -359,15 +346,15 @@ contract UniswapV3Rebalancer is IActionBase {
      * @notice Swaps one token to the other token in the Uniswap V3 Pool of the Liquidity Position.
      * @param position Struct with the position data.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
-     * @param amountOut The amount that of tokenOut that must be swapped to.
+     * @param amountIn The amount of tokenIn that must be swapped.
      * @return isPoolUnbalanced_ Bool indicating if the pool is unbalanced due to slippage of the swap.
      */
-    function _swap(PositionState memory position, bool zeroToOne, uint256 amountOut)
+    function _swap(PositionState memory position, bool zeroToOne, uint256 amountIn)
         internal
         returns (bool isPoolUnbalanced_)
     {
         // Don't do swaps with zero amount.
-        if (amountOut == 0) return false;
+        if (amountIn == 0) return false;
 
         // Pool should still be balanced (within tolerance boundaries) after the swap.
         uint160 sqrtPriceLimitX96 =
@@ -376,10 +363,10 @@ contract UniswapV3Rebalancer is IActionBase {
         // Do the swap.
         bytes memory data = abi.encode(position.token0, position.token1, position.fee);
         (int256 deltaAmount0, int256 deltaAmount1) =
-            IUniswapV3Pool(position.pool).swap(address(this), zeroToOne, -int256(amountOut), sqrtPriceLimitX96, data);
+            IUniswapV3Pool(position.pool).swap(address(this), zeroToOne, int256(amountIn), sqrtPriceLimitX96, data);
 
-        // Check if pool is still balanced (sqrtPriceLimitX96 is reached before an amountOut of tokenOut is received).
-        isPoolUnbalanced_ = (amountOut > (zeroToOne ? uint256(-deltaAmount1) : uint256(-deltaAmount0)));
+        // Check if pool is still balanced (sqrtPriceLimitX96 is reached before an amountIn of tokenIn is swapped).
+        isPoolUnbalanced_ = (amountIn > (zeroToOne ? uint256(deltaAmount0) : uint256(deltaAmount1)));
     }
 
     /**
@@ -413,6 +400,7 @@ contract UniswapV3Rebalancer is IActionBase {
      */
     function getPositionState(uint256 id, int24 lowerTick, int24 upperTick, address initiator)
         public
+        view
         returns (PositionState memory position)
     {
         // Get data of the Liquidity Position.

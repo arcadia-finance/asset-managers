@@ -37,7 +37,7 @@ library UniswapV3Logic {
 
     /**
      * @notice Calculates the amountOut for a given amountIn and sqrtPriceX96 for a hypothetical
-     * swap without slippage.
+     * swap without slippage and without fees.
      * @param sqrtPriceX96 The square root of the price (token1/token0), with 96 binary precision.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param amountIn The amount that of tokenIn that must be swapped to tokenOut.
@@ -55,6 +55,54 @@ library UniswapV3Logic {
         amountOut = zeroToOne
             ? FullMath.mulDiv(amountIn, sqrtPriceX96 ** 2, Q192)
             : FullMath.mulDiv(amountIn, Q192, sqrtPriceX96 ** 2);
+    }
+
+    /**
+     * @notice Calculates the amountOut for a given amountIn and sqrtPriceX96 for a hypothetical
+     * swap without slippage and with fees.
+     * @param sqrtPriceX96 The square root of the price (token1/token0), with 96 binary precision.
+     * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
+     * @param amountIn The amount that of tokenIn that must be swapped to tokenOut.
+     * @param fee The amount of fee for the specific pool.
+     * @return amountOut The amount of tokenOut.
+     * @dev Function will revert for all pools where the sqrtPriceX96 is bigger than type(uint128).max.
+     * type(uint128).max is currently more than enough for all supported pools.
+     * If ever the sqrtPriceX96 of a pool exceeds type(uint128).max, a different auto compounder has to be deployed,
+     * which does two consecutive mulDivs.
+     */
+    function _getAmountOut(uint256 sqrtPriceX96, bool zeroToOne, uint256 amountIn, uint256 fee)
+        internal
+        pure
+        returns (uint256 amountOut)
+    {
+        uint256 amountInWithoutFees = (1e6 - fee).mulDivDown(amountIn, 1e6);
+        amountOut = zeroToOne
+            ? FullMath.mulDiv(amountInWithoutFees, sqrtPriceX96 ** 2, Q192)
+            : FullMath.mulDiv(amountInWithoutFees, Q192, sqrtPriceX96 ** 2);
+    }
+
+    /**
+     * @notice Calculates the amountIn for a given amountOut and sqrtPriceX96 for a hypothetical
+     * swap without slippage and with fees.
+     * @param sqrtPriceX96 The square root of the price (token1/token0), with 96 binary precision.
+     * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
+     * @param amountIn The amount that of tokenIn that must be swapped to tokenOut.
+     * @param fee The amount of fee for the specific pool.
+     * @return amountIn The amount of tokenIn.
+     * @dev Function will revert for all pools where the sqrtPriceX96 is bigger than type(uint128).max.
+     * type(uint128).max is currently more than enough for all supported pools.
+     * If ever the sqrtPriceX96 of a pool exceeds type(uint128).max, a different auto compounder has to be deployed,
+     * which does two consecutive mulDivs.
+     */
+    function _getAmountIn(uint256 sqrtPriceX96, bool zeroToOne, uint256 amountOut, uint256 fee)
+        internal
+        pure
+        returns (uint256 amountIn)
+    {
+        uint256 amountInWithoutFees = zeroToOne
+            ? FullMath.mulDiv(amountOut, Q192, sqrtPriceX96 ** 2)
+            : FullMath.mulDiv(amountOut, sqrtPriceX96 ** 2, Q192);
+        amountIn = amountInWithoutFees.mulDivDown(1e6, 1e6 - fee);
     }
 
     /**
