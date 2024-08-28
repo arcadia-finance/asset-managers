@@ -6,6 +6,7 @@ pragma solidity 0.8.22;
 
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { LiquidityAmounts } from "../../../../src/libraries/LiquidityAmounts.sol";
+import { QuoteExactInputSingleParams } from "../../../../src/interfaces/uniswap-v3/IQuoter.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { UniswapV3Rebalancer } from "../../../../src/rebalancers/uniswap-v3/UniswapV3Rebalancer.sol";
 import { UniswapV3Rebalancer_Fuzz_Test } from "./_UniswapV3Rebalancer.fuzz.t.sol";
@@ -205,28 +206,36 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         nonfungiblePositionManager.approve(address(rebalancer), tokenId);
 
         uint256 expectedAmountIn;
+        uint256 amount0;
+        uint256 amount1;
         {
             uint256 targetRatio = UniswapV3Logic._getTargetRatio(
                 position.sqrtPriceX96,
                 TickMath.getSqrtRatioAtTick(position.newLowerTick),
                 TickMath.getSqrtRatioAtTick(position.newUpperTick)
             );
+            emit log_named_uint("targetRatio", targetRatio);
 
-            (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
+            (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
                 uint160(position.sqrtPriceX96),
                 TickMath.getSqrtRatioAtTick(lpVars.tickLower),
                 TickMath.getSqrtRatioAtTick(lpVars.tickUpper),
                 position.liquidity
             );
+
             (uint256 fee0, uint256 fee1) = getFeeAmounts(tokenId);
 
             amount0 += fee0;
             amount1 += fee1;
 
+            emit log_named_uint("amount0", amount0);
+            emit log_named_uint("amount1", amount1);
+
             // Calculate the total fee value in token1 equivalent:
             uint256 token0ValueInToken1 = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, amount0);
             uint256 totalValueInToken1 = amount1 + token0ValueInToken1;
             uint256 currentRatio = amount1.mulDivDown(1e18, totalValueInToken1);
+            emit log_named_uint("currentRatio", currentRatio);
 
             vm.assume(targetRatio < currentRatio);
 
@@ -236,6 +245,29 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
 
         // When : calling getSwapParameters
         (bool zeroToOne, uint256 amountIn) = rebalancer.getSwapParameters(position, tokenId);
+
+        {
+            // Get amountOut for amountIn
+            QuoteExactInputSingleParams memory params = QuoteExactInputSingleParams({
+                tokenIn: zeroToOne ? address(token0) : address(token1),
+                tokenOut: zeroToOne ? address(token1) : address(token0),
+                amountIn: amountIn,
+                fee: uniV3Pool.fee(),
+                sqrtPriceLimitX96: 0
+            });
+
+            (uint256 amountOut,,,) = quoter.quoteExactInputSingle(params);
+
+            if (zeroToOne) {
+                amount0 -= amountIn;
+                amount1 += amountOut;
+            } else {
+                amount0 += amountOut;
+                amount1 -= amountIn;
+            }
+            emit log_named_uint("amount0", amount0);
+            emit log_named_uint("amount1", amount1);
+        }
 
         // Then : It should return correct values
         assertEq(zeroToOne, false);

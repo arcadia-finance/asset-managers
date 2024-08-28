@@ -307,7 +307,7 @@ contract UniswapV3Rebalancer is IActionBase {
             // Get target ratio in token1 terms.
             uint256 targetRatio =
                 UniswapV3Logic._getTargetRatio(position.sqrtPriceX96, sqrtRatioLowerTick, sqrtRatioUpperTick);
-            emit LogHere(targetRatio);
+
             // Calculate the total fee value in token1 equivalent:
             uint256 token0ValueInToken1 = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, amount0);
             uint256 totalValueInToken1 = amount1 + token0ValueInToken1;
@@ -315,7 +315,6 @@ contract UniswapV3Rebalancer is IActionBase {
 
             // Cache fee to avoid stack too deep.
             uint24 fee = position.fee;
-            emit LogHere(uint256(fee));
 
             if (currentRatio < targetRatio) {
                 // Swap token0 partially to token1.
