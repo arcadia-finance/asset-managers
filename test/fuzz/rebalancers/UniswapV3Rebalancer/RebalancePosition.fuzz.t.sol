@@ -32,6 +32,8 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         UniswapV3Rebalancer_Fuzz_Test.setUp();
     }
 
+    event Log(uint256);
+
     /* ///////////////////////////////////////////////////////////////
                               HELPERS
     /////////////////////////////////////////////////////////////// */
@@ -131,15 +133,15 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         int24 lpLowerTick,
         int24 lpUpperTick,
         UniswapV3Rebalancer.PositionState memory position
-    ) public returns (uint256 amountIn, uint256 amount0, uint256 amount1, bool zeroToOne) {
+    ) public returns (uint256 amount0, uint256 amount1, bool zeroToOne, uint256 amountIn) {
         uint256 sqrtRatioUpperTick = TickMath.getSqrtRatioAtTick(position.newUpperTick);
         uint256 sqrtRatioLowerTick = TickMath.getSqrtRatioAtTick(position.newLowerTick);
 
-        amount0 = LiquidityAmounts.getAmount0ForLiquidity(
-            TickMath.getSqrtRatioAtTick(lpLowerTick), TickMath.getSqrtRatioAtTick(lpUpperTick), position.liquidity
-        );
-        amount1 = LiquidityAmounts.getAmount1ForLiquidity(
-            TickMath.getSqrtRatioAtTick(lpLowerTick), TickMath.getSqrtRatioAtTick(lpUpperTick), position.liquidity
+        (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
+            uint160(position.sqrtPriceX96),
+            TickMath.getSqrtRatioAtTick(lpLowerTick),
+            TickMath.getSqrtRatioAtTick(lpUpperTick),
+            position.liquidity
         );
 
         (uint256 fee0, uint256 fee1) = getFeeAmounts(tokenId);
@@ -240,8 +242,8 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         (initVars, lpVars, tokenId) = initPoolAndCreatePositionWithFees(initVars, lpVars);
 
         // Given : new ticks are within boundaries (otherwise swap too big => unbalanced pool)
-        newLowerTick = int24(bound(newLowerTick, lpVars.tickLower - 200, lpVars.tickLower - 1));
-        newUpperTick = int24(bound(newUpperTick, lpVars.tickUpper + 1, lpVars.tickUpper + 200));
+        newLowerTick = int24(bound(newLowerTick, lpVars.tickLower - 9500, lpVars.tickLower - 1));
+        newUpperTick = int24(bound(newUpperTick, lpVars.tickUpper + 1, lpVars.tickUpper + 9500));
 
         // And : Set initiator for account
         vm.prank(account.owner());
@@ -273,21 +275,25 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         // Then : It should return the correct values
         (,,,,, int24 tickLower, int24 tickUpper, uint256 liquidity,,,,) =
             nonfungiblePositionManager.positions(tokenId + 1);
-        // There can be 1 tick difference due to roundings.
-        assertApproxEqAbs(tickLower, newLowerTick, 1);
-        assertApproxEqAbs(tickUpper, newUpperTick, 1);
 
-        uint256 amount0_ = LiquidityAmounts.getAmount0ForLiquidity(
-            TickMath.getSqrtRatioAtTick(tickLower), TickMath.getSqrtRatioAtTick(tickUpper), uint128(liquidity)
-        );
-        uint256 amount1_ = LiquidityAmounts.getAmount1ForLiquidity(
-            TickMath.getSqrtRatioAtTick(tickLower), TickMath.getSqrtRatioAtTick(tickUpper), uint128(liquidity)
+        (, int24 currentTick,,,,,) = uniV3Pool.slot0();
+
+        // There can be 1 tick difference due to roundings.
+        assertEq(tickLower, newLowerTick);
+        assertEq(tickUpper, newUpperTick);
+
+        (uint256 amount0_, uint256 amount1_) = LiquidityAmounts.getAmountsForLiquidity(
+            TickMath.getSqrtRatioAtTick(currentTick),
+            TickMath.getSqrtRatioAtTick(tickLower),
+            TickMath.getSqrtRatioAtTick(tickUpper),
+            uint128(liquidity)
         );
         (uint256 usdValuePosition, uint256 usdValueRemaining) =
             getValuesInUsd(amount0_, amount1_, token0.balanceOf(address(account)), token1.balanceOf(address(account)));
-
-        // Ensure the leftovers represent less than 0,5% of the usd value of the newly minted position.
-        assertLt(usdValueRemaining, 0.005 * 1e18 * usdValuePosition / 1e18);
+        // Ensure the leftovers represent less than 0,8% of the usd value of the newly minted position.
+        emit Log(token0.balanceOf(address(account)));
+        emit Log(token1.balanceOf(address(account)));
+        assertLt(usdValueRemaining, 0.0006 * 1e18 * usdValuePosition / 1e18);
     }
 
     function testFuzz_Success_rebalancePosition_MoveTickRight_BalancedWithSameTickSpacing(
@@ -432,7 +438,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         uint256 tokenId;
         (initVars, lpVars, tokenId) = initPoolAndCreatePositionWithFees(initVars, lpVars);
 
-        // Given : new ticks are within boundaries (otherwise swap too big => unbalanced pool)
+        // Given : new ticks are within boundaries
         newLowerTick = int24(bound(newLowerTick, initVars.tickLower + 1, initVars.tickUpper - (2 * MIN_TICK_SPACING)));
         newUpperTick = int24(bound(newUpperTick, newLowerTick + MIN_TICK_SPACING, initVars.tickUpper - 1));
 
@@ -465,7 +471,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         {
             UniswapV3Rebalancer.PositionState memory position_ =
                 rebalancer.getPositionState(tokenId, newLowerTick, newUpperTick, initVars.initiator);
-            (uint256 amountIn, uint256 amount0, uint256 amount1, bool zeroToOne) =
+            (uint256 amount0, uint256 amount1, bool zeroToOne, uint256 amountIn) =
                 getSwapParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_);
 
             QuoteExactInputSingleParams memory params = QuoteExactInputSingleParams({
@@ -559,10 +565,16 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         // Ticks have moved to the right
         moveTicksLeftWithIncreasedTolerance(initVars.tickLower, amount0ToSwap);
 
+        uint256 amount0;
+        uint256 amount1;
         {
+            // Assume that liquidity will be bigger than 0
             UniswapV3Rebalancer.PositionState memory position_ =
                 rebalancer.getPositionState(tokenId, newLowerTick, newUpperTick, initVars.initiator);
-            (uint256 amountIn, uint256 amount0, uint256 amount1, bool zeroToOne) =
+
+            uint256 amountIn;
+            bool zeroToOne;
+            (amount0, amount1, zeroToOne, amountIn) =
                 getSwapParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_);
 
             QuoteExactInputSingleParams memory params = QuoteExactInputSingleParams({

@@ -112,6 +112,7 @@ contract UniswapV3Rebalancer is IActionBase {
                              REBALANCING LOGIC
     /////////////////////////////////////////////////////////////// */
 
+    // TODO : add a check that ticks passed are multiples from tickSpacing ?
     /**
      * @notice
      * @param account_ The Arcadia Account owning the position.
@@ -306,15 +307,15 @@ contract UniswapV3Rebalancer is IActionBase {
             // Get target ratio in token1 terms.
             uint256 targetRatio =
                 UniswapV3Logic._getTargetRatio(position.sqrtPriceX96, sqrtRatioLowerTick, sqrtRatioUpperTick);
-
+            emit LogHere(targetRatio);
             // Calculate the total fee value in token1 equivalent:
-            uint256 token0ValueInToken1 =
-                UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, amount0, position.fee);
+            uint256 token0ValueInToken1 = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, amount0);
             uint256 totalValueInToken1 = amount1 + token0ValueInToken1;
             uint256 currentRatio = amount1.mulDivDown(1e18, totalValueInToken1);
 
             // Cache fee to avoid stack too deep.
             uint24 fee = position.fee;
+            emit LogHere(uint256(fee));
 
             if (currentRatio < targetRatio) {
                 // Swap token0 partially to token1.
@@ -326,7 +327,7 @@ contract UniswapV3Rebalancer is IActionBase {
             } else {
                 // Swap token1 partially to token0.
                 zeroToOne = false;
-                uint256 denominator = 1e18 - targetRatio.mulDivDown(position.fee, 1e6);
+                uint256 denominator = 1e18 - targetRatio.mulDivDown(fee, 1e6);
                 amountIn = (currentRatio - targetRatio).mulDivDown(totalValueInToken1, denominator);
             }
         }

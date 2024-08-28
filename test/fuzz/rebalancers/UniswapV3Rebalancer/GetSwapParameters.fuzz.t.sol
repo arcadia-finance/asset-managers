@@ -5,6 +5,7 @@
 pragma solidity 0.8.22;
 
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { LiquidityAmounts } from "../../../../src/libraries/LiquidityAmounts.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { UniswapV3Rebalancer } from "../../../../src/rebalancers/uniswap-v3/UniswapV3Rebalancer.sol";
 import { UniswapV3Rebalancer_Fuzz_Test } from "./_UniswapV3Rebalancer.fuzz.t.sol";
@@ -57,12 +58,11 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         nonfungiblePositionManager.approve(address(rebalancer), tokenId);
 
         // When : calling getSwapParameters
-        (bool zeroToOne, uint256 amountOut) = rebalancer.getSwapParameters(position, tokenId);
+        (bool zeroToOne, uint256 amountIn) = rebalancer.getSwapParameters(position, tokenId);
 
         // Then : It should return correct values
         assertEq(zeroToOne, false);
-        // We test in rebalancePosition() that new position is fully in token0
-        assertGt(amountOut, 0);
+        assertGt(amountIn, 0);
     }
 
     function testFuzz_Success_getSwapParameters_singleSidedToken1(
@@ -95,12 +95,12 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         nonfungiblePositionManager.approve(address(rebalancer), tokenId);
 
         // When : calling getSwapParameters
-        (bool zeroToOne, uint256 amountOut) = rebalancer.getSwapParameters(position, tokenId);
+        (bool zeroToOne, uint256 amountIn) = rebalancer.getSwapParameters(position, tokenId);
 
         // Then : It should return correct values
         assertEq(zeroToOne, true);
         // We test in rebalancePosition() that new position is fully in token1
-        assertGt(amountOut, 0);
+        assertGt(amountIn, 0);
     }
 
     function testFuzz_Success_getSwapParameters_currentRatioLowerThanTarget(
@@ -126,12 +126,17 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         position.liquidity = liquidity;
         position.newUpperTick = newUpperTick;
         position.newLowerTick = newLowerTick;
+        position.fee = uniV3Pool.fee();
 
         // And : Approve nft manager for rebalancer
         vm.prank(users.liquidityProvider);
         nonfungiblePositionManager.approve(address(rebalancer), tokenId);
 
-        uint256 expectedAmountOut;
+        // Avoid stack too deep
+        LpVariables memory lpVars_ = lpVars;
+        uint24 fee = position.fee;
+
+        uint256 expectedAmountIn;
         {
             uint256 targetRatio = UniswapV3Logic._getTargetRatio(
                 position.sqrtPriceX96,
@@ -141,8 +146,14 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
 
             (uint256 fee0, uint256 fee1) = getFeeAmounts(tokenId);
 
-            uint256 amount0 = lpVars.amount0 + fee0;
-            uint256 amount1 = lpVars.amount1 + fee1;
+            (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
+                uint160(position.sqrtPriceX96),
+                TickMath.getSqrtRatioAtTick(lpVars_.tickLower),
+                TickMath.getSqrtRatioAtTick(lpVars_.tickUpper),
+                position.liquidity
+            );
+            amount0 += fee0;
+            amount1 += fee1;
 
             uint256 token0ValueInToken1 = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, amount0);
             uint256 totalValueInToken1 = amount1 + token0ValueInToken1;
@@ -150,18 +161,18 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
 
             vm.assume(currentRatio < targetRatio);
 
-            expectedAmountOut = (targetRatio - currentRatio).mulDivDown(totalValueInToken1, 1e18);
+            uint256 denominator = 1e18 + targetRatio.mulDivDown(fee, 1e6 - fee);
+            uint256 amountOut = (targetRatio - currentRatio).mulDivDown(totalValueInToken1, denominator);
+            // convert to amountIn
+            expectedAmountIn = UniswapV3Logic._getAmountIn(position.sqrtPriceX96, true, amountOut, fee);
         }
 
         // When : calling getSwapParameters
-        (bool zeroToOne, uint256 amountOut) = rebalancer.getSwapParameters(position, tokenId);
+        (bool zeroToOne, uint256 amountIn) = rebalancer.getSwapParameters(position, tokenId);
 
         // Then : It should return correct values
         assertEq(zeroToOne, true);
-        // Here we use approxEqRel as the difference between getAmountsForLiquidity() and the effective mint of a new position
-        // might slightly differ (we check to max 1% diff)
-        // TODO: validate why diff (first do full testing ?)
-        //assertApproxEqRel(amountOut, expectedAmountOut, 1e16);
+        assertEq(amountIn, expectedAmountIn);
     }
 
     function testFuzz_Success_getSwapParameters_targetRatioLowerThanCurrent(
@@ -187,12 +198,13 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         position.liquidity = liquidity;
         position.newUpperTick = newUpperTick;
         position.newLowerTick = newLowerTick;
+        position.fee = uniV3Pool.fee();
 
         // And : Approve nft manager for rebalancer
         vm.prank(users.liquidityProvider);
         nonfungiblePositionManager.approve(address(rebalancer), tokenId);
 
-        uint256 expectedAmountOut;
+        uint256 expectedAmountIn;
         {
             uint256 targetRatio = UniswapV3Logic._getTargetRatio(
                 position.sqrtPriceX96,
@@ -200,29 +212,33 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
                 TickMath.getSqrtRatioAtTick(position.newUpperTick)
             );
 
+            (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
+                uint160(position.sqrtPriceX96),
+                TickMath.getSqrtRatioAtTick(lpVars.tickLower),
+                TickMath.getSqrtRatioAtTick(lpVars.tickUpper),
+                position.liquidity
+            );
             (uint256 fee0, uint256 fee1) = getFeeAmounts(tokenId);
 
-            uint256 amount0 = lpVars.amount0 + fee0;
-            uint256 amount1 = lpVars.amount1 + fee1;
+            amount0 += fee0;
+            amount1 += fee1;
 
+            // Calculate the total fee value in token1 equivalent:
             uint256 token0ValueInToken1 = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, amount0);
             uint256 totalValueInToken1 = amount1 + token0ValueInToken1;
             uint256 currentRatio = amount1.mulDivDown(1e18, totalValueInToken1);
 
             vm.assume(targetRatio < currentRatio);
 
-            uint256 amountIn = (currentRatio - targetRatio).mulDivDown(totalValueInToken1, 1e18);
-            expectedAmountOut = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, false, amountIn);
+            uint256 denominator = 1e18 - targetRatio.mulDivDown(uniV3Pool.fee(), 1e6);
+            expectedAmountIn = (currentRatio - targetRatio).mulDivDown(totalValueInToken1, denominator);
         }
 
         // When : calling getSwapParameters
-        (bool zeroToOne, uint256 amountOut) = rebalancer.getSwapParameters(position, tokenId);
+        (bool zeroToOne, uint256 amountIn) = rebalancer.getSwapParameters(position, tokenId);
 
         // Then : It should return correct values
         assertEq(zeroToOne, false);
-        // Here we use approxEqRel as the difference between getAmountsForLiquidity() and the effective mint of a new position
-        // might slightly differ (we check to max 1% diff)
-        // TODO: validate why diff (first do full testing ?)
-        //assertApproxEqRel(amountOut, expectedAmountOut, 1e16);
+        assertEq(amountIn, expectedAmountIn);
     }
 }

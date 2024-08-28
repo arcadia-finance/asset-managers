@@ -55,10 +55,10 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
     uint256 internal MAX_TOLERANCE = 0.02 * 1e18;
 
     // Minimum liquidity ratio for minted position, 0,5%
-    uint256 internal MIN_LIQUIDITY = 0.005 * 1e18;
+    uint256 internal MIN_LIQUIDITY = 0.001 * 1e18;
 
     // Max liquidity ratio of minted position, 5%
-    uint256 internal LIQUIDITY_TRESHOLD = 0.05 * 1e18;
+    uint256 internal LIQUIDITY_TRESHOLD = 0.001111 * 1e18;
 
     int24 internal MIN_TICK_SPACING = 10;
     int24 internal INIT_LP_TICK_RANGE = 20_000;
