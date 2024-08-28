@@ -20,5 +20,5 @@ import { SwapRouter } from "../lib/accounts-v2/lib/slipstream/contracts/peripher
 import { SwapRouter02 } from "../lib/accounts-v2/lib/swap-router-contracts/contracts/SwapRouter02.sol";
 
 contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is Test {
-    function test() public { }
+    function testFuzz_Success_rebalancePosition_MoveTickRight_CustomTicks() public { }
 }

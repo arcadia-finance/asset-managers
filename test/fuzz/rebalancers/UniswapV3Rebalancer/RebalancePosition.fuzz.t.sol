@@ -7,10 +7,10 @@ pragma solidity 0.8.22;
 import { ArcadiaLogic } from "../../../../src/libraries/ArcadiaLogic.sol";
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { IQuoter } from "../../../../src/interfaces/uniswap-v3/IQuoter.sol";
 import { ISwapRouter02 } from
     "../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/interfaces/ISwapRouter02.sol";
-import { LiquidityAmounts } from
-    "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/LiquidityAmounts.sol";
+import { LiquidityAmounts } from "../../../../src/libraries/LiquidityAmounts.sol";
 import { QuoteExactInputSingleParams } from "../../../../src/interfaces/uniswap-v3/IQuoter.sol";
 import { SwapMath } from "../../../../src/libraries/SwapMath.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
@@ -32,10 +32,6 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         UniswapV3Rebalancer_Fuzz_Test.setUp();
     }
 
-    // TODO : delete
-    event Logg(uint256);
-    event LogTick(int24);
-
     /* ///////////////////////////////////////////////////////////////
                               HELPERS
     /////////////////////////////////////////////////////////////// */
@@ -51,8 +47,8 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         // Calculate max sqrtPriceX96 to the right to avoid unbalancedPool()
         uint256 sqrtPriceX96Target = trustedSqrtPriceX96.mulDivDown(upperSqrtPriceDeviation, 1e18);
 
-        // Take 1 % below to ensure we avoid unbalancedPool
-        sqrtPriceX96Target -= ((sqrtPriceX96Target * (0.01 * 1e18)) / 1e18);
+        // Take 5 % below to allow swapping and avoid unbalancedPool
+        sqrtPriceX96Target -= ((sqrtPriceX96Target * (0.05 * 1e18)) / 1e18);
 
         int256 amountRemaining = type(int128).max;
         // Calculate the max amount of token 1 to swap to achieve target price
@@ -95,8 +91,8 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         // But we still want to be within initial lp range for liquidity
         uint256 sqrtPriceX96Target = TickMath.getSqrtRatioAtTick(initLpLowerTick);
 
-        // Take 1 % above to ensure we are withing the liquidity
-        sqrtPriceX96Target += ((sqrtPriceX96Target * (0.01 * 1e18)) / 1e18);
+        // Take 5 % above to ensure we are withing the liquidity and enable swapping without being unbalanced
+        sqrtPriceX96Target += ((sqrtPriceX96Target * (0.05 * 1e18)) / 1e18);
 
         int256 amountRemaining = type(int128).max;
         // Calculate the max amount of token 0 to swap to achieve target price
@@ -128,6 +124,66 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
 
         (, int24 tick,,,,,) = uniV3Pool.slot0();
         vm.assume(tick < currentTick);
+    }
+
+    function getSwapParams(
+        uint256 tokenId,
+        int24 lpLowerTick,
+        int24 lpUpperTick,
+        UniswapV3Rebalancer.PositionState memory position
+    ) public returns (uint256 amountIn, uint256 amount0, uint256 amount1, bool zeroToOne) {
+        uint256 sqrtRatioUpperTick = TickMath.getSqrtRatioAtTick(position.newUpperTick);
+        uint256 sqrtRatioLowerTick = TickMath.getSqrtRatioAtTick(position.newLowerTick);
+
+        amount0 = LiquidityAmounts.getAmount0ForLiquidity(
+            TickMath.getSqrtRatioAtTick(lpLowerTick), TickMath.getSqrtRatioAtTick(lpUpperTick), position.liquidity
+        );
+        amount1 = LiquidityAmounts.getAmount1ForLiquidity(
+            TickMath.getSqrtRatioAtTick(lpLowerTick), TickMath.getSqrtRatioAtTick(lpUpperTick), position.liquidity
+        );
+
+        (uint256 fee0, uint256 fee1) = getFeeAmounts(tokenId);
+        amount0 += fee0;
+        amount1 += fee1;
+
+        if (position.sqrtPriceX96 >= sqrtRatioUpperTick) {
+            // Position is out of range and fully in token 1.
+            // Swap full amount of token0 to token1.
+            zeroToOne = true;
+            amountIn = amount0;
+        } else if (position.sqrtPriceX96 <= sqrtRatioLowerTick) {
+            // Position is out of range and fully in token 0.
+            // Swap full amount of token1 to token0.
+            amountIn = amount1;
+        } else {
+            // Get target ratio in token1 terms.
+            uint256 targetRatio =
+                UniswapV3Logic._getTargetRatio(position.sqrtPriceX96, sqrtRatioLowerTick, sqrtRatioUpperTick);
+
+            // Calculate the total fee value in token1 equivalent:
+            uint256 token0ValueInToken1 =
+                UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, amount0, position.fee);
+            uint256 totalValueInToken1 = amount1 + token0ValueInToken1;
+            uint256 currentRatio = amount1.mulDivDown(1e18, totalValueInToken1);
+
+            // Cache fee and sqrtPriceX96 to avoid stack too deep.
+            uint24 fee = position.fee;
+            uint256 sqrtPriceX96 = position.sqrtPriceX96;
+
+            if (currentRatio < targetRatio) {
+                // Swap token0 partially to token1.
+                zeroToOne = true;
+                uint256 denominator = 1e18 + targetRatio.mulDivDown(fee, 1e6 - fee);
+                uint256 amountOut = (targetRatio - currentRatio).mulDivDown(totalValueInToken1, denominator);
+                // convert to amountIn
+                amountIn = UniswapV3Logic._getAmountIn(sqrtPriceX96, zeroToOne, amountOut, fee);
+            } else {
+                // Swap token1 partially to token0.
+                zeroToOne = false;
+                uint256 denominator = 1e18 - targetRatio.mulDivDown(fee, 1e6);
+                amountIn = (currentRatio - targetRatio).mulDivDown(totalValueInToken1, denominator);
+            }
+        }
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -280,17 +336,18 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         // Move ticks right (by maxTolerance in this case 1e18 = 100%)
         moveTicksRightWithIncreasedTolerance(initVars.initiator, amount1ToSwap);
 
+        (, int24 tickBeforeRebalance,,,,,) = uniV3Pool.slot0();
+
         // When : calling rebalancePosition() with 0 value for lower and upper ticks
         vm.prank(initVars.initiator);
         rebalancer.rebalancePosition(address(account), tokenId, 0, 0);
 
         // Then : It should return correct values
         int24 tickSpacing = (lpVars.tickUpper - lpVars.tickLower) / 2;
-        (, int24 newTick,,,,,) = uniV3Pool.slot0();
         (,,,,, int24 tickLower, int24 tickUpper,,,,,) = nonfungiblePositionManager.positions(tokenId + 1);
 
-        assertEq(tickLower, newTick - tickSpacing);
-        assertEq(tickUpper, newTick + tickSpacing);
+        assertEq(tickLower, tickBeforeRebalance - tickSpacing);
+        assertEq(tickUpper, tickBeforeRebalance + tickSpacing);
     }
 
     function testFuzz_Success_rebalancePosition_MoveTickLeft_BalancedWithSameTickSpacing(
@@ -339,17 +396,18 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         // Move ticks left
         moveTicksLeftWithIncreasedTolerance(initVars.tickLower, amount0ToSwap);
 
+        (, int24 tickBeforeRebalance,,,,,) = uniV3Pool.slot0();
+
         // When : calling rebalancePosition() with 0 value for lower and upper ticks
         vm.prank(initVars.initiator);
         rebalancer.rebalancePosition(address(account), tokenId, 0, 0);
 
         // Then : It should return correct values
         int24 tickSpacing = (lpVars.tickUpper - lpVars.tickLower) / 2;
-        (, int24 newTick,,,,,) = uniV3Pool.slot0();
         (,,,,, int24 tickLower, int24 tickUpper,,,,,) = nonfungiblePositionManager.positions(tokenId + 1);
 
-        assertEq(tickLower, newTick - tickSpacing);
-        assertEq(tickUpper, newTick + tickSpacing);
+        assertEq(tickLower, tickBeforeRebalance - tickSpacing);
+        assertEq(tickUpper, tickBeforeRebalance + tickSpacing);
     }
 
     function testFuzz_Success_rebalancePosition_MoveTickRight_CustomTicks(
@@ -404,35 +462,145 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         // Ticks have moved to the right
         moveTicksRightWithIncreasedTolerance(initVars.initiator, amount1ToSwap);
 
+        {
+            UniswapV3Rebalancer.PositionState memory position_ =
+                rebalancer.getPositionState(tokenId, newLowerTick, newUpperTick, initVars.initiator);
+            (uint256 amountIn, uint256 amount0, uint256 amount1, bool zeroToOne) =
+                getSwapParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_);
+
+            QuoteExactInputSingleParams memory params = QuoteExactInputSingleParams({
+                tokenIn: zeroToOne ? address(token0) : address(token1),
+                tokenOut: zeroToOne ? address(token1) : address(token0),
+                amountIn: amountIn,
+                fee: position_.fee,
+                sqrtPriceLimitX96: 0
+            });
+
+            (uint256 amountOut, uint160 sqrtPriceAfter,,) = quoter.quoteExactInputSingle(params);
+
+            if (zeroToOne) {
+                amount0 -= amountIn;
+                amount1 += amountOut;
+            } else {
+                amount0 += amountOut;
+                amount1 -= amountIn;
+            }
+
+            uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
+                sqrtPriceAfter,
+                TickMath.getSqrtRatioAtTick(position_.newLowerTick),
+                TickMath.getSqrtRatioAtTick(position_.newUpperTick),
+                amount0,
+                amount1
+            );
+
+            vm.assume(liquidity > 0);
+        }
+
         // When : calling rebalancePosition()
         vm.prank(initVars.initiator);
         rebalancer.rebalancePosition(address(account), tokenId, newLowerTick, newUpperTick);
 
         // Then : It should return the correct values
         (,,,,, int24 tickLower, int24 tickUpper,,,,,) = nonfungiblePositionManager.positions(tokenId + 1);
-        // There can be 1 tick difference due to roundings.
-        assertApproxEqAbs(tickLower, newLowerTick, 100);
-        assertApproxEqAbs(tickUpper, newUpperTick, 100);
+        assertEq(tickLower, newLowerTick);
+        assertEq(tickUpper, newUpperTick);
     }
 
     function testFuzz_Success_rebalancePosition_MoveTickLeft_CustomTicks(
         InitVariables memory initVars,
         LpVariables memory lpVars,
         int24 newLowerTick,
-        int24 newUpperTick
-    ) public { }
+        int24 newUpperTick,
+        uint256 amount0ToSwap
+    ) public {
+        // Given : deploy new rebalancer with a high maxTolerance to avoid unbalancedPool due to external usd prices not aligned
+        uint256 maxTolerance = 1e18;
+        deployRebalancer(maxTolerance);
 
-    function testFuzz_Success_rebalancePosition_MoveTickLeft_CustomTicks_SingleSided0(
-        InitVariables memory initVars,
-        LpVariables memory lpVars,
-        int24 newLowerTick,
-        int24 newUpperTick
-    ) public { }
+        // And : Rebalancer is allowed as Asset Manager
+        vm.prank(users.accountOwner);
+        account.setAssetManager(address(rebalancer), true);
 
-    function testFuzz_Success_rebalancePosition_MoveTickLeft_CustomTicks_SingleSided1(
-        InitVariables memory initVars,
-        LpVariables memory lpVars,
-        int24 newLowerTick,
-        int24 newUpperTick
-    ) public { }
+        // And : Allow to test with increased tolerance
+        increaseTolerance = true;
+
+        // And : Initialize a uniswapV3 pool and a lp position with valid test variables. Also generate fees for that position.
+        uint256 tokenId;
+        (initVars, lpVars, tokenId) = initPoolAndCreatePositionWithFees(initVars, lpVars);
+
+        // Given : new ticks are within boundaries (otherwise swap too big => unbalanced pool)
+        newLowerTick = int24(bound(newLowerTick, initVars.tickLower + 1, initVars.tickUpper - (2 * MIN_TICK_SPACING)));
+        newUpperTick = int24(bound(newUpperTick, newLowerTick + MIN_TICK_SPACING, initVars.tickUpper - 1));
+
+        // And : Set initiator for account
+        vm.prank(account.owner());
+        rebalancer.setInitiatorForAccount(initVars.initiator, address(account));
+
+        // And : Transfer position to account owner
+        vm.prank(users.liquidityProvider);
+        ERC721(address(nonfungiblePositionManager)).transferFrom(users.liquidityProvider, users.accountOwner, tokenId);
+
+        {
+            address[] memory assets_ = new address[](1);
+            assets_[0] = address(nonfungiblePositionManager);
+            uint256[] memory assetIds_ = new uint256[](1);
+            assetIds_[0] = tokenId;
+            uint256[] memory assetAmounts_ = new uint256[](1);
+            assetAmounts_[0] = 1;
+
+            // And : Deposit position in Account
+            vm.startPrank(users.accountOwner);
+            ERC721(address(nonfungiblePositionManager)).approve(address(account), tokenId);
+            account.deposit(assets_, assetIds_, assetAmounts_);
+            vm.stopPrank();
+        }
+
+        // Ticks have moved to the right
+        moveTicksLeftWithIncreasedTolerance(initVars.tickLower, amount0ToSwap);
+
+        {
+            UniswapV3Rebalancer.PositionState memory position_ =
+                rebalancer.getPositionState(tokenId, newLowerTick, newUpperTick, initVars.initiator);
+            (uint256 amountIn, uint256 amount0, uint256 amount1, bool zeroToOne) =
+                getSwapParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_);
+
+            QuoteExactInputSingleParams memory params = QuoteExactInputSingleParams({
+                tokenIn: zeroToOne ? address(token0) : address(token1),
+                tokenOut: zeroToOne ? address(token1) : address(token0),
+                amountIn: amountIn,
+                fee: position_.fee,
+                sqrtPriceLimitX96: 0
+            });
+
+            (uint256 amountOut, uint160 sqrtPriceAfter,,) = quoter.quoteExactInputSingle(params);
+
+            if (zeroToOne) {
+                amount0 -= amountIn;
+                amount1 += amountOut;
+            } else {
+                amount0 += amountOut;
+                amount1 -= amountIn;
+            }
+
+            uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
+                sqrtPriceAfter,
+                TickMath.getSqrtRatioAtTick(position_.newLowerTick),
+                TickMath.getSqrtRatioAtTick(position_.newUpperTick),
+                amount0,
+                amount1
+            );
+
+            vm.assume(liquidity > 0);
+        }
+
+        // When : calling rebalancePosition()
+        vm.prank(initVars.initiator);
+        rebalancer.rebalancePosition(address(account), tokenId, newLowerTick, newUpperTick);
+
+        // Then : It should return the correct values
+        (,,,,, int24 tickLower, int24 tickUpper,,,,,) = nonfungiblePositionManager.positions(tokenId + 1);
+        assertEq(tickLower, newLowerTick);
+        assertEq(tickUpper, newUpperTick);
+    }
 }

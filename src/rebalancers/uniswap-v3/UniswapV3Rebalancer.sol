@@ -14,10 +14,8 @@ import {
 import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IAccount } from "../../interfaces/IAccount.sol";
-import { IQuoter } from "../../interfaces/uniswap-v3/IQuoter.sol";
 import { IUniswapV3Pool } from "./interfaces/IUniswapV3Pool.sol";
 import { LiquidityAmounts } from "../../libraries/LiquidityAmounts.sol";
-import { QuoteExactInputSingleParams } from "../../interfaces/uniswap-v3/IQuoter.sol";
 import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { UniswapV3Logic } from "../../libraries/UniswapV3Logic.sol";
 
@@ -39,9 +37,6 @@ contract UniswapV3Rebalancer is IActionBase {
     // The maximum lower deviation of the pools actual sqrtPriceX96,
     // The maximum deviation of the actual pool price, in % with 18 decimals precision.
     uint256 public immutable MAX_TOLERANCE;
-
-    // The Uniswap V3 Quoter contract.
-    IQuoter internal constant QUOTER = IQuoter(0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a);
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
@@ -292,11 +287,6 @@ contract UniswapV3Rebalancer is IActionBase {
             })
         );
 
-        emit LogHere(amount0);
-        emit LogHere(amount1);
-        emit LogHere(ERC20(position.token0).balanceOf(address(this)));
-        emit LogHere(ERC20(position.token1).balanceOf(address(this)));
-
         // Burn the position
         UniswapV3Logic.POSITION_MANAGER.burn(id);
 
@@ -329,14 +319,14 @@ contract UniswapV3Rebalancer is IActionBase {
             if (currentRatio < targetRatio) {
                 // Swap token0 partially to token1.
                 zeroToOne = true;
-                uint256 denominator = 1e18 - targetRatio.mulDivDown(position.fee, 1e6);
+                uint256 denominator = 1e18 + targetRatio.mulDivDown(fee, 1e6 - fee);
                 uint256 amountOut = (targetRatio - currentRatio).mulDivDown(totalValueInToken1, denominator);
                 // convert to amountIn
                 amountIn = UniswapV3Logic._getAmountIn(position.sqrtPriceX96, zeroToOne, amountOut, fee);
             } else {
                 // Swap token1 partially to token0.
                 zeroToOne = false;
-                uint256 denominator = 1e18 + targetRatio.mulDivDown(fee, 1e6 - fee);
+                uint256 denominator = 1e18 - targetRatio.mulDivDown(position.fee, 1e6);
                 amountIn = (currentRatio - targetRatio).mulDivDown(totalValueInToken1, denominator);
             }
         }
@@ -359,6 +349,7 @@ contract UniswapV3Rebalancer is IActionBase {
         // Pool should still be balanced (within tolerance boundaries) after the swap.
         uint160 sqrtPriceLimitX96 =
             uint160(zeroToOne ? position.lowerBoundSqrtPriceX96 : position.upperBoundSqrtPriceX96);
+        emit LogHere(amountIn);
 
         // Do the swap.
         bytes memory data = abi.encode(position.token0, position.token1, position.fee);
