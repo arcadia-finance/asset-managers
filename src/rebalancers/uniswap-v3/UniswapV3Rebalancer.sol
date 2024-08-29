@@ -22,8 +22,15 @@ import { UniswapV3Logic } from "../../libraries/UniswapV3Logic.sol";
 /**
  * @title Permissioned rebalancer for Uniswap V3 Liquidity Positions.
  * @author Pragma Labs
- * @notice
- * @dev
+ * @notice The Rebalancer will act as an Asset Manager for Arcadia Accounts.
+ * It will allow third parties to trigger the rebalancing functionality for a Uniswap V3 Liquidity Position in the Account.
+ * The owner of an Arcadia Account should set an initiator via setInitiatorForAccount() that will be permisionned to rebalance
+ * all UniswapV3 Liquidity Positions held in that Account.
+ *   @dev The contract prevents frontrunning/sandwiching by comparing the actual pool price with a pool price calculated from trusted
+ * price feeds (oracles). The tolerance in terms of price deviation is specific to the initiator but limited by a global MAX_TOLERANCE.
+ * Some oracles can however deviate from the actual price by a few percent points, this could potentially open attack vectors by manipulating
+ * pools and sandwiching the swap and/or increase liquidity. This asset manager should not be used for Arcadia Account that have/will have
+ * Uniswap V3 Liquidity Positions where one of the underlying assets is priced with such low precision oracles.
  */
 contract UniswapV3Rebalancer is IActionBase {
     using FixedPointMathLib for uint256;
@@ -113,7 +120,6 @@ contract UniswapV3Rebalancer is IActionBase {
                              REBALANCING LOGIC
     /////////////////////////////////////////////////////////////// */
 
-    // TODO : add a check that ticks passed are multiples from tickSpacing ?
     /**
      * @notice Rebalances a UniswapV3 Liquidity Position owned by an Arcadia Account.
      * @param account_ The Arcadia Account owning the position.
@@ -246,7 +252,12 @@ contract UniswapV3Rebalancer is IActionBase {
     /* ///////////////////////////////////////////////////////////////
                         INITIATORS LOGIC
     /////////////////////////////////////////////////////////////// */
-
+    /**
+     * @notice Sets an initiator for an Account. An initiator will be permisionned to rebalance any UniswapV3
+     * Liquidity Position held in the specified Arcadia Account.
+     * @param initiator The address of the initiator.
+     * @param account_ The address of the Arcadia Account to set an initiator for.
+     */
     function setInitiatorForAccount(address initiator, address account_) external {
         ownerToAccountToInitiator[msg.sender][account_] = initiator;
     }
