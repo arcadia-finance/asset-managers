@@ -4,10 +4,8 @@
  */
 pragma solidity 0.8.22;
 
-import { ArcadiaLogic } from "../../../../src/libraries/ArcadiaLogic.sol";
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { IQuoter } from "../../../../src/interfaces/uniswap-v3/IQuoter.sol";
 import { ISwapRouter02 } from
     "../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/interfaces/ISwapRouter02.sol";
 import { LiquidityAmounts } from "../../../../src/libraries/LiquidityAmounts.sol";
@@ -288,7 +286,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         );
         (uint256 usdValuePosition, uint256 usdValueRemaining) =
             getValuesInUsd(amount0_, amount1_, token0.balanceOf(address(account)), token1.balanceOf(address(account)));
-        // Ensure the leftovers represent less than 0,8% of the usd value of the newly minted position.
+        // Ensure the leftovers represent less than 1% of the usd value of the newly minted position.
         assertLt(usdValueRemaining, 0.01 * 1e18 * usdValuePosition / 1e18);
     }
 
