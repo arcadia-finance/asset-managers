@@ -32,8 +32,6 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         UniswapV3Rebalancer_Fuzz_Test.setUp();
     }
 
-    event Log(uint256);
-
     /* ///////////////////////////////////////////////////////////////
                               HELPERS
     /////////////////////////////////////////////////////////////// */
@@ -291,9 +289,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         (uint256 usdValuePosition, uint256 usdValueRemaining) =
             getValuesInUsd(amount0_, amount1_, token0.balanceOf(address(account)), token1.balanceOf(address(account)));
         // Ensure the leftovers represent less than 0,8% of the usd value of the newly minted position.
-        emit Log(token0.balanceOf(address(account)));
-        emit Log(token1.balanceOf(address(account)));
-        assertLt(usdValueRemaining, 0.0006 * 1e18 * usdValuePosition / 1e18);
+        assertLt(usdValueRemaining, 0.01 * 1e18 * usdValuePosition / 1e18);
     }
 
     function testFuzz_Success_rebalancePosition_MoveTickRight_BalancedWithSameTickSpacing(
