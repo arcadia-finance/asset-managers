@@ -6,7 +6,9 @@ pragma solidity 0.8.22;
 
 import { ERC20Mock } from "./_UniswapV3Rebalancer.fuzz.t.sol";
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { LiquidityAmounts } from "../../../../src/libraries/LiquidityAmounts.sol";
 import { SwapMath } from "../../../../src/libraries/SwapMath.sol";
+import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { UniswapV3Rebalancer } from "../../../../src/rebalancers/uniswap-v3/UniswapV3Rebalancer.sol";
 import { UniswapV3Rebalancer_Fuzz_Test } from "./_UniswapV3Rebalancer.fuzz.t.sol";
 import { UniswapV3Logic } from "../../../../src/libraries/UniswapV3Logic.sol";
@@ -67,16 +69,16 @@ contract Swap_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
         uint256 sqrtPriceX96Target =
             position.upperBoundSqrtPriceX96 + ((position.upperBoundSqrtPriceX96 * (0.001 * 1e18)) / 1e18);
 
-        int256 amountRemaining = -int256((token0.balanceOf(address(uniV3Pool))));
+        int256 amountRemaining = int256(type(int128).max);
         // Calculate the minimum amount of token 1 to swap to achieve target price
-        (, uint256 amountIn, uint256 amountOut,) = SwapMath.computeSwapStep(
+        (, uint256 amountIn,,) = SwapMath.computeSwapStep(
             sqrtPriceX96, uint160(sqrtPriceX96Target), liquidity, amountRemaining, 100 * POOL_FEE
         );
 
         // Send amountIn to rebalancer for swap
         deal(address(token1), address(rebalancer), amountIn);
 
-        bool isPoolUnbalanced = rebalancer.swap(position, zeroToOne, amountOut);
+        bool isPoolUnbalanced = rebalancer.swap(position, zeroToOne, amountIn);
 
         // Then : It should return "true"
         assertEq(isPoolUnbalanced, true);
@@ -110,16 +112,16 @@ contract Swap_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
         uint256 sqrtPriceX96Target =
             position.upperBoundSqrtPriceX96 - ((position.upperBoundSqrtPriceX96 * (0.001 * 1e18)) / 1e18);
 
-        int256 amountRemaining = -int256((token0.balanceOf(address(uniV3Pool))));
+        int256 amountRemaining = int256(type(int128).max);
         // Calculate the minimum amount of token 1 to swap to achieve target price
-        (,, uint256 amountOut,) = SwapMath.computeSwapStep(
+        (, uint256 amountIn,,) = SwapMath.computeSwapStep(
             sqrtPriceX96, uint160(sqrtPriceX96Target), liquidity, amountRemaining, 100 * POOL_FEE
         );
 
         // Send token1 to rebalancer for swap
-        deal(address(token1), address(rebalancer), type(uint128).max);
+        deal(address(token1), address(rebalancer), amountIn);
 
-        bool isPoolUnbalanced = rebalancer.swap(position, zeroToOne, amountOut);
+        bool isPoolUnbalanced = rebalancer.swap(position, zeroToOne, amountIn);
 
         // Then : It should return "false"
         assertEq(isPoolUnbalanced, false);
@@ -153,16 +155,16 @@ contract Swap_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
         uint256 sqrtPriceX96Target =
             position.lowerBoundSqrtPriceX96 - ((position.lowerBoundSqrtPriceX96 * (0.001 * 1e18)) / 1e18);
 
-        int256 amountRemaining = -int256((token1.balanceOf(address(uniV3Pool))));
+        int256 amountRemaining = type(int128).max;
         // Calculate the minimum amount of token 0 to swap to achieve target price
-        (, uint256 amountIn, uint256 amountOut,) = SwapMath.computeSwapStep(
+        (, uint256 amountIn,,) = SwapMath.computeSwapStep(
             sqrtPriceX96, uint160(sqrtPriceX96Target), liquidity, amountRemaining, 100 * POOL_FEE
         );
 
         // Send amountIn to rebalancer for swap
         deal(address(token0), address(rebalancer), amountIn);
 
-        bool isPoolUnbalanced = rebalancer.swap(position, zeroToOne, amountOut);
+        bool isPoolUnbalanced = rebalancer.swap(position, zeroToOne, amountIn);
 
         // Then : It should return "true"
         assertEq(isPoolUnbalanced, true);
@@ -196,16 +198,16 @@ contract Swap_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
         uint256 sqrtPriceX96Target =
             position.lowerBoundSqrtPriceX96 + ((position.lowerBoundSqrtPriceX96 * (0.001 * 1e18)) / 1e18);
 
-        int256 amountRemaining = -int256((token1.balanceOf(address(uniV3Pool))));
+        int256 amountRemaining = type(int128).max;
         // Calculate the minimum amount of token 0 to swap to achieve target price
-        (,, uint256 amountOut,) = SwapMath.computeSwapStep(
+        (, uint256 amountIn,,) = SwapMath.computeSwapStep(
             sqrtPriceX96, uint160(sqrtPriceX96Target), liquidity, amountRemaining, 100 * POOL_FEE
         );
 
-        // Send amountIn to rebalancer for swap
-        deal(address(token0), address(rebalancer), type(uint128).max);
+        // Send tokenIn to rebalancer for swap
+        deal(address(token0), address(rebalancer), amountIn);
 
-        bool isPoolUnbalanced = rebalancer.swap(position, zeroToOne, amountOut);
+        bool isPoolUnbalanced = rebalancer.swap(position, zeroToOne, amountIn);
 
         // Then : It should return "false"
         assertEq(isPoolUnbalanced, false);

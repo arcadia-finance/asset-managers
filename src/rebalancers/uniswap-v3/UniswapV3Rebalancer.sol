@@ -355,6 +355,10 @@ contract UniswapV3Rebalancer is IActionBase {
         (int256 deltaAmount0, int256 deltaAmount1) =
             IUniswapV3Pool(position.pool).swap(address(this), zeroToOne, int256(amountIn), sqrtPriceLimitX96, data);
 
+        (uint160 sqrtPrice,,,,,,) = IUniswapV3Pool(position.pool).slot0();
+        emit LogHere(uint256(sqrtPrice));
+        emit LogHere(uint256(amountIn));
+        emit LogHere(uint256(deltaAmount0));
         // Check if pool is still balanced (sqrtPriceLimitX96 is reached before an amountIn of tokenIn is swapped).
         isPoolUnbalanced_ = (amountIn > (zeroToOne ? uint256(deltaAmount0) : uint256(deltaAmount1)));
     }
