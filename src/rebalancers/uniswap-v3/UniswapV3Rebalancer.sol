@@ -169,9 +169,33 @@ contract UniswapV3Rebalancer is IActionBase {
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
         if (isPoolUnbalanced(position)) revert UnbalancedPool();
 
+        // Remove liquidity of the position and claim outstanding fees to get full amounts of token0 and token1
+        // for rebalance.
+        UniswapV3Logic.POSITION_MANAGER.decreaseLiquidity(
+            DecreaseLiquidityParams({
+                tokenId: id,
+                liquidity: position.liquidity,
+                amount0Min: 0,
+                amount1Min: 0,
+                deadline: block.timestamp
+            })
+        );
+
+        (uint256 amount0, uint256 amount1) = UniswapV3Logic.POSITION_MANAGER.collect(
+            CollectParams({
+                tokenId: id,
+                recipient: address(this),
+                amount0Max: type(uint128).max,
+                amount1Max: type(uint128).max
+            })
+        );
+
+        // Burn the position
+        UniswapV3Logic.POSITION_MANAGER.burn(id);
+
         // Rebalance the position so that the maximum liquidity can be added for new ticks.
         // The Pool must still be balanced after the swap.
-        (bool zeroToOne, uint256 amountIn) = getSwapParameters(position, id);
+        (bool zeroToOne, uint256 amountIn) = getSwapParameters(position, amount0, amount1);
         if (_swap(position, zeroToOne, amountIn)) revert UnbalancedPool();
 
         // Increase liquidity of the position.
@@ -185,7 +209,8 @@ contract UniswapV3Rebalancer is IActionBase {
         ERC20(position.token1).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), 0);
         ERC20(position.token1).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), balance1);
 
-        (uint256 newTokenId,, uint256 amount0, uint256 amount1) = UniswapV3Logic.POSITION_MANAGER.mint(
+        uint256 newTokenId;
+        (newTokenId,, amount0, amount1) = UniswapV3Logic.POSITION_MANAGER.mint(
             MintParams({
                 token0: position.token0,
                 token1: position.token1,
@@ -252,45 +277,19 @@ contract UniswapV3Rebalancer is IActionBase {
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice returns the swap parameters to optimize the total value of fees that can be added as liquidity.
+     * @notice Returns the swap parameters to optimize the total value that can be added as liquidity.
      * @param position Struct with the position data.
-     * @param id St
+     * @param amount0 .
+     * @param amount1 .
      * @return zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @return amountIn The amount of tokenIn.
-     * @dev We assume the fees amount are small compared to the liquidity of the pool,
-     * hence we neglect slippage when optimizing the swap amounts.
-     * Slippage must be limited, the contract enforces that the pool is still balanced after the swap and
-     * since we use swaps with amountOut, slippage will result in less reward of tokenIn for the initiator,
-     * not less liquidity increased.
+     * @dev Slippage must be limited, the contract enforces that the pool is still balanced after the swap.
      */
-    function getSwapParameters(PositionState memory position, uint256 id)
+    function getSwapParameters(PositionState memory position, uint256 amount0, uint256 amount1)
         public
+        pure
         returns (bool zeroToOne, uint256 amountIn)
     {
-        // Remove liquidity of the position and claim outstanding fees to get full amounts of token0 and token1
-        // for rebalance.
-        UniswapV3Logic.POSITION_MANAGER.decreaseLiquidity(
-            DecreaseLiquidityParams({
-                tokenId: id,
-                liquidity: position.liquidity,
-                amount0Min: 0,
-                amount1Min: 0,
-                deadline: block.timestamp
-            })
-        );
-
-        (uint256 amount0, uint256 amount1) = UniswapV3Logic.POSITION_MANAGER.collect(
-            CollectParams({
-                tokenId: id,
-                recipient: address(this),
-                amount0Max: type(uint128).max,
-                amount1Max: type(uint128).max
-            })
-        );
-
-        // Burn the position
-        UniswapV3Logic.POSITION_MANAGER.burn(id);
-
         uint256 sqrtRatioUpperTick = TickMath.getSqrtRatioAtTick(position.newUpperTick);
         uint256 sqrtRatioLowerTick = TickMath.getSqrtRatioAtTick(position.newLowerTick);
 

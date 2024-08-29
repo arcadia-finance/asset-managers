@@ -133,7 +133,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         int24 lpLowerTick,
         int24 lpUpperTick,
         UniswapV3Rebalancer.PositionState memory position
-    ) public returns (uint256 amount0, uint256 amount1, bool zeroToOne, uint256 amountIn) {
+    ) public view returns (uint256 amount0, uint256 amount1, bool zeroToOne, uint256 amountIn) {
         uint256 sqrtRatioUpperTick = TickMath.getSqrtRatioAtTick(position.newUpperTick);
         uint256 sqrtRatioLowerTick = TickMath.getSqrtRatioAtTick(position.newLowerTick);
 
