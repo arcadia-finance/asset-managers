@@ -230,6 +230,8 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
 
             emit log_named_uint("amount0", amount0);
             emit log_named_uint("amount1", amount1);
+            emit log_named_uint("decimals0", token0.decimals());
+            emit log_named_uint("decimasl1", token1.decimals());
 
             // Calculate the total fee value in token1 equivalent:
             uint256 token0ValueInToken1 = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, amount0);
