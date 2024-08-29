@@ -32,11 +32,12 @@ contract UniswapV3Rebalancer is IActionBase {
                                 CONSTANTS
     ////////////////////////////////////////////////////////////// */
 
-    // TODO The max fees that are paid as reward to the initiator, with 18 decimals precision.
-    uint256 public immutable MAX_INITIATOR_FEE = 0.01 * 1e18;
     // The maximum lower deviation of the pools actual sqrtPriceX96,
     // The maximum deviation of the actual pool price, in % with 18 decimals precision.
     uint256 public immutable MAX_TOLERANCE;
+
+    // TODO
+    uint256 public immutable MAX_INITIATOR_FEE = 0.01 * 1e18;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
@@ -66,6 +67,7 @@ contract UniswapV3Rebalancer is IActionBase {
         uint256 upperBoundSqrtPriceX96;
     }
 
+    // A struct used to store information for each specific initiator
     struct InitiatorInfo {
         uint256 upperSqrtPriceDeviation;
         uint256 lowerSqrtPriceDeviation;
@@ -95,14 +97,13 @@ contract UniswapV3Rebalancer is IActionBase {
 
     event Rebalance(address indexed account, uint256 id);
 
-    event LogHere(uint256);
-
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
     ////////////////////////////////////////////////////////////// */
 
     /**
-     * @param maxTolerance .
+     * @param maxTolerance The maximum allowed deviation of the actual pool price for any initiator,
+     * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
      */
     constructor(uint256 maxTolerance) {
         MAX_TOLERANCE = maxTolerance;
@@ -114,12 +115,13 @@ contract UniswapV3Rebalancer is IActionBase {
 
     // TODO : add a check that ticks passed are multiples from tickSpacing ?
     /**
-     * @notice
+     * @notice Rebalances a UniswapV3 Liquidity Position owned by an Arcadia Account.
      * @param account_ The Arcadia Account owning the position.
-     * @param id The id of the Liquidity Position.
-     * @param lowerTick .
-     * @param upperTick .
-     * @dev When both lowerTick and upperTick are zero, ticks will be updated with same tick-spacing as current position.
+     * @param id The id of the Liquidity Position to rebalance.
+     * @param lowerTick The new lower tick to rebalance to.
+     * @param upperTick The new upper tick to rebalance to.
+     * @dev When both lowerTick and upperTick are zero, ticks will be updated with same tick-spacing as current position
+     * and with a balanced, 50/50 ratio around current tick.
      */
     function rebalancePosition(address account_, uint256 id, int24 lowerTick, int24 upperTick) external {
         // Store Account address, used to validate the caller of the executeAction() callback.
@@ -148,6 +150,7 @@ contract UniswapV3Rebalancer is IActionBase {
      * @param rebalanceData A bytes object containing a struct with the assetData of the position and the address of the initiator.
      * @return assetData A struct with the asset data of the Liquidity Position.
      * @dev The Liquidity Position is already transferred to this contract before executeAction() is called.
+     * @dev When rebalancing we will burn the current Liquidity Position and mint a new one with a new tokenId.
      */
     function executeAction(bytes calldata rebalanceData) external override returns (ActionData memory assetData) {
         // Cache account
@@ -248,6 +251,16 @@ contract UniswapV3Rebalancer is IActionBase {
         ownerToAccountToInitiator[msg.sender][account_] = initiator;
     }
 
+    /**
+     * @notice Sets the information requested for an initiator.
+     * @param fee . TODO
+     * @param tolerance The maximum deviation of the actual pool price,
+     * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
+     * @dev The tolerance for the pool price will be converted to an upper and lower max sqrtPrice deviation,
+     * using the square root of the basis (one with 18 decimals precision) +- tolerance (18 decimals precision).
+     * The tolerance boundaries are symmetric around the price, but taking the square root will result in a different
+     * allowed deviation of the sqrtPriceX96 for the lower and upper boundaries.
+     */
     function setInitiatorInfo(uint256 tolerance, uint256 fee) external {
         // Cache struct
         InitiatorInfo memory initiatorInfo_ = initiatorInfo[msg.sender];
@@ -279,8 +292,8 @@ contract UniswapV3Rebalancer is IActionBase {
     /**
      * @notice Returns the swap parameters to optimize the total value that can be added as liquidity.
      * @param position Struct with the position data.
-     * @param amount0 .
-     * @param amount1 .
+     * @param amount0 The amount of token0 that is available for the rebalance.
+     * @param amount1 The amount of token1 that is available for the rebalance.
      * @return zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @return amountIn The amount of tokenIn.
      * @dev Slippage must be limited, the contract enforces that the pool is still balanced after the swap.
@@ -348,17 +361,12 @@ contract UniswapV3Rebalancer is IActionBase {
         // Pool should still be balanced (within tolerance boundaries) after the swap.
         uint160 sqrtPriceLimitX96 =
             uint160(zeroToOne ? position.lowerBoundSqrtPriceX96 : position.upperBoundSqrtPriceX96);
-        emit LogHere(amountIn);
 
         // Do the swap.
         bytes memory data = abi.encode(position.token0, position.token1, position.fee);
         (int256 deltaAmount0, int256 deltaAmount1) =
             IUniswapV3Pool(position.pool).swap(address(this), zeroToOne, int256(amountIn), sqrtPriceLimitX96, data);
 
-        (uint160 sqrtPrice,,,,,,) = IUniswapV3Pool(position.pool).slot0();
-        emit LogHere(uint256(sqrtPrice));
-        emit LogHere(uint256(amountIn));
-        emit LogHere(uint256(deltaAmount0));
         // Check if pool is still balanced (sqrtPriceLimitX96 is reached before an amountIn of tokenIn is swapped).
         isPoolUnbalanced_ = (amountIn > (zeroToOne ? uint256(deltaAmount0) : uint256(deltaAmount1)));
     }
@@ -390,6 +398,8 @@ contract UniswapV3Rebalancer is IActionBase {
     /**
      * @notice Fetches all required position data from external contracts.
      * @param id The id of the Liquidity Position.
+     * @param lowerTick The lower tick of the newly minted position.
+     * @param upperTick The upper tick of the newly minted position.
      * @return position Struct with the position data.
      */
     function getPositionState(uint256 id, int24 lowerTick, int24 upperTick, address initiator)
@@ -413,11 +423,13 @@ contract UniswapV3Rebalancer is IActionBase {
         (position.sqrtPriceX96, currentTick,,,,,) = IUniswapV3Pool(position.pool).slot0();
 
         // Store the new ticks for the rebalance
-        // TODO: validate if ok to divide by 2 for uneven numbers
+        // TODO: validate approach below for lower and upper tick
         if (lowerTick == 0 && upperTick == 0) {
-            int24 tickSpacing = (currentUpperTick - currentLowerTick) / 2;
-            position.newUpperTick = currentTick + tickSpacing;
-            position.newLowerTick = currentTick - tickSpacing;
+            int24 tickSpacing = IUniswapV3Pool(position.pool).tickSpacing();
+            int24 halfRangeTicks = ((currentUpperTick - currentLowerTick) / tickSpacing) / 2;
+            halfRangeTicks *= tickSpacing;
+            position.newUpperTick = currentTick + halfRangeTicks;
+            position.newLowerTick = currentTick - halfRangeTicks;
         } else {
             position.newUpperTick = upperTick;
             position.newLowerTick = lowerTick;

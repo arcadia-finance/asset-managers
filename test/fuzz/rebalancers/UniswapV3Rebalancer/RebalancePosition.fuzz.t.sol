@@ -345,11 +345,17 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         rebalancer.rebalancePosition(address(account), tokenId, 0, 0);
 
         // Then : It should return correct values
-        int24 tickSpacing = (lpVars.tickUpper - lpVars.tickLower) / 2;
+        int24 halfRangeTicks;
+        {
+            int24 tickSpacing = uniV3Pool.tickSpacing();
+            halfRangeTicks = (((lpVars.tickUpper - lpVars.tickLower)) / tickSpacing) / 2;
+            halfRangeTicks *= tickSpacing;
+        }
+        int24 newUpperTick = tickBeforeRebalance + halfRangeTicks;
+        int24 newLowerTick = tickBeforeRebalance - halfRangeTicks;
         (,,,,, int24 tickLower, int24 tickUpper,,,,,) = nonfungiblePositionManager.positions(tokenId + 1);
-
-        assertEq(tickLower, tickBeforeRebalance - tickSpacing);
-        assertEq(tickUpper, tickBeforeRebalance + tickSpacing);
+        assertEq(tickUpper, newUpperTick);
+        assertEq(tickLower, newLowerTick);
     }
 
     function testFuzz_Success_rebalancePosition_MoveTickLeft_BalancedWithSameTickSpacing(
@@ -405,11 +411,17 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         rebalancer.rebalancePosition(address(account), tokenId, 0, 0);
 
         // Then : It should return correct values
-        int24 tickSpacing = (lpVars.tickUpper - lpVars.tickLower) / 2;
+        int24 halfRangeTicks;
+        {
+            int24 tickSpacing = uniV3Pool.tickSpacing();
+            halfRangeTicks = (((lpVars.tickUpper - lpVars.tickLower)) / tickSpacing) / 2;
+            halfRangeTicks *= tickSpacing;
+        }
+        int24 newUpperTick = tickBeforeRebalance + halfRangeTicks;
+        int24 newLowerTick = tickBeforeRebalance - halfRangeTicks;
         (,,,,, int24 tickLower, int24 tickUpper,,,,,) = nonfungiblePositionManager.positions(tokenId + 1);
-
-        assertEq(tickLower, tickBeforeRebalance - tickSpacing);
-        assertEq(tickUpper, tickBeforeRebalance + tickSpacing);
+        assertEq(tickUpper, newUpperTick);
+        assertEq(tickLower, newLowerTick);
     }
 
     function testFuzz_Success_rebalancePosition_MoveTickRight_CustomTicks(
