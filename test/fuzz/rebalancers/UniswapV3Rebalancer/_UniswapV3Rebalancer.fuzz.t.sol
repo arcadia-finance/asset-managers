@@ -215,7 +215,6 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         // TODO : fuzz more tolerances here
         tolerance = bound(tolerance, 0.018 * 1e18, rebalancer.MAX_TOLERANCE() - 1);
         fee = bound(fee, 0, MAX_INITIATOR_FEE - 1);
-        fee = 0;
 
         if (increaseTolerance == true) {
             tolerance = rebalancer.MAX_TOLERANCE();

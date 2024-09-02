@@ -245,9 +245,11 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         uint256 tokenId;
         (initVars, lpVars, tokenId) = initPoolAndCreatePositionWithFees(initVars, lpVars);
 
-        // Given : new ticks are within boundaries (otherwise swap too big => unbalanced pool)
-        newLowerTick = int24(bound(newLowerTick, lpVars.tickLower - 9500, lpVars.tickLower - 1));
-        newUpperTick = int24(bound(newUpperTick, lpVars.tickUpper + 1, lpVars.tickUpper + 9500));
+        // Given : new ticks are within boundaries
+        newLowerTick =
+            int24(bound(newLowerTick, lpVars.tickLower - ((INIT_LP_TICK_RANGE / 2) - 100), lpVars.tickLower - 1));
+        newUpperTick =
+            int24(bound(newUpperTick, lpVars.tickUpper + 1, lpVars.tickUpper + ((INIT_LP_TICK_RANGE / 2) - 100)));
 
         // And : Set initiator for account
         vm.prank(account.owner());
@@ -296,8 +298,120 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         );
         (uint256 usdValuePosition, uint256 usdValueRemaining) =
             getValuesInUsd(amount0_, amount1_, token0.balanceOf(address(account)), token1.balanceOf(address(account)));
-        // Ensure the leftovers represent less than 1% of the usd value of the newly minted position.
+        // Ensure the leftovers represent less than 1,4% of the usd value of the newly minted position.
         assertLt(usdValueRemaining, 0.014 * 1e18 * usdValuePosition / 1e18);
+    }
+
+    function testFuzz_Success_rebalancePosition_InitiatorFees_Token0(
+        InitVariables memory initVars,
+        LpVariables memory lpVars,
+        int24 newUpperTick
+    ) public {
+        // Given : Initialize a uniswapV3 pool and a lp position with valid test variables. Also generate fees for that position.
+        uint256 tokenId;
+        (initVars, lpVars, tokenId) = initPoolAndCreatePositionWithFees(initVars, lpVars);
+
+        // Given : Move upper tick to the right (should trigger a oneToZero swap)
+        int24 newLowerTick = lpVars.tickLower;
+        newUpperTick =
+            int24(bound(newUpperTick, lpVars.tickUpper + 10, lpVars.tickUpper + ((INIT_LP_TICK_RANGE / 2) - 100)));
+
+        // And : Set initiator for account
+        vm.prank(account.owner());
+        rebalancer.setInitiatorForAccount(initVars.initiator, address(account));
+
+        // And : Transfer position to account owner
+        vm.prank(users.liquidityProvider);
+        ERC721(address(nonfungiblePositionManager)).transferFrom(users.liquidityProvider, users.accountOwner, tokenId);
+
+        {
+            address[] memory assets_ = new address[](1);
+            assets_[0] = address(nonfungiblePositionManager);
+            uint256[] memory assetIds_ = new uint256[](1);
+            assetIds_[0] = tokenId;
+            uint256[] memory assetAmounts_ = new uint256[](1);
+            assetAmounts_[0] = 1;
+
+            // And : Deposit position in Account
+            vm.startPrank(users.accountOwner);
+            ERC721(address(nonfungiblePositionManager)).approve(address(account), tokenId);
+            account.deposit(assets_, assetIds_, assetAmounts_);
+            vm.stopPrank();
+        }
+
+        (,, uint256 initiatorFee) = rebalancer.initiatorInfo(initVars.initiator);
+        uint256 expectedFee;
+        {
+            UniswapV3Rebalancer.PositionState memory position_ =
+                rebalancer.getPositionState(tokenId, newLowerTick, newUpperTick, initVars.initiator);
+            (,, bool zeroToOne, uint256 amountIn) =
+                getSwapParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initVars.initiator);
+            vm.assume(zeroToOne == false);
+            expectedFee = amountIn.mulDivDown(initiatorFee, 1e18);
+        }
+
+        // When : calling rebalancePosition()
+        vm.prank(initVars.initiator);
+        rebalancer.rebalancePosition(address(account), tokenId, newLowerTick, newUpperTick);
+
+        // Then : It should return the correct values
+        assertEq(token1.balanceOf(initVars.initiator), expectedFee);
+    }
+
+    function testFuzz_Success_rebalancePosition_InitiatorFees_Token1(
+        InitVariables memory initVars,
+        LpVariables memory lpVars,
+        int24 newLowerTick
+    ) public {
+        // Given : Initialize a uniswapV3 pool and a lp position with valid test variables. Also generate fees for that position.
+        uint256 tokenId;
+        (initVars, lpVars, tokenId) = initPoolAndCreatePositionWithFees(initVars, lpVars);
+
+        // Given : Move lower tick to the left (should trigger a zeroToOne swap)
+        newLowerTick =
+            int24(bound(newLowerTick, lpVars.tickLower - ((INIT_LP_TICK_RANGE / 2) - 100), lpVars.tickLower - 10));
+        int24 newUpperTick = lpVars.tickUpper;
+
+        // And : Set initiator for account
+        vm.prank(account.owner());
+        rebalancer.setInitiatorForAccount(initVars.initiator, address(account));
+
+        // And : Transfer position to account owner
+        vm.prank(users.liquidityProvider);
+        ERC721(address(nonfungiblePositionManager)).transferFrom(users.liquidityProvider, users.accountOwner, tokenId);
+
+        {
+            address[] memory assets_ = new address[](1);
+            assets_[0] = address(nonfungiblePositionManager);
+            uint256[] memory assetIds_ = new uint256[](1);
+            assetIds_[0] = tokenId;
+            uint256[] memory assetAmounts_ = new uint256[](1);
+            assetAmounts_[0] = 1;
+
+            // And : Deposit position in Account
+            vm.startPrank(users.accountOwner);
+            ERC721(address(nonfungiblePositionManager)).approve(address(account), tokenId);
+            account.deposit(assets_, assetIds_, assetAmounts_);
+            vm.stopPrank();
+        }
+
+        (,, uint256 initiatorFee) = rebalancer.initiatorInfo(initVars.initiator);
+        uint256 expectedFee;
+        {
+            UniswapV3Rebalancer.PositionState memory position_ =
+                rebalancer.getPositionState(tokenId, newLowerTick, newUpperTick, initVars.initiator);
+            (,, bool zeroToOne, uint256 amountIn) =
+                getSwapParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initVars.initiator);
+            vm.assume(zeroToOne == true);
+            expectedFee = amountIn.mulDivDown(initiatorFee, 1e18);
+        }
+
+        // When : calling rebalancePosition()
+        vm.prank(initVars.initiator);
+        rebalancer.rebalancePosition(address(account), tokenId, newLowerTick, newUpperTick);
+
+        // Then : It should return the correct values
+        assertEq(token0.balanceOf(initVars.initiator), expectedFee);
     }
 
     function testFuzz_Success_rebalancePosition_MoveTickRight_BalancedWithSameTickSpacing(
@@ -585,7 +699,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         uint256 amount0;
         uint256 amount1;
         {
-            //
+            // Avoid stack too deep
             address initiatorStack = initVars.initiator;
             // Assume that liquidity will be bigger than 0
             UniswapV3Rebalancer.PositionState memory position_ =
