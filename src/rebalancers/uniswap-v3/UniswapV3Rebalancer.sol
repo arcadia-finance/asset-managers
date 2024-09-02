@@ -105,6 +105,8 @@ contract UniswapV3Rebalancer is IActionBase {
 
     event Rebalance(address indexed account, uint256 id);
 
+    event LogHere(uint256);
+
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
     ////////////////////////////////////////////////////////////// */
@@ -328,7 +330,6 @@ contract UniswapV3Rebalancer is IActionBase {
      */
     function getSwapParameters(PositionState memory position, uint256 amount0, uint256 amount1, uint256 initiatorFee)
         public
-        pure
         returns (bool zeroToOne, uint256 amountIn)
     {
         uint256 sqrtRatioUpperTick = TickMath.getSqrtRatioAtTick(position.newUpperTick);
@@ -348,20 +349,20 @@ contract UniswapV3Rebalancer is IActionBase {
             uint256 targetRatio =
                 UniswapV3Logic._getTargetRatio(position.sqrtPriceX96, sqrtRatioLowerTick, sqrtRatioUpperTick);
 
-            // Calculate the total fee value in token1 equivalent:
+            // Calculate the total position value in token1 equivalent:
             uint256 token0ValueInToken1 = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, amount0);
             uint256 totalValueInToken1 = amount1 + token0ValueInToken1;
             uint256 currentRatio = amount1.mulDivDown(1e18, totalValueInToken1);
 
             // Total fee is pool fee + initiator fee. Scaled position fee from 6 to 18 decimals precision.
-            uint256 fee = initiatorFee + (position.fee * 1e12);
+            uint256 fee = initiatorFee + (uint256(position.fee) * 1e12);
 
             if (currentRatio < targetRatio) {
                 // Swap token0 partially to token1.
                 zeroToOne = true;
                 uint256 denominator = 1e18 + targetRatio.mulDivDown(fee, 1e18 - fee);
                 uint256 amountOut = (targetRatio - currentRatio).mulDivDown(totalValueInToken1, denominator);
-                // convert to amountIn
+                // Convert to amountIn
                 amountIn = UniswapV3Logic._getAmountIn(position.sqrtPriceX96, zeroToOne, amountOut, fee);
             } else {
                 // Swap token1 partially to token0.

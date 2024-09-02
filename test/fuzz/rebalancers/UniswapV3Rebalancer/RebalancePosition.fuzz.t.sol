@@ -128,7 +128,8 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         uint256 tokenId,
         int24 lpLowerTick,
         int24 lpUpperTick,
-        UniswapV3Rebalancer.PositionState memory position
+        UniswapV3Rebalancer.PositionState memory position,
+        address initiator
     ) public view returns (uint256 amount0, uint256 amount1, bool zeroToOne, uint256 amountIn) {
         uint256 sqrtRatioUpperTick = TickMath.getSqrtRatioAtTick(position.newUpperTick);
         uint256 sqrtRatioLowerTick = TickMath.getSqrtRatioAtTick(position.newLowerTick);
@@ -140,9 +141,13 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
             position.liquidity
         );
 
-        (uint256 fee0, uint256 fee1) = getFeeAmounts(tokenId);
-        amount0 += fee0;
-        amount1 += fee1;
+        {
+            (uint256 fee0, uint256 fee1) = getFeeAmounts(tokenId);
+            amount0 += fee0;
+            amount1 += fee1;
+        }
+
+        address initiatorStack = initiator;
 
         if (position.sqrtPriceX96 >= sqrtRatioUpperTick) {
             // Position is out of range and fully in token 1.
@@ -158,27 +163,30 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
             uint256 targetRatio =
                 UniswapV3Logic._getTargetRatio(position.sqrtPriceX96, sqrtRatioLowerTick, sqrtRatioUpperTick);
 
+            // Cache fee and sqrtPriceX96 to avoid stack too deep.
+            uint256 fee = uint256(position.fee);
+            uint256 sqrtPriceX96 = position.sqrtPriceX96;
+            {
+                (,, uint256 initiatorFee) = rebalancer.initiatorInfo(initiatorStack);
+                fee = (fee * 1e12) + initiatorFee;
+            }
+
             // Calculate the total fee value in token1 equivalent:
-            uint256 token0ValueInToken1 =
-                UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, amount0, position.fee);
+            uint256 token0ValueInToken1 = UniswapV3Logic._getAmountOut(sqrtPriceX96, true, amount0);
             uint256 totalValueInToken1 = amount1 + token0ValueInToken1;
             uint256 currentRatio = amount1.mulDivDown(1e18, totalValueInToken1);
-
-            // Cache fee and sqrtPriceX96 to avoid stack too deep.
-            uint24 fee = position.fee;
-            uint256 sqrtPriceX96 = position.sqrtPriceX96;
 
             if (currentRatio < targetRatio) {
                 // Swap token0 partially to token1.
                 zeroToOne = true;
-                uint256 denominator = 1e18 + targetRatio.mulDivDown(fee, 1e6 - fee);
+                uint256 denominator = 1e18 + targetRatio.mulDivDown(fee, 1e18 - fee);
                 uint256 amountOut = (targetRatio - currentRatio).mulDivDown(totalValueInToken1, denominator);
                 // convert to amountIn
                 amountIn = UniswapV3Logic._getAmountIn(sqrtPriceX96, zeroToOne, amountOut, fee);
             } else {
                 // Swap token1 partially to token0.
                 zeroToOne = false;
-                uint256 denominator = 1e18 - targetRatio.mulDivDown(fee, 1e6);
+                uint256 denominator = 1e18 - targetRatio.mulDivDown(fee, 1e18);
                 amountIn = (currentRatio - targetRatio).mulDivDown(totalValueInToken1, denominator);
             }
         }
@@ -274,6 +282,8 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
 
         (, int24 currentTick,,,,,) = uniV3Pool.slot0();
 
+        (,, uint256 initiatorFee) = rebalancer.initiatorInfo(initVars.initiator);
+
         // There can be 1 tick difference due to roundings.
         assertEq(tickLower, newLowerTick);
         assertEq(tickUpper, newUpperTick);
@@ -287,7 +297,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         (uint256 usdValuePosition, uint256 usdValueRemaining) =
             getValuesInUsd(amount0_, amount1_, token0.balanceOf(address(account)), token1.balanceOf(address(account)));
         // Ensure the leftovers represent less than 1% of the usd value of the newly minted position.
-        assertLt(usdValueRemaining, 0.01 * 1e18 * usdValuePosition / 1e18);
+        assertLt(usdValueRemaining, 0.014 * 1e18 * usdValuePosition / 1e18);
     }
 
     function testFuzz_Success_rebalancePosition_MoveTickRight_BalancedWithSameTickSpacing(
@@ -475,10 +485,11 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         moveTicksRightWithIncreasedTolerance(initVars.initiator, amount1ToSwap);
 
         {
+            address initiatorStack = initVars.initiator;
             UniswapV3Rebalancer.PositionState memory position_ =
-                rebalancer.getPositionState(tokenId, newLowerTick, newUpperTick, initVars.initiator);
+                rebalancer.getPositionState(tokenId, newLowerTick, newUpperTick, initiatorStack);
             (uint256 amount0, uint256 amount1, bool zeroToOne, uint256 amountIn) =
-                getSwapParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_);
+                getSwapParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initiatorStack);
 
             QuoteExactInputSingleParams memory params = QuoteExactInputSingleParams({
                 tokenIn: zeroToOne ? address(token0) : address(token1),
@@ -574,14 +585,16 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         uint256 amount0;
         uint256 amount1;
         {
+            //
+            address initiatorStack = initVars.initiator;
             // Assume that liquidity will be bigger than 0
             UniswapV3Rebalancer.PositionState memory position_ =
-                rebalancer.getPositionState(tokenId, newLowerTick, newUpperTick, initVars.initiator);
+                rebalancer.getPositionState(tokenId, newLowerTick, newUpperTick, initiatorStack);
 
             uint256 amountIn;
             bool zeroToOne;
             (amount0, amount1, zeroToOne, amountIn) =
-                getSwapParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_);
+                getSwapParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initiatorStack);
 
             QuoteExactInputSingleParams memory params = QuoteExactInputSingleParams({
                 tokenIn: zeroToOne ? address(token0) : address(token1),

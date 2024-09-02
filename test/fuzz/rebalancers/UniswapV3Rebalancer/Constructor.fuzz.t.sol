@@ -25,6 +25,6 @@ contract Constructor_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_T
         UniswapV3Rebalancer rebalancer_ = new UniswapV3Rebalancer(maxTolerance, maxInitiatorFee);
 
         assertEq(rebalancer_.MAX_TOLERANCE(), maxTolerance);
-        assertEq(rebalancer.MAX_INITIATOR_FEE(), maxInitiatorFee);
+        assertEq(rebalancer_.MAX_INITIATOR_FEE(), maxInitiatorFee);
     }
 }

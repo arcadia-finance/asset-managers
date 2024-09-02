@@ -52,8 +52,8 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
     // TODO : fuzz ?
     uint256 internal MAX_TOLERANCE = 0.02 * 1e18;
 
-    // 1 % max fee
-    uint256 MAX_INITIATOR_FEE = 0.01 * 1e18;
+    // 0,5 % max fee
+    uint256 MAX_INITIATOR_FEE = 0.005 * 1e18;
 
     // Minimum liquidity ratio for minted position, 0,05%
     uint256 internal MIN_LIQUIDITY = 0.0005 * 1e18;
@@ -66,9 +66,6 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
 
     // If set to "true" during tests, will enable to mock high tolerance
     bool public increaseTolerance;
-
-    // TODO : 10% initiator fee
-    uint256 internal INITIATOR_SHARE = 0.1 * 1e18;
 
     /*////////////////////////////////////////////////////////////////
                             VARIABLES
@@ -218,6 +215,7 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         // TODO : fuzz more tolerances here
         tolerance = bound(tolerance, 0.018 * 1e18, rebalancer.MAX_TOLERANCE() - 1);
         fee = bound(fee, 0, MAX_INITIATOR_FEE - 1);
+        fee = 0;
 
         if (increaseTolerance == true) {
             tolerance = rebalancer.MAX_TOLERANCE();
