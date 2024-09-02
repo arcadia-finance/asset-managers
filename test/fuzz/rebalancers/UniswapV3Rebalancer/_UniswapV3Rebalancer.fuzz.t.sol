@@ -52,6 +52,9 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
     // TODO : fuzz ?
     uint256 internal MAX_TOLERANCE = 0.02 * 1e18;
 
+    // 1 % max fee
+    uint256 MAX_INITIATOR_FEE = 0.01 * 1e18;
+
     // Minimum liquidity ratio for minted position, 0,05%
     uint256 internal MIN_LIQUIDITY = 0.0005 * 1e18;
 
@@ -119,7 +122,7 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         QuoterV2Fixture.deployQuoterV2(address(uniswapV3Factory), address(weth9));
 
         deployUniswapV3AM();
-        deployRebalancer(MAX_TOLERANCE);
+        deployRebalancer(MAX_TOLERANCE, MAX_INITIATOR_FEE);
 
         // And : Rebalancer is allowed as Asset Manager
         vm.prank(users.accountOwner);
@@ -149,9 +152,9 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         vm.etch(address(uniV3AM), bytecode);
     }
 
-    function deployRebalancer(uint256 maxTolerance) public {
+    function deployRebalancer(uint256 maxTolerance, uint256 maxInitiatorFee) public {
         vm.prank(users.owner);
-        rebalancer = new UniswapV3RebalancerExtension(maxTolerance);
+        rebalancer = new UniswapV3RebalancerExtension(maxTolerance, maxInitiatorFee);
 
         // Get the bytecode of the UniswapV3PoolExtension.
         bytes memory args = abi.encode();
@@ -214,7 +217,7 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         // Too low tolerance for testing will make tests reverts too quickly with unbalancedPool()
         // TODO : fuzz more tolerances here
         tolerance = bound(tolerance, 0.018 * 1e18, rebalancer.MAX_TOLERANCE() - 1);
-        fee = bound(fee, 0, 0.0099 * 1e18);
+        fee = bound(fee, 0, MAX_INITIATOR_FEE - 1);
 
         if (increaseTolerance == true) {
             tolerance = rebalancer.MAX_TOLERANCE();

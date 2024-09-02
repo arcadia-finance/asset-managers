@@ -297,7 +297,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
     ) public {
         // Given : deploy new rebalancer with a high maxTolerance to avoid unbalancedPool due to external usd prices not aligned
         uint256 maxTolerance = 1e18;
-        deployRebalancer(maxTolerance);
+        deployRebalancer(maxTolerance, MAX_INITIATOR_FEE);
 
         // And : Rebalancer is allowed as Asset Manager
         vm.prank(users.accountOwner);
@@ -363,7 +363,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
     ) public {
         // Given : deploy new rebalancer with a high maxTolerance to avoid unbalancedPool due to external usd prices not aligned
         uint256 maxTolerance = 1e18;
-        deployRebalancer(maxTolerance);
+        deployRebalancer(maxTolerance, MAX_INITIATOR_FEE);
 
         // And : Rebalancer is allowed as Asset Manager
         vm.prank(users.accountOwner);
@@ -431,7 +431,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
     ) public {
         // Given : deploy new rebalancer with a high maxTolerance to avoid unbalancedPool due to external usd prices not aligned
         uint256 maxTolerance = 1e18;
-        deployRebalancer(maxTolerance);
+        deployRebalancer(maxTolerance, MAX_INITIATOR_FEE);
 
         // And : Rebalancer is allowed as Asset Manager
         vm.prank(users.accountOwner);
@@ -528,7 +528,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
     ) public {
         // Given : deploy new rebalancer with a high maxTolerance to avoid unbalancedPool due to external usd prices not aligned
         uint256 maxTolerance = 1e18;
-        deployRebalancer(maxTolerance);
+        deployRebalancer(maxTolerance, MAX_INITIATOR_FEE);
 
         // And : Rebalancer is allowed as Asset Manager
         vm.prank(users.accountOwner);

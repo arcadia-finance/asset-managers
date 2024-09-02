@@ -26,7 +26,7 @@ import { UniswapV3Logic } from "../../libraries/UniswapV3Logic.sol";
  * It will allow third parties to trigger the rebalancing functionality for a Uniswap V3 Liquidity Position in the Account.
  * The owner of an Arcadia Account should set an initiator via setInitiatorForAccount() that will be permisionned to rebalance
  * all UniswapV3 Liquidity Positions held in that Account.
- *   @dev The contract prevents frontrunning/sandwiching by comparing the actual pool price with a pool price calculated from trusted
+ * @dev The contract prevents frontrunning/sandwiching by comparing the actual pool price with a pool price calculated from trusted
  * price feeds (oracles). The tolerance in terms of price deviation is specific to the initiator but limited by a global MAX_TOLERANCE.
  * Some oracles can however deviate from the actual price by a few percent points, this could potentially open attack vectors by manipulating
  * pools and sandwiching the swap and/or increase liquidity. This asset manager should not be used for Arcadia Account that have/will have
@@ -43,8 +43,9 @@ contract UniswapV3Rebalancer is IActionBase {
     // The maximum deviation of the actual pool price, in % with 18 decimals precision.
     uint256 public immutable MAX_TOLERANCE;
 
-    // TODO
-    uint256 public immutable MAX_INITIATOR_FEE = 0.01 * 1e18;
+    // The maximum fee an initiator can set, in % with 18 decimals precision. The fee is calculated on the swap amount
+    // needed to rebalance.
+    uint256 public immutable MAX_INITIATOR_FEE;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
@@ -111,9 +112,12 @@ contract UniswapV3Rebalancer is IActionBase {
     /**
      * @param maxTolerance The maximum allowed deviation of the actual pool price for any initiator,
      * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
+     * @param maxInitiatorFee The maximum fee an initiator can set, in % with 18 decimals precision.
+     * The fee is calculated on the swap amount needed to rebalance.
      */
-    constructor(uint256 maxTolerance) {
+    constructor(uint256 maxTolerance, uint256 maxInitiatorFee) {
         MAX_TOLERANCE = maxTolerance;
+        MAX_INITIATOR_FEE = maxInitiatorFee;
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -202,10 +206,23 @@ contract UniswapV3Rebalancer is IActionBase {
         // Burn the position
         UniswapV3Logic.POSITION_MANAGER.burn(id);
 
-        // Rebalance the position so that the maximum liquidity can be added for new ticks.
-        // The Pool must still be balanced after the swap.
-        (bool zeroToOne, uint256 amountIn) = getSwapParameters(position, amount0, amount1);
-        if (_swap(position, zeroToOne, amountIn)) revert UnbalancedPool();
+        {
+            // Cache initiator fee
+            uint256 initiatorFee = initiatorInfo[initiator].fee;
+
+            // Rebalance the position so that the maximum liquidity can be added for new ticks.
+            // The Pool must still be balanced after the swap.
+            (bool zeroToOne, uint256 amountIn) = getSwapParameters(position, amount0, amount1, initiatorFee);
+            // Get initiator fee amount and deduct from amountIn.
+            uint256 feeAmount = amountIn.mulDivDown(initiatorFee, 1e18);
+            amountIn -= feeAmount;
+            if (_swap(position, zeroToOne, amountIn)) revert UnbalancedPool();
+
+            // Transfer fee to the initiator
+            zeroToOne
+                ? ERC20(position.token0).safeTransfer(initiator, feeAmount)
+                : ERC20(position.token1).safeTransfer(initiator, feeAmount);
+        }
 
         // Increase liquidity of the position.
         // The approval for at least one token after increasing liquidity will remain non-zero.
@@ -230,7 +247,6 @@ contract UniswapV3Rebalancer is IActionBase {
                 amount1Desired: balance1,
                 amount0Min: 0,
                 amount1Min: 0,
-                // TODO: send direct to actionHandler ?
                 recipient: address(this),
                 deadline: block.timestamp
             })
@@ -305,11 +321,12 @@ contract UniswapV3Rebalancer is IActionBase {
      * @param position Struct with the position data.
      * @param amount0 The amount of token0 that is available for the rebalance.
      * @param amount1 The amount of token1 that is available for the rebalance.
+     * @param initiatorFee The fee of the initiator.
      * @return zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @return amountIn The amount of tokenIn.
      * @dev Slippage must be limited, the contract enforces that the pool is still balanced after the swap.
      */
-    function getSwapParameters(PositionState memory position, uint256 amount0, uint256 amount1)
+    function getSwapParameters(PositionState memory position, uint256 amount0, uint256 amount1, uint256 initiatorFee)
         public
         pure
         returns (bool zeroToOne, uint256 amountIn)
@@ -336,20 +353,20 @@ contract UniswapV3Rebalancer is IActionBase {
             uint256 totalValueInToken1 = amount1 + token0ValueInToken1;
             uint256 currentRatio = amount1.mulDivDown(1e18, totalValueInToken1);
 
-            // Cache fee to avoid stack too deep.
-            uint24 fee = position.fee;
+            // Total fee is pool fee + initiator fee. Scaled position fee from 6 to 18 decimals precision.
+            uint256 fee = initiatorFee + (position.fee * 1e12);
 
             if (currentRatio < targetRatio) {
                 // Swap token0 partially to token1.
                 zeroToOne = true;
-                uint256 denominator = 1e18 + targetRatio.mulDivDown(fee, 1e6 - fee);
+                uint256 denominator = 1e18 + targetRatio.mulDivDown(fee, 1e18 - fee);
                 uint256 amountOut = (targetRatio - currentRatio).mulDivDown(totalValueInToken1, denominator);
                 // convert to amountIn
                 amountIn = UniswapV3Logic._getAmountIn(position.sqrtPriceX96, zeroToOne, amountOut, fee);
             } else {
                 // Swap token1 partially to token0.
                 zeroToOne = false;
-                uint256 denominator = 1e18 - targetRatio.mulDivDown(fee, 1e6);
+                uint256 denominator = 1e18 - targetRatio.mulDivDown(fee, 1e18);
                 amountIn = (currentRatio - targetRatio).mulDivDown(totalValueInToken1, denominator);
             }
         }
