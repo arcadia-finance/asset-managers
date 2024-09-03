@@ -98,10 +98,11 @@ contract SetInitiatorInfo_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_F
         // Then : Values should be set and correct
         uint256 upperSqrtPriceDeviation_ = FixedPointMathLib.sqrt((1e18 + tolerance) * 1e18);
         uint256 lowerSqrtPriceDeviation_ = FixedPointMathLib.sqrt((1e18 - tolerance) * 1e18);
-        (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation, uint256 fee_) =
+        (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation, uint256 fee_, bool initialized) =
             rebalancer.initiatorInfo(initiator);
         assertEq(upperSqrtPriceDeviation, upperSqrtPriceDeviation_);
         assertEq(lowerSqrtPriceDeviation, lowerSqrtPriceDeviation_);
         assertEq(fee, fee_);
+        assertEq(initialized, true);
     }
 }

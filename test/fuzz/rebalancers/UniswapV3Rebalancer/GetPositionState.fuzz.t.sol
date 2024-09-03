@@ -82,7 +82,7 @@ contract GetPositionState_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_F
 
         uint256 trustedSqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(usdPriceToken0, usdPriceToken1);
 
-        (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,) =
+        (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,,) =
             rebalancer.initiatorInfo(initVars.initiator);
 
         uint256 lowerBoundSqrtPriceX96 = trustedSqrtPriceX96.mulDivDown(lowerSqrtPriceDeviation, 1e18);
@@ -147,7 +147,7 @@ contract GetPositionState_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_F
 
         uint256 trustedSqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(usdPriceToken0, usdPriceToken1);
 
-        (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,) =
+        (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,,) =
             rebalancer.initiatorInfo(initVars.initiator);
 
         uint256 lowerBoundSqrtPriceX96 = trustedSqrtPriceX96.mulDivDown(lowerSqrtPriceDeviation, 1e18);

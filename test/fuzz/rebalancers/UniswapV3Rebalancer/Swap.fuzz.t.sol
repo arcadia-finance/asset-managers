@@ -56,7 +56,7 @@ contract Swap_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
         uint128 liquidity = uniV3Pool.liquidity();
 
         {
-            (uint256 upperSqrtPriceDeviation,,) = rebalancer.initiatorInfo(initVars.initiator);
+            (uint256 upperSqrtPriceDeviation,,,) = rebalancer.initiatorInfo(initVars.initiator);
             position.token0 = address(token0);
             position.token1 = address(token1);
             position.fee = POOL_FEE;
@@ -99,7 +99,7 @@ contract Swap_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
         uint128 liquidity = uniV3Pool.liquidity();
 
         {
-            (uint256 upperSqrtPriceDeviation,,) = rebalancer.initiatorInfo(initVars.initiator);
+            (uint256 upperSqrtPriceDeviation,,,) = rebalancer.initiatorInfo(initVars.initiator);
             position.token0 = address(token0);
             position.token1 = address(token1);
             position.fee = POOL_FEE;
@@ -142,7 +142,7 @@ contract Swap_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
         uint128 liquidity = uniV3Pool.liquidity();
 
         {
-            (, uint256 lowerSqrtPriceDeviation,) = rebalancer.initiatorInfo(initVars.initiator);
+            (, uint256 lowerSqrtPriceDeviation,,) = rebalancer.initiatorInfo(initVars.initiator);
             position.token0 = address(token0);
             position.token1 = address(token1);
             position.fee = POOL_FEE;
@@ -185,7 +185,7 @@ contract Swap_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
         uint128 liquidity = uniV3Pool.liquidity();
 
         {
-            (, uint256 lowerSqrtPriceDeviation,) = rebalancer.initiatorInfo(initVars.initiator);
+            (, uint256 lowerSqrtPriceDeviation,,) = rebalancer.initiatorInfo(initVars.initiator);
             position.token0 = address(token0);
             position.token1 = address(token1);
             position.fee = POOL_FEE;

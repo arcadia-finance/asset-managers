@@ -41,7 +41,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         (uint256 usdPriceToken0, uint256 usdPriceToken1) = getValuesInUsd();
         // Calculate the square root of the relative rate sqrt(token1/token0) from the trusted USD price of both tokens.
         uint256 trustedSqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(usdPriceToken0, usdPriceToken1);
-        (uint256 upperSqrtPriceDeviation,,) = rebalancer.initiatorInfo(initiator);
+        (uint256 upperSqrtPriceDeviation,,,) = rebalancer.initiatorInfo(initiator);
         // Calculate max sqrtPriceX96 to the right to avoid unbalancedPool()
         uint256 sqrtPriceX96Target = trustedSqrtPriceX96.mulDivDown(upperSqrtPriceDeviation, 1e18);
 

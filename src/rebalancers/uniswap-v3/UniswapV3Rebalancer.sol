@@ -79,6 +79,7 @@ contract UniswapV3Rebalancer is IActionBase {
         uint256 upperSqrtPriceDeviation;
         uint256 lowerSqrtPriceDeviation;
         uint256 fee;
+        bool initialized;
     }
 
     /* //////////////////////////////////////////////////////////////
@@ -276,7 +277,7 @@ contract UniswapV3Rebalancer is IActionBase {
         // Cache struct
         InitiatorInfo memory initiatorInfo_ = initiatorInfo[msg.sender];
 
-        if (initiatorInfo_.fee > 0 && fee > initiatorInfo_.fee) revert DecreaseFeeOnly();
+        if (initiatorInfo_.initialized == true && fee > initiatorInfo_.fee) revert DecreaseFeeOnly();
         if (fee > MAX_INITIATOR_FEE) revert MaxInitiatorFee();
         if (tolerance > MAX_TOLERANCE) revert MaxTolerance();
 
@@ -292,6 +293,9 @@ contract UniswapV3Rebalancer is IActionBase {
 
         initiatorInfo_.lowerSqrtPriceDeviation = FixedPointMathLib.sqrt((1e18 - tolerance) * 1e18);
         initiatorInfo_.upperSqrtPriceDeviation = upperSqrtPriceDeviation;
+
+        // Set initiator as initialized if it wasn't already.
+        if (initiatorInfo_.initialized == false) initiatorInfo_.initialized = true;
 
         initiatorInfo[msg.sender] = initiatorInfo_;
     }
