@@ -80,19 +80,21 @@ library ArcadiaLogic {
 
     /**
      * @notice Encodes the action data for the flash-action used to rebalance a Uniswap V3 Liquidity Position.
-     * @param initiator The address of the initiator.
      * @param nonfungiblePositionManager The contract address of the UniswapV3 NonfungiblePositionManager.
      * @param id The id of the Liquidity Position.
+     * @param initiator The address of the initiator.
      * @param lowerTick The new lower tick to rebalance the position to.
      * @param upperTick The new upper tick to rebalancer the position to.
+     * @param swapData Arbitrary calldata provided by an initiator for a swap.
      * @return actionData Bytes string with the encoded actionData.
      */
     function _encodeActionDataRebalancer(
-        address initiator,
         address nonfungiblePositionManager,
         uint256 id,
+        address initiator,
         int24 lowerTick,
-        int24 upperTick
+        int24 upperTick,
+        bytes calldata swapData
     ) internal pure returns (bytes memory actionData) {
         // Encode Uniswap V3 position that has to be withdrawn from and deposited back into the Account.
         address[] memory assets_ = new address[](1);
@@ -113,7 +115,7 @@ library ArcadiaLogic {
         IPermit2.PermitBatchTransferFrom memory permit;
 
         // Data required by this contract when Account does the executeAction() callback during the flash-action.
-        bytes memory rebalanceData = abi.encode(assetData, initiator, lowerTick, upperTick);
+        bytes memory rebalanceData = abi.encode(assetData, initiator, lowerTick, upperTick, swapData);
 
         // Encode the actionData.
         actionData = abi.encode(assetData, transferFromOwner, permit, signature, rebalanceData);

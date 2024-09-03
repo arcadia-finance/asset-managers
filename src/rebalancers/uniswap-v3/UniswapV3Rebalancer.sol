@@ -16,6 +16,7 @@ import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/util
 import { IAccount } from "../../interfaces/IAccount.sol";
 import { IUniswapV3Pool } from "./interfaces/IUniswapV3Pool.sol";
 import { LiquidityAmounts } from "../../libraries/LiquidityAmounts.sol";
+import { QuoteExactInputSingleParams } from "../../interfaces/uniswap-v3/IQuoter.sol";
 import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { UniswapV3Logic } from "../../libraries/UniswapV3Logic.sol";
 
@@ -50,6 +51,9 @@ contract UniswapV3Rebalancer is IActionBase {
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
     ////////////////////////////////////////////////////////////// */
+
+    // Flag Indicating if a function is locked to protect against reentrancy.
+    uint8 internal locked;
 
     // The Account to compound the fees for, used as transient storage.
     address internal account;
@@ -86,12 +90,14 @@ contract UniswapV3Rebalancer is IActionBase {
                                 ERRORS
     ////////////////////////////////////////////////////////////// */
 
+    error ArbitrarySwapNotValid();
     error DecreaseFeeOnly();
     error DecreaseToleranceOnly();
     error FeeAlreadySet();
     error LiquidityTresholdExceeded();
     error MaxInitiatorFee();
     error MaxTolerance();
+    error NoReentry();
     error NotAnAccount();
     error OnlyAccount();
     error OnlyPool();
@@ -105,7 +111,19 @@ contract UniswapV3Rebalancer is IActionBase {
 
     event Rebalance(address indexed account, uint256 id);
 
-    event LogHere(uint256);
+    /* //////////////////////////////////////////////////////////////
+                                MODIFIERS
+    ////////////////////////////////////////////////////////////// */
+
+    /**
+     * @dev Throws if function is reentered.
+     */
+    modifier nonReentrant() {
+        if (locked != 1) revert NoReentry();
+        locked = 2;
+        _;
+        locked = 1;
+    }
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -120,6 +138,7 @@ contract UniswapV3Rebalancer is IActionBase {
     constructor(uint256 maxTolerance, uint256 maxInitiatorFee) {
         MAX_TOLERANCE = maxTolerance;
         MAX_INITIATOR_FEE = maxInitiatorFee;
+        locked = 1;
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -135,7 +154,10 @@ contract UniswapV3Rebalancer is IActionBase {
      * @dev When both lowerTick and upperTick are zero, ticks will be updated with same tick-spacing as current position
      * and with a balanced, 50/50 ratio around current tick.
      */
-    function rebalancePosition(address account_, uint256 id, int24 lowerTick, int24 upperTick) external {
+    function rebalancePosition(address account_, uint256 id, int24 lowerTick, int24 upperTick, bytes calldata swapData)
+        external
+        nonReentrant
+    {
         // Store Account address, used to validate the caller of the executeAction() callback.
         if (account != address(0)) revert Reentered();
         if (!ArcadiaLogic.FACTORY.isAccount(account_)) revert NotAnAccount();
@@ -145,7 +167,7 @@ contract UniswapV3Rebalancer is IActionBase {
 
         // Encode data for the flash-action.
         bytes memory actionData = ArcadiaLogic._encodeActionDataRebalancer(
-            msg.sender, address(UniswapV3Logic.POSITION_MANAGER), id, lowerTick, upperTick
+            address(UniswapV3Logic.POSITION_MANAGER), id, msg.sender, lowerTick, upperTick, swapData
         );
 
         // Call flashAction() with this contract as actionTarget.
@@ -174,7 +196,9 @@ contract UniswapV3Rebalancer is IActionBase {
         address initiator;
         int24 lowerTick;
         int24 upperTick;
-        (assetData, initiator, lowerTick, upperTick) = abi.decode(rebalanceData, (ActionData, address, int24, int24));
+        bytes memory swapData;
+        (assetData, initiator, lowerTick, upperTick, swapData) =
+            abi.decode(rebalanceData, (ActionData, address, int24, int24, bytes));
         uint256 id = assetData.assetIds[0];
 
         // Fetch and cache all position related data.
@@ -215,10 +239,19 @@ contract UniswapV3Rebalancer is IActionBase {
             // Rebalance the position so that the maximum liquidity can be added for new ticks.
             // The Pool must still be balanced after the swap.
             (bool zeroToOne, uint256 amountIn) = getSwapParameters(position, amount0, amount1, initiatorFee);
+
             // Get initiator fee amount and deduct from amountIn.
             uint256 feeAmount = amountIn.mulDivDown(initiatorFee, 1e18);
             amountIn -= feeAmount;
-            if (_swap(position, zeroToOne, amountIn)) revert UnbalancedPool();
+
+            if (swapData.length > 0) {
+                // Perform arbitrary swap
+                // TODO : if not a success go via uniV3 swap ?
+                _swap(amountIn, position, zeroToOne, swapData);
+            } else {
+                // Swap via the pool of the position directly
+                if (_swap(position, zeroToOne, amountIn)) revert UnbalancedPool();
+            }
 
             // Transfer fee to the initiator
             zeroToOne
@@ -330,6 +363,7 @@ contract UniswapV3Rebalancer is IActionBase {
      */
     function getSwapParameters(PositionState memory position, uint256 amount0, uint256 amount1, uint256 initiatorFee)
         public
+        pure
         returns (bool zeroToOne, uint256 amountIn)
     {
         uint256 sqrtRatioUpperTick = TickMath.getSqrtRatioAtTick(position.newUpperTick);
@@ -398,6 +432,55 @@ contract UniswapV3Rebalancer is IActionBase {
 
         // Check if pool is still balanced (sqrtPriceLimitX96 is reached before an amountIn of tokenIn is swapped).
         isPoolUnbalanced_ = (amountIn > (zeroToOne ? uint256(deltaAmount0) : uint256(deltaAmount1)));
+    }
+
+    /**
+     * @notice Allows an initiator to perform an arbitrary swap.
+     * @param amountIn The amount of tokenIn that must be swapped.
+     * @param position .
+     * @param zeroToOne .
+     * @param swapData .
+     * @dev In order for such a swap to be valid, the amountOut should be at least equal to the amountOut expected if the swap
+     * occured in the pool of the position itself. The amountIn should also fully have been utilized, to keep target ratio valid.
+     */
+    function _swap(uint256 amountIn, PositionState memory position, bool zeroToOne, bytes memory swapData) internal {
+        (address[] memory to, bytes[] memory data) = abi.decode(swapData, (address[], bytes[]));
+
+        // Get tokenIn balance before swap.
+        address tokenIn = zeroToOne ? position.token0 : position.token1;
+        uint256 tokenInBalanceBeforeSwap = ERC20(tokenIn).balanceOf(address(this));
+
+        for (uint256 i; i < to.length; ++i) {
+            (bool success, bytes memory result) = to[i].call(data[i]);
+            require(success, string(result));
+        }
+
+        address tokenOut = zeroToOne ? position.token1 : position.token0;
+
+        QuoteExactInputSingleParams memory params = QuoteExactInputSingleParams({
+            tokenIn: tokenIn,
+            tokenOut: tokenOut,
+            amountIn: amountIn,
+            fee: position.fee,
+            sqrtPriceLimitX96: 0
+        });
+
+        // Get the amountOut expected via a swap through the uniswapV3 pool of the position itself.
+        (uint256 minAmountOut,,,) = UniswapV3Logic.QUOTER.quoteExactInputSingle(params);
+        uint256 tokenOutBalance = ERC20(tokenOut).balanceOf(address(this));
+        uint256 tokenInBalanceAfterSwap = ERC20(tokenIn).balanceOf(address(this));
+
+        // amountOut should be at least equal to amountOut expected via Uniswap V3 pool.
+        // amountIn should have been fully utilized for the swap to keep correct ratios.
+        if (tokenOutBalance < minAmountOut || tokenInBalanceBeforeSwap - tokenInBalanceAfterSwap != amountIn) {
+            revert ArbitrarySwapNotValid();
+        }
+
+        (uint160 sqrtPriceX96,,,,,,) = IUniswapV3Pool(position.pool).slot0();
+        // Uniswap V3 pool should still be balanced.
+        if (sqrtPriceX96 < position.lowerBoundSqrtPriceX96 || sqrtPriceX96 > position.upperBoundSqrtPriceX96) {
+            revert UnbalancedPool();
+        }
     }
 
     /**

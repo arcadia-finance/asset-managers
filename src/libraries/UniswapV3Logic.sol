@@ -8,6 +8,7 @@ import { FixedPoint96 } from "../../lib/accounts-v2/src/asset-modules/UniswapV3/
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { FullMath } from "../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
 import { INonfungiblePositionManager } from "../interfaces/uniswap-v3/INonfungiblePositionManager.sol";
+import { IQuoter } from "../interfaces/uniswap-v3/IQuoter.sol";
 import { PoolAddress } from "../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/PoolAddress.sol";
 import { TickMath } from "../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 
@@ -23,6 +24,9 @@ library UniswapV3Logic {
     // The Uniswap V3 NonfungiblePositionManager contract.
     INonfungiblePositionManager internal constant POSITION_MANAGER =
         INonfungiblePositionManager(0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1);
+
+    // The Uniswap V3 Quoter contract.
+    IQuoter internal constant QUOTER = IQuoter(0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a);
 
     /**
      * @notice Computes the contract address of a Uniswap V3 Pool.
