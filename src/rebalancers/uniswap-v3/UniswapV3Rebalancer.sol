@@ -97,7 +97,6 @@ contract UniswapV3Rebalancer is IActionBase {
     error LiquidityTresholdExceeded();
     error MaxInitiatorFee();
     error MaxTolerance();
-    error NoReentry();
     error NotAnAccount();
     error OnlyAccount();
     error OnlyPool();
@@ -112,20 +111,6 @@ contract UniswapV3Rebalancer is IActionBase {
     event Rebalance(address indexed account, uint256 id);
 
     /* //////////////////////////////////////////////////////////////
-                                MODIFIERS
-    ////////////////////////////////////////////////////////////// */
-
-    /**
-     * @dev Throws if function is reentered.
-     */
-    modifier nonReentrant() {
-        if (locked != 1) revert NoReentry();
-        locked = 2;
-        _;
-        locked = 1;
-    }
-
-    /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
     ////////////////////////////////////////////////////////////// */
 
@@ -138,7 +123,6 @@ contract UniswapV3Rebalancer is IActionBase {
     constructor(uint256 maxTolerance, uint256 maxInitiatorFee) {
         MAX_TOLERANCE = maxTolerance;
         MAX_INITIATOR_FEE = maxInitiatorFee;
-        locked = 1;
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -156,7 +140,6 @@ contract UniswapV3Rebalancer is IActionBase {
      */
     function rebalancePosition(address account_, uint256 id, int24 lowerTick, int24 upperTick, bytes calldata swapData)
         external
-        nonReentrant
     {
         // Store Account address, used to validate the caller of the executeAction() callback.
         if (account != address(0)) revert Reentered();
