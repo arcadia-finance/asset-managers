@@ -286,10 +286,9 @@ contract UniswapV3Rebalancer is IActionBase {
         // SQRT_PRICE_DEVIATION is the square root of maximum/minimum price deviation.
         // Sqrt halves the number of decimals.
         uint256 upperSqrtPriceDeviation = FixedPointMathLib.sqrt((1e18 + tolerance) * 1e18);
-        if (
-            initiatorInfo_.upperSqrtPriceDeviation > 0
-                && upperSqrtPriceDeviation > initiatorInfo_.upperSqrtPriceDeviation
-        ) revert DecreaseToleranceOnly();
+        if (initiatorInfo_.initialized == true && upperSqrtPriceDeviation > initiatorInfo_.upperSqrtPriceDeviation) {
+            revert DecreaseToleranceOnly();
+        }
 
         initiatorInfo_.lowerSqrtPriceDeviation = FixedPointMathLib.sqrt((1e18 - tolerance) * 1e18);
         initiatorInfo_.upperSqrtPriceDeviation = upperSqrtPriceDeviation;
