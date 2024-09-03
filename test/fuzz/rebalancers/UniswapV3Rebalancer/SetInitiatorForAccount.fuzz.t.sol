@@ -23,12 +23,26 @@ contract SetInitiatorForAccount_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebala
                               TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function testFuzz_Success_setInitiatorForAccount(address owner, address initiator, address account_) public {
+    function testFuzz_Revert_setInitiatorForAccount_NotAnAccount(address owner, address initiator, address account_)
+        public
+    {
+        vm.assume(account_ != address(account));
+        // Given : account is not an Arcadia Account
+        // When : calling rebalancePosition
+        // Then : it should revert
+        vm.expectRevert(UniswapV3Rebalancer.NotAnAccount.selector);
         // When : A randon address calls setInitiator on the rebalancer
         vm.prank(owner);
         rebalancer.setInitiatorForAccount(initiator, account_);
+    }
 
-        // Then : Initiator should be set for that address
-        assertEq(rebalancer.ownerToAccountToInitiator(owner, account_), initiator);
+    function testFuzz_Success_setInitiatorForAccount(address owner, address initiator) public {
+        // Given : account is a valid Arcadia Account
+        // When : A randon address calls setInitiator on the rebalancer
+        vm.prank(owner);
+        rebalancer.setInitiatorForAccount(initiator, address(account));
+
+        // Then : Initiator should be set for that Account
+        assertEq(rebalancer.ownerToAccountToInitiator(owner, address(account)), initiator);
     }
 }

@@ -133,7 +133,6 @@ contract UniswapV3Rebalancer is IActionBase {
     function rebalancePosition(address account_, uint256 id, int24 lowerTick, int24 upperTick) external {
         // Store Account address, used to validate the caller of the executeAction() callback.
         if (account != address(0)) revert Reentered();
-        if (!ArcadiaLogic.FACTORY.isAccount(account_)) revert NotAnAccount();
         if (ownerToAccountToInitiator[IAccount(account_).owner()][account_] != msg.sender) revert InitiatorNotValid();
 
         account = account_;
@@ -260,6 +259,7 @@ contract UniswapV3Rebalancer is IActionBase {
      * @param account_ The address of the Arcadia Account to set an initiator for.
      */
     function setInitiatorForAccount(address initiator, address account_) external {
+        if (!ArcadiaLogic.FACTORY.isAccount(account_)) revert NotAnAccount();
         ownerToAccountToInitiator[msg.sender][account_] = initiator;
     }
 

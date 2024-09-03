@@ -203,20 +203,6 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         rebalancer.rebalancePosition(account_, tokenId, lowerTick, upperTick);
     }
 
-    function testFuzz_Revert_rebalancePosition_NotAnAccount(
-        address account_,
-        uint256 tokenId,
-        int24 lowerTick,
-        int24 upperTick
-    ) public {
-        vm.assume(account_ != address(account));
-        // Given : account is not an Arcadia Account
-        // When : calling rebalancePosition
-        // Then : it should revert
-        vm.expectRevert(UniswapV3Rebalancer.NotAnAccount.selector);
-        rebalancer.rebalancePosition(account_, tokenId, lowerTick, upperTick);
-    }
-
     function testFuzz_Revert_rebalancePosition_InitiatorNotValid(uint256 tokenId, int24 lowerTick, int24 upperTick)
         public
     {
