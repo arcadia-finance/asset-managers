@@ -16,7 +16,6 @@ import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/util
 import { IAccount } from "../../interfaces/IAccount.sol";
 import { IUniswapV3Pool } from "./interfaces/IUniswapV3Pool.sol";
 import { LiquidityAmounts } from "../../libraries/LiquidityAmounts.sol";
-import { QuoteExactInputSingleParams } from "../../interfaces/uniswap-v3/IQuoter.sol";
 import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { UniswapV3Logic } from "../../libraries/UniswapV3Logic.sol";
 
@@ -47,6 +46,10 @@ contract UniswapV3Rebalancer is IActionBase {
     // The maximum fee an initiator can set, in % with 18 decimals precision. The fee is calculated on the swap amount
     // needed to rebalance.
     uint256 public immutable MAX_INITIATOR_FEE;
+
+    // With 18 decimals in %. 1e13 = 0,001%
+    // TODO : remove if working with min liquidity
+    uint256 public immutable MAX_LEFTOVER_LIMITING_FACTOR = 1e13;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
@@ -215,13 +218,15 @@ contract UniswapV3Rebalancer is IActionBase {
         // Burn the position
         UniswapV3Logic.POSITION_MANAGER.burn(id);
 
+        bool zeroToOne;
         {
             // Cache initiator fee
             uint256 initiatorFee = initiatorInfo[initiator].fee;
 
             // Rebalance the position so that the maximum liquidity can be added for new ticks.
             // The Pool must still be balanced after the swap.
-            (bool zeroToOne, uint256 amountIn) = getSwapParameters(position, amount0, amount1, initiatorFee);
+            uint256 amountIn;
+            (zeroToOne, amountIn) = getSwapParameters(position, amount0, amount1, initiatorFee);
 
             // Get initiator fee amount and deduct from amountIn.
             uint256 feeAmount = amountIn.mulDivDown(initiatorFee, 1e18);
@@ -230,7 +235,7 @@ contract UniswapV3Rebalancer is IActionBase {
             if (swapData.length > 0) {
                 // Perform arbitrary swap
                 // TODO : if not a success go via uniV3 swap ?
-                _swap(amountIn, position, zeroToOne, swapData);
+                _swap(position, zeroToOne, amountIn, swapData);
             } else {
                 // Swap via the pool of the position directly
                 if (_swap(position, zeroToOne, amountIn)) revert UnbalancedPool();
@@ -263,8 +268,8 @@ contract UniswapV3Rebalancer is IActionBase {
                 tickUpper: position.newUpperTick,
                 amount0Desired: balance0,
                 amount1Desired: balance1,
-                amount0Min: 0,
-                amount1Min: 0,
+                amount0Min: zeroToOne ? balance0.mulDivDown(MAX_LEFTOVER_LIMITING_FACTOR, 1e18) : 0,
+                amount1Min: zeroToOne ? 0 : balance1.mulDivDown(MAX_LEFTOVER_LIMITING_FACTOR, 1e18),
                 recipient: address(this),
                 deadline: block.timestamp
             })
@@ -420,44 +425,22 @@ contract UniswapV3Rebalancer is IActionBase {
     /**
      * @notice Allows an initiator to perform an arbitrary swap.
      * @param amountIn The amount of tokenIn that must be swapped.
-     * @param position .
-     * @param zeroToOne .
-     * @param swapData .
+     * @param position Struct with the position data.
+     * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
+     * @param swapData A bytes object containing a contract address and another bytes object with the calldata to send to that address.
      * @dev In order for such a swap to be valid, the amountOut should be at least equal to the amountOut expected if the swap
      * occured in the pool of the position itself. The amountIn should also fully have been utilized, to keep target ratio valid.
      */
-    function _swap(uint256 amountIn, PositionState memory position, bool zeroToOne, bytes memory swapData) internal {
-        (address[] memory to, bytes[] memory data) = abi.decode(swapData, (address[], bytes[]));
+    function _swap(PositionState memory position, bool zeroToOne, uint256 amountIn, bytes memory swapData) internal {
+        (address to, bytes memory data) = abi.decode(swapData, (address, bytes));
 
-        // Get tokenIn balance before swap.
-        address tokenIn = zeroToOne ? position.token0 : position.token1;
-        uint256 tokenInBalanceBeforeSwap = ERC20(tokenIn).balanceOf(address(this));
+        // Approve token to swap.
+        address tokenToSwap = zeroToOne ? position.token0 : position.token1;
+        ERC20(tokenToSwap).approve(to, amountIn);
 
-        for (uint256 i; i < to.length; ++i) {
-            (bool success, bytes memory result) = to[i].call(data[i]);
-            require(success, string(result));
-        }
-
-        address tokenOut = zeroToOne ? position.token1 : position.token0;
-
-        QuoteExactInputSingleParams memory params = QuoteExactInputSingleParams({
-            tokenIn: tokenIn,
-            tokenOut: tokenOut,
-            amountIn: amountIn,
-            fee: position.fee,
-            sqrtPriceLimitX96: 0
-        });
-
-        // Get the amountOut expected via a swap through the uniswapV3 pool of the position itself.
-        (uint256 minAmountOut,,,) = UniswapV3Logic.QUOTER.quoteExactInputSingle(params);
-        uint256 tokenOutBalance = ERC20(tokenOut).balanceOf(address(this));
-        uint256 tokenInBalanceAfterSwap = ERC20(tokenIn).balanceOf(address(this));
-
-        // amountOut should be at least equal to amountOut expected via Uniswap V3 pool.
-        // amountIn should have been fully utilized for the swap to keep correct ratios.
-        if (tokenOutBalance < minAmountOut || tokenInBalanceBeforeSwap - tokenInBalanceAfterSwap != amountIn) {
-            revert ArbitrarySwapNotValid();
-        }
+        // Execute arbitrary swap.
+        (bool success, bytes memory result) = to.call(data);
+        require(success, string(result));
 
         (uint160 sqrtPriceX96,,,,,,) = IUniswapV3Pool(position.pool).slot0();
         // Uniswap V3 pool should still be balanced.
