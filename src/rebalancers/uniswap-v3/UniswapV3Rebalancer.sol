@@ -166,7 +166,7 @@ contract UniswapV3Rebalancer is IActionBase {
     /**
      * @notice Callback function called by the Arcadia Account during a flashAction.
      * @param rebalanceData A bytes object containing a struct with the assetData of the position and the address of the initiator.
-     * @return assetData A struct with the asset data of the Liquidity Position.
+     * @return assetData A struct with the asset data of the Liquidity Position and with the leftovers after mint, if any.
      * @dev The Liquidity Position is already transferred to this contract before executeAction() is called.
      * @dev When rebalancing we will burn the current Liquidity Position and mint a new one with a new tokenId.
      */
@@ -265,8 +265,8 @@ contract UniswapV3Rebalancer is IActionBase {
                 tickUpper: position.newUpperTick,
                 amount0Desired: balance0,
                 amount1Desired: balance1,
-                amount0Min: zeroToOne ? balance0.mulDivDown(MAX_LEFTOVER_LIMITING_FACTOR, 1e18) : 0,
-                amount1Min: zeroToOne ? 0 : balance1.mulDivDown(MAX_LEFTOVER_LIMITING_FACTOR, 1e18),
+                amount0Min: zeroToOne ? balance0 - balance0.mulDivDown(MAX_LEFTOVER_LIMITING_FACTOR, 1e18) : 0,
+                amount1Min: zeroToOne ? 0 : balance1 - balance1.mulDivDown(MAX_LEFTOVER_LIMITING_FACTOR, 1e18),
                 recipient: address(this),
                 deadline: block.timestamp
             })
