@@ -93,10 +93,8 @@ contract UniswapV3Rebalancer is IActionBase {
                                 ERRORS
     ////////////////////////////////////////////////////////////// */
 
-    error ArbitrarySwapNotValid();
     error DecreaseFeeOnly();
     error DecreaseToleranceOnly();
-    error FeeAlreadySet();
     error LiquidityTresholdExceeded();
     error MaxInitiatorFee();
     error MaxTolerance();
