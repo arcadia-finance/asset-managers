@@ -230,23 +230,54 @@ contract UniswapV3Rebalancer is IActionBase {
                 amount1Desired: balance1,
                 amount0Min: 0,
                 amount1Min: 0,
-                // TODO: send direct to actionHandler ?
                 recipient: address(this),
                 deadline: block.timestamp
             })
         );
 
-        // Update the tokenId for newly minted position
-        assetData.assetIds[0] = newTokenId;
-
         // Any surplus is transferred to the Account.
         balance0 -= amount0;
         balance1 -= amount1;
-        if (balance0 > 0) ERC20(position.token0).safeTransfer(account_, balance0);
-        if (balance1 > 0) ERC20(position.token1).safeTransfer(account_, balance1);
+
+        ActionData memory returnedAssets;
+        {
+            uint256 assetsCount = 1 + (balance0 > 0 ? 1 : 0) + (balance1 > 0 ? 1 : 0);
+
+            returnedAssets.assets = new address[](assetsCount);
+            returnedAssets.assetIds = new uint256[](assetsCount);
+            returnedAssets.assetAmounts = new uint256[](assetsCount);
+            returnedAssets.assetTypes = new uint256[](assetsCount);
+
+            // Add newly minted Liquidity Position first.
+            returnedAssets.assets[0] = address(UniswapV3Logic.POSITION_MANAGER);
+            returnedAssets.assetIds[0] = newTokenId;
+            returnedAssets.assetAmounts[0] = 1;
+            returnedAssets.assetTypes[0] = 2;
+
+            // Track the next index for token0 and token1.
+            uint256 index = 1;
+
+            // In case of leftovers after the mint, these should be deposited back into the Account.
+            if (balance0 > 0) {
+                ERC20(position.token0).approve(msg.sender, balance0);
+                returnedAssets.assets[index] = position.token0;
+                returnedAssets.assetAmounts[index] = balance0;
+                returnedAssets.assetTypes[index] = 1;
+                ++index;
+            }
+
+            if (balance1 > 0) {
+                ERC20(position.token1).approve(msg.sender, balance1);
+                returnedAssets.assets[index] = position.token1;
+                returnedAssets.assetAmounts[index] = balance1;
+                returnedAssets.assetTypes[index] = 1;
+            }
+        }
 
         // Approve ActionHandler to deposit Liquidity Position back into the Account.
         UniswapV3Logic.POSITION_MANAGER.approve(msg.sender, newTokenId);
+
+        return returnedAssets;
     }
 
     /* ///////////////////////////////////////////////////////////////
