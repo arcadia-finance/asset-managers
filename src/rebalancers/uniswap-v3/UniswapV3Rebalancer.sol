@@ -47,9 +47,9 @@ contract UniswapV3Rebalancer is IActionBase {
     // needed to rebalance.
     uint256 public immutable MAX_INITIATOR_FEE;
 
-    // With 18 decimals in %. 1e13 = 0,001%
+    // With 18 decimals in %. 1e14 = 0,01%
     // TODO : remove if working with min liquidity
-    uint256 public immutable MAX_LEFTOVER_LIMITING_FACTOR = 1e13;
+    uint256 public immutable MAX_LEFTOVER_LIMITING_FACTOR = 1e14;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
@@ -217,25 +217,25 @@ contract UniswapV3Rebalancer is IActionBase {
         UniswapV3Logic.POSITION_MANAGER.burn(id);
 
         bool zeroToOne;
+        uint256 amountInFeeIncluded;
         {
             // Cache initiator fee
             uint256 initiatorFee = initiatorInfo[initiator].fee;
 
             // Rebalance the position so that the maximum liquidity can be added for new ticks.
             // The Pool must still be balanced after the swap.
-            uint256 amountIn;
-            (zeroToOne, amountIn) = getSwapParameters(position, amount0, amount1, initiatorFee);
+            (zeroToOne, amountInFeeIncluded) = getSwapParameters(position, amount0, amount1, initiatorFee);
 
             // Get initiator fee amount and deduct from amountIn.
-            uint256 feeAmount = amountIn.mulDivDown(initiatorFee, 1e18);
-            amountIn -= feeAmount;
+            uint256 feeAmount = amountInFeeIncluded.mulDivDown(initiatorFee, 1e18);
+            uint256 amountInFeeExcluded = amountInFeeIncluded - feeAmount;
 
             if (swapData.length > 0) {
                 // Perform arbitrary swap
-                _swap(position, zeroToOne, amountIn, swapData);
+                _swap(position, zeroToOne, amountInFeeExcluded, swapData);
             } else {
                 // Swap via the pool of the position directly
-                if (_swap(position, zeroToOne, amountIn)) revert UnbalancedPool();
+                if (_swap(position, zeroToOne, amountInFeeExcluded)) revert UnbalancedPool();
             }
 
             // Transfer fee to the initiator
@@ -248,8 +248,8 @@ contract UniswapV3Rebalancer is IActionBase {
         // The approval for at least one token after increasing liquidity will remain non-zero.
         // We have to set approval first to 0 for ERC20 tokens that require the approval to be set to zero
         // before setting it to a non-zero value.
-        uint256 balance0 = ERC20(position.token0).balanceOf(address(this));
-        uint256 balance1 = ERC20(position.token1).balanceOf(address(this));
+        uint256 balance0 = zeroToOne ? amount0 - amountInFeeIncluded : ERC20(position.token0).balanceOf(address(this));
+        uint256 balance1 = zeroToOne ? ERC20(position.token1).balanceOf(address(this)) : amount1 - amountInFeeIncluded;
         ERC20(position.token0).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), 0);
         ERC20(position.token0).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), balance0);
         ERC20(position.token1).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), 0);
