@@ -50,7 +50,6 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
     uint24 internal POOL_FEE = 100;
 
     // 2 % price diff for testing
-    // TODO : fuzz ?
     uint256 internal MAX_TOLERANCE = 0.02 * 1e18;
 
     // 0,5 % max fee

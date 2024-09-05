@@ -234,7 +234,6 @@ contract UniswapV3Rebalancer is IActionBase {
 
             if (swapData.length > 0) {
                 // Perform arbitrary swap
-                // TODO : if not a success go via uniV3 swap ?
                 _swap(position, zeroToOne, amountIn, swapData);
             } else {
                 // Swap via the pool of the position directly
@@ -303,7 +302,7 @@ contract UniswapV3Rebalancer is IActionBase {
 
     /**
      * @notice Sets the information requested for an initiator.
-     * @param fee . TODO
+     * @param fee The fee paid to to the initiator, in % with 18 decimals precision.
      * @param tolerance The maximum deviation of the actual pool price,
      * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
      * @dev The tolerance for the pool price will be converted to an upper and lower max sqrtPrice deviation,
@@ -501,7 +500,6 @@ contract UniswapV3Rebalancer is IActionBase {
         (position.sqrtPriceX96, currentTick,,,,,) = IUniswapV3Pool(position.pool).slot0();
 
         // Store the new ticks for the rebalance
-        // TODO: validate approach below for lower and upper tick
         if (lowerTick == 0 && upperTick == 0) {
             int24 tickSpacing = IUniswapV3Pool(position.pool).tickSpacing();
             int24 halfRangeTicks = ((currentUpperTick - currentLowerTick) / tickSpacing) / 2;
