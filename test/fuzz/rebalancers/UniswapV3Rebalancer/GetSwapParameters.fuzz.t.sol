@@ -74,7 +74,7 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         }
 
         // When : calling getSwapParameters
-        (,, uint256 initiatorFee) = rebalancer.initiatorInfo(initVars.initiator);
+        (,, uint256 initiatorFee,) = rebalancer.initiatorInfo(initVars.initiator);
         (bool zeroToOne, uint256 amountIn) = rebalancer.getSwapParameters(position, amount0, amount1, initiatorFee);
 
         // Then : It should return correct values
@@ -128,7 +128,7 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         }
 
         // When : calling getSwapParameters
-        (,, uint256 initiatorFee) = rebalancer.initiatorInfo(initVars.initiator);
+        (,, uint256 initiatorFee,) = rebalancer.initiatorInfo(initVars.initiator);
         (bool zeroToOne, uint256 amountIn) = rebalancer.getSwapParameters(position, amount0, amount1, initiatorFee);
 
         // Then : It should return correct values
@@ -166,7 +166,7 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         vm.prank(users.liquidityProvider);
         nonfungiblePositionManager.approve(address(rebalancer), tokenId);
 
-        (,, uint256 initiatorFee) = rebalancer.initiatorInfo(initVars.initiator);
+        (,, uint256 initiatorFee,) = rebalancer.initiatorInfo(initVars.initiator);
 
         // Avoid stack too deep
         LpVariables memory lpVars_ = lpVars;
@@ -243,7 +243,7 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         vm.prank(users.liquidityProvider);
         nonfungiblePositionManager.approve(address(rebalancer), tokenId);
 
-        (,, uint256 initiatorFee) = rebalancer.initiatorInfo(initVars.initiator);
+        (,, uint256 initiatorFee,) = rebalancer.initiatorInfo(initVars.initiator);
         uint256 fee = (uint256(position.fee) * 1e12) + initiatorFee;
 
         // Avoid stack too deep

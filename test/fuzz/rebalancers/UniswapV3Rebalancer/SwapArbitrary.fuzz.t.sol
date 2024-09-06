@@ -46,7 +46,7 @@ contract SwapArbitrary_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
         uint128 liquidity = uniV3Pool.liquidity();
 
         {
-            (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,) =
+            (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,,) =
                 rebalancer.initiatorInfo(initVars.initiator);
             position.token0 = address(token0);
             position.token1 = address(token1);
@@ -120,7 +120,7 @@ contract SwapArbitrary_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
         uint128 liquidity = uniV3Pool.liquidity();
 
         {
-            (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,) =
+            (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,,) =
                 rebalancer.initiatorInfo(initVars.initiator);
             position.token0 = address(token0);
             position.token1 = address(token1);
@@ -192,7 +192,7 @@ contract SwapArbitrary_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
         (uint160 sqrtPriceX96,,,,,,) = uniV3Pool.slot0();
 
         {
-            (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,) =
+            (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,,) =
                 rebalancer.initiatorInfo(initVars.initiator);
             position.token0 = address(token0);
             position.token1 = address(token1);
@@ -234,7 +234,7 @@ contract SwapArbitrary_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
         (uint160 sqrtPriceX96,,,,,,) = uniV3Pool.slot0();
 
         {
-            (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,) =
+            (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,,) =
                 rebalancer.initiatorInfo(initVars.initiator);
             position.token0 = address(token0);
             position.token1 = address(token1);

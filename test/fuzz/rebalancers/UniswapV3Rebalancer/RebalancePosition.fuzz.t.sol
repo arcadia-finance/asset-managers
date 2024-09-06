@@ -176,7 +176,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
             uint256 fee = uint256(position.fee);
             uint256 sqrtPriceX96 = position.sqrtPriceX96;
             {
-                (,, uint256 initiatorFee) = rebalancer.initiatorInfo(initiatorStack);
+                (,, uint256 initiatorFee,) = rebalancer.initiatorInfo(initiatorStack);
                 fee = (fee * 1e12) + initiatorFee;
             }
 
@@ -348,7 +348,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
             vm.stopPrank();
         }
 
-        (,, uint256 initiatorFee) = rebalancer.initiatorInfo(initVars.initiator);
+        (,, uint256 initiatorFee,) = rebalancer.initiatorInfo(initVars.initiator);
         uint256 expectedFee;
         {
             UniswapV3Rebalancer.PositionState memory position_ =
@@ -404,7 +404,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
             vm.stopPrank();
         }
 
-        (,, uint256 initiatorFee) = rebalancer.initiatorInfo(initVars.initiator);
+        (,, uint256 initiatorFee,) = rebalancer.initiatorInfo(initVars.initiator);
         uint256 expectedFee;
         {
             UniswapV3Rebalancer.PositionState memory position_ =
@@ -824,7 +824,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
             vm.assume(zeroToOne == true);
 
             // Get initiator fee amount and deduct from amountIn.
-            (,, uint256 initiatorFee) = rebalancer.initiatorInfo(initiatorStack);
+            (,, uint256 initiatorFee,) = rebalancer.initiatorInfo(initiatorStack);
             uint256 feeAmount = amountIn.mulDivDown(initiatorFee, 1e18);
             amountIn -= feeAmount;
 
@@ -943,7 +943,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
             vm.assume(zeroToOne == false);
 
             // Get initiator fee amount and deduct from amountIn.
-            (,, uint256 initiatorFee) = rebalancer.initiatorInfo(initiatorStack);
+            (,, uint256 initiatorFee,) = rebalancer.initiatorInfo(initiatorStack);
             uint256 feeAmount = amountIn.mulDivDown(initiatorFee, 1e18);
             amountIn -= feeAmount;
 
