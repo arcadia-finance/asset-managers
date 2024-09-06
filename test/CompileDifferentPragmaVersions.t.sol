@@ -19,6 +19,6 @@ import { SlipstreamQuoterV2Extension } from "./utils/extensions/SlipstreamQuoter
 import { SwapRouter } from "../lib/accounts-v2/lib/slipstream/contracts/periphery/SwapRouter.sol";
 import { SwapRouter02 } from "../lib/accounts-v2/lib/swap-router-contracts/contracts/SwapRouter02.sol";
 
-contract SetInitiatorForAccount_UniswapV3Rebalancer_Fuzz_Test is Test {
-    function testFuzz_Success_rebalancePosition_SamePriceNewTicks() public { }
+contract Swap_UniswapV3Rebalancer_Fuzz_Test is Test {
+    function testFuzz_Success_rebalancePosition_InitiatorFees_Token1() public { }
 }

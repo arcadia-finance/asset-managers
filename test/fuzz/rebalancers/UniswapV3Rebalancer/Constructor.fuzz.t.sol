@@ -4,7 +4,6 @@
  */
 pragma solidity 0.8.22;
 
-import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { UniswapV3Rebalancer } from "../../../../src/rebalancers/uniswap-v3/UniswapV3Rebalancer.sol";
 import { UniswapV3Rebalancer_Fuzz_Test } from "./_UniswapV3Rebalancer.fuzz.t.sol";
 
@@ -21,10 +20,11 @@ contract Constructor_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_T
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_Constructor(uint256 maxTolerance) public {
+    function testFuzz_Success_Constructor(uint256 maxTolerance, uint256 maxInitiatorFee) public {
         vm.prank(users.owner);
-        UniswapV3Rebalancer rebalancer_ = new UniswapV3Rebalancer(maxTolerance);
+        UniswapV3Rebalancer rebalancer_ = new UniswapV3Rebalancer(maxTolerance, maxInitiatorFee);
 
         assertEq(rebalancer_.MAX_TOLERANCE(), maxTolerance);
+        assertEq(rebalancer_.MAX_INITIATOR_FEE(), maxInitiatorFee);
     }
 }

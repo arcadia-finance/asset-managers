@@ -74,7 +74,8 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         }
 
         // When : calling getSwapParameters
-        (bool zeroToOne, uint256 amountIn) = rebalancer.getSwapParameters(position, amount0, amount1);
+        (,, uint256 initiatorFee) = rebalancer.initiatorInfo(initVars.initiator);
+        (bool zeroToOne, uint256 amountIn) = rebalancer.getSwapParameters(position, amount0, amount1, initiatorFee);
 
         // Then : It should return correct values
         assertEq(zeroToOne, false);
@@ -127,7 +128,8 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         }
 
         // When : calling getSwapParameters
-        (bool zeroToOne, uint256 amountIn) = rebalancer.getSwapParameters(position, amount0, amount1);
+        (,, uint256 initiatorFee) = rebalancer.initiatorInfo(initVars.initiator);
+        (bool zeroToOne, uint256 amountIn) = rebalancer.getSwapParameters(position, amount0, amount1, initiatorFee);
 
         // Then : It should return correct values
         assertEq(zeroToOne, true);
@@ -164,9 +166,11 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         vm.prank(users.liquidityProvider);
         nonfungiblePositionManager.approve(address(rebalancer), tokenId);
 
+        (,, uint256 initiatorFee) = rebalancer.initiatorInfo(initVars.initiator);
+
         // Avoid stack too deep
         LpVariables memory lpVars_ = lpVars;
-        uint24 fee = position.fee;
+        uint256 fee = (uint256(position.fee) * 1e12) + initiatorFee;
 
         // And : Calculate expected amount in
         uint256 expectedAmountIn;
@@ -196,14 +200,14 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
 
             vm.assume(currentRatio < targetRatio);
 
-            uint256 denominator = 1e18 + targetRatio.mulDivDown(fee, 1e6 - fee);
+            uint256 denominator = 1e18 + targetRatio.mulDivDown(fee, 1e18 - fee);
             uint256 amountOut = (targetRatio - currentRatio).mulDivDown(totalValueInToken1, denominator);
             // convert to amountIn
             expectedAmountIn = UniswapV3Logic._getAmountIn(position.sqrtPriceX96, true, amountOut, fee);
         }
 
         // When : calling getSwapParameters
-        (bool zeroToOne, uint256 amountIn) = rebalancer.getSwapParameters(position, amount0, amount1);
+        (bool zeroToOne, uint256 amountIn) = rebalancer.getSwapParameters(position, amount0, amount1, initiatorFee);
 
         // Then : It should return correct values
         assertEq(zeroToOne, true);
@@ -239,6 +243,13 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         vm.prank(users.liquidityProvider);
         nonfungiblePositionManager.approve(address(rebalancer), tokenId);
 
+        (,, uint256 initiatorFee) = rebalancer.initiatorInfo(initVars.initiator);
+        uint256 fee = (uint256(position.fee) * 1e12) + initiatorFee;
+
+        // Avoid stack too deep
+        int24 tickLowerStack = lpVars.tickLower;
+        int24 tickUpperStack = lpVars.tickUpper;
+
         uint256 expectedAmountIn;
         uint256 amount0;
         uint256 amount1;
@@ -251,8 +262,8 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
 
             (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
                 uint160(position.sqrtPriceX96),
-                TickMath.getSqrtRatioAtTick(lpVars.tickLower),
-                TickMath.getSqrtRatioAtTick(lpVars.tickUpper),
+                TickMath.getSqrtRatioAtTick(tickLowerStack),
+                TickMath.getSqrtRatioAtTick(tickUpperStack),
                 position.liquidity
             );
 
@@ -268,12 +279,12 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
 
             vm.assume(targetRatio < currentRatio);
 
-            uint256 denominator = 1e18 - targetRatio.mulDivDown(uniV3Pool.fee(), 1e6);
+            uint256 denominator = 1e18 - targetRatio.mulDivDown(fee, 1e18);
             expectedAmountIn = (currentRatio - targetRatio).mulDivDown(totalValueInToken1, denominator);
         }
 
         // When : calling getSwapParameters
-        (bool zeroToOne, uint256 amountIn) = rebalancer.getSwapParameters(position, amount0, amount1);
+        (bool zeroToOne, uint256 amountIn) = rebalancer.getSwapParameters(position, amount0, amount1, initiatorFee);
 
         // Then : It should return correct values
         assertEq(zeroToOne, false);
