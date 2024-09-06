@@ -245,6 +245,8 @@ contract UniswapV3Rebalancer is IActionBase {
         }
 
         // Increase liquidity of the position.
+        // Balance has to be hardcoded depending on the token that has the limiting factor, 
+        // otherwise can be manipulated through arbitrary swap.
         // The approval for at least one token after increasing liquidity will remain non-zero.
         // We have to set approval first to 0 for ERC20 tokens that require the approval to be set to zero
         // before setting it to a non-zero value.
