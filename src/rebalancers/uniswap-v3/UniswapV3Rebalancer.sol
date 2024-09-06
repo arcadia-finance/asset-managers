@@ -244,6 +244,13 @@ contract UniswapV3Rebalancer is IActionBase {
                 : ERC20(position.token1).safeTransfer(initiator, feeAmount);
         }
 
+        // *********************************************************
+        // TODO : The min amounts on the mint are not valid for single sided positions, as no limiting factor for one of both tokens.
+        // Refactor for minimum liquidity check, or refactor with an expected amountOut, so that balance0 or 1 should be equal
+        // to expected amountOut + amount0 or 1. Problem here could be that in order to not overestimate amountOut, we have to
+        // take slippage into account (together with the fee). But then it would be similar to give out that slippage to the initiator
+        // if it does an arbitrary swap (as he could return amountOut as with max slippage and it would be valid).
+        // ********************************************************
         // Increase liquidity of the position.
         // Balance has to be hardcoded depending on the token that has the limiting factor,
         // otherwise can be manipulated through arbitrary swap.
