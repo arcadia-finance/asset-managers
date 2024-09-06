@@ -47,9 +47,16 @@ contract UniswapV3Rebalancer is IActionBase {
     // needed to rebalance.
     uint256 public immutable MAX_INITIATOR_FEE;
 
+    // With 18 decimals in %. 1e14 = 0,01%
+    // TODO : remove if working with min liquidity
+    uint256 public immutable MAX_LEFTOVER_LIMITING_FACTOR = 1e14;
+
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
     ////////////////////////////////////////////////////////////// */
+
+    // Flag Indicating if a function is locked to protect against reentrancy.
+    uint8 internal locked;
 
     // The Account to compound the fees for, used as transient storage.
     address internal account;
@@ -89,7 +96,6 @@ contract UniswapV3Rebalancer is IActionBase {
 
     error DecreaseFeeOnly();
     error DecreaseToleranceOnly();
-    error FeeAlreadySet();
     error LiquidityTresholdExceeded();
     error MaxInitiatorFee();
     error MaxTolerance();
@@ -105,8 +111,6 @@ contract UniswapV3Rebalancer is IActionBase {
     ////////////////////////////////////////////////////////////// */
 
     event Rebalance(address indexed account, uint256 id);
-
-    event LogHere(uint256);
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -136,7 +140,9 @@ contract UniswapV3Rebalancer is IActionBase {
      * @dev When both lowerTick and upperTick are zero, ticks will be updated with same tick-spacing as current position
      * and with a balanced, 50/50 ratio around current tick.
      */
-    function rebalancePosition(address account_, uint256 id, int24 lowerTick, int24 upperTick) external {
+    function rebalancePosition(address account_, uint256 id, int24 lowerTick, int24 upperTick, bytes calldata swapData)
+        external
+    {
         // Store Account address, used to validate the caller of the executeAction() callback.
         if (account != address(0)) revert Reentered();
         if (ownerToAccountToInitiator[IAccount(account_).owner()][account_] != msg.sender) revert InitiatorNotValid();
@@ -145,7 +151,7 @@ contract UniswapV3Rebalancer is IActionBase {
 
         // Encode data for the flash-action.
         bytes memory actionData = ArcadiaLogic._encodeActionDataRebalancer(
-            msg.sender, address(UniswapV3Logic.POSITION_MANAGER), id, lowerTick, upperTick
+            address(UniswapV3Logic.POSITION_MANAGER), id, msg.sender, lowerTick, upperTick, swapData
         );
 
         // Call flashAction() with this contract as actionTarget.
@@ -160,7 +166,7 @@ contract UniswapV3Rebalancer is IActionBase {
     /**
      * @notice Callback function called by the Arcadia Account during a flashAction.
      * @param rebalanceData A bytes object containing a struct with the assetData of the position and the address of the initiator.
-     * @return assetData A struct with the asset data of the Liquidity Position.
+     * @return assetData A struct with the asset data of the Liquidity Position and with the leftovers after mint, if any.
      * @dev The Liquidity Position is already transferred to this contract before executeAction() is called.
      * @dev When rebalancing we will burn the current Liquidity Position and mint a new one with a new tokenId.
      */
@@ -174,7 +180,9 @@ contract UniswapV3Rebalancer is IActionBase {
         address initiator;
         int24 lowerTick;
         int24 upperTick;
-        (assetData, initiator, lowerTick, upperTick) = abi.decode(rebalanceData, (ActionData, address, int24, int24));
+        bytes memory swapData;
+        (assetData, initiator, lowerTick, upperTick, swapData) =
+            abi.decode(rebalanceData, (ActionData, address, int24, int24, bytes));
         uint256 id = assetData.assetIds[0];
 
         // Fetch and cache all position related data.
@@ -208,17 +216,27 @@ contract UniswapV3Rebalancer is IActionBase {
         // Burn the position
         UniswapV3Logic.POSITION_MANAGER.burn(id);
 
+        bool zeroToOne;
+        uint256 amountInFeeIncluded;
         {
             // Cache initiator fee
             uint256 initiatorFee = initiatorInfo[initiator].fee;
 
             // Rebalance the position so that the maximum liquidity can be added for new ticks.
             // The Pool must still be balanced after the swap.
-            (bool zeroToOne, uint256 amountIn) = getSwapParameters(position, amount0, amount1, initiatorFee);
+            (zeroToOne, amountInFeeIncluded) = getSwapParameters(position, amount0, amount1, initiatorFee);
+
             // Get initiator fee amount and deduct from amountIn.
-            uint256 feeAmount = amountIn.mulDivDown(initiatorFee, 1e18);
-            amountIn -= feeAmount;
-            if (_swap(position, zeroToOne, amountIn)) revert UnbalancedPool();
+            uint256 feeAmount = amountInFeeIncluded.mulDivDown(initiatorFee, 1e18);
+            uint256 amountInFeeExcluded = amountInFeeIncluded - feeAmount;
+
+            if (swapData.length > 0) {
+                // Perform arbitrary swap
+                _swap(position, zeroToOne, amountInFeeExcluded, swapData);
+            } else {
+                // Swap via the pool of the position directly
+                if (_swap(position, zeroToOne, amountInFeeExcluded)) revert UnbalancedPool();
+            }
 
             // Transfer fee to the initiator
             zeroToOne
@@ -227,11 +245,13 @@ contract UniswapV3Rebalancer is IActionBase {
         }
 
         // Increase liquidity of the position.
+        // Balance has to be hardcoded depending on the token that has the limiting factor, 
+        // otherwise can be manipulated through arbitrary swap.
         // The approval for at least one token after increasing liquidity will remain non-zero.
         // We have to set approval first to 0 for ERC20 tokens that require the approval to be set to zero
         // before setting it to a non-zero value.
-        uint256 balance0 = ERC20(position.token0).balanceOf(address(this));
-        uint256 balance1 = ERC20(position.token1).balanceOf(address(this));
+        uint256 balance0 = zeroToOne ? amount0 - amountInFeeIncluded : ERC20(position.token0).balanceOf(address(this));
+        uint256 balance1 = zeroToOne ? ERC20(position.token1).balanceOf(address(this)) : amount1 - amountInFeeIncluded;
         ERC20(position.token0).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), 0);
         ERC20(position.token0).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), balance0);
         ERC20(position.token1).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), 0);
@@ -247,8 +267,8 @@ contract UniswapV3Rebalancer is IActionBase {
                 tickUpper: position.newUpperTick,
                 amount0Desired: balance0,
                 amount1Desired: balance1,
-                amount0Min: 0,
-                amount1Min: 0,
+                amount0Min: zeroToOne ? balance0 - balance0.mulDivDown(MAX_LEFTOVER_LIMITING_FACTOR, 1e18) : 0,
+                amount1Min: zeroToOne ? 0 : balance1 - balance1.mulDivDown(MAX_LEFTOVER_LIMITING_FACTOR, 1e18),
                 recipient: address(this),
                 deadline: block.timestamp
             })
@@ -315,7 +335,7 @@ contract UniswapV3Rebalancer is IActionBase {
 
     /**
      * @notice Sets the information requested for an initiator.
-     * @param fee . TODO
+     * @param fee The fee paid to to the initiator, in % with 18 decimals precision.
      * @param tolerance The maximum deviation of the actual pool price,
      * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
      * @dev The tolerance for the pool price will be converted to an upper and lower max sqrtPrice deviation,
@@ -365,6 +385,7 @@ contract UniswapV3Rebalancer is IActionBase {
      */
     function getSwapParameters(PositionState memory position, uint256 amount0, uint256 amount1, uint256 initiatorFee)
         public
+        pure
         returns (bool zeroToOne, uint256 amountIn)
     {
         uint256 sqrtRatioUpperTick = TickMath.getSqrtRatioAtTick(position.newUpperTick);
@@ -436,6 +457,33 @@ contract UniswapV3Rebalancer is IActionBase {
     }
 
     /**
+     * @notice Allows an initiator to perform an arbitrary swap.
+     * @param amountIn The amount of tokenIn that must be swapped.
+     * @param position Struct with the position data.
+     * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
+     * @param swapData A bytes object containing a contract address and another bytes object with the calldata to send to that address.
+     * @dev In order for such a swap to be valid, the amountOut should be at least equal to the amountOut expected if the swap
+     * occured in the pool of the position itself. The amountIn should also fully have been utilized, to keep target ratio valid.
+     */
+    function _swap(PositionState memory position, bool zeroToOne, uint256 amountIn, bytes memory swapData) internal {
+        (address to, bytes memory data) = abi.decode(swapData, (address, bytes));
+
+        // Approve token to swap.
+        address tokenToSwap = zeroToOne ? position.token0 : position.token1;
+        ERC20(tokenToSwap).approve(to, amountIn);
+
+        // Execute arbitrary swap.
+        (bool success, bytes memory result) = to.call(data);
+        require(success, string(result));
+
+        (uint160 sqrtPriceX96,,,,,,) = IUniswapV3Pool(position.pool).slot0();
+        // Uniswap V3 pool should still be balanced.
+        if (sqrtPriceX96 < position.lowerBoundSqrtPriceX96 || sqrtPriceX96 > position.upperBoundSqrtPriceX96) {
+            revert UnbalancedPool();
+        }
+    }
+
+    /**
      * @notice Callback after executing a swap via IUniswapV3Pool.swap.
      * @param amount0Delta The amount of token0 that was sent (negative) or must be received (positive) by the pool by
      * the end of the swap. If positive, the callback must send that amount of token0 to the pool.
@@ -487,7 +535,6 @@ contract UniswapV3Rebalancer is IActionBase {
         (position.sqrtPriceX96, currentTick,,,,,) = IUniswapV3Pool(position.pool).slot0();
 
         // Store the new ticks for the rebalance
-        // TODO: validate approach below for lower and upper tick
         if (lowerTick == 0 && upperTick == 0) {
             int24 tickSpacing = IUniswapV3Pool(position.pool).tickSpacing();
             int24 halfRangeTicks = ((currentUpperTick - currentLowerTick) / tickSpacing) / 2;

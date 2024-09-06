@@ -17,6 +17,7 @@ import { ISwapRouter02 } from
     "../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/interfaces/ISwapRouter02.sol";
 import { LiquidityAmounts } from "../../../../src/libraries/LiquidityAmounts.sol";
 import { QuoterV2Fixture } from "../../../utils/fixtures/uniswap-v3/QuoterV2Fixture.f.sol";
+import { RouterMock } from "../../../utils/mocks/RouterMock.sol";
 import { SwapMath } from "../../../../src/libraries/SwapMath.sol";
 import { SwapRouter02Fixture } from
     "../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/SwapRouter02Fixture.f.sol";
@@ -49,7 +50,6 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
     uint24 internal POOL_FEE = 100;
 
     // 2 % price diff for testing
-    // TODO : fuzz ?
     uint256 internal MAX_TOLERANCE = 0.02 * 1e18;
 
     // 0,5 % max fee
@@ -104,6 +104,7 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
     /////////////////////////////////////////////////////////////// */
 
     UniswapV3RebalancerExtension internal rebalancer;
+    RouterMock internal routerMock;
 
     /* ///////////////////////////////////////////////////////////////
                               SETUP
@@ -117,6 +118,8 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
             address(0), address(uniswapV3Factory), address(nonfungiblePositionManager), address(weth9)
         );
         QuoterV2Fixture.deployQuoterV2(address(uniswapV3Factory), address(weth9));
+
+        routerMock = new RouterMock();
 
         deployUniswapV3AM();
         deployRebalancer(MAX_TOLERANCE, MAX_INITIATOR_FEE);
