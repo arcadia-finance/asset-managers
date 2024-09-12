@@ -8,10 +8,9 @@ import { SlipstreamCompounder_Fuzz_Test } from "./_SlipstreamCompounder.fuzz.t.s
 
 import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
-import { ExactInputSingleParams } from "../../../../src/compounders/slipstream/interfaces/ISwapRouter.sol";
-import { ISwapRouter } from "./_SlipstreamCompounder.fuzz.t.sol";
 import { ICLPoolExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/extensions/interfaces/ICLPoolExtension.sol";
+import { ICLSwapRouter } from "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/interfaces/ICLSwapRouter.sol";
 import { SlipstreamCompounder } from "../../../../src/compounders/slipstream/SlipstreamCompounder.sol";
 
 /**
@@ -154,9 +153,9 @@ contract CompoundFees_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder_Fuz
             deal(address(token1), users.liquidityProvider, amount1ToSwap, true);
 
             vm.startPrank(users.liquidityProvider);
-            token1.approve(address(swapRouter), amount1ToSwap);
+            token1.approve(address(clSwapRouter), amount1ToSwap);
 
-            ExactInputSingleParams memory exactInputParams = ExactInputSingleParams({
+            ICLSwapRouter.ExactInputSingleParams memory exactInputParams = ICLSwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
                 tickSpacing: TICK_SPACING,
@@ -167,7 +166,7 @@ contract CompoundFees_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder_Fuz
                 sqrtPriceLimitX96: 0
             });
 
-            swapRouter.exactInputSingle(exactInputParams);
+            clSwapRouter.exactInputSingle(exactInputParams);
 
             vm.stopPrank();
         }
@@ -246,9 +245,9 @@ contract CompoundFees_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder_Fuz
             deal(address(token0), users.liquidityProvider, amount0ToSwap, true);
 
             vm.startPrank(users.liquidityProvider);
-            token0.approve(address(swapRouter), amount0ToSwap);
+            token0.approve(address(clSwapRouter), amount0ToSwap);
 
-            ExactInputSingleParams memory exactInputParams = ExactInputSingleParams({
+            ICLSwapRouter.ExactInputSingleParams memory exactInputParams = ICLSwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
                 tickSpacing: TICK_SPACING,
@@ -259,7 +258,7 @@ contract CompoundFees_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder_Fuz
                 sqrtPriceLimitX96: 0
             });
 
-            swapRouter.exactInputSingle(exactInputParams);
+            clSwapRouter.exactInputSingle(exactInputParams);
 
             vm.stopPrank();
         }

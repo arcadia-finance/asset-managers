@@ -58,7 +58,7 @@ abstract contract SlipstreamCompounderHelper_Fuzz_Test is SlipstreamCompounder_F
             bytecode, abi.encodePacked(0x5e7BB104d84c7CB9B682AaC2F3d509f5F406809A), abi.encodePacked(cLFactory), false
         );
         bytecode = Utils.veryBadBytesReplacer(
-            bytecode, abi.encodePacked(0x254cF9E1E6e233aa1AC962CB9B05b2cfeAaE15b0), abi.encodePacked(quoterCL), false
+            bytecode, abi.encodePacked(0x254cF9E1E6e233aa1AC962CB9B05b2cfeAaE15b0), abi.encodePacked(clQuoter), false
         );
         vm.etch(address(compounderHelper), bytecode);
     }

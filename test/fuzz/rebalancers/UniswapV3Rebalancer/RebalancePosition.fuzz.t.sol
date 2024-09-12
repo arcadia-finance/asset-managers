@@ -9,7 +9,8 @@ import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/u
 import { ISwapRouter02 } from
     "../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/interfaces/ISwapRouter02.sol";
 import { LiquidityAmounts } from "../../../../src/libraries/LiquidityAmounts.sol";
-import { QuoteExactInputSingleParams } from "../../../../src/interfaces/uniswap-v3/IQuoter.sol";
+import { IQuoterV2 } from
+    "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/IQuoterV2.sol";
 import { RouterMock } from "../../../utils/mocks/RouterMock.sol";
 import { SwapMath } from "../../../../src/libraries/SwapMath.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
@@ -600,7 +601,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
             (uint256 amount0, uint256 amount1, bool zeroToOne, uint256 amountIn) =
                 getSwapParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initiatorStack);
 
-            QuoteExactInputSingleParams memory params = QuoteExactInputSingleParams({
+            IQuoterV2.QuoteExactInputSingleParams memory params = IQuoterV2.QuoteExactInputSingleParams({
                 tokenIn: zeroToOne ? address(token0) : address(token1),
                 tokenOut: zeroToOne ? address(token1) : address(token0),
                 amountIn: amountIn,
@@ -705,7 +706,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
             (amount0, amount1, zeroToOne, amountIn) =
                 getSwapParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initiatorStack);
 
-            QuoteExactInputSingleParams memory params = QuoteExactInputSingleParams({
+            IQuoterV2.QuoteExactInputSingleParams memory params = IQuoterV2.QuoteExactInputSingleParams({
                 tokenIn: zeroToOne ? address(token0) : address(token1),
                 tokenOut: zeroToOne ? address(token1) : address(token0),
                 amountIn: amountIn,
@@ -814,7 +815,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
             uint256 feeAmount = amountIn.mulDivDown(initiatorFee, 1e18);
             amountIn -= feeAmount;
 
-            QuoteExactInputSingleParams memory params = QuoteExactInputSingleParams({
+            IQuoterV2.QuoteExactInputSingleParams memory params = IQuoterV2.QuoteExactInputSingleParams({
                 tokenIn: zeroToOne ? address(token0) : address(token1),
                 tokenOut: zeroToOne ? address(token1) : address(token0),
                 amountIn: amountIn,
@@ -933,7 +934,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
             uint256 feeAmount = amountIn.mulDivDown(initiatorFee, 1e18);
             amountIn -= feeAmount;
 
-            QuoteExactInputSingleParams memory params = QuoteExactInputSingleParams({
+            IQuoterV2.QuoteExactInputSingleParams memory params = IQuoterV2.QuoteExactInputSingleParams({
                 tokenIn: zeroToOne ? address(token0) : address(token1),
                 tokenOut: zeroToOne ? address(token1) : address(token0),
                 amountIn: amountIn,

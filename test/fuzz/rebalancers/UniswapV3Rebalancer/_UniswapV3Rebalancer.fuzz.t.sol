@@ -16,7 +16,7 @@ import { IUniswapV3PoolExtension } from
 import { ISwapRouter02 } from
     "../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/interfaces/ISwapRouter02.sol";
 import { LiquidityAmounts } from "../../../../src/libraries/LiquidityAmounts.sol";
-import { QuoterV2Fixture } from "../../../utils/fixtures/uniswap-v3/QuoterV2Fixture.f.sol";
+import { QuoterV2Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/QuoterV2Fixture.f.sol";
 import { RouterMock } from "../../../utils/mocks/RouterMock.sol";
 import { SwapMath } from "../../../../src/libraries/SwapMath.sol";
 import { SwapRouter02Fixture } from
