@@ -5,19 +5,15 @@
 pragma solidity 0.8.22;
 
 import { ActionData, IActionBase } from "../../../lib/accounts-v2/src/interfaces/IActionBase.sol";
-import { ArcadiaLogic } from "../../libraries/ArcadiaLogic.sol";
-import {
-    CollectParams,
-    DecreaseLiquidityParams,
-    MintParams
-} from "../../interfaces/uniswap-v3/INonfungiblePositionManager.sol";
+import { ArcadiaLogic } from "../libraries/ArcadiaLogic.sol";
+import { CollectParams, DecreaseLiquidityParams, MintParams } from "./interfaces/INonfungiblePositionManager.sol";
 import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { IAccount } from "../../interfaces/IAccount.sol";
+import { IAccount } from "../interfaces/IAccount.sol";
 import { IUniswapV3Pool } from "./interfaces/IUniswapV3Pool.sol";
-import { LiquidityAmounts } from "../../libraries/LiquidityAmounts.sol";
+import { LiquidityAmounts } from "../libraries/LiquidityAmounts.sol";
 import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
-import { UniswapV3Logic } from "../../libraries/UniswapV3Logic.sol";
+import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
 
 /**
  * @title Permissioned rebalancer for Uniswap V3 Liquidity Positions.
@@ -80,6 +76,11 @@ contract UniswapV3Rebalancer is IActionBase {
         uint256 sqrtPriceX96;
         uint256 lowerBoundSqrtPriceX96;
         uint256 upperBoundSqrtPriceX96;
+    }
+
+    struct Balances {
+        uint256 amount0;
+        uint256 amount1;
     }
 
     // A struct used to store information for each specific initiator
@@ -217,18 +218,19 @@ contract UniswapV3Rebalancer is IActionBase {
         UniswapV3Logic.POSITION_MANAGER.burn(id);
 
         bool zeroToOne;
-        uint256 amountInFeeIncluded;
+        uint256 amountInWithFee;
         {
             // Cache initiator fee
             uint256 initiatorFee = initiatorInfo[initiator].fee;
 
+            uint256 amountOut;
             // Rebalance the position so that the maximum liquidity can be added for new ticks.
             // The Pool must still be balanced after the swap.
-            (zeroToOne, amountInFeeIncluded) = getSwapParameters(position, amount0, amount1, initiatorFee);
+            (zeroToOne, amountInWithFee, amountOut) = getSwapParameters(position, amount0, amount1, initiatorFee);
 
             // Get initiator fee amount and deduct from amountIn.
-            uint256 feeAmount = amountInFeeIncluded.mulDivDown(initiatorFee, 1e18);
-            uint256 amountInFeeExcluded = amountInFeeIncluded - feeAmount;
+            uint256 feeAmount = amountInWithFee.mulDivDown(initiatorFee, 1e18);
+            uint256 amountInFeeExcluded = amountInWithFee - feeAmount;
 
             if (swapData.length > 0) {
                 // Perform arbitrary swap
@@ -257,8 +259,8 @@ contract UniswapV3Rebalancer is IActionBase {
         // The approval for at least one token after increasing liquidity will remain non-zero.
         // We have to set approval first to 0 for ERC20 tokens that require the approval to be set to zero
         // before setting it to a non-zero value.
-        uint256 balance0 = zeroToOne ? amount0 - amountInFeeIncluded : ERC20(position.token0).balanceOf(address(this));
-        uint256 balance1 = zeroToOne ? ERC20(position.token1).balanceOf(address(this)) : amount1 - amountInFeeIncluded;
+        uint256 balance0 = zeroToOne ? amount0 - amountInWithFee : ERC20(position.token0).balanceOf(address(this));
+        uint256 balance1 = zeroToOne ? ERC20(position.token1).balanceOf(address(this)) : amount1 - amountInWithFee;
         ERC20(position.token0).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), 0);
         ERC20(position.token0).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), balance0);
         ERC20(position.token1).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), 0);
@@ -393,45 +395,46 @@ contract UniswapV3Rebalancer is IActionBase {
     function getSwapParameters(PositionState memory position, uint256 amount0, uint256 amount1, uint256 initiatorFee)
         public
         pure
-        returns (bool zeroToOne, uint256 amountIn)
+        returns (bool zeroToOne, uint256 amountIn, uint256 amountOut)
     {
-        uint256 sqrtRatioUpperTick = TickMath.getSqrtRatioAtTick(position.newUpperTick);
-        uint256 sqrtRatioLowerTick = TickMath.getSqrtRatioAtTick(position.newLowerTick);
+        uint256 sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.newUpperTick);
+        uint256 sqrtRatioLower = TickMath.getSqrtRatioAtTick(position.newLowerTick);
 
-        if (position.sqrtPriceX96 >= sqrtRatioUpperTick) {
+        // Total fee is pool fee + initiator fee. Scaled position fee from 6 to 18 decimals precision.
+        uint256 fee = initiatorFee + uint256(position.fee) * 1e12;
+
+        if (position.sqrtPriceX96 >= sqrtRatioUpper) {
             // Position is out of range and fully in token 1.
             // Swap full amount of token0 to token1.
             zeroToOne = true;
             amountIn = amount0;
-        } else if (position.sqrtPriceX96 <= sqrtRatioLowerTick) {
+            amountOut = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, amount0, fee);
+        } else if (position.sqrtPriceX96 <= sqrtRatioLower) {
             // Position is out of range and fully in token 0.
             // Swap full amount of token1 to token0.
             amountIn = amount1;
+            amountOut = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, false, amount1, fee);
         } else {
             // Get target ratio in token1 terms.
-            uint256 targetRatio =
-                UniswapV3Logic._getTargetRatio(position.sqrtPriceX96, sqrtRatioLowerTick, sqrtRatioUpperTick);
+            uint256 targetRatio = UniswapV3Logic._getTargetRatio(position.sqrtPriceX96, sqrtRatioLower, sqrtRatioUpper);
 
             // Calculate the total position value in token1 equivalent:
-            uint256 token0ValueInToken1 = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, amount0);
+            uint256 token0ValueInToken1 = UniswapV3Logic._getSpotValue(position.sqrtPriceX96, true, amount0);
             uint256 totalValueInToken1 = amount1 + token0ValueInToken1;
             uint256 currentRatio = amount1.mulDivDown(1e18, totalValueInToken1);
-
-            // Total fee is pool fee + initiator fee. Scaled position fee from 6 to 18 decimals precision.
-            uint256 fee = initiatorFee + (uint256(position.fee) * 1e12);
 
             if (currentRatio < targetRatio) {
                 // Swap token0 partially to token1.
                 zeroToOne = true;
                 uint256 denominator = 1e18 + targetRatio.mulDivDown(fee, 1e18 - fee);
-                uint256 amountOut = (targetRatio - currentRatio).mulDivDown(totalValueInToken1, denominator);
-                // Convert to amountIn
-                amountIn = UniswapV3Logic._getAmountIn(position.sqrtPriceX96, zeroToOne, amountOut, fee);
+                amountOut = (targetRatio - currentRatio).mulDivDown(totalValueInToken1, denominator);
+                amountIn = UniswapV3Logic._getAmountIn(position.sqrtPriceX96, true, amountOut, fee);
             } else {
                 // Swap token1 partially to token0.
                 zeroToOne = false;
                 uint256 denominator = 1e18 - targetRatio.mulDivDown(fee, 1e18);
                 amountIn = (currentRatio - targetRatio).mulDivDown(totalValueInToken1, denominator);
+                amountOut = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, false, amountIn, fee);
             }
         }
     }

@@ -8,15 +8,15 @@ import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC72
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { ISwapRouter02 } from
     "../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/interfaces/ISwapRouter02.sol";
-import { LiquidityAmounts } from "../../../../src/libraries/LiquidityAmounts.sol";
+import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/LiquidityAmounts.sol";
 import { IQuoterV2 } from
     "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/IQuoterV2.sol";
 import { RouterMock } from "../../../utils/mocks/RouterMock.sol";
-import { SwapMath } from "../../../../src/libraries/SwapMath.sol";
+import { SwapMath } from "../../../../src/rebalancers/libraries/SwapMath.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { UniswapV3Rebalancer } from "../../../../src/rebalancers/uniswap-v3/UniswapV3Rebalancer.sol";
 import { UniswapV3Rebalancer_Fuzz_Test } from "./_UniswapV3Rebalancer.fuzz.t.sol";
-import { UniswapV3Logic } from "../../../../src/libraries/UniswapV3Logic.sol";
+import { UniswapV3Logic } from "../../../../src/rebalancers/uniswap-v3/libraries/UniswapV3Logic.sol";
 
 /**
  * @notice Fuzz tests for the function "rebalancePosition" of contract "UniswapV3Rebalancer".
@@ -182,7 +182,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
             }
 
             // Calculate the total fee value in token1 equivalent:
-            uint256 token0ValueInToken1 = UniswapV3Logic._getAmountOut(sqrtPriceX96, true, amount0);
+            uint256 token0ValueInToken1 = UniswapV3Logic._getSpotValue(sqrtPriceX96, true, amount0);
             uint256 totalValueInToken1 = amount1 + token0ValueInToken1;
             uint256 currentRatio = amount1.mulDivDown(1e18, totalValueInToken1);
 

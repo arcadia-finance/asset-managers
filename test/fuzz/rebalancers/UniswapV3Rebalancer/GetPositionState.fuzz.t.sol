@@ -4,13 +4,13 @@
  */
 pragma solidity 0.8.22;
 
-import { ArcadiaLogic } from "../../../../src/libraries/ArcadiaLogic.sol";
+import { ArcadiaLogic } from "../../../../src/rebalancers/libraries/ArcadiaLogic.sol";
 import { AssetValueAndRiskFactors } from "../../../../lib/accounts-v2/src/Registry.sol";
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { UniswapV3Rebalancer } from "../../../../src/rebalancers/uniswap-v3/UniswapV3Rebalancer.sol";
 import { UniswapV3Rebalancer_Fuzz_Test } from "./_UniswapV3Rebalancer.fuzz.t.sol";
-import { UniswapV3Logic } from "../../../../src/libraries/UniswapV3Logic.sol";
+import { UniswapV3Logic } from "../../../../src/rebalancers/uniswap-v3/libraries/UniswapV3Logic.sol";
 
 /**
  * @notice Fuzz tests for the function "_getPositionState" of contract "UniswapV3Rebalancer".

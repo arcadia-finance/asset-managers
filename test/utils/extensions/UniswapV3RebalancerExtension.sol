@@ -5,7 +5,7 @@
 pragma solidity 0.8.22;
 
 import { UniswapV3Rebalancer } from "../../../src/rebalancers/uniswap-v3/UniswapV3Rebalancer.sol";
-import { UniswapV3Logic } from "../../../src/libraries/UniswapV3Logic.sol";
+import { UniswapV3Logic } from "../../../src/rebalancers/uniswap-v3/libraries/UniswapV3Logic.sol";
 
 contract UniswapV3RebalancerExtension is UniswapV3Rebalancer {
     constructor(uint256 maxTolerance, uint256 maxInitiatorFee) UniswapV3Rebalancer(maxTolerance, maxInitiatorFee) { }

@@ -15,14 +15,14 @@ import { IUniswapV3PoolExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/IUniswapV3PoolExtension.sol";
 import { ISwapRouter02 } from
     "../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/interfaces/ISwapRouter02.sol";
-import { LiquidityAmounts } from "../../../../src/libraries/LiquidityAmounts.sol";
+import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/LiquidityAmounts.sol";
 import { QuoterV2Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/QuoterV2Fixture.f.sol";
 import { RouterMock } from "../../../utils/mocks/RouterMock.sol";
-import { SwapMath } from "../../../../src/libraries/SwapMath.sol";
+import { SwapMath } from "../../../../src/rebalancers/libraries/SwapMath.sol";
 import { SwapRouter02Fixture } from
     "../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/SwapRouter02Fixture.f.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
-import { UniswapV3Logic } from "../../../../src/libraries/UniswapV3Logic.sol";
+import { UniswapV3Logic } from "../../../../src/rebalancers/uniswap-v3/libraries/UniswapV3Logic.sol";
 import { UniswapV3Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";
 import { UniswapV3AMFixture } from
     "../../../../lib/accounts-v2/test/utils/fixtures/arcadia-accounts/UniswapV3AMFixture.f.sol";

@@ -4,12 +4,12 @@
  */
 pragma solidity 0.8.22;
 
-import { FixedPoint96 } from "../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
-import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { FullMath } from "../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
-import { INonfungiblePositionManager } from "../interfaces/uniswap-v3/INonfungiblePositionManager.sol";
-import { PoolAddress } from "../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/PoolAddress.sol";
-import { TickMath } from "../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
+import { FixedPoint96 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
+import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
+import { INonfungiblePositionManager } from "../interfaces/INonfungiblePositionManager.sol";
+import { PoolAddress } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/PoolAddress.sol";
+import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 
 library UniswapV3Logic {
     using FixedPointMathLib for uint256;
@@ -36,8 +36,8 @@ library UniswapV3Logic {
     }
 
     /**
-     * @notice Calculates the amountOut for a given amountIn and sqrtPriceX96 for a hypothetical
-     * swap without slippage and without fees.
+     * @notice Calculates the value of one token in the other token for a given amountIn and sqrtPriceX96.
+     * Does not take into account slippage and fees.
      * @param sqrtPriceX96 The square root of the price (token1/token0), with 96 binary precision.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param amountIn The amount that of tokenIn that must be swapped to tokenOut.
@@ -47,7 +47,7 @@ library UniswapV3Logic {
      * If ever the sqrtPriceX96 of a pool exceeds type(uint128).max, a different auto compounder has to be deployed,
      * which does two consecutive mulDivs.
      */
-    function _getAmountOut(uint256 sqrtPriceX96, bool zeroToOne, uint256 amountIn)
+    function _getSpotValue(uint256 sqrtPriceX96, bool zeroToOne, uint256 amountIn)
         internal
         pure
         returns (uint256 amountOut)
@@ -83,7 +83,7 @@ library UniswapV3Logic {
 
     /**
      * @notice Calculates the amountIn for a given amountOut and sqrtPriceX96 for a hypothetical
-     * swap without slippage and with fees.
+     * swap with fees but without slippage (we assume a pool with infinite liquidity).
      * @param sqrtPriceX96 The square root of the price (token1/token0), with 96 binary precision.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param amountOut The amount that of tokenOut that must be swapped.

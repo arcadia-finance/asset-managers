@@ -5,9 +5,9 @@
 pragma solidity 0.8.22;
 
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { LiquidityAmounts } from "../../../../src/libraries/LiquidityAmounts.sol";
+import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/LiquidityAmounts.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
-import { UniswapV3Logic } from "../../../../src/libraries/UniswapV3Logic.sol";
+import { UniswapV3Logic } from "../../../../src/rebalancers/uniswap-v3/libraries/UniswapV3Logic.sol";
 import { UniswapV3Rebalancer } from "../../../../src/rebalancers/uniswap-v3/UniswapV3Rebalancer.sol";
 import { UniswapV3Rebalancer_Fuzz_Test } from "./_UniswapV3Rebalancer.fuzz.t.sol";
 
@@ -75,7 +75,7 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
 
         // When : calling getSwapParameters
         (,, uint256 initiatorFee,) = rebalancer.initiatorInfo(initVars.initiator);
-        (bool zeroToOne, uint256 amountIn) = rebalancer.getSwapParameters(position, amount0, amount1, initiatorFee);
+        (bool zeroToOne, uint256 amountIn,) = rebalancer.getSwapParameters(position, amount0, amount1, initiatorFee);
 
         // Then : It should return correct values
         assertEq(zeroToOne, false);
@@ -129,7 +129,7 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
 
         // When : calling getSwapParameters
         (,, uint256 initiatorFee,) = rebalancer.initiatorInfo(initVars.initiator);
-        (bool zeroToOne, uint256 amountIn) = rebalancer.getSwapParameters(position, amount0, amount1, initiatorFee);
+        (bool zeroToOne, uint256 amountIn,) = rebalancer.getSwapParameters(position, amount0, amount1, initiatorFee);
 
         // Then : It should return correct values
         assertEq(zeroToOne, true);
@@ -194,7 +194,7 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
             amount0 += fee0;
             amount1 += fee1;
 
-            uint256 token0ValueInToken1 = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, amount0);
+            uint256 token0ValueInToken1 = UniswapV3Logic._getSpotValue(position.sqrtPriceX96, true, amount0);
             uint256 totalValueInToken1 = amount1 + token0ValueInToken1;
             uint256 currentRatio = amount1.mulDivDown(1e18, totalValueInToken1);
 
@@ -207,7 +207,7 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         }
 
         // When : calling getSwapParameters
-        (bool zeroToOne, uint256 amountIn) = rebalancer.getSwapParameters(position, amount0, amount1, initiatorFee);
+        (bool zeroToOne, uint256 amountIn,) = rebalancer.getSwapParameters(position, amount0, amount1, initiatorFee);
 
         // Then : It should return correct values
         assertEq(zeroToOne, true);
@@ -273,7 +273,7 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
             amount1 += fee1;
 
             // Calculate the total fee value in token1 equivalent:
-            uint256 token0ValueInToken1 = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, amount0);
+            uint256 token0ValueInToken1 = UniswapV3Logic._getSpotValue(position.sqrtPriceX96, true, amount0);
             uint256 totalValueInToken1 = amount1 + token0ValueInToken1;
             uint256 currentRatio = amount1.mulDivDown(1e18, totalValueInToken1);
 
@@ -284,7 +284,7 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         }
 
         // When : calling getSwapParameters
-        (bool zeroToOne, uint256 amountIn) = rebalancer.getSwapParameters(position, amount0, amount1, initiatorFee);
+        (bool zeroToOne, uint256 amountIn,) = rebalancer.getSwapParameters(position, amount0, amount1, initiatorFee);
 
         // Then : It should return correct values
         assertEq(zeroToOne, false);
