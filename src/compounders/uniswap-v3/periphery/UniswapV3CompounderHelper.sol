@@ -8,11 +8,11 @@ import { Fees, IUniswapV3Compounder, PositionState } from "../interfaces/IUniswa
 import { FixedPoint128 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint128.sol";
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
-import { IQuoter, QuoteExactOutputSingleParams } from "../../../interfaces/uniswap-v3/IQuoter.sol";
+import { IQuoter, QuoteExactOutputSingleParams } from "../interfaces/IQuoter.sol";
 import { IUniswapV3Pool } from "../interfaces/IUniswapV3Pool.sol";
 import { LiquidityAmounts } from "../../../libraries/LiquidityAmounts.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
-import { UniswapV3Logic } from "../../../libraries/UniswapV3Logic.sol";
+import { UniswapV3Logic } from "../libraries/UniswapV3Logic.sol";
 
 /**
  * @title Off-chain view functions for UniswapV3 Compounder Asset-Manager.
