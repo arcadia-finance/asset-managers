@@ -5,7 +5,9 @@
 pragma solidity 0.8.22;
 
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
 import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/LiquidityAmounts.sol";
+import { stdError } from "../../../../lib/accounts-v2/lib/forge-std/src/StdError.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { UniswapV3Logic } from "../../../../src/rebalancers/uniswap-v3/libraries/UniswapV3Logic.sol";
 import { UniswapV3Rebalancer } from "../../../../src/rebalancers/uniswap-v3/UniswapV3Rebalancer.sol";
@@ -27,267 +29,263 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-
-    function testFuzz_Success_getSwapParameters_singleSidedToken0(
-        InitVariables memory initVars,
-        LpVariables memory lpVars,
-        int24 newUpperTick,
-        int24 newLowerTick
+    function testFuzz_Revert_getSwapParameters_SingleSidedToken0_OverflowSqrtPriceX96(
+        UniswapV3Rebalancer.PositionState memory position,
+        uint128 amount0,
+        uint128 amount1,
+        uint256 initiatorFee
     ) public {
-        // Given : Initialize a uniswapV3 pool and a lp position with valid test variables. Also generate fees for that position.
-        uint256 tokenId;
-        (initVars, lpVars, tokenId) = initPoolAndCreatePositionWithFees(initVars, lpVars);
+        // Given: sqrtPriceX96 is bigger than type(uint128).max -> overflow.
+        position.sqrtPriceX96 =
+            bound(position.sqrtPriceX96, uint256(type(uint128).max) + 1, TickMath.MAX_SQRT_RATIO - 1);
 
-        (uint160 sqrtPriceX96, int24 currentTick,,,,,) = uniV3Pool.slot0();
+        // And: Position is single sided in token0.
+        int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(position.sqrtPriceX96));
+        position.newUpperTick = int24(bound(position.newUpperTick, tickCurrent + 1, TickMath.MAX_TICK));
+        position.newLowerTick = int24(bound(position.newLowerTick, tickCurrent + 1, TickMath.MAX_TICK));
 
-        // And : Ticks should be > current tick
-        newLowerTick = int24(bound(newLowerTick, currentTick + 1, initVars.tickUpper));
-        newUpperTick =
-            int24(bound(newUpperTick, newLowerTick + MIN_TICK_SPACING, initVars.tickUpper + MIN_TICK_SPACING));
+        // And: Ticks don't overflow (invariant Uniswap).
+        position.newLowerTick = int24(bound(position.newLowerTick, TickMath.MIN_TICK, TickMath.MAX_TICK));
 
-        (,,,,,,, uint128 liquidity,,,,) = nonfungiblePositionManager.positions(tokenId);
+        // And: fee is smaller than MAX_INITIATOR_FEE (invariant).
+        initiatorFee = bound(initiatorFee, 0, MAX_INITIATOR_FEE);
+        position.fee = uint24(bound(position.fee, 0, (MAX_INITIATOR_FEE - initiatorFee) / 1e12));
 
-        UniswapV3Rebalancer.PositionState memory position;
-        position.sqrtPriceX96 = sqrtPriceX96;
-        position.liquidity = liquidity;
-        position.newUpperTick = newUpperTick;
-        position.newLowerTick = newLowerTick;
+        // When: Calling getSwapParameters().
+        // Then: Function overflows.
+        vm.expectRevert(stdError.arithmeticError);
+        rebalancer.getSwapParameters(position, amount0, amount1, initiatorFee);
+    }
 
-        // And : Approve nft manager for rebalancer
-        vm.prank(users.liquidityProvider);
-        nonfungiblePositionManager.approve(address(rebalancer), tokenId);
+    function testFuzz_Success_getSwapParameters_SingleSidedToken0(
+        UniswapV3Rebalancer.PositionState memory position,
+        uint128 amount0,
+        uint128 amount1,
+        uint256 initiatorFee
+    ) public {
+        // Given: sqrtPriceX96 is smaller than type(uint128).max (no overflow).
+        position.sqrtPriceX96 = bound(position.sqrtPriceX96, TickMath.MIN_SQRT_RATIO, type(uint128).max);
 
-        // And : Get token balances of position + fees.
-        uint256 amount1;
-        uint256 amount0;
-        {
-            (uint256 fee0, uint256 fee1) = getFeeAmounts(tokenId);
+        // And: Position is single sided in token0.
+        int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(position.sqrtPriceX96));
+        position.newUpperTick = int24(bound(position.newUpperTick, tickCurrent + 1, TickMath.MAX_TICK));
+        position.newLowerTick = int24(bound(position.newLowerTick, tickCurrent + 1, TickMath.MAX_TICK));
 
-            (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
-                uint160(position.sqrtPriceX96),
-                TickMath.getSqrtRatioAtTick(lpVars.tickLower),
-                TickMath.getSqrtRatioAtTick(lpVars.tickUpper),
-                position.liquidity
-            );
-            amount0 += fee0;
-            amount1 += fee1;
-        }
+        // And: Ticks don't overflow (invariant Uniswap).
+        position.newLowerTick = int24(bound(position.newLowerTick, TickMath.MIN_TICK, TickMath.MAX_TICK));
 
-        // When : calling getSwapParameters
-        (,, uint256 initiatorFee,) = rebalancer.initiatorInfo(initVars.initiator);
-        (bool zeroToOne, uint256 amountIn,) = rebalancer.getSwapParameters(position, amount0, amount1, initiatorFee);
+        // And: fee is smaller than MAX_INITIATOR_FEE (invariant).
+        initiatorFee = bound(initiatorFee, 0, MAX_INITIATOR_FEE);
+        position.fee = uint24(bound(position.fee, 0, (MAX_INITIATOR_FEE - initiatorFee) / 1e12));
 
-        // Then : It should return correct values
-        assertEq(zeroToOne, false);
+        // When: Calling getSwapParameters().
+        (bool zeroToOne, uint256 amountIn, uint256 amountOut) =
+            rebalancer.getSwapParameters(position, amount0, amount1, initiatorFee);
+
+        // Then: zeroToOne is false.
+        assertFalse(zeroToOne);
+
+        // And: amountIn is equal to amount1.
         assertEq(amountIn, amount1);
+
+        // And: amountOut is correct.
+        uint256 fee = initiatorFee + uint256(position.fee) * 1e12;
+        uint256 amountOutExpected = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, false, amount1, fee);
+        assertEq(amountOut, amountOutExpected);
     }
 
-    function testFuzz_Success_getSwapParameters_singleSidedToken1(
-        InitVariables memory initVars,
-        LpVariables memory lpVars,
-        int24 newUpperTick,
-        int24 newLowerTick
+    function testFuzz_Revert_getSwapParameters_SingleSidedToken1_OverflowSqrtPriceX96(
+        UniswapV3Rebalancer.PositionState memory position,
+        uint128 amount0,
+        uint128 amount1,
+        uint256 initiatorFee
     ) public {
-        // Given : Initialize a uniswapV3 pool and a lp position with valid test variables. Also generate fees for that position.
-        uint256 tokenId;
-        (initVars, lpVars, tokenId) = initPoolAndCreatePositionWithFees(initVars, lpVars);
+        // Given: sqrtPriceX96 is bigger than type(uint128).max -> overflow.
+        position.sqrtPriceX96 =
+            bound(position.sqrtPriceX96, uint256(type(uint128).max) + 1, TickMath.MAX_SQRT_RATIO - 1);
 
-        (uint160 sqrtPriceX96, int24 currentTick,,,,,) = uniV3Pool.slot0();
+        // And: Position is single sided in token1.
+        int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(position.sqrtPriceX96));
+        position.newUpperTick = int24(bound(position.newUpperTick, TickMath.MIN_TICK, tickCurrent));
 
-        // And : Ticks should be < current tick
-        newUpperTick = int24(bound(newUpperTick, initVars.tickLower, currentTick - 1));
-        newLowerTick =
-            int24(bound(newLowerTick, initVars.tickLower - MIN_TICK_SPACING, newUpperTick - MIN_TICK_SPACING));
+        // And: Ticks don't overflow (invariant Uniswap).
+        position.newLowerTick = int24(bound(position.newLowerTick, TickMath.MIN_TICK, TickMath.MAX_TICK));
 
-        (,,,,,,, uint128 liquidity,,,,) = nonfungiblePositionManager.positions(tokenId);
+        // And: fee is smaller than MAX_INITIATOR_FEE (invariant).
+        initiatorFee = bound(initiatorFee, 0, MAX_INITIATOR_FEE);
+        position.fee = uint24(bound(position.fee, 0, (MAX_INITIATOR_FEE - initiatorFee) / 1e12));
 
-        UniswapV3Rebalancer.PositionState memory position;
-        position.sqrtPriceX96 = sqrtPriceX96;
-        position.liquidity = liquidity;
-        position.newUpperTick = newUpperTick;
-        position.newLowerTick = newLowerTick;
+        // When: Calling getSwapParameters().
+        // Then: Function overflows.
+        vm.expectRevert(stdError.arithmeticError);
+        rebalancer.getSwapParameters(position, amount0, amount1, initiatorFee);
+    }
 
-        // And : Approve nft manager for rebalancer
-        vm.prank(users.liquidityProvider);
-        nonfungiblePositionManager.approve(address(rebalancer), tokenId);
+    function testFuzz_Success_getSwapParameters_SingleSidedToken1(
+        UniswapV3Rebalancer.PositionState memory position,
+        uint128 amount0,
+        uint128 amount1,
+        uint256 initiatorFee
+    ) public {
+        // Given: sqrtPriceX96 is smaller than type(uint128).max (no overflow).
+        position.sqrtPriceX96 = bound(position.sqrtPriceX96, TickMath.MIN_SQRT_RATIO, type(uint128).max);
 
-        // And : Get token balances of position + fees.
-        uint256 amount0;
-        uint256 amount1;
-        {
-            (uint256 fee0, uint256 fee1) = getFeeAmounts(tokenId);
+        // And: Position is single sided in token1.
+        int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(position.sqrtPriceX96));
+        position.newUpperTick = int24(bound(position.newUpperTick, TickMath.MIN_TICK, tickCurrent));
 
-            (amount0,) = LiquidityAmounts.getAmountsForLiquidity(
-                uint160(position.sqrtPriceX96),
-                TickMath.getSqrtRatioAtTick(lpVars.tickLower),
-                TickMath.getSqrtRatioAtTick(lpVars.tickUpper),
-                position.liquidity
-            );
-            amount0 += fee0;
-            amount1 += fee1;
-        }
+        // And: Ticks don't overflow (invariant Uniswap).
+        position.newLowerTick = int24(bound(position.newLowerTick, TickMath.MIN_TICK, TickMath.MAX_TICK));
 
-        // When : calling getSwapParameters
-        (,, uint256 initiatorFee,) = rebalancer.initiatorInfo(initVars.initiator);
-        (bool zeroToOne, uint256 amountIn,) = rebalancer.getSwapParameters(position, amount0, amount1, initiatorFee);
+        // And: fee is smaller than MAX_INITIATOR_FEE.
+        initiatorFee = bound(initiatorFee, 0, MAX_INITIATOR_FEE);
+        position.fee = uint24(bound(position.fee, 0, (MAX_INITIATOR_FEE - initiatorFee) / 1e12));
 
-        // Then : It should return correct values
-        assertEq(zeroToOne, true);
-        // We test in rebalancePosition() that new position is fully in token1
+        // When: Calling getSwapParameters().
+        (bool zeroToOne, uint256 amountIn, uint256 amountOut) =
+            rebalancer.getSwapParameters(position, amount0, amount1, initiatorFee);
+
+        // Then: zeroToOne is true.
+        assertTrue(zeroToOne);
+
+        // And: amountIn is equal to amount0.
         assertEq(amountIn, amount0);
+
+        // And: amountOut is correct.
+        uint256 fee = initiatorFee + uint256(position.fee) * 1e12;
+        uint256 amountOutExpected = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, amount0, fee);
+        assertEq(amountOut, amountOutExpected);
     }
 
-    function testFuzz_Success_getSwapParameters_currentRatioLowerThanTarget(
-        InitVariables memory initVars,
-        LpVariables memory lpVars,
-        int24 newUpperTick,
-        int24 newLowerTick
+    function testFuzz_Success_getSwapParameters_currentRatioSmallerThanTarget(
+        UniswapV3Rebalancer.PositionState memory position,
+        uint128 amount0,
+        uint128 amount1,
+        uint256 initiatorFee
     ) public {
-        // Given : Initialize a uniswapV3 pool and a lp position with valid test variables. Also generate fees for that position.
-        uint256 tokenId;
-        (initVars, lpVars, tokenId) = initPoolAndCreatePositionWithFees(initVars, lpVars);
+        // Given: sqrtPriceX96 is smaller than type(uint128).max (no overflow).
+        uint256 sqrtPriceX96Min = TickMath.getSqrtRatioAtTick(TickMath.MIN_TICK + 1);
+        position.sqrtPriceX96 = bound(position.sqrtPriceX96, sqrtPriceX96Min, type(uint128).max);
 
-        (uint160 sqrtPriceX96, int24 currentTick,,,,,) = uniV3Pool.slot0();
+        // And: Position is in range.
+        int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(position.sqrtPriceX96));
+        position.newUpperTick = int24(bound(position.newUpperTick, tickCurrent + 1, TickMath.MAX_TICK));
+        position.newLowerTick = int24(bound(position.newLowerTick, TickMath.MIN_TICK, tickCurrent - 1));
 
-        // And : Tick range should include current tick
-        newUpperTick = int24(bound(newUpperTick, currentTick + MIN_TICK_SPACING, initVars.tickUpper - 1));
-        newLowerTick = int24(bound(newLowerTick, initVars.tickLower + 1, currentTick - MIN_TICK_SPACING));
+        // And: fee is smaller than MAX_INITIATOR_FEE.
+        initiatorFee = bound(initiatorFee, 0, MAX_INITIATOR_FEE);
+        position.fee = uint24(bound(position.fee, 0, (MAX_INITIATOR_FEE - initiatorFee) / 1e12));
 
-        (,,,,,,, uint128 liquidity,,,,) = nonfungiblePositionManager.positions(tokenId);
-
-        UniswapV3Rebalancer.PositionState memory position;
-        position.sqrtPriceX96 = sqrtPriceX96;
-        position.liquidity = liquidity;
-        position.newUpperTick = newUpperTick;
-        position.newLowerTick = newLowerTick;
-        position.fee = uniV3Pool.fee();
-
-        // And : Approve nft manager for rebalancer
-        vm.prank(users.liquidityProvider);
-        nonfungiblePositionManager.approve(address(rebalancer), tokenId);
-
-        (,, uint256 initiatorFee,) = rebalancer.initiatorInfo(initVars.initiator);
-
-        // Avoid stack too deep
-        LpVariables memory lpVars_ = lpVars;
-        uint256 fee = (uint256(position.fee) * 1e12) + initiatorFee;
-
-        // And : Calculate expected amount in
-        uint256 expectedAmountIn;
-        uint256 amount0;
-        uint256 amount1;
+        // And: No overflow due to enormous amounts.
+        // ToDo: Check opposite: loss of precision if it gives issues.
+        uint256 totalValueInToken1;
+        uint256 currentRatio;
         {
-            uint256 targetRatio = UniswapV3Logic._getTargetRatio(
-                position.sqrtPriceX96,
-                TickMath.getSqrtRatioAtTick(position.newLowerTick),
-                TickMath.getSqrtRatioAtTick(position.newUpperTick)
-            );
-
-            (uint256 fee0, uint256 fee1) = getFeeAmounts(tokenId);
-
-            (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
-                uint160(position.sqrtPriceX96),
-                TickMath.getSqrtRatioAtTick(lpVars_.tickLower),
-                TickMath.getSqrtRatioAtTick(lpVars_.tickUpper),
-                position.liquidity
-            );
-            amount0 += fee0;
-            amount1 += fee1;
-
-            uint256 token0ValueInToken1 = UniswapV3Logic._getSpotValue(position.sqrtPriceX96, true, amount0);
-            uint256 totalValueInToken1 = amount1 + token0ValueInToken1;
-            uint256 currentRatio = amount1.mulDivDown(1e18, totalValueInToken1);
-
-            vm.assume(currentRatio < targetRatio);
-
-            uint256 denominator = 1e18 + targetRatio.mulDivDown(fee, 1e18 - fee);
-            uint256 amountOut = (targetRatio - currentRatio).mulDivDown(totalValueInToken1, denominator);
-            // convert to amountIn
-            expectedAmountIn = UniswapV3Logic._getAmountIn(position.sqrtPriceX96, true, amountOut, fee);
+            if (position.sqrtPriceX96 ** 2 > UniswapV3Logic.Q192) {
+                amount0 = uint128(
+                    bound(
+                        amount0, 0, FullMath.mulDiv(type(uint256).max, UniswapV3Logic.Q192, position.sqrtPriceX96 ** 2)
+                    )
+                );
+            }
+            uint256 token0ValueInToken1 = FullMath.mulDiv(amount0, position.sqrtPriceX96 ** 2, UniswapV3Logic.Q192);
+            amount1 = uint128(bound(amount1, 0, type(uint256).max - token0ValueInToken1));
+            totalValueInToken1 = token0ValueInToken1 + amount1;
+            vm.assume(totalValueInToken1 > 0);
+            currentRatio = uint256(amount1) * 1e18 / totalValueInToken1;
         }
 
-        // When : calling getSwapParameters
-        (bool zeroToOne, uint256 amountIn,) = rebalancer.getSwapParameters(position, amount0, amount1, initiatorFee);
+        // And: Current ratio is lower than target ratio.
+        uint256 targetRatio = UniswapV3Logic._getTargetRatio(
+            position.sqrtPriceX96,
+            TickMath.getSqrtRatioAtTick(position.newLowerTick),
+            TickMath.getSqrtRatioAtTick(position.newUpperTick)
+        );
+        vm.assume(currentRatio < targetRatio);
 
-        // Then : It should return correct values
-        assertEq(zeroToOne, true);
-        assertEq(amountIn, expectedAmountIn);
+        // When: Calling getSwapParameters().
+        (bool zeroToOne, uint256 amountIn, uint256 amountOut) =
+            rebalancer.getSwapParameters(position, amount0, amount1, initiatorFee);
+
+        // Then: zeroToOne is true.
+        assertTrue(zeroToOne);
+
+        // And: amountOut is correct.
+        uint256 fee = initiatorFee + uint256(position.fee) * 1e12;
+        {
+            uint256 denominator = 1e18 + targetRatio * fee / (1e18 - fee);
+            uint256 amountOutExpected = (targetRatio - currentRatio) * totalValueInToken1 / denominator;
+            assertEq(amountOut, amountOutExpected);
+        }
+
+        // And: amountIn is correct.
+        uint256 amountInExpected = UniswapV3Logic._getAmountIn(position.sqrtPriceX96, true, amountOut, fee);
+        assertEq(amountIn, amountInExpected);
     }
 
-    function testFuzz_Success_getSwapParameters_targetRatioLowerThanCurrent(
-        InitVariables memory initVars,
-        LpVariables memory lpVars,
-        int24 newUpperTick,
-        int24 newLowerTick
+    function testFuzz_Success_getSwapParameters_currentRatioBiggerThanTarget(
+        UniswapV3Rebalancer.PositionState memory position,
+        uint128 amount0,
+        uint128 amount1,
+        uint256 initiatorFee
     ) public {
-        // Given : Initialize a uniswapV3 pool and a lp position with valid test variables. Also generate fees for that position.
-        uint256 tokenId;
-        (initVars, lpVars, tokenId) = initPoolAndCreatePositionWithFees(initVars, lpVars);
+        // Given: sqrtPriceX96 is smaller than type(uint128).max (no overflow).
+        uint256 sqrtPriceX96Min = TickMath.getSqrtRatioAtTick(TickMath.MIN_TICK + 1);
+        position.sqrtPriceX96 = bound(position.sqrtPriceX96, sqrtPriceX96Min, type(uint128).max);
 
-        (uint160 sqrtPriceX96, int24 currentTick,,,,,) = uniV3Pool.slot0();
+        // And: Position is in range.
+        int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(position.sqrtPriceX96));
+        position.newUpperTick = int24(bound(position.newUpperTick, tickCurrent + 1, TickMath.MAX_TICK));
+        position.newLowerTick = int24(bound(position.newLowerTick, TickMath.MIN_TICK, tickCurrent - 1));
 
-        // And : Tick range should include current tick
-        newUpperTick = int24(bound(newUpperTick, currentTick + MIN_TICK_SPACING, initVars.tickUpper - 1));
-        newLowerTick = int24(bound(newLowerTick, initVars.tickLower + 1, currentTick - MIN_TICK_SPACING));
+        // And: fee is smaller than MAX_INITIATOR_FEE.
+        initiatorFee = bound(initiatorFee, 0, MAX_INITIATOR_FEE);
+        position.fee = uint24(bound(position.fee, 0, (MAX_INITIATOR_FEE - initiatorFee) / 1e12));
 
-        (,,,,,,, uint128 liquidity,,,,) = nonfungiblePositionManager.positions(tokenId);
-
-        UniswapV3Rebalancer.PositionState memory position;
-        position.sqrtPriceX96 = sqrtPriceX96;
-        position.liquidity = liquidity;
-        position.newUpperTick = newUpperTick;
-        position.newLowerTick = newLowerTick;
-        position.fee = uniV3Pool.fee();
-
-        // And : Approve nft manager for rebalancer
-        vm.prank(users.liquidityProvider);
-        nonfungiblePositionManager.approve(address(rebalancer), tokenId);
-
-        (,, uint256 initiatorFee,) = rebalancer.initiatorInfo(initVars.initiator);
-        uint256 fee = (uint256(position.fee) * 1e12) + initiatorFee;
-
-        // Avoid stack too deep
-        int24 tickLowerStack = lpVars.tickLower;
-        int24 tickUpperStack = lpVars.tickUpper;
-
-        uint256 expectedAmountIn;
-        uint256 amount0;
-        uint256 amount1;
+        // And: No overflow due to enormous amounts.
+        // ToDo: Check opposite: loss of precision if it gives issues.
+        uint256 totalValueInToken1;
+        uint256 currentRatio;
         {
-            uint256 targetRatio = UniswapV3Logic._getTargetRatio(
-                position.sqrtPriceX96,
-                TickMath.getSqrtRatioAtTick(position.newLowerTick),
-                TickMath.getSqrtRatioAtTick(position.newUpperTick)
-            );
-
-            (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
-                uint160(position.sqrtPriceX96),
-                TickMath.getSqrtRatioAtTick(tickLowerStack),
-                TickMath.getSqrtRatioAtTick(tickUpperStack),
-                position.liquidity
-            );
-
-            (uint256 fee0, uint256 fee1) = getFeeAmounts(tokenId);
-
-            amount0 += fee0;
-            amount1 += fee1;
-
-            // Calculate the total fee value in token1 equivalent:
-            uint256 token0ValueInToken1 = UniswapV3Logic._getSpotValue(position.sqrtPriceX96, true, amount0);
-            uint256 totalValueInToken1 = amount1 + token0ValueInToken1;
-            uint256 currentRatio = amount1.mulDivDown(1e18, totalValueInToken1);
-
-            vm.assume(targetRatio < currentRatio);
-
-            uint256 denominator = 1e18 - targetRatio.mulDivDown(fee, 1e18);
-            expectedAmountIn = (currentRatio - targetRatio).mulDivDown(totalValueInToken1, denominator);
+            if (position.sqrtPriceX96 ** 2 > UniswapV3Logic.Q192) {
+                amount0 = uint128(
+                    bound(
+                        amount0, 0, FullMath.mulDiv(type(uint256).max, UniswapV3Logic.Q192, position.sqrtPriceX96 ** 2)
+                    )
+                );
+            }
+            uint256 token0ValueInToken1 = FullMath.mulDiv(amount0, position.sqrtPriceX96 ** 2, UniswapV3Logic.Q192);
+            amount1 = uint128(bound(amount1, 0, type(uint256).max - token0ValueInToken1));
+            totalValueInToken1 = token0ValueInToken1 + amount1;
+            vm.assume(totalValueInToken1 > 0);
+            currentRatio = uint256(amount1) * 1e18 / totalValueInToken1;
         }
 
-        // When : calling getSwapParameters
-        (bool zeroToOne, uint256 amountIn,) = rebalancer.getSwapParameters(position, amount0, amount1, initiatorFee);
+        // And: Current ratio is lower than target ratio.
+        uint256 targetRatio = UniswapV3Logic._getTargetRatio(
+            position.sqrtPriceX96,
+            TickMath.getSqrtRatioAtTick(position.newLowerTick),
+            TickMath.getSqrtRatioAtTick(position.newUpperTick)
+        );
+        vm.assume(currentRatio >= targetRatio);
 
-        // Then : It should return correct values
-        assertEq(zeroToOne, false);
-        assertEq(amountIn, expectedAmountIn);
+        // When: Calling getSwapParameters().
+        (bool zeroToOne, uint256 amountIn, uint256 amountOut) =
+            rebalancer.getSwapParameters(position, amount0, amount1, initiatorFee);
+
+        // Then: zeroToOne is true.
+        assertFalse(zeroToOne);
+
+        // And: amountOut is correct.
+        uint256 fee = initiatorFee + uint256(position.fee) * 1e12;
+        {
+            uint256 denominator = 1e18 - targetRatio * fee / 1e18;
+            uint256 amountInExpected = (currentRatio - targetRatio) * totalValueInToken1 / denominator;
+            assertEq(amountIn, amountInExpected);
+        }
+
+        // And: amountIn is correct.
+        uint256 amountOutExpected = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, false, amountIn, fee);
+        assertEq(amountOut, amountOutExpected);
     }
 }

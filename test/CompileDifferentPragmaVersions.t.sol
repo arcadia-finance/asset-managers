@@ -18,6 +18,6 @@ import { QuoterV2Extension } from "../lib/accounts-v2/test/utils/extensions/Quot
 import { SwapRouter } from "../lib/accounts-v2/lib/slipstream/contracts/periphery/SwapRouter.sol";
 import { SwapRouter02 } from "../lib/accounts-v2/lib/swap-router-contracts/contracts/SwapRouter02.sol";
 
-contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is Test {
-    function testFuzz_Revert_rebalancePosition_NotAnAccount() public { }
+contract CompileDifferentPragmaVersions is Test {
+    function testFuzz_Success_rebalancePosition_ArbitrarySwap_OneToZero() public { }
 }

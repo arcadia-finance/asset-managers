@@ -39,8 +39,7 @@ contract UniswapV3Rebalancer is IActionBase {
     // The maximum deviation of the actual pool price, in % with 18 decimals precision.
     uint256 public immutable MAX_TOLERANCE;
 
-    // The maximum fee an initiator can set, in % with 18 decimals precision. The fee is calculated on the swap amount
-    // needed to rebalance.
+    // The maximum fee an initiator can set, with 6 decimals precision.
     uint256 public immutable MAX_INITIATOR_FEE;
 
     // With 18 decimals in %. 1e14 = 0,01%
@@ -78,16 +77,11 @@ contract UniswapV3Rebalancer is IActionBase {
         uint256 upperBoundSqrtPriceX96;
     }
 
-    struct Balances {
-        uint256 amount0;
-        uint256 amount1;
-    }
-
     // A struct used to store information for each specific initiator
     struct InitiatorInfo {
         uint256 upperSqrtPriceDeviation;
         uint256 lowerSqrtPriceDeviation;
-        uint256 fee;
+        uint64 fee;
         bool initialized;
     }
 
@@ -120,7 +114,7 @@ contract UniswapV3Rebalancer is IActionBase {
     /**
      * @param maxTolerance The maximum allowed deviation of the actual pool price for any initiator,
      * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
-     * @param maxInitiatorFee The maximum fee an initiator can set, in % with 18 decimals precision.
+     * @param maxInitiatorFee The maximum fee an initiator can set, with 6 decimals precision.
      * The fee is calculated on the swap amount needed to rebalance.
      */
     constructor(uint256 maxTolerance, uint256 maxInitiatorFee) {
@@ -344,7 +338,7 @@ contract UniswapV3Rebalancer is IActionBase {
 
     /**
      * @notice Sets the information requested for an initiator.
-     * @param fee The fee paid to to the initiator, in % with 18 decimals precision.
+     * @param fee The fee paid to to the initiator, with 6 decimals precision.
      * @param tolerance The maximum deviation of the actual pool price,
      * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
      * @dev The tolerance for the pool price will be converted to an upper and lower max sqrtPrice deviation,
@@ -360,7 +354,7 @@ contract UniswapV3Rebalancer is IActionBase {
         if (fee > MAX_INITIATOR_FEE) revert MaxInitiatorFee();
         if (tolerance > MAX_TOLERANCE) revert MaxTolerance();
 
-        initiatorInfo_.fee = fee;
+        initiatorInfo_.fee = uint64(fee);
 
         // SQRT_PRICE_DEVIATION is the square root of maximum/minimum price deviation.
         // Sqrt halves the number of decimals.
@@ -400,7 +394,8 @@ contract UniswapV3Rebalancer is IActionBase {
         uint256 sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.newUpperTick);
         uint256 sqrtRatioLower = TickMath.getSqrtRatioAtTick(position.newLowerTick);
 
-        // Total fee is pool fee + initiator fee. Scaled position fee from 6 to 18 decimals precision.
+        // Total fee is pool fee + initiator fee, with 18 decimals precision.
+        // Since Uniswap uses 6 decimals precision for the fee, we have to multiply the pool fee by 1e12.
         uint256 fee = initiatorFee + uint256(position.fee) * 1e12;
 
         if (position.sqrtPriceX96 >= sqrtRatioUpper) {

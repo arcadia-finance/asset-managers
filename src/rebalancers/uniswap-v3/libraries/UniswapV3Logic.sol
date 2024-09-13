@@ -63,7 +63,7 @@ library UniswapV3Logic {
      * @param sqrtPriceX96 The square root of the price (token1/token0), with 96 binary precision.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param amountIn The amount that of tokenIn that must be swapped to tokenOut.
-     * @param fee The amount of fee for the specific pool.
+     * @param fee The total fee on amountIn, with 18 decimals precision.
      * @return amountOut The amount of tokenOut.
      * @dev Function will revert for all pools where the sqrtPriceX96 is bigger than type(uint128).max.
      * type(uint128).max is currently more than enough for all supported pools.
@@ -75,7 +75,7 @@ library UniswapV3Logic {
         pure
         returns (uint256 amountOut)
     {
-        uint256 amountInWithoutFees = (1e6 - fee).mulDivDown(amountIn, 1e6);
+        uint256 amountInWithoutFees = (1e18 - fee).mulDivDown(amountIn, 1e18);
         amountOut = zeroToOne
             ? FullMath.mulDiv(amountInWithoutFees, sqrtPriceX96 ** 2, Q192)
             : FullMath.mulDiv(amountInWithoutFees, Q192, sqrtPriceX96 ** 2);
@@ -87,7 +87,7 @@ library UniswapV3Logic {
      * @param sqrtPriceX96 The square root of the price (token1/token0), with 96 binary precision.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param amountOut The amount that of tokenOut that must be swapped.
-     * @param fee The amount of fee for the specific pool, with 18 decimals precision.
+     * @param fee The total fee on amountIn, with 18 decimals precision.
      * @return amountIn The amount of tokenIn.
      * @dev Function will revert for all pools where the sqrtPriceX96 is bigger than type(uint128).max.
      * type(uint128).max is currently more than enough for all supported pools.
