@@ -158,6 +158,8 @@ contract UniswapV3Rebalancer is IActionBase {
         emit Rebalance(account_, id);
     }
 
+    event Log(string name, uint256 value);
+
     /**
      * @notice Callback function called by the Arcadia Account during a flashAction.
      * @param rebalanceData A bytes object containing a struct with the assetData of the position and the address of the initiator.
@@ -166,10 +168,8 @@ contract UniswapV3Rebalancer is IActionBase {
      * @dev When rebalancing we will burn the current Liquidity Position and mint a new one with a new tokenId.
      */
     function executeAction(bytes calldata rebalanceData) external override returns (ActionData memory assetData) {
-        // Cache account
-        address account_ = account;
         // Caller should be the Account, provided as input in rebalancePosition().
-        if (msg.sender != account_) revert OnlyAccount();
+        if (msg.sender != account) revert OnlyAccount();
 
         // Decode rebalanceData.
         address initiator;
@@ -212,32 +212,36 @@ contract UniswapV3Rebalancer is IActionBase {
         UniswapV3Logic.POSITION_MANAGER.burn(id);
 
         bool zeroToOne;
-        uint256 amountInWithFee;
+        uint256 feeAmount;
+        uint256 balance0;
+        uint256 balance1;
         {
             // Cache initiator fee
             uint256 initiatorFee = initiatorInfo[initiator].fee;
+            emit Log("initiatorFee", initiatorFee);
 
-            uint256 amountOut;
             // Rebalance the position so that the maximum liquidity can be added for new ticks.
             // The Pool must still be balanced after the swap.
+            uint256 amountInWithFee;
+            uint256 amountOut;
             (zeroToOne, amountInWithFee, amountOut) = getSwapParameters(position, amount0, amount1, initiatorFee);
+            emit Log("expectedAmountIn", amountInWithFee);
+            emit Log("expectedAmountOut", amountOut);
 
-            // Get initiator fee amount and deduct from amountIn.
-            uint256 feeAmount = amountInWithFee.mulDivDown(initiatorFee, 1e18);
-            uint256 amountInFeeExcluded = amountInWithFee - feeAmount;
+            // Get initiator fee amount.
+            feeAmount = amountInWithFee.mulDivDown(initiatorFee, 1e18);
 
             if (swapData.length > 0) {
                 // Perform arbitrary swap
-                _swap(position, zeroToOne, amountInFeeExcluded, swapData);
+                _swap(position, zeroToOne, amountInWithFee - feeAmount, swapData);
+                balance0 = ERC20(position.token0).balanceOf(address(this));
+                balance1 = ERC20(position.token1).balanceOf(address(this));
             } else {
                 // Swap via the pool of the position directly
-                if (_swap(position, zeroToOne, amountInFeeExcluded)) revert UnbalancedPool();
+                if (_swap(position, zeroToOne, amountOut)) revert UnbalancedPool();
+                balance0 = zeroToOne ? ERC20(position.token0).balanceOf(address(this)) : amount0 + amountOut;
+                balance1 = zeroToOne ? amount1 + amountOut : ERC20(position.token1).balanceOf(address(this));
             }
-
-            // Transfer fee to the initiator
-            zeroToOne
-                ? ERC20(position.token0).safeTransfer(initiator, feeAmount)
-                : ERC20(position.token1).safeTransfer(initiator, feeAmount);
         }
 
         // *********************************************************
@@ -253,8 +257,6 @@ contract UniswapV3Rebalancer is IActionBase {
         // The approval for at least one token after increasing liquidity will remain non-zero.
         // We have to set approval first to 0 for ERC20 tokens that require the approval to be set to zero
         // before setting it to a non-zero value.
-        uint256 balance0 = zeroToOne ? amount0 - amountInWithFee : ERC20(position.token0).balanceOf(address(this));
-        uint256 balance1 = zeroToOne ? ERC20(position.token1).balanceOf(address(this)) : amount1 - amountInWithFee;
         ERC20(position.token0).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), 0);
         ERC20(position.token0).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), balance0);
         ERC20(position.token1).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), 0);
@@ -270,16 +272,34 @@ contract UniswapV3Rebalancer is IActionBase {
                 tickUpper: position.newUpperTick,
                 amount0Desired: balance0,
                 amount1Desired: balance1,
-                amount0Min: zeroToOne ? balance0 - balance0.mulDivDown(MAX_LEFTOVER_LIMITING_FACTOR, 1e18) : 0,
-                amount1Min: zeroToOne ? 0 : balance1 - balance1.mulDivDown(MAX_LEFTOVER_LIMITING_FACTOR, 1e18),
+                amount0Min: zeroToOne ? 0 : balance0 * (1e18 - MAX_LEFTOVER_LIMITING_FACTOR) / 1e18,
+                amount1Min: zeroToOne ? balance1 * (1e18 - MAX_LEFTOVER_LIMITING_FACTOR) / 1e18 : 0,
                 recipient: address(this),
                 deadline: block.timestamp
             })
         );
-
-        // Any surplus is transferred to the Account.
+        // Update balances.
         balance0 -= amount0;
         balance1 -= amount1;
+
+        // Transfer fee to the initiator.
+        if (zeroToOne) {
+            if (balance0 > feeAmount) {
+                balance0 -= feeAmount;
+                ERC20(position.token0).safeTransfer(initiator, feeAmount);
+            } else {
+                ERC20(position.token0).safeTransfer(initiator, balance0);
+                balance0 = 0;
+            }
+        } else {
+            if (balance1 > feeAmount) {
+                balance1 -= feeAmount;
+                ERC20(position.token1).safeTransfer(initiator, feeAmount);
+            } else {
+                ERC20(position.token1).safeTransfer(initiator, balance1);
+                balance1 = 0;
+            }
+        }
 
         ActionData memory returnedAssets;
         {
@@ -438,15 +458,15 @@ contract UniswapV3Rebalancer is IActionBase {
      * @notice Swaps one token to the other token in the Uniswap V3 Pool of the Liquidity Position.
      * @param position Struct with the position data.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
-     * @param amountIn The amount of tokenIn that must be swapped.
+     * @param amountOut The amount that of tokenOut that must be swapped to.
      * @return isPoolUnbalanced_ Bool indicating if the pool is unbalanced due to slippage of the swap.
      */
-    function _swap(PositionState memory position, bool zeroToOne, uint256 amountIn)
+    function _swap(PositionState memory position, bool zeroToOne, uint256 amountOut)
         internal
         returns (bool isPoolUnbalanced_)
     {
         // Don't do swaps with zero amount.
-        if (amountIn == 0) return false;
+        if (amountOut == 0) return false;
 
         // Pool should still be balanced (within tolerance boundaries) after the swap.
         uint160 sqrtPriceLimitX96 =
@@ -455,10 +475,12 @@ contract UniswapV3Rebalancer is IActionBase {
         // Do the swap.
         bytes memory data = abi.encode(position.token0, position.token1, position.fee);
         (int256 deltaAmount0, int256 deltaAmount1) =
-            IUniswapV3Pool(position.pool).swap(address(this), zeroToOne, int256(amountIn), sqrtPriceLimitX96, data);
+            IUniswapV3Pool(position.pool).swap(address(this), zeroToOne, -int256(amountOut), sqrtPriceLimitX96, data);
+        emit Log("actualAmountIn", deltaAmount0 > deltaAmount1 ? uint256(deltaAmount0) : uint256(deltaAmount1));
+        emit Log("actualAmountOut", deltaAmount0 < deltaAmount1 ? uint256(-deltaAmount0) : uint256(-deltaAmount1));
 
-        // Check if pool is still balanced (sqrtPriceLimitX96 is reached before an amountIn of tokenIn is swapped).
-        isPoolUnbalanced_ = (amountIn > (zeroToOne ? uint256(deltaAmount0) : uint256(deltaAmount1)));
+        // Check if pool is still balanced (sqrtPriceLimitX96 is reached before an amountOut of tokenOut is received).
+        isPoolUnbalanced_ = (amountOut > (zeroToOne ? uint256(-deltaAmount1) : uint256(-deltaAmount0)));
     }
 
     /**

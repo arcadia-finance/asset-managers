@@ -29,7 +29,7 @@ contract Swap_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
                               TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function testFuzz_Success_swap_zeroAmount(UniswapV3Rebalancer.PositionState memory position, bool zeroToOne)
+    function testFuzz_Success_swap_ZeroAmount(UniswapV3Rebalancer.PositionState memory position, bool zeroToOne)
         public
     {
         // Given : amountOut is 0
@@ -40,7 +40,7 @@ contract Swap_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
         assertEq(isPoolUnbalanced, false);
     }
 
-    function testFuzz_Success_swap_oneToZero_UnbalancedPool(
+    function testFuzz_Success_swap_OneToZero_UnbalancedPool(
         InitVariables memory initVars,
         LpVariables memory lpVars,
         UniswapV3Rebalancer.PositionState memory position,
@@ -68,22 +68,22 @@ contract Swap_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
         uint256 sqrtPriceX96Target =
             position.upperBoundSqrtPriceX96 + ((position.upperBoundSqrtPriceX96 * (0.001 * 1e18)) / 1e18);
 
-        int256 amountRemaining = int256(type(int128).max);
-        // Calculate the minimum amount of token 1 to swap to achieve target price
-        (, uint256 amountIn,,) = SwapMath.computeSwapStep(
+        int256 amountRemaining = -int256(type(int128).max);
+        // Calculate the amounts to swap to achieve target price.
+        (, uint256 amountIn, uint256 amountOut, uint256 feeAmount) = SwapMath.computeSwapStep(
             sqrtPriceX96, uint160(sqrtPriceX96Target), liquidity, amountRemaining, 100 * POOL_FEE
         );
 
         // Send amountIn to rebalancer for swap
-        deal(address(token1), address(rebalancer), amountIn);
+        deal(address(token1), address(rebalancer), amountIn + feeAmount);
 
-        bool isPoolUnbalanced = rebalancer.swap(position, zeroToOne, amountIn);
+        bool isPoolUnbalanced = rebalancer.swap(position, zeroToOne, amountOut);
 
         // Then : It should return "true"
         assertEq(isPoolUnbalanced, true);
     }
 
-    function testFuzz_Success_swap_oneToZero_balancedPool(
+    function testFuzz_Success_swap_OneToZero_BalancedPool(
         InitVariables memory initVars,
         LpVariables memory lpVars,
         UniswapV3Rebalancer.PositionState memory position,
@@ -112,21 +112,21 @@ contract Swap_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
             position.upperBoundSqrtPriceX96 - ((position.upperBoundSqrtPriceX96 * (0.001 * 1e18)) / 1e18);
 
         int256 amountRemaining = int256(type(int128).max);
-        // Calculate the minimum amount of token 1 to swap to achieve target price
-        (, uint256 amountIn,,) = SwapMath.computeSwapStep(
-            sqrtPriceX96, uint160(sqrtPriceX96Target), liquidity, amountRemaining, 100 * POOL_FEE
+        // Calculate the amounts to swap to achieve target price.
+        (, uint256 amountIn, uint256 amountOut, uint256 feeAmount) = SwapMath.computeSwapStep(
+            sqrtPriceX96, uint160(sqrtPriceX96Target), liquidity, -amountRemaining, 100 * POOL_FEE
         );
 
-        // Send token1 to rebalancer for swap
-        deal(address(token1), address(rebalancer), amountIn);
+        // Send amountIn to rebalancer for swap
+        deal(address(token1), address(rebalancer), amountIn + feeAmount);
 
-        bool isPoolUnbalanced = rebalancer.swap(position, zeroToOne, amountIn);
+        bool isPoolUnbalanced = rebalancer.swap(position, zeroToOne, amountOut);
 
         // Then : It should return "false"
         assertEq(isPoolUnbalanced, false);
     }
 
-    function testFuzz_Success_swap_zeroToOne_UnbalancedPool(
+    function testFuzz_Success_swap_ZeroToOne_UnbalancedPool(
         InitVariables memory initVars,
         LpVariables memory lpVars,
         UniswapV3Rebalancer.PositionState memory position,
@@ -154,22 +154,22 @@ contract Swap_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
         uint256 sqrtPriceX96Target =
             position.lowerBoundSqrtPriceX96 - ((position.lowerBoundSqrtPriceX96 * (0.001 * 1e18)) / 1e18);
 
-        int256 amountRemaining = type(int128).max;
-        // Calculate the minimum amount of token 0 to swap to achieve target price
-        (, uint256 amountIn,,) = SwapMath.computeSwapStep(
+        int256 amountRemaining = -type(int128).max;
+        // Calculate the amounts to swap to achieve target price.
+        (, uint256 amountIn, uint256 amountOut, uint256 feeAmount) = SwapMath.computeSwapStep(
             sqrtPriceX96, uint160(sqrtPriceX96Target), liquidity, amountRemaining, 100 * POOL_FEE
         );
 
         // Send amountIn to rebalancer for swap
-        deal(address(token0), address(rebalancer), amountIn);
+        deal(address(token0), address(rebalancer), amountIn + feeAmount);
 
-        bool isPoolUnbalanced = rebalancer.swap(position, zeroToOne, amountIn);
+        bool isPoolUnbalanced = rebalancer.swap(position, zeroToOne, amountOut);
 
         // Then : It should return "true"
         assertEq(isPoolUnbalanced, true);
     }
 
-    function testFuzz_Success_swap_zeroToOne_BalancedPool(
+    function testFuzz_Success_swap_ZeroToOne_BalancedPool(
         InitVariables memory initVars,
         LpVariables memory lpVars,
         UniswapV3Rebalancer.PositionState memory position,
@@ -197,16 +197,16 @@ contract Swap_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
         uint256 sqrtPriceX96Target =
             position.lowerBoundSqrtPriceX96 + ((position.lowerBoundSqrtPriceX96 * (0.001 * 1e18)) / 1e18);
 
-        int256 amountRemaining = type(int128).max;
-        // Calculate the minimum amount of token 0 to swap to achieve target price
-        (, uint256 amountIn,,) = SwapMath.computeSwapStep(
+        int256 amountRemaining = -type(int128).max;
+        // Calculate the amounts to swap to achieve target price.
+        (, uint256 amountIn, uint256 amountOut, uint256 feeAmount) = SwapMath.computeSwapStep(
             sqrtPriceX96, uint160(sqrtPriceX96Target), liquidity, amountRemaining, 100 * POOL_FEE
         );
 
-        // Send tokenIn to rebalancer for swap
-        deal(address(token0), address(rebalancer), amountIn);
+        // Send amountIn to rebalancer for swap
+        deal(address(token0), address(rebalancer), amountIn + feeAmount);
 
-        bool isPoolUnbalanced = rebalancer.swap(position, zeroToOne, amountIn);
+        bool isPoolUnbalanced = rebalancer.swap(position, zeroToOne, amountOut);
 
         // Then : It should return "false"
         assertEq(isPoolUnbalanced, false);

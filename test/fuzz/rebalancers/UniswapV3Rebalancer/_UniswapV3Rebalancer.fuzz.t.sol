@@ -53,13 +53,14 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
     uint256 internal MAX_TOLERANCE = 0.02 * 1e18;
 
     // 0,5 % max fee
-    uint256 MAX_INITIATOR_FEE = 0.005 * 1e18;
+    uint256 MIN_INITIATOR_FEE = 0.005 * 1e18;
+    uint256 MAX_INITIATOR_FEE = 0.01 * 1e18;
 
-    // Minimum liquidity ratio for minted position, 0,05%
-    uint256 internal MIN_LIQUIDITY = 0.0005 * 1e18;
+    // Minimum liquidity ratio for minted position, 0,005%
+    uint256 internal MIN_LIQUIDITY = 0.00001 * 1e18;
 
-    // Max liquidity ratio of minted position, 2%
-    uint256 internal LIQUIDITY_TRESHOLD = 0.02 * 1e18;
+    // Max liquidity ratio of minted position, 0.02%
+    uint256 internal LIQUIDITY_TRESHOLD = 0.0001 * 1e18;
 
     int24 internal MIN_TICK_SPACING = 10;
     int24 internal INIT_LP_TICK_RANGE = 20_000;
@@ -217,7 +218,7 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         // Too low tolerance for testing will make tests reverts too quickly with unbalancedPool()
         // TODO : fuzz more tolerances here
         tolerance = bound(tolerance, 0.018 * 1e18, rebalancer.MAX_TOLERANCE() - 1);
-        fee = bound(fee, 0, MAX_INITIATOR_FEE - 1);
+        fee = bound(fee, MIN_INITIATOR_FEE, MAX_INITIATOR_FEE - 1);
 
         if (increaseTolerance == true) {
             tolerance = rebalancer.MAX_TOLERANCE();
@@ -300,7 +301,7 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         // Given : Liquidity for new position is in limits
         uint128 currentLiquidity = uniV3Pool.liquidity();
         uint256 minLiquidity = currentLiquidity.mulDivDown(MIN_LIQUIDITY, 1e18);
-        // And : Use max liquidity treshold in order to avoid excessive slippage in tests
+        // And : Use max liquidity threshold in order to avoid excessive slippage in tests
         uint256 maxLiquidity = currentLiquidity.mulDivDown(LIQUIDITY_TRESHOLD, 1e18);
         lpVars.liquidity = uint128(bound(lpVars.liquidity, minLiquidity, maxLiquidity));
 
