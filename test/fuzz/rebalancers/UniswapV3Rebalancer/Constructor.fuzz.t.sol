@@ -20,11 +20,14 @@ contract Constructor_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_T
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_Constructor(uint256 maxTolerance, uint256 maxInitiatorFee) public {
+    function testFuzz_Success_Constructor(uint256 maxTolerance, uint256 maxInitiatorFee, uint256 maxSlippageRatio)
+        public
+    {
         vm.prank(users.owner);
-        UniswapV3Rebalancer rebalancer_ = new UniswapV3Rebalancer(maxTolerance, maxInitiatorFee);
+        UniswapV3Rebalancer rebalancer_ = new UniswapV3Rebalancer(maxTolerance, maxInitiatorFee, maxSlippageRatio);
 
         assertEq(rebalancer_.MAX_TOLERANCE(), maxTolerance);
         assertEq(rebalancer_.MAX_INITIATOR_FEE(), maxInitiatorFee);
+        assertEq(rebalancer_.MAX_SLIPPAGE_RATIO(), maxSlippageRatio);
     }
 }
