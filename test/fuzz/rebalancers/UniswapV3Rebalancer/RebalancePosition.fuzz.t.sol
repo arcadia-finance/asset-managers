@@ -508,6 +508,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         int24 newUpperTick,
         uint256 amount1ToSwap
     ) public {
+        initVars.fee = 0;
         // Given : deploy new rebalancer with a high maxTolerance to avoid unbalancedPool due to external usd prices not aligned
         uint256 maxTolerance = 1e18;
         deployRebalancer(maxTolerance, MAX_INITIATOR_FEE);

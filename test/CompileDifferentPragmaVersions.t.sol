@@ -19,5 +19,5 @@ import { SwapRouter } from "../lib/accounts-v2/lib/slipstream/contracts/peripher
 import { SwapRouter02 } from "../lib/accounts-v2/lib/swap-router-contracts/contracts/SwapRouter02.sol";
 
 contract CompileDifferentPragmaVersions is Test {
-    function testFuzz_Success_rebalancePosition_MoveTickLeft_CustomTicks() public { }
+    function testFuzz_Success_rebalancePosition_MoveTickRight_CustomTicks() public { }
 }
