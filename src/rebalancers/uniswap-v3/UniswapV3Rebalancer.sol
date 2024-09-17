@@ -53,7 +53,7 @@ contract UniswapV3Rebalancer is IActionBase {
     uint256 internal constant MAX_ITERATIONS = 50;
 
     // The minimal relative difference between liquidity0 and liquidity1, with 18 decimals precision.
-    uint256 internal constant CONVERGENCE_THRESHOLD = 1e6;
+    uint256 internal constant CONVERGENCE_THRESHOLD = 1e8;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
@@ -168,7 +168,6 @@ contract UniswapV3Rebalancer is IActionBase {
         account = address(0);
 
         emit Rebalance(account_, id);
-        //require(false, "test");
     }
 
     event Log(string name, uint256 value);
@@ -268,6 +267,7 @@ contract UniswapV3Rebalancer is IActionBase {
                     zeroToOne ? balance0 - amountInitiatorFee : balance0,
                     zeroToOne ? balance1 : balance1 - amountInitiatorFee,
                     amountInWithFees - amountInitiatorFee,
+                    amountOut,
                     zeroToOne
                 );
                 if (_swap(position, zeroToOne, amountOut)) revert UnbalancedPool();
@@ -501,8 +501,9 @@ contract UniswapV3Rebalancer is IActionBase {
         uint256 amount0,
         uint256 amount1,
         uint256 amountIn,
+        uint256 amountOut,
         bool zeroToOne
-    ) public returns (uint256 amountOut) {
+    ) public returns (uint256) {
         uint256 amountInLessFee;
         uint160 sqrtPriceNew = sqrtPriceOld;
         // We iteratively solve for sqrtPrice, amountOut and amountIn, so that the maximal amount of liquidity can be added to the position.
@@ -514,13 +515,13 @@ contract UniswapV3Rebalancer is IActionBase {
                 sqrtPriceNew = SqrtPriceMath.getNextSqrtPriceFromAmount0RoundingUp(
                     sqrtPriceOld, usableLiquidity, amountInLessFee, true
                 );
-                amountOut = SqrtPriceMath.getAmount1Delta(sqrtPriceNew, sqrtPriceOld, usableLiquidity, false);
+                //amountOut = SqrtPriceMath.getAmount1Delta(sqrtPriceNew, sqrtPriceOld, usableLiquidity, false);
 
                 if (sqrtPriceNew > sqrtRatioUpper) {
                     // Position is out of range and fully in token0.
                     // If amountIn is equal to amount0, exact solution is found.
                     // If not we have to set amountIn equal to amount0 and do one more iteration.
-                    if (amountIn == amount0) return amountOut;
+                    if (amountIn == amount0) return SqrtPriceMath.getAmount1Delta(sqrtPriceNew, sqrtPriceOld, usableLiquidity, false);
                     else amountIn = amount0;
                 } else {
                     {
@@ -542,14 +543,13 @@ contract UniswapV3Rebalancer is IActionBase {
                 sqrtPriceNew = SqrtPriceMath.getNextSqrtPriceFromAmount1RoundingDown(
                     sqrtPriceOld, usableLiquidity, amountInLessFee, true
                 );
-                amountOut = SqrtPriceMath.getAmount0Delta(sqrtPriceOld, sqrtPriceNew, usableLiquidity, false);
                 emit Log(i, amountIn, amountOut, sqrtPriceNew);
 
                 if (sqrtPriceNew < sqrtRatioLower) {
                     // Position is out of range and fully in token1.
                     // If amountIn is equal to amount1, exact solution is found.
                     // If not we have to set amountIn equal to amount1 and do one more iteration.
-                    if (amountIn == amount1) return amountOut;
+                    if (amountIn == amount1) return SqrtPriceMath.getAmount0Delta(sqrtPriceOld, sqrtPriceNew, usableLiquidity, false);
                     else amountIn = amount1;
                 } else {
                     {
@@ -613,6 +613,7 @@ contract UniswapV3Rebalancer is IActionBase {
                 liquidity1 = LiquidityAmounts.getLiquidityForAmount1(sqrtRatioLower, sqrtPrice, amount1 - amountIn);
             }
             avgLiquidity = (liquidity0 + liquidity1) / 2;
+            //avgLiquidity = liquidity0 < liquidity1 ? liquidity0 : liquidity1;
 
             // Calculate the relative difference of liquidity0 and liquidity1.
             uint256 relDiff = 1e18
