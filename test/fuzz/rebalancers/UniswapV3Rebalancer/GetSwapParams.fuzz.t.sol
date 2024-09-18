@@ -7,6 +7,7 @@ pragma solidity 0.8.22;
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
 import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/LiquidityAmounts.sol";
+import { NoSlippageSwapMath } from "../../../../src/rebalancers/uniswap-v3/libraries/NoSlippageSwapMath.sol";
 import { stdError } from "../../../../lib/accounts-v2/lib/forge-std/src/StdError.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { UniswapV3Logic } from "../../../../src/rebalancers/uniswap-v3/libraries/UniswapV3Logic.sol";
@@ -14,9 +15,9 @@ import { UniswapV3Rebalancer } from "../../../../src/rebalancers/uniswap-v3/Unis
 import { UniswapV3Rebalancer_Fuzz_Test } from "./_UniswapV3Rebalancer.fuzz.t.sol";
 
 /**
- * @notice Fuzz tests for the function "_getSwapParameters" of contract "UniswapV3Rebalancer".
+ * @notice Fuzz tests for the function "_getSwapParams" of contract "UniswapV3Rebalancer".
  */
-contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
+contract GetSwapParams_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
     using FixedPointMathLib for uint256;
     /* ///////////////////////////////////////////////////////////////
                               SETUP
@@ -29,7 +30,7 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Revert_getSwapParameters_SingleSidedToken0_OverflowSqrtPriceX96(
+    function testFuzz_Revert_getSwapParams_SingleSidedToken0_OverflowSqrtPriceX96(
         UniswapV3Rebalancer.PositionState memory position,
         uint128 amount0,
         uint128 amount1,
@@ -43,6 +44,8 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(position.sqrtPriceX96));
         position.newUpperTick = int24(bound(position.newUpperTick, tickCurrent + 1, TickMath.MAX_TICK));
         position.newLowerTick = int24(bound(position.newLowerTick, tickCurrent + 1, TickMath.MAX_TICK));
+        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(position.newLowerTick);
+        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.newUpperTick);
 
         // And: Ticks don't overflow (invariant Uniswap).
         position.newLowerTick = int24(bound(position.newLowerTick, TickMath.MIN_TICK, TickMath.MAX_TICK));
@@ -51,13 +54,13 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         initiatorFee = bound(initiatorFee, 0, MAX_INITIATOR_FEE);
         position.fee = uint24(bound(position.fee, 0, (MAX_INITIATOR_FEE - initiatorFee) / 1e12));
 
-        // When: Calling getSwapParameters().
+        // When: Calling getSwapParams().
         // Then: Function overflows.
         vm.expectRevert(stdError.arithmeticError);
-        rebalancer.getSwapParameters(position, amount0, amount1, initiatorFee);
+        rebalancer.getSwapParams(position, amount0, amount1, initiatorFee);
     }
 
-    function testFuzz_Success_getSwapParameters_SingleSidedToken0(
+    function testFuzz_Success_getSwapParams_SingleSidedToken0(
         UniswapV3Rebalancer.PositionState memory position,
         uint128 amount0,
         uint128 amount1,
@@ -70,6 +73,8 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(position.sqrtPriceX96));
         position.newUpperTick = int24(bound(position.newUpperTick, tickCurrent + 1, TickMath.MAX_TICK));
         position.newLowerTick = int24(bound(position.newLowerTick, tickCurrent + 1, TickMath.MAX_TICK));
+        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(position.newLowerTick);
+        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.newUpperTick);
 
         // And: Ticks don't overflow (invariant Uniswap).
         position.newLowerTick = int24(bound(position.newLowerTick, TickMath.MIN_TICK, TickMath.MAX_TICK));
@@ -78,9 +83,9 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         initiatorFee = bound(initiatorFee, 0, MAX_INITIATOR_FEE);
         position.fee = uint24(bound(position.fee, 0, (MAX_INITIATOR_FEE - initiatorFee) / 1e12));
 
-        // When: Calling getSwapParameters().
-        (bool zeroToOne, uint256 amountIn, uint256 amountOut) =
-            rebalancer.getSwapParameters(position, amount0, amount1, initiatorFee);
+        // When: Calling getSwapParams().
+        (bool zeroToOne, uint256 amountIn, uint256 amountOut,) =
+            rebalancer.getSwapParams(position, amount0, amount1, initiatorFee);
 
         // Then: zeroToOne is false.
         assertFalse(zeroToOne);
@@ -90,11 +95,11 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
 
         // And: amountOut is correct.
         uint256 fee = initiatorFee + uint256(position.fee) * 1e12;
-        uint256 amountOutExpected = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, false, amount1, fee);
+        uint256 amountOutExpected = NoSlippageSwapMath._getAmountOut(position.sqrtPriceX96, false, amount1, fee);
         assertEq(amountOut, amountOutExpected);
     }
 
-    function testFuzz_Revert_getSwapParameters_SingleSidedToken1_OverflowSqrtPriceX96(
+    function testFuzz_Revert_getSwapParams_SingleSidedToken1_OverflowSqrtPriceX96(
         UniswapV3Rebalancer.PositionState memory position,
         uint128 amount0,
         uint128 amount1,
@@ -111,17 +116,20 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         // And: Ticks don't overflow (invariant Uniswap).
         position.newLowerTick = int24(bound(position.newLowerTick, TickMath.MIN_TICK, TickMath.MAX_TICK));
 
+        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(position.newLowerTick);
+        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.newUpperTick);
+
         // And: fee is smaller than MAX_INITIATOR_FEE (invariant).
         initiatorFee = bound(initiatorFee, 0, MAX_INITIATOR_FEE);
         position.fee = uint24(bound(position.fee, 0, (MAX_INITIATOR_FEE - initiatorFee) / 1e12));
 
-        // When: Calling getSwapParameters().
+        // When: Calling getSwapParams().
         // Then: Function overflows.
         vm.expectRevert(stdError.arithmeticError);
-        rebalancer.getSwapParameters(position, amount0, amount1, initiatorFee);
+        rebalancer.getSwapParams(position, amount0, amount1, initiatorFee);
     }
 
-    function testFuzz_Success_getSwapParameters_SingleSidedToken1(
+    function testFuzz_Success_getSwapParams_SingleSidedToken1(
         UniswapV3Rebalancer.PositionState memory position,
         uint128 amount0,
         uint128 amount1,
@@ -137,13 +145,16 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         // And: Ticks don't overflow (invariant Uniswap).
         position.newLowerTick = int24(bound(position.newLowerTick, TickMath.MIN_TICK, TickMath.MAX_TICK));
 
+        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(position.newLowerTick);
+        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.newUpperTick);
+
         // And: fee is smaller than MAX_INITIATOR_FEE.
         initiatorFee = bound(initiatorFee, 0, MAX_INITIATOR_FEE);
         position.fee = uint24(bound(position.fee, 0, (MAX_INITIATOR_FEE - initiatorFee) / 1e12));
 
-        // When: Calling getSwapParameters().
-        (bool zeroToOne, uint256 amountIn, uint256 amountOut) =
-            rebalancer.getSwapParameters(position, amount0, amount1, initiatorFee);
+        // When: Calling getSwapParams().
+        (bool zeroToOne, uint256 amountIn, uint256 amountOut,) =
+            rebalancer.getSwapParams(position, amount0, amount1, initiatorFee);
 
         // Then: zeroToOne is true.
         assertTrue(zeroToOne);
@@ -153,11 +164,11 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
 
         // And: amountOut is correct.
         uint256 fee = initiatorFee + uint256(position.fee) * 1e12;
-        uint256 amountOutExpected = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, amount0, fee);
+        uint256 amountOutExpected = NoSlippageSwapMath._getAmountOut(position.sqrtPriceX96, true, amount0, fee);
         assertEq(amountOut, amountOutExpected);
     }
 
-    function testFuzz_Success_getSwapParameters_currentRatioSmallerThanTarget(
+    function testFuzz_Success_getSwapParams_currentRatioSmallerThanTarget(
         UniswapV3Rebalancer.PositionState memory position,
         uint128 amount0,
         uint128 amount1,
@@ -171,6 +182,8 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(position.sqrtPriceX96));
         position.newUpperTick = int24(bound(position.newUpperTick, tickCurrent + 1, TickMath.MAX_TICK));
         position.newLowerTick = int24(bound(position.newLowerTick, TickMath.MIN_TICK, tickCurrent - 1));
+        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(position.newLowerTick);
+        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.newUpperTick);
 
         // And: fee is smaller than MAX_INITIATOR_FEE.
         initiatorFee = bound(initiatorFee, 0, MAX_INITIATOR_FEE);
@@ -196,16 +209,16 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         }
 
         // And: Current ratio is lower than target ratio.
-        uint256 targetRatio = UniswapV3Logic._getTargetRatio(
+        uint256 targetRatio = NoSlippageSwapMath._getTargetRatio(
             position.sqrtPriceX96,
             TickMath.getSqrtRatioAtTick(position.newLowerTick),
             TickMath.getSqrtRatioAtTick(position.newUpperTick)
         );
         vm.assume(currentRatio < targetRatio);
 
-        // When: Calling getSwapParameters().
-        (bool zeroToOne, uint256 amountIn, uint256 amountOut) =
-            rebalancer.getSwapParameters(position, amount0, amount1, initiatorFee);
+        // When: Calling getSwapParams().
+        (bool zeroToOne, uint256 amountIn, uint256 amountOut,) =
+            rebalancer.getSwapParams(position, amount0, amount1, initiatorFee);
 
         // Then: zeroToOne is true.
         assertTrue(zeroToOne);
@@ -219,11 +232,11 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         }
 
         // And: amountIn is correct.
-        uint256 amountInExpected = UniswapV3Logic._getAmountIn(position.sqrtPriceX96, true, amountOut, fee);
+        uint256 amountInExpected = NoSlippageSwapMath._getAmountIn(position.sqrtPriceX96, true, amountOut, fee);
         assertEq(amountIn, amountInExpected);
     }
 
-    function testFuzz_Success_getSwapParameters_currentRatioBiggerThanTarget(
+    function testFuzz_Success_getSwapParams_currentRatioBiggerThanTarget(
         UniswapV3Rebalancer.PositionState memory position,
         uint128 amount0,
         uint128 amount1,
@@ -237,6 +250,8 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(position.sqrtPriceX96));
         position.newUpperTick = int24(bound(position.newUpperTick, tickCurrent + 1, TickMath.MAX_TICK));
         position.newLowerTick = int24(bound(position.newLowerTick, TickMath.MIN_TICK, tickCurrent - 1));
+        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(position.newLowerTick);
+        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.newUpperTick);
 
         // And: fee is smaller than MAX_INITIATOR_FEE.
         initiatorFee = bound(initiatorFee, 0, MAX_INITIATOR_FEE);
@@ -262,16 +277,16 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         }
 
         // And: Current ratio is lower than target ratio.
-        uint256 targetRatio = UniswapV3Logic._getTargetRatio(
+        uint256 targetRatio = NoSlippageSwapMath._getTargetRatio(
             position.sqrtPriceX96,
             TickMath.getSqrtRatioAtTick(position.newLowerTick),
             TickMath.getSqrtRatioAtTick(position.newUpperTick)
         );
         vm.assume(currentRatio >= targetRatio);
 
-        // When: Calling getSwapParameters().
-        (bool zeroToOne, uint256 amountIn, uint256 amountOut) =
-            rebalancer.getSwapParameters(position, amount0, amount1, initiatorFee);
+        // When: Calling getSwapParams().
+        (bool zeroToOne, uint256 amountIn, uint256 amountOut,) =
+            rebalancer.getSwapParams(position, amount0, amount1, initiatorFee);
 
         // Then: zeroToOne is true.
         assertFalse(zeroToOne);
@@ -285,7 +300,7 @@ contract GetSwapParameters_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         }
 
         // And: amountIn is correct.
-        uint256 amountOutExpected = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, false, amountIn, fee);
+        uint256 amountOutExpected = NoSlippageSwapMath._getAmountOut(position.sqrtPriceX96, false, amountIn, fee);
         assertEq(amountOut, amountOutExpected);
     }
 }

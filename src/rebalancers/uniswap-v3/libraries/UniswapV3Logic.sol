@@ -44,7 +44,7 @@ library UniswapV3Logic {
      * @return amountOut The amount of tokenOut.
      * @dev Function will revert for all pools where the sqrtPriceX96 is bigger than type(uint128).max.
      * type(uint128).max is currently more than enough for all supported pools.
-     * If ever the sqrtPriceX96 of a pool exceeds type(uint128).max, a different auto compounder has to be deployed,
+     * If ever the sqrtPriceX96 of a pool exceeds type(uint128).max, a different rebalancer has to be deployed,
      * which does two consecutive mulDivs.
      */
     function _getSpotValue(uint256 sqrtPriceX96, bool zeroToOne, uint256 amountIn)
@@ -55,54 +55,6 @@ library UniswapV3Logic {
         amountOut = zeroToOne
             ? FullMath.mulDiv(amountIn, sqrtPriceX96 ** 2, Q192)
             : FullMath.mulDiv(amountIn, Q192, sqrtPriceX96 ** 2);
-    }
-
-    /**
-     * @notice Calculates the amountOut for a given amountIn and sqrtPriceX96 for a hypothetical
-     * swap without slippage and with fees.
-     * @param sqrtPriceX96 The square root of the price (token1/token0), with 96 binary precision.
-     * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
-     * @param amountIn The amount that of tokenIn that must be swapped to tokenOut.
-     * @param fee The total fee on amountIn, with 18 decimals precision.
-     * @return amountOut The amount of tokenOut.
-     * @dev Function will revert for all pools where the sqrtPriceX96 is bigger than type(uint128).max.
-     * type(uint128).max is currently more than enough for all supported pools.
-     * If ever the sqrtPriceX96 of a pool exceeds type(uint128).max, a different auto compounder has to be deployed,
-     * which does two consecutive mulDivs.
-     */
-    function _getAmountOut(uint256 sqrtPriceX96, bool zeroToOne, uint256 amountIn, uint256 fee)
-        internal
-        pure
-        returns (uint256 amountOut)
-    {
-        uint256 amountInWithoutFees = (1e18 - fee).mulDivDown(amountIn, 1e18);
-        amountOut = zeroToOne
-            ? FullMath.mulDiv(amountInWithoutFees, sqrtPriceX96 ** 2, Q192)
-            : FullMath.mulDiv(amountInWithoutFees, Q192, sqrtPriceX96 ** 2);
-    }
-
-    /**
-     * @notice Calculates the amountIn for a given amountOut and sqrtPriceX96 for a hypothetical
-     * swap with fees but without slippage (we assume a pool with infinite liquidity).
-     * @param sqrtPriceX96 The square root of the price (token1/token0), with 96 binary precision.
-     * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
-     * @param amountOut The amount that of tokenOut that must be swapped.
-     * @param fee The total fee on amountIn, with 18 decimals precision.
-     * @return amountIn The amount of tokenIn.
-     * @dev Function will revert for all pools where the sqrtPriceX96 is bigger than type(uint128).max.
-     * type(uint128).max is currently more than enough for all supported pools.
-     * If ever the sqrtPriceX96 of a pool exceeds type(uint128).max, a different auto compounder has to be deployed,
-     * which does two consecutive mulDivs.
-     */
-    function _getAmountIn(uint256 sqrtPriceX96, bool zeroToOne, uint256 amountOut, uint256 fee)
-        internal
-        pure
-        returns (uint256 amountIn)
-    {
-        uint256 amountInWithoutFees = zeroToOne
-            ? FullMath.mulDiv(amountOut, Q192, sqrtPriceX96 ** 2)
-            : FullMath.mulDiv(amountOut, sqrtPriceX96 ** 2, Q192);
-        amountIn = amountInWithoutFees.mulDivDown(1e18, 1e18 - fee);
     }
 
     /**
@@ -131,38 +83,5 @@ library UniswapV3Logic {
         // Change sqrtPrice from a decimal fixed point number with 14 digits to a binary fixed point number with 96 digits.
         // Unsafe cast: Cast will only overflow when priceToken0/priceToken1 >= 2^128.
         sqrtPriceX96 = uint160((sqrtPriceXd14 << FixedPoint96.RESOLUTION) / 1e14);
-    }
-
-    /**
-     * @notice Calculates the ratio of how much of the total value of a liquidity position has to be provided in token1.
-     * @param sqrtPriceX96 The square root of the current pool price (token1/token0), with 96 binary precision.
-     * @param sqrtRatioLower The square root price of the lower tick of the liquidity position.
-     * @param sqrtRatioUpper The square root price of the upper tick of the liquidity position.
-     * @return targetRatio The ratio of the value of token1 compared to the total value of the position, with 18 decimals precision.
-     * @dev Function will revert for all pools where the sqrtPriceX96 is bigger than type(uint128).max.
-     * type(uint128).max is currently more than enough for all supported pools.
-     * If ever the sqrtPriceX96 of a pool exceeds type(uint128).max, a different auto compounder has to be deployed,
-     * which does two consecutive mulDivs.
-     * @dev Derivation of the formula:
-     * 1) The ratio is defined as:
-     *    R = valueToken1 / (valueToken0 + valueToken1)
-     *    If we express all values in token1 en use the current pool price to denominate token0 in token1:
-     *    R = amount1 / (amount0 * sqrtPrice² + amount1)
-     * 2) Amount0 for a given liquidity position of a Uniswap V3 pool is given as:
-     *    Amount0 = liquidity * (sqrtRatioUpper - sqrtPrice) / (sqrtRatioUpper * sqrtPrice)
-     * 3) Amount1 for a given liquidity position of a Uniswap V3 pool is given as:
-     *    Amount1 = liquidity * (sqrtPrice - sqrtRatioLower)
-     * 4) Combining 1), 2) and 3) and simplifying we get:
-     *    R = [sqrtPrice - sqrtRatioLower] / [2 * sqrtPrice - sqrtRatioLower - sqrtPrice² / sqrtRatioUpper]
-     */
-    function _getTargetRatio(uint256 sqrtPriceX96, uint256 sqrtRatioLower, uint256 sqrtRatioUpper)
-        internal
-        pure
-        returns (uint256 targetRatio)
-    {
-        uint256 numerator = sqrtPriceX96 - sqrtRatioLower;
-        uint256 denominator = 2 * sqrtPriceX96 - sqrtRatioLower - sqrtPriceX96 ** 2 / sqrtRatioUpper;
-
-        targetRatio = numerator.mulDivDown(1e18, denominator);
     }
 }

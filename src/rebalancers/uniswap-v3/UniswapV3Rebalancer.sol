@@ -13,6 +13,8 @@ import { FullMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/l
 import { IAccount } from "../interfaces/IAccount.sol";
 import { IUniswapV3Pool } from "./interfaces/IUniswapV3Pool.sol";
 import { LiquidityAmounts } from "../libraries/LiquidityAmounts.sol";
+import { NoSlippageSwapMath } from "./libraries/NoSlippageSwapMath.sol";
+import { SlippageSwapMath } from "./libraries/SlippageSwapMath.sol";
 import { SqrtPriceMath } from "../libraries/SqrtPriceMath.sol";
 import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
@@ -41,7 +43,7 @@ contract UniswapV3Rebalancer is IActionBase {
     // The maximum deviation of the actual pool price, in % with 18 decimals precision.
     uint256 public immutable MAX_TOLERANCE;
 
-    // The maximum fee an initiator can set, with 6 decimals precision.
+    // The maximum fee an initiator can set, with 18 decimals precision.
     uint256 public immutable MAX_INITIATOR_FEE;
 
     // The ratio that limits the amount of slippage of the swap, with 18 decimals precision.
@@ -49,11 +51,6 @@ contract UniswapV3Rebalancer is IActionBase {
     // and the amount of liquidity that would be added if the swap was executed through the pool without slippage.
     // MAX_SLIPPAGE_RATIO = minLiquidity / liquidityWithoutSlippage
     uint256 public immutable MAX_SLIPPAGE_RATIO;
-
-    uint256 internal constant MAX_ITERATIONS = 15;
-
-    // The minimal relative difference between liquidity0 and liquidity1, with 18 decimals precision.
-    uint256 internal constant CONVERGENCE_THRESHOLD = 1e6;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
@@ -82,6 +79,8 @@ contract UniswapV3Rebalancer is IActionBase {
         int24 newLowerTick;
         uint128 liquidity;
         uint128 usableLiquidity;
+        uint160 sqrtRatioLower;
+        uint160 sqrtRatioUpper;
         uint256 sqrtPriceX96;
         uint256 lowerBoundSqrtPriceX96;
         uint256 upperBoundSqrtPriceX96;
@@ -169,8 +168,6 @@ contract UniswapV3Rebalancer is IActionBase {
         emit Rebalance(account_, id);
     }
 
-    event Log(string name, uint256 value);
-
     /**
      * @notice Callback function called by the Arcadia Account during a flashAction.
      * @param rebalanceData A bytes object containing a struct with the assetData of the position and the address of the initiator.
@@ -230,25 +227,26 @@ contract UniswapV3Rebalancer is IActionBase {
         uint256 amountInitiatorFee;
         uint256 minLiquidity;
         {
-            // Rebalance the position so that the maximum liquidity can be added for new ticks.
-            // The Pool must still be balanced after the swap.
+            // Get a good first approximation of the swap parameters, by calculating the optimal swap parameters
+            // for a hypothetical swap without slippage.
             uint256 amountInWithFees;
             uint256 amountOut;
-            {
-                // Cache initiator fee
-                uint256 initiatorFee = initiatorInfo[initiator].fee;
-                (zeroToOne, amountInWithFees, amountOut) = getSwapParameters(position, balance0, balance1, initiatorFee);
-
-                // Get initiator fee amount.
-                amountInitiatorFee = amountInWithFees.mulDivDown(initiatorFee, 1e18);
-            }
+            (zeroToOne, amountInWithFees, amountOut, amountInitiatorFee) = NoSlippageSwapMath.getSwapParams(
+                position.fee,
+                initiatorInfo[initiator].fee,
+                position.sqrtPriceX96,
+                position.sqrtRatioLower,
+                position.sqrtRatioUpper,
+                balance0,
+                balance1
+            );
 
             // Calculate the minimum amount of liquidity that should be added to the position.
             {
                 uint256 liquidityWithoutSlippage = LiquidityAmounts.getLiquidityForAmounts(
                     uint160(position.sqrtPriceX96),
-                    TickMath.getSqrtRatioAtTick(position.newUpperTick),
-                    TickMath.getSqrtRatioAtTick(position.newLowerTick),
+                    position.sqrtRatioLower,
+                    position.sqrtRatioUpper,
                     zeroToOne ? balance0 - amountInWithFees : balance0 + amountOut,
                     zeroToOne ? balance1 + amountOut : balance1 - amountInWithFees
                 );
@@ -257,18 +255,19 @@ contract UniswapV3Rebalancer is IActionBase {
 
             if (swapData.length == 0) {
                 // Swap via the pool of the position directly.
-                amountOut = getAmountOutWithSlippage(
+                amountOut = SlippageSwapMath.getAmountOutWithSlippage(
+                    zeroToOne,
                     position.fee,
                     IUniswapV3Pool(position.pool).liquidity(),
                     uint160(position.sqrtPriceX96),
-                    TickMath.getSqrtRatioAtTick(position.newLowerTick),
-                    TickMath.getSqrtRatioAtTick(position.newUpperTick),
+                    position.sqrtRatioLower,
+                    position.sqrtRatioUpper,
                     zeroToOne ? balance0 - amountInitiatorFee : balance0,
                     zeroToOne ? balance1 : balance1 - amountInitiatorFee,
                     amountInWithFees - amountInitiatorFee,
-                    amountOut,
-                    zeroToOne
+                    amountOut
                 );
+                // The Pool must still be balanced after the swap.
                 if (_swap(position, zeroToOne, amountOut)) revert UnbalancedPool();
                 balance0 = zeroToOne ? ERC20(position.token0).balanceOf(address(this)) : balance0 + amountOut;
                 balance1 = zeroToOne ? balance1 + amountOut : ERC20(position.token1).balanceOf(address(this));
@@ -428,220 +427,8 @@ contract UniswapV3Rebalancer is IActionBase {
     }
 
     /* ///////////////////////////////////////////////////////////////
-                        SWAPPING LOGIC
+                         SWAPPING LOGIC
     /////////////////////////////////////////////////////////////// */
-
-    /**
-     * @notice Returns the swap parameters to optimize the total value that can be added as liquidity.
-     * @param position Struct with the position data.
-     * @param amount0 The amount of token0 that is available for the rebalance.
-     * @param amount1 The amount of token1 that is available for the rebalance.
-     * @param initiatorFee The fee of the initiator.
-     * @return zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
-     * @return amountIn The amount of tokenIn.
-     * @dev Slippage must be limited, the contract enforces that the pool is still balanced after the swap.
-     */
-    function getSwapParameters(PositionState memory position, uint256 amount0, uint256 amount1, uint256 initiatorFee)
-        public
-        pure
-        returns (bool zeroToOne, uint256 amountIn, uint256 amountOut)
-    {
-        uint256 sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.newUpperTick);
-        uint256 sqrtRatioLower = TickMath.getSqrtRatioAtTick(position.newLowerTick);
-
-        // Total fee is pool fee + initiator fee, with 18 decimals precision.
-        // Since Uniswap uses 6 decimals precision for the fee, we have to multiply the pool fee by 1e12.
-        uint256 fee = initiatorFee + uint256(position.fee) * 1e12;
-
-        if (position.sqrtPriceX96 >= sqrtRatioUpper) {
-            // Position is out of range and fully in token 1.
-            // Swap full amount of token0 to token1.
-            zeroToOne = true;
-            amountIn = amount0;
-            amountOut = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, true, amount0, fee);
-        } else if (position.sqrtPriceX96 <= sqrtRatioLower) {
-            // Position is out of range and fully in token 0.
-            // Swap full amount of token1 to token0.
-            amountIn = amount1;
-            amountOut = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, false, amount1, fee);
-        } else {
-            // Get target ratio in token1 terms.
-            uint256 targetRatio = UniswapV3Logic._getTargetRatio(position.sqrtPriceX96, sqrtRatioLower, sqrtRatioUpper);
-
-            // Calculate the total position value in token1 equivalent:
-            uint256 token0ValueInToken1 = UniswapV3Logic._getSpotValue(position.sqrtPriceX96, true, amount0);
-            uint256 totalValueInToken1 = amount1 + token0ValueInToken1;
-            uint256 currentRatio = amount1.mulDivDown(1e18, totalValueInToken1);
-
-            if (currentRatio < targetRatio) {
-                // Swap token0 partially to token1.
-                zeroToOne = true;
-                uint256 denominator = 1e18 + targetRatio.mulDivDown(fee, 1e18 - fee);
-                amountOut = (targetRatio - currentRatio).mulDivDown(totalValueInToken1, denominator);
-                amountIn = UniswapV3Logic._getAmountIn(position.sqrtPriceX96, true, amountOut, fee);
-            } else {
-                // Swap token1 partially to token0.
-                zeroToOne = false;
-                uint256 denominator = 1e18 - targetRatio.mulDivDown(fee, 1e18);
-                amountIn = (currentRatio - targetRatio).mulDivDown(totalValueInToken1, denominator);
-                amountOut = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, false, amountIn, fee);
-            }
-        }
-    }
-
-    function getAmountOutWithSlippage(
-        uint256 fee,
-        uint128 usableLiquidity,
-        uint160 sqrtPriceOld,
-        uint160 sqrtRatioLower,
-        uint160 sqrtRatioUpper,
-        uint256 amount0,
-        uint256 amount1,
-        uint256 amountIn,
-        uint256 amountOut,
-        bool zeroToOne
-    ) public pure returns (uint256) {
-        uint256 amountInLessFee;
-        uint160 sqrtPriceNew = sqrtPriceOld;
-        // We iteratively solve for sqrtPrice, amountOut and amountIn, so that the maximal amount of liquidity can be added to the position.
-        if (zeroToOne) {
-            for (uint256 i = 0; i < MAX_ITERATIONS; i++) {
-                // Calculate, for a given amountIn, the new sqrtPrice and amountOut taking into account slippage.
-                sqrtPriceNew = _getSqrtPriceNew(fee, usableLiquidity, sqrtPriceOld, amountIn, amountOut, true);
-                amountOut = SqrtPriceMath.getAmount1Delta(sqrtPriceNew, sqrtPriceOld, usableLiquidity, false);
-                amountInLessFee = SqrtPriceMath.getAmount0Delta(sqrtPriceNew, sqrtPriceOld, usableLiquidity, true);
-                amountIn = amountInLessFee.mulDivUp(1e6, 1e6 - fee);
-
-                if (sqrtPriceNew > sqrtRatioUpper) {
-                    // Position is out of range and fully in token0.
-                    amountInLessFee = amount0.mulDivUp(1e6 - fee, 1e6);
-                    sqrtPriceNew = SqrtPriceMath.getNextSqrtPriceFromAmount0RoundingUp(
-                        sqrtPriceOld, usableLiquidity, amountInLessFee, true
-                    );
-                    amountOut = SqrtPriceMath.getAmount1Delta(sqrtPriceNew, sqrtPriceOld, usableLiquidity, false);
-
-                    // We ignore edge case where position becomes in range again (swapping token0 to token1 decreases the sqrtPrice).
-                    return amountOut;
-                } else {
-                    {
-                        bool converged;
-                        (converged, amountIn, amountOut) = _isConverged(
-                            sqrtRatioLower, sqrtRatioUpper, amount0, amount1, amountIn, amountOut, sqrtPriceNew, true
-                        );
-                        // Check if stop criterium of iteration is met:
-                        // The relative difference between liquidity0 and liquidity1 is below the convergence threshold.
-                        if (converged) return amountOut;
-                    }
-                    // If not, we do an extra iteration.
-                }
-            }
-        } else {
-            for (uint256 i = 0; i < MAX_ITERATIONS; i++) {
-                sqrtPriceNew = _getSqrtPriceNew(fee, usableLiquidity, sqrtPriceOld, amountIn, amountOut, false);
-
-                amountInLessFee = SqrtPriceMath.getAmount1Delta(sqrtPriceOld, sqrtPriceNew, usableLiquidity, false);
-                amountIn = amountInLessFee.mulDivUp(1e6, 1e6 - fee);
-
-                amountOut = SqrtPriceMath.getAmount0Delta(sqrtPriceOld, sqrtPriceNew, usableLiquidity, true);
-
-                if (sqrtPriceNew < sqrtRatioLower) {
-                    // Position is out of range and fully in token1.
-                    amountInLessFee = amount1.mulDivUp(1e6 - fee, 1e6);
-                    sqrtPriceNew = SqrtPriceMath.getNextSqrtPriceFromAmount1RoundingDown(
-                        sqrtPriceOld, usableLiquidity, amountInLessFee, true
-                    );
-                    amountOut = SqrtPriceMath.getAmount0Delta(sqrtPriceOld, sqrtPriceNew, usableLiquidity, false);
-
-                    // We ignore edge case where position becomes in range again (swapping token0 to token1 decreases the sqrtPrice).
-                    return amountOut;
-                } else {
-                    {
-                        bool converged;
-                        (converged, amountIn, amountOut) = _isConverged(
-                            sqrtRatioLower, sqrtRatioUpper, amount0, amount1, amountIn, amountOut, sqrtPriceNew, false
-                        );
-                        // Check if stop criterium of iteration is met:
-                        // The relative difference between liquidity0 and liquidity1 is below the convergence threshold.
-                        if (converged) return amountOut;
-                    }
-                    // If not, we do an extra iteration.
-                }
-            }
-        }
-        // If solution did not converge within MAX_ITERATIONS steps, we try with latest amountOut.
-        return amountOut;
-    }
-
-    function _getSqrtPriceNew(
-        uint256 fee,
-        uint128 usableLiquidity,
-        uint160 sqrtPriceOld,
-        uint256 amountIn,
-        uint256 amountOut,
-        bool zeroToOne
-    ) internal pure returns (uint160 sqrtPriceNew) {
-        uint256 amountInLessFee = amountIn.mulDivDown(1e6 - fee, 1e6);
-        uint160 sqrtPriceNew0;
-        uint160 sqrtPriceNew1;
-        if (zeroToOne) {
-            sqrtPriceNew0 = SqrtPriceMath.getNextSqrtPriceFromAmount0RoundingUp(
-                sqrtPriceOld, usableLiquidity, amountInLessFee, true
-            );
-            sqrtPriceNew1 =
-                SqrtPriceMath.getNextSqrtPriceFromAmount1RoundingDown(sqrtPriceOld, usableLiquidity, amountOut, false);
-        } else {
-            sqrtPriceNew1 = SqrtPriceMath.getNextSqrtPriceFromAmount1RoundingDown(
-                sqrtPriceOld, usableLiquidity, amountInLessFee, true
-            );
-            sqrtPriceNew0 =
-                SqrtPriceMath.getNextSqrtPriceFromAmount0RoundingUp(sqrtPriceOld, usableLiquidity, amountOut, false);
-        }
-        sqrtPriceNew = (sqrtPriceNew0 + sqrtPriceNew1) / 2;
-    }
-
-    function _isConverged(
-        uint160 sqrtRatioLower,
-        uint160 sqrtRatioUpper,
-        uint256 amount0,
-        uint256 amount1,
-        uint256 amountIn,
-        uint256 amountOut,
-        uint160 sqrtPrice,
-        bool zeroToOne
-    ) internal pure returns (bool converged, uint256 amountIn_, uint256 amountOut_) {
-        uint128 liquidity;
-        {
-            uint128 liquidity0;
-            uint128 liquidity1;
-            if (zeroToOne) {
-                liquidity0 = LiquidityAmounts.getLiquidityForAmount0(sqrtPrice, sqrtRatioUpper, amount0 - amountIn);
-                liquidity1 = LiquidityAmounts.getLiquidityForAmount1(sqrtRatioLower, sqrtPrice, amount1 + amountOut);
-            } else {
-                liquidity0 = LiquidityAmounts.getLiquidityForAmount0(sqrtPrice, sqrtRatioUpper, amount0 + amountOut);
-                liquidity1 = LiquidityAmounts.getLiquidityForAmount1(sqrtRatioLower, sqrtPrice, amount1 - amountIn);
-            }
-            liquidity = liquidity0 < liquidity1 ? liquidity0 : liquidity1;
-
-            // Calculate the relative difference of liquidity0 and liquidity1.
-            uint256 relDiff = 1e18
-                - (
-                    liquidity0 < liquidity1
-                        ? uint256(liquidity0).mulDivDown(1e18, liquidity1)
-                        : uint256(liquidity1).mulDivDown(1e18, liquidity0)
-                );
-            converged = relDiff < CONVERGENCE_THRESHOLD;
-        }
-
-        uint256 amount0New = SqrtPriceMath.getAmount0Delta(sqrtPrice, sqrtRatioUpper, liquidity, true);
-        uint256 amount1New = SqrtPriceMath.getAmount1Delta(sqrtRatioLower, sqrtPrice, liquidity, true);
-        if (zeroToOne) {
-            amountIn_ = amount0 - amount0New;
-            amountOut_ = amount1New > amount1 ? amount1New - amount1 : 0;
-        } else {
-            amountOut_ = amount0New > amount0 ? amount0New - amount0 : 0;
-            amountIn_ = amount1 - amount1New;
-        }
-    }
 
     /**
      * @notice Swaps one token to the other token in the Uniswap V3 Pool of the Liquidity Position.
@@ -760,6 +547,9 @@ contract UniswapV3Rebalancer is IActionBase {
             position.newLowerTick = lowerTick;
         }
 
+        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(position.newLowerTick);
+        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.newUpperTick);
+
         // Calculate the square root of the relative rate sqrt(token1/token0) from the trusted USD price of both tokens.
         uint256 trustedSqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(usdPriceToken0, usdPriceToken1);
 
@@ -768,12 +558,10 @@ contract UniswapV3Rebalancer is IActionBase {
             trustedSqrtPriceX96.mulDivDown(initiatorInfo[initiator].lowerSqrtPriceDeviation, 1e18);
         uint256 upperBoundSqrtPriceX96 =
             trustedSqrtPriceX96.mulDivDown(initiatorInfo[initiator].upperSqrtPriceDeviation, 1e18);
-        uint256 minSqrtRatio = TickMath.MIN_SQRT_RATIO;
-        uint256 maxSqrtRatio = TickMath.MAX_SQRT_RATIO;
         position.lowerBoundSqrtPriceX96 =
-            lowerBoundSqrtPriceX96 <= minSqrtRatio ? minSqrtRatio + 1 : lowerBoundSqrtPriceX96;
+            lowerBoundSqrtPriceX96 <= TickMath.MIN_SQRT_RATIO ? TickMath.MIN_SQRT_RATIO + 1 : lowerBoundSqrtPriceX96;
         position.upperBoundSqrtPriceX96 =
-            upperBoundSqrtPriceX96 >= maxSqrtRatio ? maxSqrtRatio - 1 : upperBoundSqrtPriceX96;
+            upperBoundSqrtPriceX96 >= TickMath.MAX_SQRT_RATIO ? TickMath.MAX_SQRT_RATIO - 1 : upperBoundSqrtPriceX96;
     }
 
     /**

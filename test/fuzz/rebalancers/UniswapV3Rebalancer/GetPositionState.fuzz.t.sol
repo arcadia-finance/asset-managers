@@ -99,6 +99,8 @@ contract GetPositionState_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_F
         int24 tickUpper
     ) public {
         // Given : tickLower and tickUpper are not both equal to zero
+        tickLower = int24(bound(tickLower, TickMath.MIN_TICK, TickMath.MAX_TICK));
+        tickUpper = int24(bound(tickUpper, TickMath.MIN_TICK, TickMath.MAX_TICK));
         vm.assume(!(tickLower == 0 && tickUpper == 0));
 
         // And : Rebalancer is deployed
