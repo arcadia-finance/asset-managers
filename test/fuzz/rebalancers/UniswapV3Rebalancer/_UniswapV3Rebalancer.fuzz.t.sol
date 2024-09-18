@@ -49,10 +49,10 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
     uint256 internal MOCK_ORACLE_DECIMALS = 18;
     uint24 internal POOL_FEE = 100;
 
-    // 2 % price diff for testing
+    // 2 % price diff for testing.
     uint256 internal MAX_TOLERANCE = 0.02 * 1e18;
 
-    // 0,5 % max fee
+    // 0,5% to 1% fee on swaps.
     uint256 MIN_INITIATOR_FEE = 0.005 * 1e18;
     uint256 MAX_INITIATOR_FEE = 0.01 * 1e18;
 
@@ -65,8 +65,8 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
     int24 internal MIN_TICK_SPACING = 10;
     int24 internal INIT_LP_TICK_RANGE = 20_000;
 
-    // Max slippage of 0.1%.
-    uint256 internal MAX_SLIPPAGE_RATIO = 0.999 * 1e18;
+    // Max slippage of 1% (for testing purposes).
+    uint256 internal MAX_SLIPPAGE_RATIO = 0.99 * 1e18;
 
     // If set to "true" during tests, will enable to mock high tolerance
     bool public increaseTolerance;
