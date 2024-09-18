@@ -57,10 +57,10 @@ contract GetPositionState_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_F
             halfRangeTicks = ((lpVars.tickUpper - lpVars.tickLower) / tickSpacing) / 2;
             halfRangeTicks *= tickSpacing;
         }
-        int24 newUpperTick = currentTick + halfRangeTicks;
-        int24 newLowerTick = currentTick - halfRangeTicks;
-        assertEq(position.newUpperTick, newUpperTick);
-        assertEq(position.newLowerTick, newLowerTick);
+        int24 upperTick = currentTick + halfRangeTicks;
+        int24 lowerTick = currentTick - halfRangeTicks;
+        assertEq(position.upperTick, upperTick);
+        assertEq(position.lowerTick, lowerTick);
 
         assertEq(position.sqrtPriceX96, sqrtPriceX96);
 
@@ -126,8 +126,8 @@ contract GetPositionState_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_F
 
         (uint160 sqrtPriceX96,,,,,,) = uniV3Pool.slot0();
 
-        assertEq(position.newUpperTick, tickUpper);
-        assertEq(position.newLowerTick, tickLower);
+        assertEq(position.upperTick, tickUpper);
+        assertEq(position.lowerTick, tickLower);
 
         assertEq(position.sqrtPriceX96, sqrtPriceX96);
 

@@ -42,13 +42,13 @@ contract GetSwapParams_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
 
         // And: Position is single sided in token0.
         int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(position.sqrtPriceX96));
-        position.newUpperTick = int24(bound(position.newUpperTick, tickCurrent + 1, TickMath.MAX_TICK));
-        position.newLowerTick = int24(bound(position.newLowerTick, tickCurrent + 1, TickMath.MAX_TICK));
-        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(position.newLowerTick);
-        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.newUpperTick);
+        position.upperTick = int24(bound(position.upperTick, tickCurrent + 1, TickMath.MAX_TICK));
+        position.lowerTick = int24(bound(position.lowerTick, tickCurrent + 1, TickMath.MAX_TICK));
+        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(position.lowerTick);
+        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.upperTick);
 
         // And: Ticks don't overflow (invariant Uniswap).
-        position.newLowerTick = int24(bound(position.newLowerTick, TickMath.MIN_TICK, TickMath.MAX_TICK));
+        position.lowerTick = int24(bound(position.lowerTick, TickMath.MIN_TICK, TickMath.MAX_TICK));
 
         // And: fee is smaller than MAX_INITIATOR_FEE (invariant).
         initiatorFee = bound(initiatorFee, 0, MAX_INITIATOR_FEE);
@@ -71,13 +71,13 @@ contract GetSwapParams_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
 
         // And: Position is single sided in token0.
         int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(position.sqrtPriceX96));
-        position.newUpperTick = int24(bound(position.newUpperTick, tickCurrent + 1, TickMath.MAX_TICK));
-        position.newLowerTick = int24(bound(position.newLowerTick, tickCurrent + 1, TickMath.MAX_TICK));
-        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(position.newLowerTick);
-        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.newUpperTick);
+        position.upperTick = int24(bound(position.upperTick, tickCurrent + 1, TickMath.MAX_TICK));
+        position.lowerTick = int24(bound(position.lowerTick, tickCurrent + 1, TickMath.MAX_TICK));
+        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(position.lowerTick);
+        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.upperTick);
 
         // And: Ticks don't overflow (invariant Uniswap).
-        position.newLowerTick = int24(bound(position.newLowerTick, TickMath.MIN_TICK, TickMath.MAX_TICK));
+        position.lowerTick = int24(bound(position.lowerTick, TickMath.MIN_TICK, TickMath.MAX_TICK));
 
         // And: fee is smaller than MAX_INITIATOR_FEE (invariant).
         initiatorFee = bound(initiatorFee, 0, MAX_INITIATOR_FEE);
@@ -111,13 +111,13 @@ contract GetSwapParams_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
 
         // And: Position is single sided in token1.
         int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(position.sqrtPriceX96));
-        position.newUpperTick = int24(bound(position.newUpperTick, TickMath.MIN_TICK, tickCurrent));
+        position.upperTick = int24(bound(position.upperTick, TickMath.MIN_TICK, tickCurrent));
 
         // And: Ticks don't overflow (invariant Uniswap).
-        position.newLowerTick = int24(bound(position.newLowerTick, TickMath.MIN_TICK, TickMath.MAX_TICK));
+        position.lowerTick = int24(bound(position.lowerTick, TickMath.MIN_TICK, TickMath.MAX_TICK));
 
-        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(position.newLowerTick);
-        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.newUpperTick);
+        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(position.lowerTick);
+        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.upperTick);
 
         // And: fee is smaller than MAX_INITIATOR_FEE (invariant).
         initiatorFee = bound(initiatorFee, 0, MAX_INITIATOR_FEE);
@@ -140,13 +140,13 @@ contract GetSwapParams_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
 
         // And: Position is single sided in token1.
         int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(position.sqrtPriceX96));
-        position.newUpperTick = int24(bound(position.newUpperTick, TickMath.MIN_TICK, tickCurrent));
+        position.upperTick = int24(bound(position.upperTick, TickMath.MIN_TICK, tickCurrent));
 
         // And: Ticks don't overflow (invariant Uniswap).
-        position.newLowerTick = int24(bound(position.newLowerTick, TickMath.MIN_TICK, TickMath.MAX_TICK));
+        position.lowerTick = int24(bound(position.lowerTick, TickMath.MIN_TICK, TickMath.MAX_TICK));
 
-        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(position.newLowerTick);
-        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.newUpperTick);
+        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(position.lowerTick);
+        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.upperTick);
 
         // And: fee is smaller than MAX_INITIATOR_FEE.
         initiatorFee = bound(initiatorFee, 0, MAX_INITIATOR_FEE);
@@ -180,10 +180,10 @@ contract GetSwapParams_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
 
         // And: Position is in range.
         int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(position.sqrtPriceX96));
-        position.newUpperTick = int24(bound(position.newUpperTick, tickCurrent + 1, TickMath.MAX_TICK));
-        position.newLowerTick = int24(bound(position.newLowerTick, TickMath.MIN_TICK, tickCurrent - 1));
-        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(position.newLowerTick);
-        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.newUpperTick);
+        position.upperTick = int24(bound(position.upperTick, tickCurrent + 1, TickMath.MAX_TICK));
+        position.lowerTick = int24(bound(position.lowerTick, TickMath.MIN_TICK, tickCurrent - 1));
+        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(position.lowerTick);
+        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.upperTick);
 
         // And: fee is smaller than MAX_INITIATOR_FEE.
         initiatorFee = bound(initiatorFee, 0, MAX_INITIATOR_FEE);
@@ -211,8 +211,8 @@ contract GetSwapParams_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
         // And: Current ratio is lower than target ratio.
         uint256 targetRatio = NoSlippageSwapMath._getTargetRatio(
             position.sqrtPriceX96,
-            TickMath.getSqrtRatioAtTick(position.newLowerTick),
-            TickMath.getSqrtRatioAtTick(position.newUpperTick)
+            TickMath.getSqrtRatioAtTick(position.lowerTick),
+            TickMath.getSqrtRatioAtTick(position.upperTick)
         );
         vm.assume(currentRatio < targetRatio);
 
@@ -248,10 +248,10 @@ contract GetSwapParams_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
 
         // And: Position is in range.
         int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(position.sqrtPriceX96));
-        position.newUpperTick = int24(bound(position.newUpperTick, tickCurrent + 1, TickMath.MAX_TICK));
-        position.newLowerTick = int24(bound(position.newLowerTick, TickMath.MIN_TICK, tickCurrent - 1));
-        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(position.newLowerTick);
-        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.newUpperTick);
+        position.upperTick = int24(bound(position.upperTick, tickCurrent + 1, TickMath.MAX_TICK));
+        position.lowerTick = int24(bound(position.lowerTick, TickMath.MIN_TICK, tickCurrent - 1));
+        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(position.lowerTick);
+        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.upperTick);
 
         // And: fee is smaller than MAX_INITIATOR_FEE.
         initiatorFee = bound(initiatorFee, 0, MAX_INITIATOR_FEE);
@@ -279,8 +279,8 @@ contract GetSwapParams_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
         // And: Current ratio is lower than target ratio.
         uint256 targetRatio = NoSlippageSwapMath._getTargetRatio(
             position.sqrtPriceX96,
-            TickMath.getSqrtRatioAtTick(position.newLowerTick),
-            TickMath.getSqrtRatioAtTick(position.newUpperTick)
+            TickMath.getSqrtRatioAtTick(position.lowerTick),
+            TickMath.getSqrtRatioAtTick(position.upperTick)
         );
         vm.assume(currentRatio >= targetRatio);
 

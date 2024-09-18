@@ -75,10 +75,9 @@ contract UniswapV3Rebalancer is IActionBase {
         address token0;
         address token1;
         uint24 fee;
-        int24 newUpperTick;
-        int24 newLowerTick;
+        int24 upperTick;
+        int24 lowerTick;
         uint128 liquidity;
-        uint128 usableLiquidity;
         uint160 sqrtRatioLower;
         uint160 sqrtRatioUpper;
         uint256 sqrtPriceX96;
@@ -284,11 +283,11 @@ contract UniswapV3Rebalancer is IActionBase {
         // The approval for at least one token after increasing liquidity will remain non-zero.
         // We have to set approval first to 0 for ERC20 tokens that require the approval to be set to zero
         // before setting it to a non-zero value.
+        // ToDo: use Solady library that handles revert on non-zero approval.
         ERC20(position.token0).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), 0);
         ERC20(position.token0).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), balance0);
         ERC20(position.token1).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), 0);
         ERC20(position.token1).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), balance1);
-
         uint256 newTokenId;
         {
             uint256 liquidity;
@@ -299,8 +298,8 @@ contract UniswapV3Rebalancer is IActionBase {
                     token0: position.token0,
                     token1: position.token1,
                     fee: position.fee,
-                    tickLower: position.newLowerTick,
-                    tickUpper: position.newUpperTick,
+                    tickLower: position.lowerTick,
+                    tickUpper: position.upperTick,
                     amount0Desired: balance0,
                     amount1Desired: balance1,
                     amount0Min: 0,
@@ -491,7 +490,8 @@ contract UniswapV3Rebalancer is IActionBase {
 
         // Approve token to swap.
         address tokenToSwap = zeroToOne ? position.token0 : position.token1;
-        ERC20(tokenToSwap).approve(to, amountIn);
+        ERC20(tokenToSwap).safeApprove(to, 0);
+        ERC20(tokenToSwap).safeApprove(to, amountIn);
 
         // Execute arbitrary swap.
         (bool success, bytes memory result) = to.call(data);
@@ -540,15 +540,15 @@ contract UniswapV3Rebalancer is IActionBase {
             int24 tickSpacing = IUniswapV3Pool(position.pool).tickSpacing();
             int24 halfRangeTicks = ((currentUpperTick - currentLowerTick) / tickSpacing) / 2;
             halfRangeTicks *= tickSpacing;
-            position.newUpperTick = currentTick + halfRangeTicks;
-            position.newLowerTick = currentTick - halfRangeTicks;
+            position.upperTick = currentTick + halfRangeTicks;
+            position.lowerTick = currentTick - halfRangeTicks;
         } else {
-            position.newUpperTick = upperTick;
-            position.newLowerTick = lowerTick;
+            position.upperTick = upperTick;
+            position.lowerTick = lowerTick;
         }
 
-        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(position.newLowerTick);
-        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.newUpperTick);
+        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(position.lowerTick);
+        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.upperTick);
 
         // Calculate the square root of the relative rate sqrt(token1/token0) from the trusted USD price of both tokens.
         uint256 trustedSqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(usdPriceToken0, usdPriceToken1);
