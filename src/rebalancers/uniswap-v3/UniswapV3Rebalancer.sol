@@ -6,14 +6,18 @@ pragma solidity 0.8.22;
 
 import { ActionData, IActionBase } from "../../../lib/accounts-v2/src/interfaces/IActionBase.sol";
 import { ArcadiaLogic } from "../libraries/ArcadiaLogic.sol";
-import { CollectParams, DecreaseLiquidityParams, MintParams } from "./interfaces/INonfungiblePositionManager.sol";
+import { BurnLogic } from "./libraries/BurnLogic.sol";
 import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { FullMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
 import { IAccount } from "../interfaces/IAccount.sol";
+import { IPool } from "./interfaces/IPool.sol";
+import { IPositionManager } from "./interfaces/IPositionManager.sol";
 import { IUniswapV3Pool } from "./interfaces/IUniswapV3Pool.sol";
 import { LiquidityAmounts } from "../libraries/LiquidityAmounts.sol";
+import { MintLogic } from "./libraries/MintLogic.sol";
 import { NoSlippageSwapMath } from "./libraries/NoSlippageSwapMath.sol";
+import { PricingLogic } from "./libraries/PricingLogic.sol";
 import { SlippageSwapMath } from "./libraries/SlippageSwapMath.sol";
 import { SqrtPriceMath } from "../libraries/SqrtPriceMath.sol";
 import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
@@ -138,15 +142,22 @@ contract UniswapV3Rebalancer is IActionBase {
     /**
      * @notice Rebalances a UniswapV3 Liquidity Position owned by an Arcadia Account.
      * @param account_ The Arcadia Account owning the position.
+     * @param positionManager The contract address of the Position Manager.
      * @param id The id of the Liquidity Position to rebalance.
      * @param lowerTick The new lower tick to rebalance to.
      * @param upperTick The new upper tick to rebalance to.
      * @dev When both lowerTick and upperTick are zero, ticks will be updated with same tick-spacing as current position
      * and with a balanced, 50/50 ratio around current tick.
+     * @dev ToDo: should we validate the positionManager?
      */
-    function rebalancePosition(address account_, uint256 id, int24 lowerTick, int24 upperTick, bytes calldata swapData)
-        external
-    {
+    function rebalancePosition(
+        address account_,
+        address positionManager,
+        uint256 id,
+        int24 lowerTick,
+        int24 upperTick,
+        bytes calldata swapData
+    ) external {
         // Store Account address, used to validate the caller of the executeAction() callback.
         if (account != address(0)) revert Reentered();
         if (ownerToAccountToInitiator[IAccount(account_).owner()][account_] != msg.sender) revert InitiatorNotValid();
@@ -154,9 +165,8 @@ contract UniswapV3Rebalancer is IActionBase {
         account = account_;
 
         // Encode data for the flash-action.
-        bytes memory actionData = ArcadiaLogic._encodeActionDataRebalancer(
-            address(UniswapV3Logic.POSITION_MANAGER), id, msg.sender, lowerTick, upperTick, swapData
-        );
+        bytes memory actionData =
+            ArcadiaLogic._encodeActionDataRebalancer(positionManager, id, msg.sender, lowerTick, upperTick, swapData);
 
         // Call flashAction() with this contract as actionTarget.
         IAccount(account_).flashAction(address(this), actionData);
@@ -181,6 +191,7 @@ contract UniswapV3Rebalancer is IActionBase {
         // Decode rebalanceData.
         bytes memory swapData;
         uint256 id;
+        address positionManager;
         PositionState memory position;
         address initiator;
         {
@@ -189,6 +200,7 @@ contract UniswapV3Rebalancer is IActionBase {
             (assetData, initiator, lowerTick, upperTick, swapData) =
                 abi.decode(rebalanceData, (ActionData, address, int24, int24, bytes));
             id = assetData.assetIds[0];
+            positionManager = assetData.assets[0];
 
             // Fetch and cache all position related data.
             position = getPositionState(id, lowerTick, upperTick, initiator);
@@ -200,27 +212,7 @@ contract UniswapV3Rebalancer is IActionBase {
 
         // Remove liquidity of the position and claim outstanding fees to get full amounts of token0 and token1
         // for rebalance.
-        UniswapV3Logic.POSITION_MANAGER.decreaseLiquidity(
-            DecreaseLiquidityParams({
-                tokenId: id,
-                liquidity: position.liquidity,
-                amount0Min: 0,
-                amount1Min: 0,
-                deadline: block.timestamp
-            })
-        );
-
-        (uint256 balance0, uint256 balance1) = UniswapV3Logic.POSITION_MANAGER.collect(
-            CollectParams({
-                tokenId: id,
-                recipient: address(this),
-                amount0Max: type(uint128).max,
-                amount1Max: type(uint128).max
-            })
-        );
-
-        // Burn the position
-        UniswapV3Logic.POSITION_MANAGER.burn(id);
+        (uint256 balance0, uint256 balance1) = BurnLogic._burn(positionManager, id, position.liquidity);
 
         bool zeroToOne;
         uint256 amountInitiatorFee;
@@ -228,28 +220,21 @@ contract UniswapV3Rebalancer is IActionBase {
         {
             // Get a good first approximation of the swap parameters, by calculating the optimal swap parameters
             // for a hypothetical swap without slippage.
-            uint256 amountInWithFees;
+            uint256 amountIn;
             uint256 amountOut;
-            (zeroToOne, amountInWithFees, amountOut, amountInitiatorFee) = NoSlippageSwapMath.getSwapParams(
-                position.fee,
-                initiatorInfo[initiator].fee,
-                position.sqrtPriceX96,
-                position.sqrtRatioLower,
-                position.sqrtRatioUpper,
-                balance0,
-                balance1
-            );
-
-            // Calculate the minimum amount of liquidity that should be added to the position.
             {
-                uint256 liquidityWithoutSlippage = LiquidityAmounts.getLiquidityForAmounts(
-                    uint160(position.sqrtPriceX96),
+                uint256 liquidity;
+                (zeroToOne, amountIn, amountOut, amountInitiatorFee, liquidity) = NoSlippageSwapMath.getSwapParams(
+                    position.fee,
+                    initiatorInfo[initiator].fee,
+                    position.sqrtPriceX96,
                     position.sqrtRatioLower,
                     position.sqrtRatioUpper,
-                    zeroToOne ? balance0 - amountInWithFees : balance0 + amountOut,
-                    zeroToOne ? balance1 + amountOut : balance1 - amountInWithFees
+                    balance0,
+                    balance1
                 );
-                minLiquidity = liquidityWithoutSlippage.mulDivDown(MAX_SLIPPAGE_RATIO, 1e18);
+
+                minLiquidity = liquidity.mulDivDown(MAX_SLIPPAGE_RATIO, 1e18);
             }
 
             if (swapData.length == 0) {
@@ -257,13 +242,13 @@ contract UniswapV3Rebalancer is IActionBase {
                 amountOut = SlippageSwapMath.getAmountOutWithSlippage(
                     zeroToOne,
                     position.fee,
-                    IUniswapV3Pool(position.pool).liquidity(),
+                    IPool(position.pool).liquidity(),
                     uint160(position.sqrtPriceX96),
                     position.sqrtRatioLower,
                     position.sqrtRatioUpper,
                     zeroToOne ? balance0 - amountInitiatorFee : balance0,
                     zeroToOne ? balance1 : balance1 - amountInitiatorFee,
-                    amountInWithFees - amountInitiatorFee,
+                    amountIn,
                     amountOut
                 );
                 // The Pool must still be balanced after the swap.
@@ -274,46 +259,18 @@ contract UniswapV3Rebalancer is IActionBase {
                 // balance1 = ERC20(position.token1).balanceOf(address(this));
             } else {
                 // Swap via custom provided routing data.
-                _swap(position, zeroToOne, amountInWithFees - amountInitiatorFee, swapData);
+                _swap(position, zeroToOne, amountIn, swapData);
                 balance0 = ERC20(position.token0).balanceOf(address(this));
                 balance1 = ERC20(position.token1).balanceOf(address(this));
             }
         }
 
-        // The approval for at least one token after increasing liquidity will remain non-zero.
-        // We have to set approval first to 0 for ERC20 tokens that require the approval to be set to zero
-        // before setting it to a non-zero value.
-        // ToDo: use Solady library that handles revert on non-zero approval.
-        ERC20(position.token0).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), 0);
-        ERC20(position.token0).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), balance0);
-        ERC20(position.token1).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), 0);
-        ERC20(position.token1).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), balance1);
+        // Mint token and update balances.
         uint256 newTokenId;
-        {
-            uint256 liquidity;
-            uint256 amount0;
-            uint256 amount1;
-            (newTokenId, liquidity, amount0, amount1) = UniswapV3Logic.POSITION_MANAGER.mint(
-                MintParams({
-                    token0: position.token0,
-                    token1: position.token1,
-                    fee: position.fee,
-                    tickLower: position.lowerTick,
-                    tickUpper: position.upperTick,
-                    amount0Desired: balance0,
-                    amount1Desired: balance1,
-                    amount0Min: 0,
-                    amount1Min: 0,
-                    recipient: address(this),
-                    deadline: block.timestamp
-                })
-            );
-            if (liquidity < minLiquidity) revert InsufficientLiquidity();
+        uint256 liquidity;
+        (newTokenId, liquidity, balance0, balance1) = MintLogic._mint(positionManager, position, balance0, balance1);
 
-            // Update balances.
-            balance0 -= amount0;
-            balance1 -= amount1;
-        }
+        if (liquidity < minLiquidity) revert InsufficientLiquidity();
 
         // Transfer fee to the initiator.
         if (zeroToOne) {
@@ -370,7 +327,7 @@ contract UniswapV3Rebalancer is IActionBase {
         }
 
         // Approve ActionHandler to deposit Liquidity Position back into the Account.
-        UniswapV3Logic.POSITION_MANAGER.approve(msg.sender, newTokenId);
+        IPositionManager(positionManager).approve(msg.sender, newTokenId);
 
         return returnedAssets;
     }
@@ -450,19 +407,19 @@ contract UniswapV3Rebalancer is IActionBase {
         // Do the swap.
         bytes memory data = abi.encode(position.token0, position.token1, position.fee);
         (int256 deltaAmount0, int256 deltaAmount1) =
-            IUniswapV3Pool(position.pool).swap(address(this), zeroToOne, -int256(amountOut), sqrtPriceLimitX96, data);
+            IPool(position.pool).swap(address(this), zeroToOne, -int256(amountOut), sqrtPriceLimitX96, data);
 
         // Check if pool is still balanced (sqrtPriceLimitX96 is reached before an amountOut of tokenOut is received).
         isPoolUnbalanced_ = (amountOut > (zeroToOne ? uint256(-deltaAmount1) : uint256(-deltaAmount0)));
     }
 
     /**
-     * @notice Callback after executing a swap via IUniswapV3Pool.swap.
+     * @notice Callback after executing a swap via IPool.swap.
      * @param amount0Delta The amount of token0 that was sent (negative) or must be received (positive) by the pool by
      * the end of the swap. If positive, the callback must send that amount of token0 to the pool.
      * @param amount1Delta The amount of token1 that was sent (negative) or must be received (positive) by the pool by
      * the end of the swap. If positive, the callback must send that amount of token1 to the pool.
-     * @param data Any data passed by this contract via the IUniswapV3Pool.swap() call.
+     * @param data Any data passed by this contract via the IPool.swap() call.
      */
     function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external {
         // Check that callback came from an actual Uniswap V3 pool.
@@ -551,7 +508,7 @@ contract UniswapV3Rebalancer is IActionBase {
         position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.upperTick);
 
         // Calculate the square root of the relative rate sqrt(token1/token0) from the trusted USD price of both tokens.
-        uint256 trustedSqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(usdPriceToken0, usdPriceToken1);
+        uint256 trustedSqrtPriceX96 = PricingLogic._getSqrtPriceX96(usdPriceToken0, usdPriceToken1);
 
         // Calculate the upper and lower bounds of sqrtPriceX96 for the Pool to be balanced.
         uint256 lowerBoundSqrtPriceX96 =

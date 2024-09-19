@@ -7,10 +7,10 @@ pragma solidity 0.8.22;
 import { ArcadiaLogic } from "../../../../src/rebalancers/libraries/ArcadiaLogic.sol";
 import { AssetValueAndRiskFactors } from "../../../../lib/accounts-v2/src/Registry.sol";
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { PricingLogic } from "../../../../src/rebalancers/uniswap-v3/libraries/PricingLogic.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { UniswapV3Rebalancer } from "../../../../src/rebalancers/uniswap-v3/UniswapV3Rebalancer.sol";
 import { UniswapV3Rebalancer_Fuzz_Test } from "./_UniswapV3Rebalancer.fuzz.t.sol";
-import { UniswapV3Logic } from "../../../../src/rebalancers/uniswap-v3/libraries/UniswapV3Logic.sol";
 
 /**
  * @notice Fuzz tests for the function "_getPositionState" of contract "UniswapV3Rebalancer".
@@ -80,7 +80,7 @@ contract GetPositionState_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_F
             (usdPriceToken0, usdPriceToken1) = (valuesAndRiskFactors[0].assetValue, valuesAndRiskFactors[1].assetValue);
         }
 
-        uint256 trustedSqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(usdPriceToken0, usdPriceToken1);
+        uint256 trustedSqrtPriceX96 = PricingLogic._getSqrtPriceX96(usdPriceToken0, usdPriceToken1);
 
         (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,,) =
             rebalancer.initiatorInfo(initVars.initiator);
@@ -147,7 +147,7 @@ contract GetPositionState_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_F
             (usdPriceToken0, usdPriceToken1) = (valuesAndRiskFactors[0].assetValue, valuesAndRiskFactors[1].assetValue);
         }
 
-        uint256 trustedSqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(usdPriceToken0, usdPriceToken1);
+        uint256 trustedSqrtPriceX96 = PricingLogic._getSqrtPriceX96(usdPriceToken0, usdPriceToken1);
 
         (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,,) =
             rebalancer.initiatorInfo(initVars.initiator);

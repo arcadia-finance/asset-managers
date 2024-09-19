@@ -11,8 +11,12 @@ import { FixedPoint128 } from "../../../../lib/accounts-v2/src/asset-modules/Uni
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
 import { Fuzz_Test } from "../../Fuzz.t.sol";
+import { INonfungiblePositionManagerExtension } from
+    "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/INonfungiblePositionManagerExtension.sol";
 import { IUniswapV3PoolExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/IUniswapV3PoolExtension.sol";
+import { IUniswapV3PositionManager } from
+    "../../../../src/rebalancers/uniswap-v3/interfaces/IUniswapV3PositionManager.sol";
 import { ISwapRouter02 } from
     "../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/interfaces/ISwapRouter02.sol";
 import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/LiquidityAmounts.sol";
@@ -118,6 +122,10 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         Fuzz_Test.setUp();
 
         UniswapV3Fixture.setUp();
+        // nonfungiblePositionManager contract addresses is stored as constant in Rebalancer.
+        vm.etch(0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1, address(nonfungiblePositionManager).code);
+        nonfungiblePositionManager = INonfungiblePositionManagerExtension(0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1);
+
         SwapRouter02Fixture.deploySwapRouter02(
             address(0), address(uniswapV3Factory), address(nonfungiblePositionManager), address(weth9)
         );
@@ -176,12 +184,6 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         );
         bytecode = Utils.veryBadBytesReplacer(
             bytecode, abi.encodePacked(0xd0690557600eb8Be8391D1d97346e2aab5300d5f), abi.encodePacked(registry), false
-        );
-        bytecode = Utils.veryBadBytesReplacer(
-            bytecode,
-            abi.encodePacked(0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1),
-            abi.encodePacked(nonfungiblePositionManager),
-            false
         );
         bytecode = Utils.veryBadBytesReplacer(
             bytecode,

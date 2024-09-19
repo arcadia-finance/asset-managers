@@ -6,19 +6,22 @@ pragma solidity 0.8.22;
 
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
-import { UniswapV3Logic } from "./UniswapV3Logic.sol";
+import { LiquidityAmounts } from "../../libraries/LiquidityAmounts.sol";
+import { PricingLogic } from "./PricingLogic.sol";
+
+event Log(uint256 value);
 
 library NoSlippageSwapMath {
     using FixedPointMathLib for uint256;
 
     // The binary precision of sqrtPriceX96 squared.
-    uint256 internal constant Q192 = UniswapV3Logic.Q192;
+    uint256 internal constant Q192 = PricingLogic.Q192;
 
     /**
      * @notice Returns the approximated swap parameters to optimize the total value that can be added as liquidity,
      * for a hypothetical swap without slippage and with fees.
-     * @param amount0 The amount of token0 that is available for the rebalance.
-     * @param amount1 The amount of token1 that is available for the rebalance.
+     * @param balance0 The amount of token0 that is available for the rebalance.
+     * @param balance1 The amount of token1 that is available for the rebalance.
      * @param initiatorFee The fee of the initiator.
      * @return zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @return amountIn The amount of tokenIn.
@@ -30,9 +33,13 @@ library NoSlippageSwapMath {
         uint256 sqrtPrice,
         uint256 sqrtRatioLower,
         uint256 sqrtRatioUpper,
-        uint256 amount0,
-        uint256 amount1
-    ) internal pure returns (bool zeroToOne, uint256 amountIn, uint256 amountOut, uint256 amountInitiatorFee) {
+        uint256 balance0,
+        uint256 balance1
+    )
+        internal
+        pure
+        returns (bool zeroToOne, uint256 amountIn, uint256 amountOut, uint256 amountInitiatorFee, uint256 liquidity)
+    {
         // Total fee is pool fee + initiator fee, with 18 decimals precision.
         // Since Uniswap uses 6 decimals precision for the fee, we have to multiply the pool fee by 1e12.
         uint256 fee = initiatorFee + poolFee * 1e12;
@@ -40,38 +47,52 @@ library NoSlippageSwapMath {
             // Position is out of range and fully in token 1.
             // Swap full amount of token0 to token1.
             zeroToOne = true;
-            amountIn = amount0;
-            amountOut = _getAmountOut(sqrtPrice, true, amount0, fee);
+            amountIn = balance0;
+            amountOut = _getAmountOut(sqrtPrice, true, balance0, fee);
         } else if (sqrtPrice <= sqrtRatioLower) {
             // Position is out of range and fully in token 0.
             // Swap full amount of token1 to token0.
-            amountIn = amount1;
-            amountOut = _getAmountOut(sqrtPrice, false, amount1, fee);
+            amountIn = balance1;
+            amountOut = _getAmountOut(sqrtPrice, false, balance1, fee);
         } else {
             // Get target ratio in token1 terms.
             uint256 targetRatio = _getTargetRatio(sqrtPrice, sqrtRatioLower, sqrtRatioUpper);
 
             // Calculate the total position value in token1 equivalent:
-            uint256 token0ValueInToken1 = UniswapV3Logic._getSpotValue(sqrtPrice, true, amount0);
-            uint256 totalValueInToken1 = amount1 + token0ValueInToken1;
-            uint256 currentRatio = amount1.mulDivDown(1e18, totalValueInToken1);
+            uint256 token0ValueInToken1 = PricingLogic._getSpotValue(sqrtPrice, true, balance0);
+            uint256 totalValueInToken1 = balance1 + token0ValueInToken1;
+            uint256 currentRatio = balance1.mulDivDown(1e18, totalValueInToken1);
 
             if (currentRatio < targetRatio) {
                 // Swap token0 partially to token1.
                 zeroToOne = true;
-                uint256 denominator = 1e18 + targetRatio.mulDivDown(fee, 1e18 - fee);
-                amountOut = (targetRatio - currentRatio).mulDivDown(totalValueInToken1, denominator);
+                {
+                    uint256 denominator = 1e18 + targetRatio.mulDivDown(fee, 1e18 - fee);
+                    amountOut = (targetRatio - currentRatio).mulDivDown(totalValueInToken1, denominator);
+                }
                 amountIn = _getAmountIn(sqrtPrice, true, amountOut, fee);
             } else {
                 // Swap token1 partially to token0.
                 zeroToOne = false;
-                uint256 denominator = 1e18 - targetRatio.mulDivDown(fee, 1e18);
-                amountIn = (currentRatio - targetRatio).mulDivDown(totalValueInToken1, denominator);
+                {
+                    uint256 denominator = 1e18 - targetRatio.mulDivDown(fee, 1e18);
+                    amountIn = (currentRatio - targetRatio).mulDivDown(totalValueInToken1, denominator);
+                }
                 amountOut = _getAmountOut(sqrtPrice, false, amountIn, fee);
             }
         }
-        // Get initiator fee amount.
+
+        liquidity = LiquidityAmounts.getLiquidityForAmounts(
+            uint160(sqrtPrice),
+            uint160(sqrtRatioLower),
+            uint160(sqrtRatioUpper),
+            zeroToOne ? balance0 - amountIn : balance0 + amountOut,
+            zeroToOne ? balance1 + amountOut : balance1 - amountIn
+        );
+
+        // Get initiator fee amount and the actual amountIn of the swap (without initiator fee).
         amountInitiatorFee = amountIn.mulDivDown(initiatorFee, 1e18);
+        amountIn = amountIn - amountInitiatorFee;
     }
 
     /**

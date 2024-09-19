@@ -8,9 +8,9 @@ import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/u
 import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
 import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/LiquidityAmounts.sol";
 import { NoSlippageSwapMath } from "../../../../src/rebalancers/uniswap-v3/libraries/NoSlippageSwapMath.sol";
+import { PricingLogic } from "../../../../src/rebalancers/uniswap-v3/libraries/PricingLogic.sol";
 import { stdError } from "../../../../lib/accounts-v2/lib/forge-std/src/StdError.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
-import { UniswapV3Logic } from "../../../../src/rebalancers/uniswap-v3/libraries/UniswapV3Logic.sol";
 import { UniswapV3Rebalancer } from "../../../../src/rebalancers/uniswap-v3/UniswapV3Rebalancer.sol";
 import { UniswapV3Rebalancer_Fuzz_Test } from "./_UniswapV3Rebalancer.fuzz.t.sol";
 
@@ -42,13 +42,10 @@ contract GetSwapParams_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
 
         // And: Position is single sided in token0.
         int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(position.sqrtPriceX96));
-        position.upperTick = int24(bound(position.upperTick, tickCurrent + 1, TickMath.MAX_TICK));
-        position.lowerTick = int24(bound(position.lowerTick, tickCurrent + 1, TickMath.MAX_TICK));
+        position.lowerTick = int24(bound(position.lowerTick, tickCurrent + 1, TickMath.MAX_TICK - 1));
+        position.upperTick = int24(bound(position.upperTick, position.lowerTick + 1, TickMath.MAX_TICK));
         position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(position.lowerTick);
         position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.upperTick);
-
-        // And: Ticks don't overflow (invariant Uniswap).
-        position.lowerTick = int24(bound(position.lowerTick, TickMath.MIN_TICK, TickMath.MAX_TICK));
 
         // And: fee is smaller than MAX_INITIATOR_FEE (invariant).
         initiatorFee = bound(initiatorFee, 0, MAX_INITIATOR_FEE);
@@ -71,31 +68,42 @@ contract GetSwapParams_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
 
         // And: Position is single sided in token0.
         int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(position.sqrtPriceX96));
-        position.upperTick = int24(bound(position.upperTick, tickCurrent + 1, TickMath.MAX_TICK));
-        position.lowerTick = int24(bound(position.lowerTick, tickCurrent + 1, TickMath.MAX_TICK));
+        position.lowerTick = int24(bound(position.lowerTick, tickCurrent + 1, TickMath.MAX_TICK - 1));
+        position.upperTick = int24(bound(position.upperTick, position.lowerTick + 1, TickMath.MAX_TICK));
         position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(position.lowerTick);
         position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.upperTick);
-
-        // And: Ticks don't overflow (invariant Uniswap).
-        position.lowerTick = int24(bound(position.lowerTick, TickMath.MIN_TICK, TickMath.MAX_TICK));
 
         // And: fee is smaller than MAX_INITIATOR_FEE (invariant).
         initiatorFee = bound(initiatorFee, 0, MAX_INITIATOR_FEE);
         position.fee = uint24(bound(position.fee, 0, (MAX_INITIATOR_FEE - initiatorFee) / 1e12));
 
+        // And: liquidity doesn't overflow.
+        if (position.sqrtRatioLower > 2 ** 96) {
+            vm.assume(position.sqrtRatioUpper < type(uint256).max / position.sqrtRatioLower * 2 ** 96);
+        }
+        uint256 intermediate = FullMath.mulDiv(position.sqrtRatioLower, position.sqrtRatioUpper, 2 ** 96);
+        emit log_uint(intermediate);
+        uint256 fee = initiatorFee + uint256(position.fee) * 1e12;
+        uint256 amountOutExpected = NoSlippageSwapMath._getAmountOut(position.sqrtPriceX96, false, amount1, fee);
+        uint256 balance0 = amount0 + amountOutExpected;
+
+        if (intermediate > position.sqrtRatioUpper - position.sqrtRatioLower) {
+            vm.assume(balance0 < type(uint256).max / intermediate * (position.sqrtRatioUpper - position.sqrtRatioLower));
+        }
+        emit log_uint(intermediate);
+
         // When: Calling getSwapParams().
-        (bool zeroToOne, uint256 amountIn, uint256 amountOut,) =
+        (bool zeroToOne, uint256 amountIn, uint256 amountOut,,) =
             rebalancer.getSwapParams(position, amount0, amount1, initiatorFee);
 
         // Then: zeroToOne is false.
         assertFalse(zeroToOne);
 
         // And: amountIn is equal to amount1.
-        assertEq(amountIn, amount1);
+        uint256 amountInitiatorFee_ = amount1 * initiatorFee / 1e18;
+        assertEq(amountIn, amount1 - amountInitiatorFee_);
 
         // And: amountOut is correct.
-        uint256 fee = initiatorFee + uint256(position.fee) * 1e12;
-        uint256 amountOutExpected = NoSlippageSwapMath._getAmountOut(position.sqrtPriceX96, false, amount1, fee);
         assertEq(amountOut, amountOutExpected);
     }
 
@@ -153,14 +161,15 @@ contract GetSwapParams_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
         position.fee = uint24(bound(position.fee, 0, (MAX_INITIATOR_FEE - initiatorFee) / 1e12));
 
         // When: Calling getSwapParams().
-        (bool zeroToOne, uint256 amountIn, uint256 amountOut,) =
+        (bool zeroToOne, uint256 amountIn, uint256 amountOut,,) =
             rebalancer.getSwapParams(position, amount0, amount1, initiatorFee);
 
         // Then: zeroToOne is true.
         assertTrue(zeroToOne);
 
         // And: amountIn is equal to amount0.
-        assertEq(amountIn, amount0);
+        uint256 amountInitiatorFee_ = amount0 * initiatorFee / 1e18;
+        assertEq(amountIn, amount0 - amountInitiatorFee_);
 
         // And: amountOut is correct.
         uint256 fee = initiatorFee + uint256(position.fee) * 1e12;
@@ -194,14 +203,12 @@ contract GetSwapParams_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
         uint256 totalValueInToken1;
         uint256 currentRatio;
         {
-            if (position.sqrtPriceX96 ** 2 > UniswapV3Logic.Q192) {
+            if (position.sqrtPriceX96 ** 2 > PricingLogic.Q192) {
                 amount0 = uint128(
-                    bound(
-                        amount0, 0, FullMath.mulDiv(type(uint256).max, UniswapV3Logic.Q192, position.sqrtPriceX96 ** 2)
-                    )
+                    bound(amount0, 0, FullMath.mulDiv(type(uint256).max, PricingLogic.Q192, position.sqrtPriceX96 ** 2))
                 );
             }
-            uint256 token0ValueInToken1 = FullMath.mulDiv(amount0, position.sqrtPriceX96 ** 2, UniswapV3Logic.Q192);
+            uint256 token0ValueInToken1 = FullMath.mulDiv(amount0, position.sqrtPriceX96 ** 2, PricingLogic.Q192);
             amount1 = uint128(bound(amount1, 0, type(uint256).max - token0ValueInToken1));
             totalValueInToken1 = token0ValueInToken1 + amount1;
             vm.assume(totalValueInToken1 > 0);
@@ -217,7 +224,7 @@ contract GetSwapParams_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
         vm.assume(currentRatio < targetRatio);
 
         // When: Calling getSwapParams().
-        (bool zeroToOne, uint256 amountIn, uint256 amountOut,) =
+        (bool zeroToOne, uint256 amountIn, uint256 amountOut,,) =
             rebalancer.getSwapParams(position, amount0, amount1, initiatorFee);
 
         // Then: zeroToOne is true.
@@ -232,8 +239,9 @@ contract GetSwapParams_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
         }
 
         // And: amountIn is correct.
-        uint256 amountInExpected = NoSlippageSwapMath._getAmountIn(position.sqrtPriceX96, true, amountOut, fee);
-        assertEq(amountIn, amountInExpected);
+        uint256 amountInWithFee = NoSlippageSwapMath._getAmountIn(position.sqrtPriceX96, true, amountOut, fee);
+        uint256 amountInitiatorFee_ = amountInWithFee * initiatorFee / 1e18;
+        assertEq(amountIn, amountInWithFee - amountInitiatorFee_);
     }
 
     function testFuzz_Success_getSwapParams_currentRatioBiggerThanTarget(
@@ -262,14 +270,12 @@ contract GetSwapParams_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
         uint256 totalValueInToken1;
         uint256 currentRatio;
         {
-            if (position.sqrtPriceX96 ** 2 > UniswapV3Logic.Q192) {
+            if (position.sqrtPriceX96 ** 2 > PricingLogic.Q192) {
                 amount0 = uint128(
-                    bound(
-                        amount0, 0, FullMath.mulDiv(type(uint256).max, UniswapV3Logic.Q192, position.sqrtPriceX96 ** 2)
-                    )
+                    bound(amount0, 0, FullMath.mulDiv(type(uint256).max, PricingLogic.Q192, position.sqrtPriceX96 ** 2))
                 );
             }
-            uint256 token0ValueInToken1 = FullMath.mulDiv(amount0, position.sqrtPriceX96 ** 2, UniswapV3Logic.Q192);
+            uint256 token0ValueInToken1 = FullMath.mulDiv(amount0, position.sqrtPriceX96 ** 2, PricingLogic.Q192);
             amount1 = uint128(bound(amount1, 0, type(uint256).max - token0ValueInToken1));
             totalValueInToken1 = token0ValueInToken1 + amount1;
             vm.assume(totalValueInToken1 > 0);
@@ -285,7 +291,7 @@ contract GetSwapParams_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
         vm.assume(currentRatio >= targetRatio);
 
         // When: Calling getSwapParams().
-        (bool zeroToOne, uint256 amountIn, uint256 amountOut,) =
+        (bool zeroToOne, uint256 amountIn, uint256 amountOut,,) =
             rebalancer.getSwapParams(position, amount0, amount1, initiatorFee);
 
         // Then: zeroToOne is true.
@@ -295,8 +301,9 @@ contract GetSwapParams_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
         uint256 fee = initiatorFee + uint256(position.fee) * 1e12;
         {
             uint256 denominator = 1e18 - targetRatio * fee / 1e18;
-            uint256 amountInExpected = (currentRatio - targetRatio) * totalValueInToken1 / denominator;
-            assertEq(amountIn, amountInExpected);
+            uint256 amountInWithFee = (currentRatio - targetRatio) * totalValueInToken1 / denominator;
+            uint256 amountInitiatorFee_ = amountInWithFee * initiatorFee / 1e18;
+            assertEq(amountIn, amountInWithFee - amountInitiatorFee_);
         }
 
         // And: amountIn is correct.

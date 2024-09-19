@@ -2,7 +2,7 @@
 pragma solidity 0.8.22;
 
 /// @title Non-fungible token for positions
-/// @notice Wraps Uniswap V3 positions in a non-fungible token interface which allows for them to be transferred
+/// @notice Wraps Slipstream positions in a non-fungible token interface which allows for them to be transferred
 /// and authorized.
 
 struct CollectParams {
@@ -21,34 +21,10 @@ struct IncreaseLiquidityParams {
     uint256 deadline;
 }
 
-struct DecreaseLiquidityParams {
-    uint256 tokenId;
-    uint128 liquidity;
-    uint256 amount0Min;
-    uint256 amount1Min;
-    uint256 deadline;
-}
-
-struct MintParams {
-    address token0;
-    address token1;
-    uint24 fee;
-    int24 tickLower;
-    int24 tickUpper;
-    uint256 amount0Desired;
-    uint256 amount1Desired;
-    uint256 amount0Min;
-    uint256 amount1Min;
-    address recipient;
-    uint256 deadline;
-}
-
-interface INonfungiblePositionManager {
+interface ISlipstreamPositionManager {
     function approve(address spender, uint256 tokenId) external;
 
     function collect(CollectParams calldata params) external payable returns (uint256 amount0, uint256 amount1);
-
-    function burn(uint256 tokenId) external payable;
 
     function positions(uint256 tokenId)
         external
@@ -58,7 +34,7 @@ interface INonfungiblePositionManager {
             address operator,
             address token0,
             address token1,
-            uint24 fee,
+            int24 tickSpacing,
             int24 tickLower,
             int24 tickUpper,
             uint128 liquidity,
@@ -72,14 +48,4 @@ interface INonfungiblePositionManager {
         external
         payable
         returns (uint128 liquidity, uint256 amount0, uint256 amount1);
-
-    function decreaseLiquidity(DecreaseLiquidityParams calldata params)
-        external
-        payable
-        returns (uint256 amount0, uint256 amount1);
-
-    function mint(MintParams calldata params)
-        external
-        payable
-        returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1);
 }
