@@ -25,7 +25,7 @@ contract UniswapV3RebalancerExtension is UniswapV3Rebalancer {
     )
         public
         pure
-        returns (bool zeroToOne, uint256 amountIn, uint256 amountOut, uint256 amountInitiatorFee, uint256 minLiquidity)
+        returns (uint256 minLiquidity, bool zeroToOne, uint256 amountInitiatorFee, uint256 amountIn, uint256 amountOut)
     {
         return RebalanceLogic.getRebalanceParams(
             maxSlippageRatio, poolFee, initiatorFee, sqrtPrice, sqrtRatioLower, sqrtRatioUpper, amount0, amount1
@@ -40,7 +40,7 @@ contract UniswapV3RebalancerExtension is UniswapV3Rebalancer {
     )
         public
         view
-        returns (bool zeroToOne, uint256 amountIn, uint256 amountOut, uint256 amountInitiatorFee, uint256 minLiquidity)
+        returns (uint256 minLiquidity, bool zeroToOne, uint256 amountInitiatorFee, uint256 amountIn, uint256 amountOut)
     {
         return RebalanceLogic.getRebalanceParams(
             UniswapV3Rebalancer.MAX_SLIPPAGE_RATIO,

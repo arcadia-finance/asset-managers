@@ -98,7 +98,7 @@ contract GetRebalanceParams_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer
         vm.assume(liquidity < type(uint128).max);
 
         // When: Calling getRebalanceParams().
-        (bool zeroToOne, uint256 amountIn, uint256 amountOut,,) =
+        (, bool zeroToOne,, uint256 amountIn, uint256 amountOut) =
             rebalancer.getRebalanceParams(position, amount0, amount1, initiatorFee);
 
         // Then: zeroToOne is false.
@@ -179,7 +179,7 @@ contract GetRebalanceParams_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer
         vm.assume(liquidity < type(uint128).max);
 
         // When: Calling getRebalanceParams().
-        (bool zeroToOne, uint256 amountIn, uint256 amountOut,,) =
+        (, bool zeroToOne,, uint256 amountIn, uint256 amountOut) =
             rebalancer.getRebalanceParams(position, amount0, amount1, initiatorFee);
 
         // Then: zeroToOne is true.
@@ -265,7 +265,7 @@ contract GetRebalanceParams_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer
         }
 
         // When: Calling getRebalanceParams().
-        (bool zeroToOne, uint256 amountIn, uint256 amountOut,,) =
+        (, bool zeroToOne,, uint256 amountIn, uint256 amountOut) =
             rebalancer.getRebalanceParams(position, amount0, amount1, initiatorFee);
 
         // Then: zeroToOne is true.
@@ -352,7 +352,7 @@ contract GetRebalanceParams_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer
         }
 
         // When: Calling getRebalanceParams().
-        (bool zeroToOne, uint256 amountIn, uint256 amountOut,,) =
+        (, bool zeroToOne,, uint256 amountIn, uint256 amountOut) =
             rebalancer.getRebalanceParams(position, amount0, amount1, initiatorFee);
 
         // Then: zeroToOne is false.

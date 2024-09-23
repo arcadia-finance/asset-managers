@@ -167,7 +167,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
 
         (,, uint256 initiatorFee,) = rebalancer.initiatorInfo(initiator);
 
-        (zeroToOne, amountIn, amountOut, amountInitiatorFee,) =
+        (, zeroToOne, amountInitiatorFee, amountIn, amountOut) =
             rebalancer.getRebalanceParams(position, amount0, amount1, initiatorFee);
     }
 

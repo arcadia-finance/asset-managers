@@ -21,8 +21,11 @@ library RebalanceLogic {
      * @param balance0 The amount of token0 that is available for the rebalance.
      * @param balance1 The amount of token1 that is available for the rebalance.
      * @param initiatorFee The fee of the initiator.
+     * @return minLiquidity a
      * @return zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
+     * @return amountInitiatorFee a
      * @return amountIn The amount of tokenIn.
+     * @return amountOut a
      * @dev Slippage is not taken into account when calculating the swap parameters.
      */
     function getRebalanceParams(
@@ -37,7 +40,7 @@ library RebalanceLogic {
     )
         internal
         pure
-        returns (bool zeroToOne, uint256 amountIn, uint256 amountOut, uint256 amountInitiatorFee, uint256 minLiquidity)
+        returns (uint256 minLiquidity, bool zeroToOne, uint256 amountInitiatorFee, uint256 amountIn, uint256 amountOut)
     {
         // Total fee is pool fee + initiator fee, with 18 decimals precision.
         // Since Uniswap uses 6 decimals precision for the fee, we have to multiply the pool fee by 1e12.

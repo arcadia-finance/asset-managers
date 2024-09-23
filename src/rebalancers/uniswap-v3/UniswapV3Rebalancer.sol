@@ -221,7 +221,7 @@ contract UniswapV3Rebalancer is IActionBase {
 
         // Get the rebalance parameters.
         // These are calculated based on a hypothetical optimal swap through the pool without slippage.
-        (bool zeroToOne, uint256 amountIn, uint256 amountOut, uint256 amountInitiatorFee, uint256 minLiquidity) =
+        (uint256 minLiquidity, bool zeroToOne, uint256 amountInitiatorFee, uint256 amountIn, uint256 amountOut) =
         RebalanceLogic.getRebalanceParams(
             MAX_SLIPPAGE_RATIO,
             position.fee,

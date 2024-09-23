@@ -51,8 +51,7 @@ library SwapMath {
             }
 
             // If the position is not out of range, calculate the amountIn and amountOut, given the new approximated sqrtPrice.
-            (amountIn, amountOut) =
-                _getRebalanceParamsExact(zeroToOne, fee, usableLiquidity, sqrtPriceOld, sqrtPriceNew);
+            (amountIn, amountOut) = _getSwapParamsExact(zeroToOne, fee, usableLiquidity, sqrtPriceOld, sqrtPriceNew);
 
             // Given the new approximated sqrtPriceNew and its swap amounts,
             // calculate a better approximation for the optimal amountIn and amountOut, that would maximise the liquidity provided
@@ -125,7 +124,7 @@ library SwapMath {
         amountOut = SqrtPriceMath.getAmount0Delta(sqrtPriceOld, sqrtPriceNew, usableLiquidity, false);
     }
 
-    function _getRebalanceParamsExact(
+    function _getSwapParamsExact(
         bool zeroToOne,
         uint256 fee,
         uint128 usableLiquidity,
