@@ -13,9 +13,9 @@ import { UniswapV3Rebalancer_Fuzz_Test } from "./_UniswapV3Rebalancer.fuzz.t.sol
 import { UniswapV3Logic } from "../../../../src/rebalancers/uniswap-v3/libraries/UniswapV3Logic.sol";
 
 /**
- * @notice Fuzz tests for the function "Swap" of contract "UniswapV3Rebalancer".
+ * @notice Fuzz tests for the function "swapViaPool" of contract "UniswapV3Rebalancer".
  */
-contract Swap_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
+contract SwapViaPool_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
     using FixedPointMathLib for uint256;
     /* ///////////////////////////////////////////////////////////////
                               SETUP
@@ -29,24 +29,24 @@ contract Swap_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
                               TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function testFuzz_Success_swap_ZeroAmount(UniswapV3Rebalancer.PositionState memory position, bool zeroToOne)
+    function testFuzz_Success_swapViaPool_ZeroAmount(UniswapV3Rebalancer.PositionState memory position, bool zeroToOne)
         public
     {
         // Given : amountOut is 0
         uint256 amountOut = 0;
         // When : Calling _swap()
         // Then : It should return false
-        bool isPoolUnbalanced = rebalancer.swap(position, zeroToOne, amountOut);
+        bool isPoolUnbalanced = rebalancer.swapViaPool(position, zeroToOne, amountOut);
         assertEq(isPoolUnbalanced, false);
     }
 
-    function testFuzz_Success_swap_OneToZero_UnbalancedPool(
+    function testFuzz_Success_swapViaPool_OneToZero_UnbalancedPool(
         InitVariables memory initVars,
         LpVariables memory lpVars,
         UniswapV3Rebalancer.PositionState memory position,
         bool zeroToOne
     ) public {
-        // Given : oneToZero swap
+        // Given : oneToZero swapViaPool
         zeroToOne = false;
 
         uint256 tokenId;
@@ -69,27 +69,27 @@ contract Swap_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
             position.upperBoundSqrtPriceX96 + ((position.upperBoundSqrtPriceX96 * (0.001 * 1e18)) / 1e18);
 
         int256 amountRemaining = -int256(type(int128).max);
-        // Calculate the amounts to swap to achieve target price.
+        // Calculate the amounts to swapViaPool to achieve target price.
         (, uint256 amountIn, uint256 amountOut, uint256 feeAmount) = SwapMath.computeSwapStep(
             sqrtPriceX96, uint160(sqrtPriceX96Target), liquidity, amountRemaining, 100 * POOL_FEE
         );
 
-        // Send amountIn to rebalancer for swap
+        // Send amountIn to rebalancer for swapViaPool
         deal(address(token1), address(rebalancer), amountIn + feeAmount);
 
-        bool isPoolUnbalanced = rebalancer.swap(position, zeroToOne, amountOut);
+        bool isPoolUnbalanced = rebalancer.swapViaPool(position, zeroToOne, amountOut);
 
         // Then : It should return "true"
         assertEq(isPoolUnbalanced, true);
     }
 
-    function testFuzz_Success_swap_OneToZero_BalancedPool(
+    function testFuzz_Success_swapViaPool_OneToZero_BalancedPool(
         InitVariables memory initVars,
         LpVariables memory lpVars,
         UniswapV3Rebalancer.PositionState memory position,
         bool zeroToOne
     ) public {
-        // Given : oneToZero swap
+        // Given : oneToZero swapViaPool
         zeroToOne = false;
 
         uint256 tokenId;
@@ -112,27 +112,27 @@ contract Swap_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
             position.upperBoundSqrtPriceX96 - ((position.upperBoundSqrtPriceX96 * (0.001 * 1e18)) / 1e18);
 
         int256 amountRemaining = int256(type(int128).max);
-        // Calculate the amounts to swap to achieve target price.
+        // Calculate the amounts to swapViaPool to achieve target price.
         (, uint256 amountIn, uint256 amountOut, uint256 feeAmount) = SwapMath.computeSwapStep(
             sqrtPriceX96, uint160(sqrtPriceX96Target), liquidity, -amountRemaining, 100 * POOL_FEE
         );
 
-        // Send amountIn to rebalancer for swap
+        // Send amountIn to rebalancer for swapViaPool
         deal(address(token1), address(rebalancer), amountIn + feeAmount);
 
-        bool isPoolUnbalanced = rebalancer.swap(position, zeroToOne, amountOut);
+        bool isPoolUnbalanced = rebalancer.swapViaPool(position, zeroToOne, amountOut);
 
         // Then : It should return "false"
         assertEq(isPoolUnbalanced, false);
     }
 
-    function testFuzz_Success_swap_ZeroToOne_UnbalancedPool(
+    function testFuzz_Success_swapViaPool_ZeroToOne_UnbalancedPool(
         InitVariables memory initVars,
         LpVariables memory lpVars,
         UniswapV3Rebalancer.PositionState memory position,
         bool zeroToOne
     ) public {
-        // Given : zeroToOne swap
+        // Given : zeroToOne swapViaPool
         zeroToOne = true;
 
         uint256 tokenId;
@@ -155,27 +155,27 @@ contract Swap_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
             position.lowerBoundSqrtPriceX96 - ((position.lowerBoundSqrtPriceX96 * (0.001 * 1e18)) / 1e18);
 
         int256 amountRemaining = -type(int128).max;
-        // Calculate the amounts to swap to achieve target price.
+        // Calculate the amounts to swapViaPool to achieve target price.
         (, uint256 amountIn, uint256 amountOut, uint256 feeAmount) = SwapMath.computeSwapStep(
             sqrtPriceX96, uint160(sqrtPriceX96Target), liquidity, amountRemaining, 100 * POOL_FEE
         );
 
-        // Send amountIn to rebalancer for swap
+        // Send amountIn to rebalancer for swapViaPool
         deal(address(token0), address(rebalancer), amountIn + feeAmount);
 
-        bool isPoolUnbalanced = rebalancer.swap(position, zeroToOne, amountOut);
+        bool isPoolUnbalanced = rebalancer.swapViaPool(position, zeroToOne, amountOut);
 
         // Then : It should return "true"
         assertEq(isPoolUnbalanced, true);
     }
 
-    function testFuzz_Success_swap_ZeroToOne_BalancedPool(
+    function testFuzz_Success_swapViaPool_ZeroToOne_BalancedPool(
         InitVariables memory initVars,
         LpVariables memory lpVars,
         UniswapV3Rebalancer.PositionState memory position,
         bool zeroToOne
     ) public {
-        // Given : zeroToOne swap
+        // Given : zeroToOne swapViaPool
         zeroToOne = true;
 
         uint256 tokenId;
@@ -198,15 +198,15 @@ contract Swap_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
             position.lowerBoundSqrtPriceX96 + ((position.lowerBoundSqrtPriceX96 * (0.001 * 1e18)) / 1e18);
 
         int256 amountRemaining = -type(int128).max;
-        // Calculate the amounts to swap to achieve target price.
+        // Calculate the amounts to swapViaPool to achieve target price.
         (, uint256 amountIn, uint256 amountOut, uint256 feeAmount) = SwapMath.computeSwapStep(
             sqrtPriceX96, uint160(sqrtPriceX96Target), liquidity, amountRemaining, 100 * POOL_FEE
         );
 
-        // Send amountIn to rebalancer for swap
+        // Send amountIn to rebalancer for swapViaPool
         deal(address(token0), address(rebalancer), amountIn + feeAmount);
 
-        bool isPoolUnbalanced = rebalancer.swap(position, zeroToOne, amountOut);
+        bool isPoolUnbalanced = rebalancer.swapViaPool(position, zeroToOne, amountOut);
 
         // Then : It should return "false"
         assertEq(isPoolUnbalanced, false);

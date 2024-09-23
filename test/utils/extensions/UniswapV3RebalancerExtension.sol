@@ -58,12 +58,14 @@ contract UniswapV3RebalancerExtension is UniswapV3Rebalancer {
         return PricingLogic._getSqrtPriceX96(priceToken0, priceToken1);
     }
 
-    function swap(PositionState memory position, bool zeroToOne, uint256 amountOut) public returns (bool) {
-        return _swap(position, zeroToOne, amountOut);
+    function swapViaPool(PositionState memory position, bool zeroToOne, uint256 amountOut) public returns (bool) {
+        return _swapViaPool(position, zeroToOne, amountOut);
     }
 
-    function swap(PositionState memory position, bool zeroToOne, uint256 amountOut, bytes memory swapData) external {
-        _swap(position, zeroToOne, amountOut, swapData);
+    function swapViaRouter(PositionState memory position, bool zeroToOne, uint256 amountOut, bytes memory swapData)
+        external
+    {
+        _swapViaRouter(position, zeroToOne, amountOut, swapData);
     }
 
     function setAccount(address account_) public {

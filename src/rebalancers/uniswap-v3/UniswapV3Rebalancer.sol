@@ -186,27 +186,28 @@ contract UniswapV3Rebalancer is IActionBase {
     /**
      * @notice Callback function called by the Arcadia Account during a flashAction.
      * @param rebalanceData A bytes object containing a struct with the assetData of the position and the address of the initiator.
-     * @return assetData A struct with the asset data of the Liquidity Position and with the leftovers after mint, if any.
+     * @return returnedAssets A struct with the asset data of the Liquidity Position and with the leftovers after mint, if any.
      * @dev The Liquidity Position is already transferred to this contract before executeAction() is called.
      * @dev When rebalancing we will burn the current Liquidity Position and mint a new one with a new tokenId.
      */
-    function executeAction(bytes calldata rebalanceData) external override returns (ActionData memory assetData) {
+    function executeAction(bytes calldata rebalanceData) external override returns (ActionData memory) {
         // Caller should be the Account, provided as input in rebalancePosition().
         if (msg.sender != account) revert OnlyAccount();
 
         // Decode rebalanceData.
-        uint256 id;
         address positionManager;
+        uint256 id;
         address initiator;
         bytes memory swapData;
         PositionState memory position;
         {
+            ActionData memory assetData;
             int24 lowerTick;
             int24 upperTick;
             (assetData, initiator, lowerTick, upperTick, swapData) =
                 abi.decode(rebalanceData, (ActionData, address, int24, int24, bytes));
-            id = assetData.assetIds[0];
             positionManager = assetData.assets[0];
+            id = assetData.assetIds[0];
 
             // Fetch and cache all position related data.
             position = getPositionState(id, lowerTick, upperTick, initiator);
@@ -250,14 +251,14 @@ contract UniswapV3Rebalancer is IActionBase {
                 amountOut
             );
             // The Pool must still be balanced after the swap.
-            if (_swap(position, zeroToOne, amountOut)) revert UnbalancedPool();
+            if (_swapViaPool(position, zeroToOne, amountOut)) revert UnbalancedPool();
             balance0 = zeroToOne ? ERC20(position.token0).balanceOf(address(this)) : balance0 + amountOut;
             balance1 = zeroToOne ? balance1 + amountOut : ERC20(position.token1).balanceOf(address(this));
             // balance0 = ERC20(position.token0).balanceOf(address(this));
             // balance1 = ERC20(position.token1).balanceOf(address(this));
         } else {
-            // Swap via custom provided routing data.
-            _swap(position, zeroToOne, amountIn, swapData);
+            // Swap via router with custom swap data.
+            _swapViaRouter(position, zeroToOne, amountIn, swapData);
             balance0 = ERC20(position.token0).balanceOf(address(this));
             balance1 = ERC20(position.token1).balanceOf(address(this));
         }
@@ -393,7 +394,7 @@ contract UniswapV3Rebalancer is IActionBase {
      * @param amountOut The amount that of tokenOut that must be swapped to.
      * @return isPoolUnbalanced_ Bool indicating if the pool is unbalanced due to slippage of the swap.
      */
-    function _swap(PositionState memory position, bool zeroToOne, uint256 amountOut)
+    function _swapViaPool(PositionState memory position, bool zeroToOne, uint256 amountOut)
         internal
         returns (bool isPoolUnbalanced_)
     {
@@ -411,41 +412,6 @@ contract UniswapV3Rebalancer is IActionBase {
 
         // Check if pool is still balanced (sqrtPriceLimitX96 is reached before an amountOut of tokenOut is received).
         isPoolUnbalanced_ = (amountOut > (zeroToOne ? uint256(-deltaAmount1) : uint256(-deltaAmount0)));
-    }
-
-    function _swapViaPoolDirect(
-        PositionState memory position,
-        bool zeroToOne,
-        uint256 balance0,
-        uint256 balance1,
-        uint256 amountOut
-    ) internal returns (uint256 balance0_, uint256 balance1_) {
-        // Don't do swaps with zero amount.
-        if (amountOut == 0) return (balance0, balance1);
-
-        // Pool should still be balanced (within tolerance boundaries) after the swap.
-        uint160 sqrtPriceLimitX96 =
-            uint160(zeroToOne ? position.lowerBoundSqrtPriceX96 : position.upperBoundSqrtPriceX96);
-
-        // Do the swap.
-        bytes memory data = abi.encode(position.token0, position.token1, position.fee);
-        (int256 deltaAmount0, int256 deltaAmount1) =
-            IPool(position.pool).swap(address(this), zeroToOne, -int256(amountOut), sqrtPriceLimitX96, data);
-
-        // Update balances.
-        if (zeroToOne) {
-            balance0_ = balance0 - uint256(deltaAmount0);
-            balance1_ = balance1 + uint256(deltaAmount1);
-        } else {
-            balance0_ = balance0 + uint256(deltaAmount0);
-            balance1_ = balance1 - uint256(deltaAmount1);
-        }
-
-        // Check if pool if the pool became balanced (sqrtPriceLimitX96 is reached before an amountOut of tokenOut is received).
-        // If yes update the position to the new sqrtPriceX96, so that imbalance check reverts.
-        if (amountOut > (zeroToOne ? uint256(-deltaAmount1) : uint256(-deltaAmount0))) {
-            position.sqrtPriceX96 = sqrtPriceLimitX96;
-        }
     }
 
     /**
@@ -477,7 +443,9 @@ contract UniswapV3Rebalancer is IActionBase {
      * @dev In order for such a swap to be valid, the amountOut should be at least equal to the amountOut expected if the swap
      * occured in the pool of the position itself. The amountIn should also fully have been utilized, to keep target ratio valid.
      */
-    function _swap(PositionState memory position, bool zeroToOne, uint256 amountIn, bytes memory swapData) internal {
+    function _swapViaRouter(PositionState memory position, bool zeroToOne, uint256 amountIn, bytes memory swapData)
+        internal
+    {
         (address to, bytes memory data) = abi.decode(swapData, (address, bytes));
 
         // Approve token to swap.

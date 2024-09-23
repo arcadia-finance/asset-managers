@@ -13,9 +13,9 @@ import { UniswapV3Rebalancer } from "../../../../src/rebalancers/uniswap-v3/Unis
 import { UniswapV3Rebalancer_Fuzz_Test } from "./_UniswapV3Rebalancer.fuzz.t.sol";
 
 /**
- * @notice Fuzz tests for the function "Swap" of contract "UniswapV3Rebalancer".
+ * @notice Fuzz tests for the function "SwapViaRouter" of contract "UniswapV3Rebalancer".
  */
-contract SwapArbitrary_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
+contract SwapViaRouter_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
     using FixedPointMathLib for uint256;
     /* ///////////////////////////////////////////////////////////////
                               SETUP
@@ -29,14 +29,14 @@ contract SwapArbitrary_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
                               TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function testFuzz_Revert_swapArbitrary_oneToZero_UnbalancedPool(
+    function testFuzz_Revert_swapViaRouter_oneToZero_UnbalancedPool(
         InitVariables memory initVars,
         LpVariables memory lpVars,
         UniswapV3Rebalancer.PositionState memory position,
         uint128 amountIn,
         uint128 amountOut
     ) public {
-        // Given : oneToZero swap
+        // Given : oneToZero swapViaRouter
         bool zeroToOne = false;
 
         uint256 tokenId;
@@ -62,12 +62,12 @@ contract SwapArbitrary_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
                 position.upperBoundSqrtPriceX96 + ((position.upperBoundSqrtPriceX96 * (0.001 * 1e18)) / 1e18);
 
             int256 amountRemaining = int256(type(int128).max);
-            // Calculate the minimum amount of token 1 to swap to achieve target price
+            // Calculate the minimum amount of token 1 to swapViaRouter to achieve target price
             (, uint256 amountIn_,,) = SwapMath.computeSwapStep(
                 sqrtPriceX96, uint160(sqrtPriceX96Target), liquidity, amountRemaining, 100 * POOL_FEE
             );
 
-            // Do the swap.
+            // Do the swapViaRouter.
             vm.startPrank(users.swapper);
             deal(address(token1), users.swapper, type(uint128).max);
 
@@ -88,29 +88,29 @@ contract SwapArbitrary_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
             vm.stopPrank();
         }
 
-        // Send token1 (amountIn) to rebalancer for swap
+        // Send token1 (amountIn) to rebalancer for swapViaRouter
         deal(address(token1), address(rebalancer), amountIn);
-        // Send token0 (amountOut) to router for swap
+        // Send token0 (amountOut) to router for swapViaRouter
         deal(address(token0), address(routerMock), amountOut);
 
         bytes memory routerData =
             abi.encodeWithSelector(RouterMock.swap.selector, address(token1), address(token0), amountIn, amountOut);
         bytes memory swapData = abi.encode(address(routerMock), routerData);
 
-        // When : calling swap
+        // When : calling swapViaRouter
         // Then : it should revert
         vm.expectRevert(UniswapV3Rebalancer.UnbalancedPool.selector);
-        rebalancer.swap(position, zeroToOne, amountIn, swapData);
+        rebalancer.swapViaRouter(position, zeroToOne, amountIn, swapData);
     }
 
-    function testFuzz_Revert_swapArbitrary_zeroToOne_UnbalancedPool(
+    function testFuzz_Revert_swapViaRouter_zeroToOne_UnbalancedPool(
         InitVariables memory initVars,
         LpVariables memory lpVars,
         UniswapV3Rebalancer.PositionState memory position,
         uint128 amountIn,
         uint128 amountOut
     ) public {
-        // Given : zeroToOne swap
+        // Given : zeroToOne swapViaRouter
         bool zeroToOne = true;
 
         uint256 tokenId;
@@ -135,12 +135,12 @@ contract SwapArbitrary_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
                 position.lowerBoundSqrtPriceX96 - ((position.lowerBoundSqrtPriceX96 * (0.001 * 1e18)) / 1e18);
 
             int256 amountRemaining = type(int128).max;
-            // Calculate the minimum amount of token 0 to swap to achieve target price
+            // Calculate the minimum amount of token 0 to swapViaRouter to achieve target price
             (, uint256 amountIn_,,) = SwapMath.computeSwapStep(
                 sqrtPriceX96, uint160(sqrtPriceX96Target), liquidity, amountRemaining, 100 * POOL_FEE
             );
 
-            // Do the swap.
+            // Do the swapViaRouter.
             vm.startPrank(users.swapper);
             deal(address(token0), users.swapper, type(uint128).max);
 
@@ -161,29 +161,29 @@ contract SwapArbitrary_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
             vm.stopPrank();
         }
 
-        // Send token0 (amountIn) to rebalancer for swap
+        // Send token0 (amountIn) to rebalancer for swapViaRouter
         deal(address(token0), address(rebalancer), amountIn);
-        // Send token1 (amountOut) to router for swap
+        // Send token1 (amountOut) to router for swapViaRouter
         deal(address(token1), address(routerMock), amountOut);
 
         bytes memory routerData =
             abi.encodeWithSelector(RouterMock.swap.selector, address(token0), address(token1), amountIn, amountOut);
         bytes memory swapData = abi.encode(address(routerMock), routerData);
 
-        // When : calling swap
+        // When : calling swapViaRouter
         // Then : it should revert
         vm.expectRevert(UniswapV3Rebalancer.UnbalancedPool.selector);
-        rebalancer.swap(position, zeroToOne, amountIn, swapData);
+        rebalancer.swapViaRouter(position, zeroToOne, amountIn, swapData);
     }
 
-    function testFuzz_Success_swapArbitrary_oneToZero(
+    function testFuzz_Success_swapViaRouter_oneToZero(
         InitVariables memory initVars,
         LpVariables memory lpVars,
         UniswapV3Rebalancer.PositionState memory position,
         uint128 amountIn,
         uint128 amountOut
     ) public {
-        // Given : oneToZero swap
+        // Given : oneToZero swapViaRouter
         bool zeroToOne = false;
 
         uint256 tokenId;
@@ -201,31 +201,31 @@ contract SwapArbitrary_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
             position.pool = address(uniV3Pool);
         }
 
-        // Send token1 (amountIn) to rebalancer for swap
+        // Send token1 (amountIn) to rebalancer for swapViaRouter
         deal(address(token1), address(rebalancer), amountIn);
-        // Send token0 (amountOut) to router for swap
+        // Send token0 (amountOut) to router for swapViaRouter
         deal(address(token0), address(routerMock), amountOut);
 
         bytes memory routerData =
             abi.encodeWithSelector(RouterMock.swap.selector, address(token1), address(token0), amountIn, amountOut);
         bytes memory swapData = abi.encode(address(routerMock), routerData);
 
-        // When : calling swap
-        rebalancer.swap(position, zeroToOne, amountIn, swapData);
+        // When : calling swapViaRouter
+        rebalancer.swapViaRouter(position, zeroToOne, amountIn, swapData);
 
         // Then : Tokens should have been transferred
         assertEq(token0.balanceOf(address(rebalancer)), amountOut);
         assertEq(token1.balanceOf(address(routerMock)), amountIn);
     }
 
-    function testFuzz_Success_swapArbitrary_zeroToOne(
+    function testFuzz_Success_swapViaRouter_zeroToOne(
         InitVariables memory initVars,
         LpVariables memory lpVars,
         UniswapV3Rebalancer.PositionState memory position,
         uint128 amountIn,
         uint128 amountOut
     ) public {
-        // Given : zeroToOne swap
+        // Given : zeroToOne swapViaRouter
         bool zeroToOne = true;
 
         uint256 tokenId;
@@ -243,17 +243,17 @@ contract SwapArbitrary_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
             position.pool = address(uniV3Pool);
         }
 
-        // Send token0 (amountIn) to rebalancer for swap
+        // Send token0 (amountIn) to rebalancer for swapViaRouter
         deal(address(token0), address(rebalancer), amountIn);
-        // Send token1 (amountOut) to router for swap
+        // Send token1 (amountOut) to router for swapViaRouter
         deal(address(token1), address(routerMock), amountOut);
 
         bytes memory routerData =
             abi.encodeWithSelector(RouterMock.swap.selector, address(token0), address(token1), amountIn, amountOut);
         bytes memory swapData = abi.encode(address(routerMock), routerData);
 
-        // When : calling swap
-        rebalancer.swap(position, zeroToOne, amountIn, swapData);
+        // When : calling swapViaRouter
+        rebalancer.swapViaRouter(position, zeroToOne, amountIn, swapData);
 
         // Then : Tokens should have been transferred
         assertEq(token1.balanceOf(address(rebalancer)), amountOut);
