@@ -307,7 +307,6 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
             vm.stopPrank();
         }
 
-        (,, uint256 initiatorFee,) = rebalancer.initiatorInfo(initVars.initiator);
         uint256 expectedFee;
         {
             UniswapV3Rebalancer.PositionState memory position_ =
@@ -366,7 +365,6 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
             vm.stopPrank();
         }
 
-        (,, uint256 initiatorFee,) = rebalancer.initiatorInfo(initVars.initiator);
         uint256 expectedFee;
         {
             UniswapV3Rebalancer.PositionState memory position_ =

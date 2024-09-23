@@ -223,8 +223,8 @@ contract UniswapV3Rebalancer is IActionBase {
             uint256 amountIn;
             uint256 amountOut;
             {
-                uint256 liquidity;
-                (zeroToOne, amountIn, amountOut, amountInitiatorFee, liquidity) = NoSlippageSwapMath.getSwapParams(
+                uint256 maxLiquidity;
+                (zeroToOne, amountIn, amountOut, amountInitiatorFee, maxLiquidity) = NoSlippageSwapMath.getSwapParams(
                     position.fee,
                     initiatorInfo[initiator].fee,
                     position.sqrtPriceX96,
@@ -234,7 +234,7 @@ contract UniswapV3Rebalancer is IActionBase {
                     balance1
                 );
 
-                minLiquidity = liquidity.mulDivDown(MAX_SLIPPAGE_RATIO, 1e18);
+                minLiquidity = maxLiquidity.mulDivDown(MAX_SLIPPAGE_RATIO, 1e18);
             }
 
             if (swapData.length == 0) {
