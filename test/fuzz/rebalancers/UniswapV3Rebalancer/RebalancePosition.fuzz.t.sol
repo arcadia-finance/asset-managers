@@ -134,7 +134,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         vm.assume(tick < currentTick);
     }
 
-    function getSwapParams(
+    function getRebalanceParams(
         uint256 tokenId,
         int24 lpLowerTick,
         int24 lpUpperTick,
@@ -168,7 +168,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         (,, uint256 initiatorFee,) = rebalancer.initiatorInfo(initiator);
 
         (zeroToOne, amountIn, amountOut, amountInitiatorFee,) =
-            rebalancer.getSwapParams(position, amount0, amount1, initiatorFee);
+            rebalancer.getRebalanceParams(position, amount0, amount1, initiatorFee);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -314,7 +314,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
             bool zeroToOne;
             uint256 amountIn;
             (,, zeroToOne, amountIn,, expectedFee) =
-                getSwapParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initVars.initiator);
+                getRebalanceParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initVars.initiator);
             vm.assume(zeroToOne == false);
         }
 
@@ -372,7 +372,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
             bool zeroToOne;
             uint256 amountIn;
             (,, zeroToOne, amountIn,, expectedFee) =
-                getSwapParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initVars.initiator);
+                getRebalanceParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initVars.initiator);
             vm.assume(zeroToOne == true);
         }
 
@@ -576,7 +576,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
             UniswapV3Rebalancer.PositionState memory position_ =
                 rebalancer.getPositionState(tokenId, lowerTick, upperTick, initiatorStack);
             (uint256 amount0, uint256 amount1, bool zeroToOne, uint256 amountIn,,) =
-                getSwapParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initiatorStack);
+                getRebalanceParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initiatorStack);
 
             IQuoterV2.QuoteExactInputSingleParams memory params = IQuoterV2.QuoteExactInputSingleParams({
                 tokenIn: zeroToOne ? address(token0) : address(token1),
@@ -683,7 +683,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
             uint256 amountIn;
             bool zeroToOne;
             (amount0, amount1, zeroToOne, amountIn,,) =
-                getSwapParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initiatorStack);
+                getRebalanceParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initiatorStack);
 
             IQuoterV2.QuoteExactInputSingleParams memory params = IQuoterV2.QuoteExactInputSingleParams({
                 tokenIn: zeroToOne ? address(token0) : address(token1),
@@ -786,7 +786,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
             uint256 amount1;
             bool zeroToOne;
             (amount0, amount1, zeroToOne, amountIn, amountOut,) =
-                getSwapParams(tokenId, lpVarsStack.tickLower, lpVarsStack.tickUpper, position_, initiatorStack);
+                getRebalanceParams(tokenId, lpVarsStack.tickLower, lpVarsStack.tickUpper, position_, initiatorStack);
 
             // And : Should be a zeroToOneSwap
             vm.assume(zeroToOne == true);
@@ -907,7 +907,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
 
             bool zeroToOne;
             (amount0, amount1, zeroToOne, amountIn, amountOut,) =
-                getSwapParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initiatorStack);
+                getRebalanceParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initiatorStack);
 
             // And : We want to test for a oneToZero swap
             vm.assume(zeroToOne == false);

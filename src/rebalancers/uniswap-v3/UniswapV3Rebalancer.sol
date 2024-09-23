@@ -16,9 +16,9 @@ import { IPositionManager } from "./interfaces/IPositionManager.sol";
 import { IUniswapV3Pool } from "./interfaces/IUniswapV3Pool.sol";
 import { LiquidityAmounts } from "../libraries/LiquidityAmounts.sol";
 import { MintLogic } from "./libraries/MintLogic.sol";
-import { NoSlippageSwapMath } from "./libraries/NoSlippageSwapMath.sol";
 import { PricingLogic } from "./libraries/PricingLogic.sol";
-import { SlippageSwapMath } from "./libraries/SlippageSwapMath.sol";
+import { RebalanceLogic } from "./libraries/RebalanceLogic.sol";
+import { SwapMath } from "./libraries/SwapMath.sol";
 import { SqrtPriceMath } from "../libraries/SqrtPriceMath.sol";
 import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
@@ -72,6 +72,12 @@ contract UniswapV3Rebalancer is IActionBase {
 
     // A mapping from initiator to rebalancing fee.
     mapping(address initiator => InitiatorInfo) public initiatorInfo;
+
+    struct SwapParams {
+        uint256 amountIn;
+        uint256 amountOut;
+        bool zeroToOne;
+    }
 
     // A struct with the state of a specific position, only used in memory.
     struct PositionState {
@@ -189,11 +195,11 @@ contract UniswapV3Rebalancer is IActionBase {
         if (msg.sender != account) revert OnlyAccount();
 
         // Decode rebalanceData.
-        bytes memory swapData;
         uint256 id;
         address positionManager;
-        PositionState memory position;
         address initiator;
+        bytes memory swapData;
+        PositionState memory position;
         {
             int24 lowerTick;
             int24 upperTick;
@@ -210,60 +216,54 @@ contract UniswapV3Rebalancer is IActionBase {
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
         if (isPoolUnbalanced(position)) revert UnbalancedPool();
 
-        // Remove liquidity of the position and claim outstanding fees to get full amounts of token0 and token1
-        // for rebalance.
+        // Remove liquidity of the position and claim outstanding fees.
         (uint256 balance0, uint256 balance1) = BurnLogic._burn(positionManager, id, position.liquidity);
 
-        bool zeroToOne;
-        uint256 amountInitiatorFee;
-        uint256 minLiquidity;
-        {
-            // Get a good first approximation of the swap parameters, by calculating the optimal swap parameters
-            // for a hypothetical swap without slippage.
-            uint256 amountIn;
-            uint256 amountOut;
-            {
-                uint256 maxLiquidity;
-                (zeroToOne, amountIn, amountOut, amountInitiatorFee, maxLiquidity) = NoSlippageSwapMath.getSwapParams(
-                    position.fee,
-                    initiatorInfo[initiator].fee,
-                    position.sqrtPriceX96,
-                    position.sqrtRatioLower,
-                    position.sqrtRatioUpper,
-                    balance0,
-                    balance1
-                );
+        // Get the rebalance parameters.
+        // These are calculated based on a hypothetical optimal swap through the pool without slippage.
+        (bool zeroToOne, uint256 amountIn, uint256 amountOut, uint256 amountInitiatorFee, uint256 minLiquidity) =
+        RebalanceLogic.getRebalanceParams(
+            MAX_SLIPPAGE_RATIO,
+            position.fee,
+            initiatorInfo[initiator].fee,
+            position.sqrtPriceX96,
+            position.sqrtRatioLower,
+            position.sqrtRatioUpper,
+            balance0,
+            balance1
+        );
 
-                minLiquidity = maxLiquidity.mulDivDown(MAX_SLIPPAGE_RATIO, 1e18);
-            }
-
-            if (swapData.length == 0) {
-                // Swap via the pool of the position directly.
-                amountOut = SlippageSwapMath.getAmountOutWithSlippage(
-                    zeroToOne,
-                    position.fee,
-                    IPool(position.pool).liquidity(),
-                    uint160(position.sqrtPriceX96),
-                    position.sqrtRatioLower,
-                    position.sqrtRatioUpper,
-                    zeroToOne ? balance0 - amountInitiatorFee : balance0,
-                    zeroToOne ? balance1 : balance1 - amountInitiatorFee,
-                    amountIn,
-                    amountOut
-                );
-                // The Pool must still be balanced after the swap.
-                if (_swap(position, zeroToOne, amountOut)) revert UnbalancedPool();
-                balance0 = zeroToOne ? ERC20(position.token0).balanceOf(address(this)) : balance0 + amountOut;
-                balance1 = zeroToOne ? balance1 + amountOut : ERC20(position.token1).balanceOf(address(this));
-                // balance0 = ERC20(position.token0).balanceOf(address(this));
-                // balance1 = ERC20(position.token1).balanceOf(address(this));
-            } else {
-                // Swap via custom provided routing data.
-                _swap(position, zeroToOne, amountIn, swapData);
-                balance0 = ERC20(position.token0).balanceOf(address(this));
-                balance1 = ERC20(position.token1).balanceOf(address(this));
-            }
+        // Do the actual swap to rebalance the position, either directly through the pool,
+        // or via a router with custom swap data.
+        if (swapData.length == 0) {
+            // Swap via the pool of the position directly.
+            amountOut = SwapMath.getAmountOutWithSlippage(
+                zeroToOne,
+                position.fee,
+                IPool(position.pool).liquidity(),
+                uint160(position.sqrtPriceX96),
+                position.sqrtRatioLower,
+                position.sqrtRatioUpper,
+                zeroToOne ? balance0 - amountInitiatorFee : balance0,
+                zeroToOne ? balance1 : balance1 - amountInitiatorFee,
+                amountIn,
+                amountOut
+            );
+            // The Pool must still be balanced after the swap.
+            if (_swap(position, zeroToOne, amountOut)) revert UnbalancedPool();
+            balance0 = zeroToOne ? ERC20(position.token0).balanceOf(address(this)) : balance0 + amountOut;
+            balance1 = zeroToOne ? balance1 + amountOut : ERC20(position.token1).balanceOf(address(this));
+            // balance0 = ERC20(position.token0).balanceOf(address(this));
+            // balance1 = ERC20(position.token1).balanceOf(address(this));
+        } else {
+            // Swap via custom provided routing data.
+            _swap(position, zeroToOne, amountIn, swapData);
+            balance0 = ERC20(position.token0).balanceOf(address(this));
+            balance1 = ERC20(position.token1).balanceOf(address(this));
         }
+
+        // Check that the pool is still balanced after the swap.
+        if (isPoolUnbalanced(position)) revert UnbalancedPool();
 
         // Mint token and update balances.
         uint256 newTokenId;
@@ -411,6 +411,41 @@ contract UniswapV3Rebalancer is IActionBase {
 
         // Check if pool is still balanced (sqrtPriceLimitX96 is reached before an amountOut of tokenOut is received).
         isPoolUnbalanced_ = (amountOut > (zeroToOne ? uint256(-deltaAmount1) : uint256(-deltaAmount0)));
+    }
+
+    function _swapViaPoolDirect(
+        PositionState memory position,
+        bool zeroToOne,
+        uint256 balance0,
+        uint256 balance1,
+        uint256 amountOut
+    ) internal returns (uint256 balance0_, uint256 balance1_) {
+        // Don't do swaps with zero amount.
+        if (amountOut == 0) return (balance0, balance1);
+
+        // Pool should still be balanced (within tolerance boundaries) after the swap.
+        uint160 sqrtPriceLimitX96 =
+            uint160(zeroToOne ? position.lowerBoundSqrtPriceX96 : position.upperBoundSqrtPriceX96);
+
+        // Do the swap.
+        bytes memory data = abi.encode(position.token0, position.token1, position.fee);
+        (int256 deltaAmount0, int256 deltaAmount1) =
+            IPool(position.pool).swap(address(this), zeroToOne, -int256(amountOut), sqrtPriceLimitX96, data);
+
+        // Update balances.
+        if (zeroToOne) {
+            balance0_ = balance0 - uint256(deltaAmount0);
+            balance1_ = balance1 + uint256(deltaAmount1);
+        } else {
+            balance0_ = balance0 + uint256(deltaAmount0);
+            balance1_ = balance1 - uint256(deltaAmount1);
+        }
+
+        // Check if pool if the pool became balanced (sqrtPriceLimitX96 is reached before an amountOut of tokenOut is received).
+        // If yes update the position to the new sqrtPriceX96, so that imbalance check reverts.
+        if (amountOut > (zeroToOne ? uint256(-deltaAmount1) : uint256(-deltaAmount0))) {
+            position.sqrtPriceX96 = sqrtPriceLimitX96;
+        }
     }
 
     /**

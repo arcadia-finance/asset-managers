@@ -9,7 +9,7 @@ import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV
 import { LiquidityAmounts } from "../../libraries/LiquidityAmounts.sol";
 import { SqrtPriceMath } from "../../libraries/SqrtPriceMath.sol";
 
-library SlippageSwapMath {
+library SwapMath {
     using FixedPointMathLib for uint256;
 
     // The minimal relative difference between liquidity0 and liquidity1, with 18 decimals precision.
@@ -51,7 +51,8 @@ library SlippageSwapMath {
             }
 
             // If the position is not out of range, calculate the amountIn and amountOut, given the new approximated sqrtPrice.
-            (amountIn, amountOut) = _getSwapParamsExact(zeroToOne, fee, usableLiquidity, sqrtPriceOld, sqrtPriceNew);
+            (amountIn, amountOut) =
+                _getRebalanceParamsExact(zeroToOne, fee, usableLiquidity, sqrtPriceOld, sqrtPriceNew);
 
             // Given the new approximated sqrtPriceNew and its swap amounts,
             // calculate a better approximation for the optimal amountIn and amountOut, that would maximise the liquidity provided
@@ -124,7 +125,7 @@ library SlippageSwapMath {
         amountOut = SqrtPriceMath.getAmount0Delta(sqrtPriceOld, sqrtPriceNew, usableLiquidity, false);
     }
 
-    function _getSwapParamsExact(
+    function _getRebalanceParamsExact(
         bool zeroToOne,
         uint256 fee,
         uint128 usableLiquidity,

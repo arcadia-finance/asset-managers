@@ -9,9 +9,7 @@ import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV
 import { LiquidityAmounts } from "../../libraries/LiquidityAmounts.sol";
 import { PricingLogic } from "./PricingLogic.sol";
 
-event Log(uint256 value);
-
-library NoSlippageSwapMath {
+library RebalanceLogic {
     using FixedPointMathLib for uint256;
 
     // The binary precision of sqrtPriceX96 squared.
@@ -27,7 +25,8 @@ library NoSlippageSwapMath {
      * @return amountIn The amount of tokenIn.
      * @dev Slippage is not taken into account when calculating the swap parameters.
      */
-    function getSwapParams(
+    function getRebalanceParams(
+        uint256 maxSlippageRatio,
         uint256 poolFee,
         uint256 initiatorFee,
         uint256 sqrtPrice,
@@ -38,7 +37,7 @@ library NoSlippageSwapMath {
     )
         internal
         pure
-        returns (bool zeroToOne, uint256 amountIn, uint256 amountOut, uint256 amountInitiatorFee, uint256 liquidity)
+        returns (bool zeroToOne, uint256 amountIn, uint256 amountOut, uint256 amountInitiatorFee, uint256 minLiquidity)
     {
         // Total fee is pool fee + initiator fee, with 18 decimals precision.
         // Since Uniswap uses 6 decimals precision for the fee, we have to multiply the pool fee by 1e12.
@@ -82,13 +81,17 @@ library NoSlippageSwapMath {
             }
         }
 
-        liquidity = LiquidityAmounts.getLiquidityForAmounts(
-            uint160(sqrtPrice),
-            uint160(sqrtRatioLower),
-            uint160(sqrtRatioUpper),
-            zeroToOne ? balance0 - amountIn : balance0 + amountOut,
-            zeroToOne ? balance1 + amountOut : balance1 - amountIn
-        );
+        // Calculate the maximum amount of liquidity that can be added to the position.
+        {
+            uint256 liquidity = LiquidityAmounts.getLiquidityForAmounts(
+                uint160(sqrtPrice),
+                uint160(sqrtRatioLower),
+                uint160(sqrtRatioUpper),
+                zeroToOne ? balance0 - amountIn : balance0 + amountOut,
+                zeroToOne ? balance1 + amountOut : balance1 - amountIn
+            );
+            minLiquidity = liquidity.mulDivDown(maxSlippageRatio, 1e18);
+        }
 
         // Get initiator fee amount and the actual amountIn of the swap (without initiator fee).
         amountInitiatorFee = amountIn.mulDivDown(initiatorFee, 1e18);

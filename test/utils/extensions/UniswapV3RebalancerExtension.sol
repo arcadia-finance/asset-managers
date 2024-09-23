@@ -4,8 +4,8 @@
  */
 pragma solidity 0.8.22;
 
-import { NoSlippageSwapMath } from "../../../src/rebalancers/uniswap-v3/libraries/NoSlippageSwapMath.sol";
 import { PricingLogic } from "../../../src/rebalancers/uniswap-v3/libraries/PricingLogic.sol";
+import { RebalanceLogic } from "../../../src/rebalancers/uniswap-v3/libraries/RebalanceLogic.sol";
 import { UniswapV3Rebalancer } from "../../../src/rebalancers/uniswap-v3/UniswapV3Rebalancer.sol";
 
 contract UniswapV3RebalancerExtension is UniswapV3Rebalancer {
@@ -13,7 +13,8 @@ contract UniswapV3RebalancerExtension is UniswapV3Rebalancer {
         UniswapV3Rebalancer(maxTolerance, maxInitiatorFee, maxSlippageRatio)
     { }
 
-    function getSwapParams(
+    function getRebalanceParams(
+        uint256 maxSlippageRatio,
         uint256 poolFee,
         uint256 initiatorFee,
         uint256 sqrtPrice,
@@ -26,22 +27,23 @@ contract UniswapV3RebalancerExtension is UniswapV3Rebalancer {
         pure
         returns (bool zeroToOne, uint256 amountIn, uint256 amountOut, uint256 amountInitiatorFee, uint256 minLiquidity)
     {
-        return NoSlippageSwapMath.getSwapParams(
-            poolFee, initiatorFee, sqrtPrice, sqrtRatioLower, sqrtRatioUpper, amount0, amount1
+        return RebalanceLogic.getRebalanceParams(
+            maxSlippageRatio, poolFee, initiatorFee, sqrtPrice, sqrtRatioLower, sqrtRatioUpper, amount0, amount1
         );
     }
 
-    function getSwapParams(
+    function getRebalanceParams(
         UniswapV3RebalancerExtension.PositionState memory position,
         uint256 amount0,
         uint256 amount1,
         uint256 initiatorFee
     )
         public
-        pure
+        view
         returns (bool zeroToOne, uint256 amountIn, uint256 amountOut, uint256 amountInitiatorFee, uint256 minLiquidity)
     {
-        return NoSlippageSwapMath.getSwapParams(
+        return RebalanceLogic.getRebalanceParams(
+            UniswapV3Rebalancer.MAX_SLIPPAGE_RATIO,
             position.fee,
             initiatorFee,
             position.sqrtPriceX96,
