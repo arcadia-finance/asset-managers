@@ -526,6 +526,30 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
         int24 upperTick,
         uint256 amount1ToSwap
     ) public {
+        initVars = InitVariables({
+            tickLower: -6,
+            tickUpper: 25,
+            initToken0Amount: 1_254_146_707_194_178_096_176_766_673_175_240_249,
+            initToken1Amount: 736_207_616_195_098_419_872_245_438,
+            token0Decimals: 61,
+            token1Decimals: 12,
+            priceToken0: 50,
+            priceToken1: 11_709_559_248_905_314_546_114_447_808_662_921_227,
+            decimalsDiff: 124_717_623_019_461_639_191_522_877_589_059_513,
+            initiator: 0xd580A42e94D62A35D75fbe8955925652C7e0E2E7,
+            tolerance: 2_090_838_823_228_657_192_212_738_185,
+            fee: 115_792_089_237_316_195_423_570_985_008_687_907_853_269_984_665_640_564_039_457_584_007_913_129_639_935
+        });
+        lpVars = LpVariables({
+            tickLower: -2,
+            tickUpper: 8_388_606,
+            liquidity: 16_092_574_269_830_985_068_916_356_142_974_106_755,
+            amount0: 1_597_969_176_353_669_679_796_448_253_419_886_846_293_756_449_577_404_681_680_139_099_113_796_557,
+            amount1: 184_805_926_269
+        });
+        lowerTick = 150_841;
+        upperTick = -5;
+        amount1ToSwap = 1_080_237_021_945_869_010_359_923_759_788_300;
         // Given : deploy new rebalancer with a high maxTolerance to avoid unbalancedPool due to external usd prices not aligned
         uint256 maxTolerance = 1e18;
         deployRebalancer(maxTolerance, MAX_INITIATOR_FEE);
@@ -824,7 +848,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
 
             bytes memory routerData =
                 abi.encodeWithSelector(RouterMock.swap.selector, address(token0), address(token1), amountIn, amountOut);
-            swapData = abi.encode(address(routerMock), routerData);
+            swapData = abi.encode(address(routerMock), amountIn, routerData);
         }
 
         // When : Calling rebalancePosition()
@@ -945,7 +969,7 @@ contract RebalancePosition_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_
 
             bytes memory routerData =
                 abi.encodeWithSelector(RouterMock.swap.selector, address(token1), address(token0), amountIn, amountOut);
-            swapData = abi.encode(address(routerMock), routerData);
+            swapData = abi.encode(address(routerMock), amountIn, routerData);
         }
 
         // When : calling rebalancePosition()

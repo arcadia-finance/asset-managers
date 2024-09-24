@@ -5,26 +5,21 @@ pragma solidity 0.8.22;
 /// @notice Wraps Slipstream positions in a non-fungible token interface which allows for them to be transferred
 /// and authorized.
 
-struct CollectParams {
-    uint256 tokenId;
-    address recipient;
-    uint128 amount0Max;
-    uint128 amount1Max;
-}
-
-struct IncreaseLiquidityParams {
-    uint256 tokenId;
-    uint256 amount0Desired;
-    uint256 amount1Desired;
-    uint256 amount0Min;
-    uint256 amount1Min;
-    uint256 deadline;
-}
-
-interface ISlipstreamPositionManager {
-    function approve(address spender, uint256 tokenId) external;
-
-    function collect(CollectParams calldata params) external payable returns (uint256 amount0, uint256 amount1);
+interface ICLPositionManager {
+    struct MintParams {
+        address token0;
+        address token1;
+        int24 tickSpacing;
+        int24 tickLower;
+        int24 tickUpper;
+        uint256 amount0Desired;
+        uint256 amount1Desired;
+        uint256 amount0Min;
+        uint256 amount1Min;
+        address recipient;
+        uint256 deadline;
+        uint160 sqrtPriceX96;
+    }
 
     function positions(uint256 tokenId)
         external
@@ -44,8 +39,8 @@ interface ISlipstreamPositionManager {
             uint128 tokensOwed1
         );
 
-    function increaseLiquidity(IncreaseLiquidityParams calldata params)
+    function mint(MintParams calldata params)
         external
         payable
-        returns (uint128 liquidity, uint256 amount0, uint256 amount1);
+        returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1);
 }

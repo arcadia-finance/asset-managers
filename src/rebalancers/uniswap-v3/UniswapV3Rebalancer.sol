@@ -8,6 +8,7 @@ import { ActionData, IActionBase } from "../../../lib/accounts-v2/src/interfaces
 import { ArcadiaLogic } from "../libraries/ArcadiaLogic.sol";
 import { BurnLogic } from "./libraries/BurnLogic.sol";
 import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
+import { FeeLogic } from "./libraries/FeeLogic.sol";
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { FullMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
 import { IAccount } from "../interfaces/IAccount.sol";
@@ -18,6 +19,7 @@ import { LiquidityAmounts } from "../libraries/LiquidityAmounts.sol";
 import { MintLogic } from "./libraries/MintLogic.sol";
 import { PricingLogic } from "./libraries/PricingLogic.sol";
 import { RebalanceLogic } from "./libraries/RebalanceLogic.sol";
+import { SwapLogic } from "./libraries/SwapLogic.sol";
 import { SwapMath } from "./libraries/SwapMath.sol";
 import { SqrtPriceMath } from "../libraries/SqrtPriceMath.sol";
 import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
@@ -85,6 +87,7 @@ contract UniswapV3Rebalancer is IActionBase {
         address token0;
         address token1;
         uint24 fee;
+        int24 tickSpacing;
         int24 upperTick;
         int24 lowerTick;
         uint128 liquidity;
@@ -172,7 +175,7 @@ contract UniswapV3Rebalancer is IActionBase {
 
         // Encode data for the flash-action.
         bytes memory actionData =
-            ArcadiaLogic._encodeActionDataRebalancer(positionManager, id, msg.sender, lowerTick, upperTick, swapData);
+            ArcadiaLogic._encodeActionData(positionManager, id, msg.sender, lowerTick, upperTick, swapData);
 
         // Call flashAction() with this contract as actionTarget.
         IAccount(account_).flashAction(address(this), actionData);
@@ -183,10 +186,12 @@ contract UniswapV3Rebalancer is IActionBase {
         emit Rebalance(account_, id);
     }
 
+    event Log(uint256 liquidity, uint256 minLiquidity);
+
     /**
      * @notice Callback function called by the Arcadia Account during a flashAction.
      * @param rebalanceData A bytes object containing a struct with the assetData of the position and the address of the initiator.
-     * @return returnedAssets A struct with the asset data of the Liquidity Position and with the leftovers after mint, if any.
+     * @return depositData A struct with the asset data of the Liquidity Position and with the leftovers after mint, if any.
      * @dev The Liquidity Position is already transferred to this contract before executeAction() is called.
      * @dev When rebalancing we will burn the current Liquidity Position and mint a new one with a new tokenId.
      */
@@ -195,8 +200,8 @@ contract UniswapV3Rebalancer is IActionBase {
         if (msg.sender != account) revert OnlyAccount();
 
         // Decode rebalanceData.
-        address positionManager;
         uint256 id;
+        address positionManager;
         address initiator;
         bytes memory swapData;
         PositionState memory position;
@@ -221,7 +226,7 @@ contract UniswapV3Rebalancer is IActionBase {
         (uint256 balance0, uint256 balance1) = BurnLogic._burn(positionManager, id, position.liquidity);
 
         // Get the rebalance parameters.
-        // These are calculated based on a hypothetical optimal swap through the pool without slippage.
+        // These are calculated based on a hypothetical swap through the pool, without slippage.
         (uint256 minLiquidity, bool zeroToOne, uint256 amountInitiatorFee, uint256 amountIn, uint256 amountOut) =
         RebalanceLogic.getRebalanceParams(
             MAX_SLIPPAGE_RATIO,
@@ -234,103 +239,50 @@ contract UniswapV3Rebalancer is IActionBase {
             balance1
         );
 
-        // Do the actual swap to rebalance the position, either directly through the pool,
-        // or via a router with custom swap data.
-        if (swapData.length == 0) {
-            // Swap via the pool of the position directly.
-            amountOut = SwapMath.getAmountOutWithSlippage(
-                zeroToOne,
-                position.fee,
-                IPool(position.pool).liquidity(),
-                uint160(position.sqrtPriceX96),
-                position.sqrtRatioLower,
-                position.sqrtRatioUpper,
-                zeroToOne ? balance0 - amountInitiatorFee : balance0,
-                zeroToOne ? balance1 : balance1 - amountInitiatorFee,
-                amountIn,
-                amountOut
-            );
-            // The Pool must still be balanced after the swap.
-            if (_swapViaPool(position, zeroToOne, amountOut)) revert UnbalancedPool();
-            balance0 = zeroToOne ? ERC20(position.token0).balanceOf(address(this)) : balance0 + amountOut;
-            balance1 = zeroToOne ? balance1 + amountOut : ERC20(position.token1).balanceOf(address(this));
-            // balance0 = ERC20(position.token0).balanceOf(address(this));
-            // balance1 = ERC20(position.token1).balanceOf(address(this));
-        } else {
-            // Swap via router with custom swap data.
-            _swapViaRouter(position, zeroToOne, amountIn, swapData);
-            balance0 = ERC20(position.token0).balanceOf(address(this));
-            balance1 = ERC20(position.token1).balanceOf(address(this));
-        }
+        // Do the actual swap to rebalance the position.
+        // This can be done either directly through the pool, or via a router with custom swap data.
+        // For swaps directly through the pool, if slippage is bigger than calculated, the transaction will not immediately revert,
+        // but excess slippage will be subtracted from the initiatorFee.
+        // For swaps via the router, tokenOut should be the limiting factor for increasing liquidity.
+        // Leftovers must be in tokenIn, otherwise the total tokenIn balance will be added as liquidity,
+        // and the initiator fee will be 0 (but the transaction will not revert).
+        (balance0, balance1) = SwapLogic._swap(
+            positionManager, position, swapData, zeroToOne, amountInitiatorFee, amountIn, amountOut, balance0, balance1
+        );
 
         // Check that the pool is still balanced after the swap.
         if (isPoolUnbalanced(position)) revert UnbalancedPool();
 
-        // Mint token and update balances.
+        // Mint the new liquidity position.
+        // We mint with the total available balances of token0 and token1.
         uint256 newTokenId;
-        uint256 liquidity;
-        (newTokenId, liquidity, balance0, balance1) = MintLogic._mint(positionManager, position, balance0, balance1);
+        {
+            uint256 liquidity;
+            (newTokenId, liquidity, balance0, balance1) = MintLogic._mint(positionManager, position, balance0, balance1);
 
-        if (liquidity < minLiquidity) revert InsufficientLiquidity();
+            // Check that the actual liquidity of the position is above the minimum threshold.
+            // This prevents loss of principal of the liquidity position due to slippage.
+            emit Log(liquidity, minLiquidity);
+            if (liquidity < minLiquidity) revert InsufficientLiquidity();
+        }
 
         // Transfer fee to the initiator.
-        if (zeroToOne) {
-            if (balance0 > amountInitiatorFee) {
-                balance0 -= amountInitiatorFee;
-                ERC20(position.token0).safeTransfer(initiator, amountInitiatorFee);
-            } else {
-                ERC20(position.token0).safeTransfer(initiator, balance0);
-                balance0 = 0;
-            }
-        } else {
-            if (balance1 > amountInitiatorFee) {
-                balance1 -= amountInitiatorFee;
-                ERC20(position.token1).safeTransfer(initiator, amountInitiatorFee);
-            } else {
-                ERC20(position.token1).safeTransfer(initiator, balance1);
-                balance1 = 0;
-            }
-        }
+        uint256 assetCount;
+        (balance0, balance1, assetCount) = FeeLogic._transfer(
+            initiator, zeroToOne, amountInitiatorFee, position.token0, position.token1, balance0, balance1
+        );
 
-        ActionData memory returnedAssets;
-        {
-            uint256 assetsCount = 1 + (balance0 > 0 ? 1 : 0) + (balance1 > 0 ? 1 : 0);
+        // Encode deposit data for the flash-action.
+        ActionData memory depositData = ArcadiaLogic._encodeDepositData(
+            positionManager, newTokenId, assetCount, position.token0, position.token1, balance0, balance1
+        );
 
-            returnedAssets.assets = new address[](assetsCount);
-            returnedAssets.assetIds = new uint256[](assetsCount);
-            returnedAssets.assetAmounts = new uint256[](assetsCount);
-            returnedAssets.assetTypes = new uint256[](assetsCount);
-
-            // Add newly minted Liquidity Position first.
-            returnedAssets.assets[0] = address(UniswapV3Logic.POSITION_MANAGER);
-            returnedAssets.assetIds[0] = newTokenId;
-            returnedAssets.assetAmounts[0] = 1;
-            returnedAssets.assetTypes[0] = 2;
-
-            // Track the next index for token0 and token1.
-            uint256 index = 1;
-
-            // In case of leftovers after the mint, these should be deposited back into the Account.
-            if (balance0 > 0) {
-                ERC20(position.token0).approve(msg.sender, balance0);
-                returnedAssets.assets[index] = position.token0;
-                returnedAssets.assetAmounts[index] = balance0;
-                returnedAssets.assetTypes[index] = 1;
-                ++index;
-            }
-
-            if (balance1 > 0) {
-                ERC20(position.token1).approve(msg.sender, balance1);
-                returnedAssets.assets[index] = position.token1;
-                returnedAssets.assetAmounts[index] = balance1;
-                returnedAssets.assetTypes[index] = 1;
-            }
-        }
-
-        // Approve ActionHandler to deposit Liquidity Position back into the Account.
+        // Approve ActionHandler to deposit Liquidity Position and leftovers back into the Account.
         IPositionManager(positionManager).approve(msg.sender, newTokenId);
+        if (balance0 > 0) ERC20(position.token0).safeApprove(msg.sender, balance0);
+        if (balance1 > 0) ERC20(position.token1).safeApprove(msg.sender, balance1);
 
-        return returnedAssets;
+        return depositData;
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -531,8 +483,8 @@ contract UniswapV3Rebalancer is IActionBase {
      */
     function isPoolUnbalanced(PositionState memory position) public pure returns (bool isPoolUnbalanced_) {
         // Check if current priceX96 of the Pool is within accepted tolerance of the calculated trusted priceX96.
-        isPoolUnbalanced_ = position.sqrtPriceX96 < position.lowerBoundSqrtPriceX96
-            || position.sqrtPriceX96 > position.upperBoundSqrtPriceX96;
+        isPoolUnbalanced_ = position.sqrtPriceX96 <= position.lowerBoundSqrtPriceX96
+            || position.sqrtPriceX96 >= position.upperBoundSqrtPriceX96;
     }
 
     /* ///////////////////////////////////////////////////////////////

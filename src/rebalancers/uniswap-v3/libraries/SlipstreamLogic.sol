@@ -4,7 +4,7 @@
  */
 pragma solidity 0.8.22;
 
-import { ISlipstreamPositionManager } from "../interfaces/ISlipstreamPositionManager.sol";
+import { ICLPositionManager } from "../interfaces/ICLPositionManager.sol";
 import { PoolAddress } from "../../../../lib/accounts-v2/src/asset-modules/Slipstream/libraries/PoolAddress.sol";
 
 library SlipstreamLogic {
@@ -12,8 +12,8 @@ library SlipstreamLogic {
     address internal constant CL_FACTORY = 0x5e7BB104d84c7CB9B682AaC2F3d509f5F406809A;
 
     // The Slipstream NonfungiblePositionManager contract.
-    ISlipstreamPositionManager internal constant POSITION_MANAGER =
-        ISlipstreamPositionManager(0x827922686190790b37229fd06084350E74485b72);
+    ICLPositionManager internal constant POSITION_MANAGER =
+        ICLPositionManager(0x827922686190790b37229fd06084350E74485b72);
 
     /**
      * @notice Computes the contract address of a Slipstream Pool.
