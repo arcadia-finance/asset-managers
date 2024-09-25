@@ -1,6 +1,6 @@
 /**
  * Created by Pragma Labs
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: BUSL-1.1
  */
 pragma solidity 0.8.22;
 
@@ -10,6 +10,15 @@ import { SlipstreamLogic } from "./SlipstreamLogic.sol";
 import { StakedSlipstreamLogic } from "./StakedSlipstreamLogic.sol";
 
 library BurnLogic {
+    /**
+     * @notice Burns the Liquidity Position.
+     * @param positionManager The contract address of the Position Manager.
+     * @param id The id of the Liquidity Position.
+     * @param position Struct with the position data.
+     * @return balance0 The amount of token0 claimed.
+     * @return balance1 The amount of token1 claimed.
+     * @return rewards The amount of reward token claimed.
+     */
     function _burn(address positionManager, uint256 id, Rebalancer.PositionState memory position)
         internal
         returns (uint256 balance0, uint256 balance1, uint256 rewards)

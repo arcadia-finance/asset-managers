@@ -1,6 +1,6 @@
 /**
  * Created by Pragma Labs
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: BUSL-1.1
  */
 pragma solidity 0.8.22;
 
@@ -28,6 +28,14 @@ library UniswapV3Logic {
         pool = PoolAddress.computeAddress(UNISWAP_V3_FACTORY, token0, token1, fee);
     }
 
+    /**
+     * @notice Fetches Uniswap V3 specific position data from external contracts.
+     * @param position Struct with the position data.
+     * @param id The id of the Liquidity Position.
+     * @param getTickSpacing Bool indicating if the tick spacing should be fetched.
+     * @return tickCurrent The current tick of the pool.
+     * @return tickRange The tick range of the position.
+     */
     function _getPositionState(Rebalancer.PositionState memory position, uint256 id, bool getTickSpacing)
         internal
         view

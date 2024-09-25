@@ -1,6 +1,6 @@
 /**
  * Created by Pragma Labs
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: BUSL-1.1
  */
 pragma solidity 0.8.22;
 
@@ -32,6 +32,13 @@ library SlipstreamLogic {
         pool = PoolAddress.computeAddress(CL_FACTORY, token0, token1, tickSpacing);
     }
 
+    /**
+     * @notice Fetches Slipstream specific position data from external contracts.
+     * @param position Struct with the position data.
+     * @param id The id of the Liquidity Position.
+     * @return tickCurrent The current tick of the pool.
+     * @return tickRange The tick range of the position.
+     */
     function _getPositionState(Rebalancer.PositionState memory position, uint256 id)
         internal
         view

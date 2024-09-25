@@ -1,6 +1,6 @@
 /**
  * Created by Pragma Labs
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: BUSL-1.1
  */
 pragma solidity 0.8.22;
 
@@ -16,17 +16,23 @@ library RebalanceLogic {
     uint256 internal constant Q192 = PricingLogic.Q192;
 
     /**
-     * @notice Returns the approximated swap parameters to optimize the total value that can be added as liquidity,
-     * for a hypothetical swap without slippage and with fees.
+     * @notice Returns the parameters and constraints to rebalance the position.
+     * Both parameters and constraints are calculated based on a hypothetical swap (in the pool itself with fees but without slippage).
+     * that maximizes the amount of liquidity that can be added to the positions (no leftovers of either token0 or token1).
+     * @param maxSlippageRatio The maximum decrease of the liquidity due to slippage, with 18 decimals precision.
+     * @param poolFee The fee of the pool, with 6 decimals precision.
+     * @param initiatorFee The fee of the initiator, with 18 decimals precision.
+     * @param sqrtPrice The square root of the price (token1/token0), with 96 binary precision.
+     * @param sqrtRatioLower The square root price of the lower tick of the liquidity position, with 96 binary precision.
+     * @param sqrtRatioUpper The square root price of the upper tick of the liquidity position, with 96 binary precision.
      * @param balance0 The amount of token0 that is available for the rebalance.
      * @param balance1 The amount of token1 that is available for the rebalance.
-     * @param initiatorFee The fee of the initiator.
-     * @return minLiquidity a
+     * @return minLiquidity The minimum amount of liquidity that must be added to the position.
      * @return zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
-     * @return amountInitiatorFee a
-     * @return amountIn The amount of tokenIn.
-     * @return amountOut a
-     * @dev Slippage is not taken into account when calculating the swap parameters.
+     * @return amountInitiatorFee The amount of initiator fee, in tokenIn.
+     * @return amountIn An approximation of the amount of tokenIn, based on the optimal swap through the pool itself without slippage.
+     * @return amountOut An approximation of the amount of tokenOut, based on the optimal swap through the pool itself without slippage.
+     * @dev ToDo: Add derivation of the formulas.
      */
     function getRebalanceParams(
         uint256 maxSlippageRatio,
@@ -63,6 +69,8 @@ library RebalanceLogic {
             // Calculate the total position value in token1 equivalent:
             uint256 token0ValueInToken1 = PricingLogic._getSpotValue(sqrtPrice, true, balance0);
             uint256 totalValueInToken1 = balance1 + token0ValueInToken1;
+
+            // Calculate the current ratio of liquidity in token1 terms.
             uint256 currentRatio = balance1.mulDivDown(1e18, totalValueInToken1);
 
             if (currentRatio < targetRatio) {
@@ -103,10 +111,10 @@ library RebalanceLogic {
 
     /**
      * @notice Calculates the amountOut for a given amountIn and sqrtPriceX96 for a hypothetical
-     * swap without slippage and with fees.
+     * swap though the pool itself with fees but without slippage.
      * @param sqrtPriceX96 The square root of the price (token1/token0), with 96 binary precision.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
-     * @param amountIn The amount that of tokenIn that must be swapped to tokenOut.
+     * @param amountIn The amount of tokenIn that must be swapped to tokenOut.
      * @param fee The total fee on amountIn, with 18 decimals precision.
      * @return amountOut The amount of tokenOut.
      * @dev Function will revert for all pools where the sqrtPriceX96 is bigger than type(uint128).max.
@@ -127,10 +135,10 @@ library RebalanceLogic {
 
     /**
      * @notice Calculates the amountIn for a given amountOut and sqrtPriceX96 for a hypothetical
-     * swap with fees but without slippage (we assume a pool with infinite liquidity).
+     * swap though the pool itself with fees but without slippage.
      * @param sqrtPriceX96 The square root of the price (token1/token0), with 96 binary precision.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
-     * @param amountOut The amount that of tokenOut that must be swapped.
+     * @param amountOut The amount that tokenOut that must be swapped.
      * @param fee The total fee on amountIn, with 18 decimals precision.
      * @return amountIn The amount of tokenIn.
      * @dev Function will revert for all pools where the sqrtPriceX96 is bigger than type(uint128).max.
@@ -152,8 +160,8 @@ library RebalanceLogic {
     /**
      * @notice Calculates the ratio of how much of the total value of a liquidity position has to be provided in token1.
      * @param sqrtPriceX96 The square root of the current pool price (token1/token0), with 96 binary precision.
-     * @param sqrtRatioLower The square root price of the lower tick of the liquidity position.
-     * @param sqrtRatioUpper The square root price of the upper tick of the liquidity position.
+     * @param sqrtRatioLower The square root price of the lower tick of the liquidity position, with 96 binary precision.
+     * @param sqrtRatioUpper The square root price of the upper tick of the liquidity position, with 96 binary precision.
      * @return targetRatio The ratio of the value of token1 compared to the total value of the position, with 18 decimals precision.
      * @dev Function will revert for all pools where the sqrtPriceX96 is bigger than type(uint128).max.
      * type(uint128).max is currently more than enough for all supported pools.

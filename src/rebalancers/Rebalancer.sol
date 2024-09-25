@@ -27,17 +27,16 @@ import { TickMath } from "../../lib/accounts-v2/src/asset-modules/UniswapV3/libr
 import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
 
 /**
- * @title Permissioned rebalancer for Uniswap V3 Liquidity Positions.
- * @author Pragma Labs
+ * @title Permissioned rebalancer for Uniswap V3 and Slipstream Liquidity Positions.
  * @notice The Rebalancer will act as an Asset Manager for Arcadia Accounts.
- * It will allow third parties to trigger the rebalancing functionality for a Uniswap V3 Liquidity Position in the Account.
+ * It will allow third parties to trigger the rebalancing functionality for a Liquidity Position in the Account.
  * The owner of an Arcadia Account should set an initiator via setInitiatorForAccount() that will be permisionned to rebalance
- * all UniswapV3 Liquidity Positions held in that Account.
+ * all Liquidity Positions held in that Account.
  * @dev The contract prevents frontrunning/sandwiching by comparing the actual pool price with a pool price calculated from trusted
  * price feeds (oracles). The tolerance in terms of price deviation is specific to the initiator but limited by a global MAX_TOLERANCE.
- * Some oracles can however deviate from the actual price by a few percent points, this could potentially open attack vectors by manipulating
- * pools and sandwiching the swap and/or increase liquidity. This asset manager should not be used for Arcadia Account that have/will have
- * Uniswap V3 Liquidity Positions where one of the underlying assets is priced with such low precision oracles.
+ * @dev The contract guarantees a very limited loss of principal with each rebalance by enforcing a minimum amount of liquidity that must be added,
+ * based on a hypothetical optimal swap through the pool itself without slippage.
+ * This prevents them Account owners from incompetent or malicious initiators who route swaps poorly, or try to skim off liquidity from the position.
  */
 contract Rebalancer is IActionBase {
     using FixedPointMathLib for uint256;
@@ -67,12 +66,12 @@ contract Rebalancer is IActionBase {
     // The Account to compound the fees for, used as transient storage.
     address internal account;
 
+    // A mapping from initiator to rebalancing fee.
+    mapping(address initiator => InitiatorInfo) public initiatorInfo;
+
     // A mapping that sets an initiator per position of an owner.
     // An initiator is approved by the owner to rebalance its specified uniswapV3 position.
     mapping(address owner => mapping(address account => address initiator)) public ownerToAccountToInitiator;
-
-    // A mapping from initiator to rebalancing fee.
-    mapping(address initiator => InitiatorInfo) public initiatorInfo;
 
     // A struct with the state of a specific position, only used in memory.
     struct PositionState {
@@ -131,6 +130,7 @@ contract Rebalancer is IActionBase {
      * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
      * @param maxInitiatorFee The maximum fee an initiator can set, with 6 decimals precision.
      * The fee is calculated on the swap amount needed to rebalance.
+     * @param maxSlippageRatio The maximum decrease of the liquidity due to slippage, with 18 decimals precision.
      */
     constructor(uint256 maxTolerance, uint256 maxInitiatorFee, uint256 maxSlippageRatio) {
         MAX_TOLERANCE = maxTolerance;
@@ -151,7 +151,6 @@ contract Rebalancer is IActionBase {
      * @param tickUpper The new upper tick to rebalance to.
      * @dev When tickLower and tickUpper are equal, ticks will be updated with same tick-spacing as current position
      * and with a balanced, 50/50 ratio around current tick.
-     * @dev ToDo: should we validate the positionManager?
      */
     function rebalancePosition(
         address account_,
@@ -215,7 +214,7 @@ contract Rebalancer is IActionBase {
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
         if (isPoolUnbalanced(position)) revert UnbalancedPool();
 
-        // Remove liquidity of the position and claim outstanding fees.
+        // Remove liquidity of the position and claim outstanding fees/rewards.
         (uint256 balance0, uint256 balance1, uint256 reward) = BurnLogic._burn(positionManager, id, position);
 
         // Get the rebalance parameters.
@@ -236,7 +235,7 @@ contract Rebalancer is IActionBase {
         // This can be done either directly through the pool, or via a router with custom swap data.
         // For swaps directly through the pool, if slippage is bigger than calculated, the transaction will not immediately revert,
         // but excess slippage will be subtracted from the initiatorFee.
-        // For swaps via the router, tokenOut should be the limiting factor for increasing liquidity.
+        // For swaps via the router, tokenOut should be the limiting factor when increasing liquidity.
         // Leftovers must be in tokenIn, otherwise the total tokenIn balance will be added as liquidity,
         // and the initiator fee will be 0 (but the transaction will not revert).
         (balance0, balance1) = SwapLogic._swap(
@@ -339,9 +338,11 @@ contract Rebalancer is IActionBase {
 
     /**
      * @notice Fetches all required position data from external contracts.
+     * @param positionManager The contract address of the Position Manager.
      * @param id The id of the Liquidity Position.
      * @param tickLower The lower tick of the newly minted position.
      * @param tickUpper The upper tick of the newly minted position.
+     * @param initiator The address of the initiator.
      * @return position Struct with the position data.
      */
     function getPositionState(address positionManager, uint256 id, int24 tickLower, int24 tickUpper, address initiator)
@@ -396,7 +397,7 @@ contract Rebalancer is IActionBase {
                         INITIATORS LOGIC
     /////////////////////////////////////////////////////////////// */
     /**
-     * @notice Sets an initiator for an Account. An initiator will be permissioned to rebalance any UniswapV3
+     * @notice Sets an initiator for an Account. An initiator will be permissioned to rebalance any
      * Liquidity Position held in the specified Arcadia Account.
      * @param initiator The address of the initiator.
      * @param account_ The address of the Arcadia Account to set an initiator for.
@@ -408,9 +409,9 @@ contract Rebalancer is IActionBase {
 
     /**
      * @notice Sets the information requested for an initiator.
-     * @param fee The fee paid to to the initiator, with 6 decimals precision.
      * @param tolerance The maximum deviation of the actual pool price,
      * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
+     * @param fee The fee paid to to the initiator, with 18 decimals precision.
      * @dev The tolerance for the pool price will be converted to an upper and lower max sqrtPrice deviation,
      * using the square root of the basis (one with 18 decimals precision) +- tolerance (18 decimals precision).
      * The tolerance boundaries are symmetric around the price, but taking the square root will result in a different

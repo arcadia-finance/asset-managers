@@ -1,6 +1,6 @@
 /**
  * Created by Pragma Labs
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: BUSL-1.1
  */
 pragma solidity 0.8.22;
 
@@ -15,6 +15,17 @@ import { Rebalancer } from "../Rebalancer.sol";
 library MintLogic {
     using SafeApprove for ERC20;
 
+    /**
+     * @notice Mints a new Liquidity Position.
+     * @param positionManager The contract address of the Position Manager.
+     * @param position Struct with the position data.
+     * @param balance0 The balance of token0 before minting liquidity.
+     * @param balance1 The balance of token1 before minting liquidity.
+     * @return newTokenId The id of the new Liquidity Position.
+     * @return liquidity The amount of liquidity minted.
+     * @return balance0_ The remaining balance of token0 after minting liquidity.
+     * @return balance1_ The remaining balance of token1 after minting liquidity.
+     */
     function _mint(
         address positionManager,
         Rebalancer.PositionState memory position,

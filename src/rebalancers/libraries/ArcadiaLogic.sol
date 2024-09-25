@@ -1,6 +1,6 @@
 /**
  * Created by Pragma Labs
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: BUSL-1.1
  */
 pragma solidity 0.8.22;
 
@@ -43,14 +43,14 @@ library ArcadiaLogic {
     }
 
     /**
-     * @notice Encodes the action data for the flash-action used to rebalance a Uniswap V3 Liquidity Position.
-     * @param positionManager The contract address of the UniswapV3 NonfungiblePositionManager.
+     * @notice Encodes the action data for the flash-action used to rebalance a Liquidity Position.
+     * @param positionManager The contract address of the Position Manager.
      * @param id The id of the Liquidity Position.
      * @param initiator The address of the initiator.
      * @param tickLower The new lower tick to rebalance the position to.
      * @param tickUpper The new upper tick to rebalancer the position to.
      * @param swapData Arbitrary calldata provided by an initiator for a swap.
-     * @return actionData Bytes string with the encoded actionData.
+     * @return actionData Bytes string with the encoded data.
      */
     function _encodeAction(
         address positionManager,
@@ -85,6 +85,17 @@ library ArcadiaLogic {
         actionData = abi.encode(assetData, transferFromOwner, permit, signature, rebalanceData);
     }
 
+    /**
+     * @notice Encodes the deposit data after the flash-action used to rebalance the Liquidity Position.
+     * @param positionManager The contract address of the Position Manager.
+     * @param id The id of the Liquidity Position.
+     * @param position Struct with the position data.
+     * @param count The number of assets to deposit.
+     * @param balance0 The amount of token0 to deposit.
+     * @param balance1 The amount of token1 to deposit.
+     * @param reward The amount of reward token to deposit.
+     * @return depositData Bytes string with the encoded data.
+     */
     function _encodeDeposit(
         address positionManager,
         uint256 id,
@@ -105,10 +116,9 @@ library ArcadiaLogic {
         depositData.assetAmounts[0] = 1;
         depositData.assetTypes[0] = 2;
 
-        // Track the next index for token0 and token1.
+        // Track the next index for the ERC20 tokens.
         uint256 index = 1;
 
-        // In case of leftovers after the mint, these should be deposited back into the Account.
         if (balance0 > 0) {
             depositData.assets[1] = position.token0;
             depositData.assetAmounts[1] = balance0;

@@ -1,6 +1,6 @@
 /**
  * Created by Pragma Labs
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: BUSL-1.1
  */
 pragma solidity 0.8.22;
 
@@ -8,13 +8,27 @@ import { ERC20, SafeApprove } from "./SafeApprove.sol";
 import { ICLPool } from "../interfaces/ICLPool.sol";
 import { IPool } from "../interfaces/IPool.sol";
 import { IUniswapV3Pool } from "../interfaces/IUniswapV3Pool.sol";
-import { SwapMath } from "./SwapMath.sol";
 import { Rebalancer } from "../Rebalancer.sol";
+import { SwapMath } from "./SwapMath.sol";
 import { UniswapV3Logic } from "./UniswapV3Logic.sol";
 
 library SwapLogic {
     using SafeApprove for ERC20;
 
+    /**
+     * @notice Swaps one token for another to rebalance the Liquidity Position.
+     * @param positionManager The contract address of the Position Manager.
+     * @param position Struct with the position data.
+     * @param swapData Arbitrary calldata provided by an initiator for the swap.
+     * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
+     * @param amountInitiatorFee The amount of initiator fee, in tokenIn.
+     * @param amountIn An approximation of the amount of tokenIn, based on the optimal swap through the pool itself without slippage.
+     * @param amountOut An approximation of the amount of tokenOut, based on the optimal swap through the pool itself without slippage.
+     * @param balance0 The balance of token0 before the swap.
+     * @param balance1 The balance of token1 before the swap.
+     * @return balance0_ The balance of token0 after the swap.
+     * @return balance1_ The balance of token1 after the swap.
+     */
     function _swap(
         address positionManager,
         Rebalancer.PositionState memory position,
@@ -39,10 +53,17 @@ library SwapLogic {
     }
 
     /**
-     * @notice Swaps one token to the other token in the Uniswap V3 Pool of the Liquidity Position.
+     * @notice Swaps one token for another, directly through the pool itself.
+     * @param positionManager The contract address of the Position Manager.
      * @param position Struct with the position data.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
-     * @param amountOut The amount that of tokenOut that must be swapped to.
+     * @param amountInitiatorFee The amount of initiator fee, in tokenIn.
+     * @param amountIn An approximation of the amount of tokenIn, based on the optimal swap through the pool itself without slippage.
+     * @param amountOut An approximation of the amount of tokenOut, based on the optimal swap through the pool itself without slippage.
+     * @param balance0 The balance of token0 before the swap.
+     * @param balance1 The balance of token1 before the swap.
+     * @return balance0_ The balance of token0 after the swap.
+     * @return balance1_ The balance of token1 after the swap.
      */
     function _swapViaPool(
         address positionManager,
@@ -81,7 +102,9 @@ library SwapLogic {
         (int256 deltaAmount0, int256 deltaAmount1) =
             IPool(position.pool).swap(address(this), zeroToOne, -int256(amountOut), sqrtPriceLimitX96, data);
 
-        // Check if pool is still balanced (sqrtPriceLimitX96 is reached before an amountOut of tokenOut is received).
+        // Check that pool is still balanced.
+        // If sqrtPriceLimitX96 is reached before an amountOut of tokenOut is received, the pool is not balanced anymore.
+        // By setting the sqrtPriceX96 to sqrtPriceLimitX96, the transaction will revert on the balance check.
         if (amountOut > (zeroToOne ? uint256(-deltaAmount1) : uint256(-deltaAmount0))) {
             position.sqrtPriceX96 = sqrtPriceLimitX96;
         }
@@ -92,12 +115,16 @@ library SwapLogic {
     }
 
     /**
-     * @notice Allows an initiator to perform an arbitrary swap.
+     * @notice Swaps one token for another, directly through the pool itself.
+     * @param positionManager The contract address of the Position Manager.
      * @param position Struct with the position data.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
-     * @param swapData A bytes object containing a contract address and another bytes object with the calldata to send to that address.
-     * @dev In order for such a swap to be valid, the amountOut should be at least equal to the amountOut expected if the swap
-     * occured in the pool of the position itself. The amountIn should also fully have been utilized, to keep target ratio valid.
+     * @param swapData Arbitrary calldata provided by an initiator for the swap.
+     * @return balance0 The balance of token0 after the swap.
+     * @return balance1 The balance of token1 after the swap.
+     * @dev Initiator has to route swap in such a way that at least minLiquidity of liquidity is added to the position after the swap.
+     * And leftovers must be in tokenIn, otherwise the total tokenIn balance will be added as liquidity,
+     * and the initiator fee will be 0 (but the transaction will not revert)
      */
     function _swapViaRouter(
         address positionManager,
@@ -105,6 +132,7 @@ library SwapLogic {
         bool zeroToOne,
         bytes memory swapData
     ) internal returns (uint256 balance0, uint256 balance1) {
+        // Decode the swap data.
         (address router, uint256 amountIn, bytes memory data) = abi.decode(swapData, (address, uint256, bytes));
 
         // Approve token to swap.
@@ -115,7 +143,10 @@ library SwapLogic {
         (bool success, bytes memory result) = router.call(data);
         require(success, string(result));
 
-        // Pool should still be balanced.
+        // Pool should still be balanced (within tolerance boundaries) after the swap.
+        // Since the swap went potentially through the pool itself (but does not have to),
+        // the sqrtPriceX96 might have moved and brought the pool out of balance.
+        // By fetching the sqrtPriceX96, the transaction will revert in that case on the balance check.
         if (positionManager == address(UniswapV3Logic.POSITION_MANAGER)) {
             (position.sqrtPriceX96,,,,,,) = IUniswapV3Pool(position.pool).slot0();
         } else {
