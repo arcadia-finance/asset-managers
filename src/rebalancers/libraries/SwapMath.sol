@@ -18,9 +18,6 @@ library SwapMath {
     // The maximal number of iterations to find the optimal swap parameters.
     uint256 internal constant MAX_ITERATIONS = 15;
 
-    event Log(uint256 sqrtPriceNew, uint256 amountIn, uint256 amountOut);
-    event Log2(uint160 sqrtRatioLower, uint160 sqrtRatioUpper);
-
     function getAmountOutWithSlippage(
         bool zeroToOne,
         uint256 fee,
@@ -32,17 +29,13 @@ library SwapMath {
         uint256 amount1,
         uint256 amountIn,
         uint256 amountOut
-    ) internal returns (uint256) {
-        emit Log2(sqrtRatioLower, sqrtRatioUpper);
-        emit Log(sqrtPriceOld, amountIn, amountOut);
+    ) internal pure returns (uint256) {
         uint160 sqrtPriceNew;
         bool stopCondition;
         // We iteratively solve for sqrtPrice, amountOut and amountIn, so that the maximal amount of liquidity can be added to the position.
         for (uint256 i = 0; i < MAX_ITERATIONS; i++) {
             // Find a better approximation for sqrtPrice, given the best approximations for the optimal amountIn and amountOut.
             sqrtPriceNew = _approximateSqrtPriceNew(zeroToOne, fee, usableLiquidity, sqrtPriceOld, amountIn, amountOut);
-
-            emit Log(sqrtPriceNew, amountIn, amountOut);
 
             // If the position is out of range, we can calculate the exact solution.
             if (sqrtPriceNew > sqrtRatioUpper) {
@@ -60,16 +53,12 @@ library SwapMath {
             // If the position is not out of range, calculate the amountIn and amountOut, given the new approximated sqrtPrice.
             (amountIn, amountOut) = _getSwapParamsExact(zeroToOne, fee, usableLiquidity, sqrtPriceOld, sqrtPriceNew);
 
-            emit Log(sqrtPriceNew, amountIn, amountOut);
-
             // Given the new approximated sqrtPriceNew and its swap amounts,
             // calculate a better approximation for the optimal amountIn and amountOut, that would maximise the liquidity provided
             // (no leftovers of either token0 or token1).
             (stopCondition, amountIn, amountOut) = _approximateOptimalSwapAmounts(
                 zeroToOne, sqrtRatioLower, sqrtRatioUpper, amount0, amount1, amountIn, amountOut, sqrtPriceNew
             );
-
-            emit Log(sqrtPriceNew, amountIn, amountOut);
 
             // Check if stop condition of iteration is met:
             // The relative difference between liquidity0 and liquidity1 is below the convergence threshold.
@@ -88,7 +77,7 @@ library SwapMath {
         uint160 sqrtPriceOld,
         uint256 amountIn,
         uint256 amountOut
-    ) internal returns (uint160 sqrtPriceNew) {
+    ) internal pure returns (uint160 sqrtPriceNew) {
         // Calculate the exact sqrtPriceNew for both amountIn and amountOut.
         // Both solutions will be different, but they with converge with every iteration closer to the same solution.
         uint256 amountInLessFee = amountIn.mulDivDown(1e6 - fee, 1e6);
@@ -107,7 +96,6 @@ library SwapMath {
             sqrtPriceNew0 =
                 SqrtPriceMath.getNextSqrtPriceFromAmount0RoundingUp(sqrtPriceOld, usableLiquidity, amountOut, false);
         }
-        emit Log2(sqrtPriceNew0, sqrtPriceNew1);
         // Calculate the new best approximation as the arithmetic average of both solutions.
         // We could as well use the geometric average, but empirically we found no difference in conversion rate,
         // while the geometric average is more expensive to calculate.
@@ -154,8 +142,6 @@ library SwapMath {
         }
     }
 
-    event Log3(uint256 liquidity0, uint256 liquidity1);
-
     function _approximateOptimalSwapAmounts(
         bool zeroToOne,
         uint160 sqrtRatioLower,
@@ -165,7 +151,7 @@ library SwapMath {
         uint256 amountIn,
         uint256 amountOut,
         uint160 sqrtPrice
-    ) internal returns (bool converged, uint256 amountIn_, uint256 amountOut_) {
+    ) internal pure returns (bool converged, uint256 amountIn_, uint256 amountOut_) {
         // Calculate the liquidity for the given sqrtPrice and swap amounts.
         uint128 liquidity;
         {
@@ -183,7 +169,6 @@ library SwapMath {
                 );
             }
             liquidity = liquidity0 < liquidity1 ? liquidity0 : liquidity1;
-            emit Log3(liquidity0, liquidity1);
 
             // Calculate the relative difference of liquidity0 and liquidity1.
             uint256 relDiff = 1e18

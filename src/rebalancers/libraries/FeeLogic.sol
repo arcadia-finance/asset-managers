@@ -17,29 +17,24 @@ library FeeLogic {
         address token1,
         uint256 balance0,
         uint256 balance1
-    ) internal returns (uint256, uint256, uint256) {
-        uint256 assetCount = 1;
+    ) internal returns (uint256, uint256) {
         if (zeroToOne) {
             if (balance0 > amountInitiatorFee) {
                 balance0 -= amountInitiatorFee;
-                assetCount = 2;
             } else {
                 amountInitiatorFee = balance0;
                 balance0 = 0;
             }
-            ERC20(token0).safeTransfer(initiator, amountInitiatorFee);
-            if (balance1 > 0) ++assetCount;
+            if (amountInitiatorFee > 0) ERC20(token0).safeTransfer(initiator, amountInitiatorFee);
         } else {
             if (balance1 > amountInitiatorFee) {
                 balance1 -= amountInitiatorFee;
-                assetCount = 2;
             } else {
                 amountInitiatorFee = balance1;
                 balance1 = 0;
             }
-            ERC20(token1).safeTransfer(initiator, amountInitiatorFee);
-            if (balance0 > 0) ++assetCount;
+            if (amountInitiatorFee > 0) ERC20(token1).safeTransfer(initiator, amountInitiatorFee);
         }
-        return (balance0, balance1, assetCount);
+        return (balance0, balance1);
     }
 }

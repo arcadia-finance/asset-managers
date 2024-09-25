@@ -39,6 +39,8 @@ interface ICLPositionManager {
             uint128 tokensOwed1
         );
 
+    function approve(address spender, uint256 tokenId) external;
+
     function mint(MintParams calldata params)
         external
         payable

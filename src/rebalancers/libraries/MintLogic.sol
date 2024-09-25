@@ -8,6 +8,7 @@ import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src
 import { ICLPositionManager } from "../interfaces/ICLPositionManager.sol";
 import { IUniswapV3PositionManager } from "../interfaces/IUniswapV3PositionManager.sol";
 import { SlipstreamLogic } from "./SlipstreamLogic.sol";
+import { StakedSlipstreamLogic } from "./StakedSlipstreamLogic.sol";
 import { UniswapV3Logic } from "./UniswapV3Logic.sol";
 import { Rebalancer } from "../Rebalancer.sol";
 
@@ -31,8 +32,23 @@ library MintLogic {
 
         uint256 amount0;
         uint256 amount1;
-        (newTokenId, liquidity, amount0, amount1) = (positionManager == address(SlipstreamLogic.POSITION_MANAGER))
-            ? SlipstreamLogic.POSITION_MANAGER.mint(
+        (newTokenId, liquidity, amount0, amount1) = (positionManager == address(UniswapV3Logic.POSITION_MANAGER))
+            ? UniswapV3Logic.POSITION_MANAGER.mint(
+                IUniswapV3PositionManager.MintParams({
+                    token0: position.token0,
+                    token1: position.token1,
+                    fee: position.fee,
+                    tickLower: position.tickLower,
+                    tickUpper: position.tickUpper,
+                    amount0Desired: balance0,
+                    amount1Desired: balance1,
+                    amount0Min: 0,
+                    amount1Min: 0,
+                    recipient: address(this),
+                    deadline: block.timestamp
+                })
+            )
+            : SlipstreamLogic.POSITION_MANAGER.mint(
                 ICLPositionManager.MintParams({
                     token0: position.token0,
                     token1: position.token1,
@@ -47,25 +63,16 @@ library MintLogic {
                     deadline: block.timestamp,
                     sqrtPriceX96: uint160(position.sqrtPriceX96)
                 })
-            )
-            : UniswapV3Logic.POSITION_MANAGER.mint(
-                IUniswapV3PositionManager.MintParams({
-                    token0: position.token0,
-                    token1: position.token1,
-                    fee: position.fee,
-                    tickLower: position.tickLower,
-                    tickUpper: position.tickUpper,
-                    amount0Desired: balance0,
-                    amount1Desired: balance1,
-                    amount0Min: 0,
-                    amount1Min: 0,
-                    recipient: address(this),
-                    deadline: block.timestamp
-                })
             );
 
         // Update balances.
         balance0_ = balance0 - amount0;
         balance1_ = balance1 - amount1;
+
+        // If position is a staked slipstream position, stake the position.
+        if (positionManager == address(StakedSlipstreamLogic.POSITION_MANAGER)) {
+            SlipstreamLogic.POSITION_MANAGER.approve(address(StakedSlipstreamLogic.POSITION_MANAGER), newTokenId);
+            StakedSlipstreamLogic.POSITION_MANAGER.mint(newTokenId);
+        }
     }
 }

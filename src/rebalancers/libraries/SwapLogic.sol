@@ -8,9 +8,9 @@ import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src
 import { ICLPool } from "../interfaces/ICLPool.sol";
 import { IPool } from "../interfaces/IPool.sol";
 import { IUniswapV3Pool } from "../interfaces/IUniswapV3Pool.sol";
-import { SlipstreamLogic } from "./SlipstreamLogic.sol";
 import { SwapMath } from "./SwapMath.sol";
 import { Rebalancer } from "../Rebalancer.sol";
+import { UniswapV3Logic } from "./UniswapV3Logic.sol";
 
 library SwapLogic {
     using SafeTransferLib for ERC20;
@@ -74,9 +74,10 @@ library SwapLogic {
 
         // Do the swap.
         // Callback (external function) must be implemented in the main contract.
-        bytes memory data = (positionManager == address(SlipstreamLogic.POSITION_MANAGER))
-            ? abi.encode(positionManager, position.token0, position.token1, position.tickSpacing)
-            : abi.encode(positionManager, position.token0, position.token1, position.fee);
+        bytes memory data = (positionManager == address(UniswapV3Logic.POSITION_MANAGER))
+            ? abi.encode(positionManager, position.token0, position.token1, position.fee)
+            // Logic holds for both Slipstream and staked Slipstream positions.
+            : abi.encode(positionManager, position.token0, position.token1, position.tickSpacing);
         (int256 deltaAmount0, int256 deltaAmount1) =
             IPool(position.pool).swap(address(this), zeroToOne, -int256(amountOut), sqrtPriceLimitX96, data);
 
@@ -116,10 +117,11 @@ library SwapLogic {
         require(success, string(result));
 
         // Pool should still be balanced.
-        if (positionManager == address(SlipstreamLogic.POSITION_MANAGER)) {
-            (position.sqrtPriceX96,,,,,) = ICLPool(position.pool).slot0();
-        } else {
+        if (positionManager == address(UniswapV3Logic.POSITION_MANAGER)) {
             (position.sqrtPriceX96,,,,,,) = IUniswapV3Pool(position.pool).slot0();
+        } else {
+            // Logic holds for both Slipstream and staked Slipstream positions.
+            (position.sqrtPriceX96,,,,,) = ICLPool(position.pool).slot0();
         }
 
         // Update the balances.

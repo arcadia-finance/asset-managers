@@ -18,6 +18,7 @@ import { MintLogic } from "./libraries/MintLogic.sol";
 import { PricingLogic } from "./libraries/PricingLogic.sol";
 import { RebalanceLogic } from "./libraries/RebalanceLogic.sol";
 import { SlipstreamLogic } from "./libraries/SlipstreamLogic.sol";
+import { StakedSlipstreamLogic } from "./libraries/StakedSlipstreamLogic.sol";
 import { SwapLogic } from "./libraries/SwapLogic.sol";
 import { SwapMath } from "./libraries/SwapMath.sol";
 import { SqrtPriceMath } from "./libraries/uniswap-v3/SqrtPriceMath.sol";
@@ -76,6 +77,7 @@ contract Rebalancer is IActionBase {
         address pool;
         address token0;
         address token1;
+        address tokenR;
         uint24 fee;
         int24 tickSpacing;
         int24 tickUpper;
@@ -145,7 +147,7 @@ contract Rebalancer is IActionBase {
      * @param id The id of the Liquidity Position to rebalance.
      * @param tickLower The new lower tick to rebalance to.
      * @param tickUpper The new upper tick to rebalance to.
-     * @dev When both tickLower and tickUpper are zero, ticks will be updated with same tick-spacing as current position
+     * @dev When tickLower and tickUpper are equal, ticks will be updated with same tick-spacing as current position
      * and with a balanced, 50/50 ratio around current tick.
      * @dev ToDo: should we validate the positionManager?
      */
@@ -160,12 +162,11 @@ contract Rebalancer is IActionBase {
         // Store Account address, used to validate the caller of the executeAction() callback.
         if (account != address(0)) revert Reentered();
         if (ownerToAccountToInitiator[IAccount(account_).owner()][account_] != msg.sender) revert InitiatorNotValid();
-
         account = account_;
 
         // Encode data for the flash-action.
         bytes memory actionData =
-            ArcadiaLogic._encodeActionData(positionManager, id, msg.sender, tickLower, tickUpper, swapData);
+            ArcadiaLogic._encodeAction(positionManager, id, msg.sender, tickLower, tickUpper, swapData);
 
         // Call flashAction() with this contract as actionTarget.
         IAccount(account_).flashAction(address(this), actionData);
@@ -185,7 +186,7 @@ contract Rebalancer is IActionBase {
      * @dev The Liquidity Position is already transferred to this contract before executeAction() is called.
      * @dev When rebalancing we will burn the current Liquidity Position and mint a new one with a new tokenId.
      */
-    function executeAction(bytes calldata rebalanceData) external override returns (ActionData memory) {
+    function executeAction(bytes calldata rebalanceData) external override returns (ActionData memory depositData) {
         // Caller should be the Account, provided as input in rebalancePosition().
         if (msg.sender != account) revert OnlyAccount();
 
@@ -213,7 +214,7 @@ contract Rebalancer is IActionBase {
         if (isPoolUnbalanced(position)) revert UnbalancedPool();
 
         // Remove liquidity of the position and claim outstanding fees.
-        (uint256 balance0, uint256 balance1) = BurnLogic._burn(positionManager, id, position.liquidity);
+        (uint256 balance0, uint256 balance1, uint256 reward) = BurnLogic._burn(positionManager, id, position);
 
         // Get the rebalance parameters.
         // These are calculated based on a hypothetical swap through the pool, without slippage.
@@ -245,10 +246,10 @@ contract Rebalancer is IActionBase {
 
         // Mint the new liquidity position.
         // We mint with the total available balances of token0 and token1.
-        uint256 newTokenId;
+        uint256 newId;
         {
             uint256 liquidity;
-            (newTokenId, liquidity, balance0, balance1) = MintLogic._mint(positionManager, position, balance0, balance1);
+            (newId, liquidity, balance0, balance1) = MintLogic._mint(positionManager, position, balance0, balance1);
 
             // Check that the actual liquidity of the position is above the minimum threshold.
             // This prevents loss of principal of the liquidity position due to slippage,
@@ -258,20 +259,31 @@ contract Rebalancer is IActionBase {
         }
 
         // Transfer fee to the initiator.
-        uint256 assetCount;
-        (balance0, balance1, assetCount) = FeeLogic._transfer(
+        (balance0, balance1) = FeeLogic._transfer(
             initiator, zeroToOne, amountInitiatorFee, position.token0, position.token1, balance0, balance1
         );
 
-        // Encode deposit data for the flash-action.
-        ActionData memory depositData = ArcadiaLogic._encodeDepositData(
-            positionManager, newTokenId, assetCount, position.token0, position.token1, balance0, balance1
-        );
+        // Approve Account to redeposit Liquidity Position and leftovers.
+        {
+            uint256 count = 1;
+            IPositionManager(positionManager).approve(msg.sender, newId);
+            if (balance0 > 0) {
+                ERC20(position.token0).safeApprove(msg.sender, balance0);
+                count = 2;
+            }
+            if (balance1 > 0) {
+                ERC20(position.token1).safeApprove(msg.sender, balance1);
+                ++count;
+            }
+            if (reward > 0) {
+                ERC20(position.tokenR).safeApprove(msg.sender, reward);
+                ++count;
+            }
 
-        // Approve ActionHandler to deposit Liquidity Position and leftovers back into the Account.
-        IPositionManager(positionManager).approve(msg.sender, newTokenId);
-        if (balance0 > 0) ERC20(position.token0).safeApprove(msg.sender, balance0);
-        if (balance1 > 0) ERC20(position.token1).safeApprove(msg.sender, balance1);
+            // Encode deposit data for the flash-action.
+            depositData =
+                ArcadiaLogic._encodeDeposit(positionManager, newId, position, count, balance0, balance1, reward);
+        }
 
         return depositData;
     }
@@ -292,12 +304,13 @@ contract Rebalancer is IActionBase {
         // Check that callback came from an actual Uniswap V3 pool.
         (address positionManager, address token0, address token1, uint24 feeOrTickSpacing) =
             abi.decode(data, (address, address, address, uint24));
-        if (positionManager == address(SlipstreamLogic.POSITION_MANAGER)) {
+        if (positionManager == address(UniswapV3Logic.POSITION_MANAGER)) {
+            if (UniswapV3Logic._computePoolAddress(token0, token1, feeOrTickSpacing) != msg.sender) revert OnlyPool();
+        } else {
+            // Logic holds for both Slipstream and staked Slipstream positions.
             if (SlipstreamLogic._computePoolAddress(token0, token1, int24(feeOrTickSpacing)) != msg.sender) {
                 revert OnlyPool();
             }
-        } else {
-            if (UniswapV3Logic._computePoolAddress(token0, token1, feeOrTickSpacing) != msg.sender) revert OnlyPool();
         }
 
         if (amount0Delta > 0) {
@@ -335,9 +348,14 @@ contract Rebalancer is IActionBase {
         returns (PositionState memory position)
     {
         // Get data of the Liquidity Position.
-        (int24 tickCurrent, int24 tickRange) = positionManager == address(SlipstreamLogic.POSITION_MANAGER)
-            ? SlipstreamLogic._getPositionState(position, id)
-            : UniswapV3Logic._getPositionState(position, id, tickLower == tickUpper);
+        (int24 tickCurrent, int24 tickRange) = positionManager == address(UniswapV3Logic.POSITION_MANAGER)
+            ? UniswapV3Logic._getPositionState(position, id, tickLower == tickUpper)
+            // Logic holds for both Slipstream and staked Slipstream positions.
+            : SlipstreamLogic._getPositionState(position, id);
+
+        if (positionManager == address(StakedSlipstreamLogic.POSITION_MANAGER)) {
+            StakedSlipstreamLogic._getPositionState(position);
+        }
 
         // Store the new ticks for the rebalance
         if (tickLower == tickUpper) {

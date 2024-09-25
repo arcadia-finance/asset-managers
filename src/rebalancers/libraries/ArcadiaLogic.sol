@@ -9,6 +9,7 @@ import { AssetValueAndRiskFactors } from "../../../lib/accounts-v2/src/libraries
 import { IFactory } from "../interfaces/IFactory.sol";
 import { IPermit2 } from "../../../lib/accounts-v2/src/interfaces/IPermit2.sol";
 import { IRegistry } from "../interfaces/IRegistry.sol";
+import { Rebalancer } from "../Rebalancer.sol";
 
 library ArcadiaLogic {
     // The contract address of the Arcadia Factory.
@@ -51,7 +52,7 @@ library ArcadiaLogic {
      * @param swapData Arbitrary calldata provided by an initiator for a swap.
      * @return actionData Bytes string with the encoded actionData.
      */
-    function _encodeActionData(
+    function _encodeAction(
         address positionManager,
         uint256 id,
         address initiator,
@@ -84,19 +85,19 @@ library ArcadiaLogic {
         actionData = abi.encode(assetData, transferFromOwner, permit, signature, rebalanceData);
     }
 
-    function _encodeDepositData(
+    function _encodeDeposit(
         address positionManager,
         uint256 id,
-        uint256 assetCount,
-        address token0,
-        address token1,
+        Rebalancer.PositionState memory position,
+        uint256 count,
         uint256 balance0,
-        uint256 balance1
+        uint256 balance1,
+        uint256 reward
     ) internal pure returns (ActionData memory depositData) {
-        depositData.assets = new address[](assetCount);
-        depositData.assetIds = new uint256[](assetCount);
-        depositData.assetAmounts = new uint256[](assetCount);
-        depositData.assetTypes = new uint256[](assetCount);
+        depositData.assets = new address[](count);
+        depositData.assetIds = new uint256[](count);
+        depositData.assetAmounts = new uint256[](count);
+        depositData.assetTypes = new uint256[](count);
 
         // Add newly minted Liquidity Position.
         depositData.assets[0] = positionManager;
@@ -109,15 +110,22 @@ library ArcadiaLogic {
 
         // In case of leftovers after the mint, these should be deposited back into the Account.
         if (balance0 > 0) {
-            depositData.assets[1] = token0;
+            depositData.assets[1] = position.token0;
             depositData.assetAmounts[1] = balance0;
             depositData.assetTypes[1] = 1;
             index = 2;
         }
 
         if (balance1 > 0) {
-            depositData.assets[index] = token1;
+            depositData.assets[index] = position.token1;
             depositData.assetAmounts[index] = balance1;
+            depositData.assetTypes[index] = 1;
+            ++index;
+        }
+
+        if (reward > 0) {
+            depositData.assets[index] = position.tokenR;
+            depositData.assetAmounts[index] = reward;
             depositData.assetTypes[index] = 1;
         }
     }
