@@ -65,7 +65,7 @@ contract CompoundFees_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder_Fuz
         vm.stopPrank();
     }
 
-    function testFuzz_Success_compoundFeesa(TestVariables memory testVars, address initiator) public {
+    function testFuzz_Success_compoundFees(TestVariables memory testVars, address initiator) public {
         // Given : initiator is not the liquidity provider.
         vm.assume(initiator != users.liquidityProvider);
 

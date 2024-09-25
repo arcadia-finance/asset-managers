@@ -14,6 +14,7 @@ import { FullMath } from "../../lib/accounts-v2/src/asset-modules/UniswapV3/libr
 import { IAccount } from "./interfaces/IAccount.sol";
 import { IPool } from "./interfaces/IPool.sol";
 import { IPositionManager } from "./interfaces/IPositionManager.sol";
+import { IStrategyHook } from "./interfaces/IStrategyHook.sol";
 import { MintLogic } from "./libraries/MintLogic.sol";
 import { PricingLogic } from "./libraries/PricingLogic.sol";
 import { RebalanceLogic } from "./libraries/RebalanceLogic.sol";
@@ -30,7 +31,7 @@ import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
  * @title Permissioned rebalancer for Uniswap V3 and Slipstream Liquidity Positions.
  * @notice The Rebalancer will act as an Asset Manager for Arcadia Accounts.
  * It will allow third parties to trigger the rebalancing functionality for a Liquidity Position in the Account.
- * The owner of an Arcadia Account should set an initiator via setInitiatorForAccount() that will be permisionned to rebalance
+ * The owner of an Arcadia Account should set an initiator via setAccountInfo() that will be permisionned to rebalance
  * all Liquidity Positions held in that Account.
  * @dev The contract prevents frontrunning/sandwiching by comparing the actual pool price with a pool price calculated from trusted
  * price feeds (oracles). The tolerance in terms of price deviation is specific to the initiator but limited by a global MAX_TOLERANCE.
@@ -71,6 +72,9 @@ contract Rebalancer is IActionBase {
 
     // A mapping that sets the approved initiator per account.
     mapping(address account => address initiator) public accountToInitiator;
+
+    // A mapping that sets a strategy hook per account.
+    mapping(address account => address hook) public strategyHook;
 
     // A struct with the state of a specific position, only used in memory.
     struct PositionState {
@@ -160,10 +164,11 @@ contract Rebalancer is IActionBase {
         int24 tickUpper,
         bytes calldata swapData
     ) external {
-        // Store Account address, used to validate the caller of the executeAction() callback.
         // If the initiator is set, account_ is an actual Arcadia Account.
         if (account != address(0)) revert Reentered();
         if (accountToInitiator[account_] != msg.sender) revert InitiatorNotValid();
+
+        // Store Account address, used to validate the caller of the executeAction() callback and serves as a reentrancy guard.
         account = account_;
 
         // Encode data for the flash-action.
@@ -179,8 +184,6 @@ contract Rebalancer is IActionBase {
         emit Rebalance(account_, positionManager, id);
     }
 
-    event Log(uint256 liquidity, uint256 minLiquidity);
-
     /**
      * @notice Callback function called by the Arcadia Account during a flashAction.
      * @param rebalanceData A bytes object containing a struct with the assetData of the position and the address of the initiator.
@@ -193,10 +196,10 @@ contract Rebalancer is IActionBase {
         if (msg.sender != account) revert OnlyAccount();
 
         // Decode rebalanceData.
-        uint256 id;
         address positionManager;
-        address initiator;
+        uint256 id;
         bytes memory swapData;
+        address initiator;
         PositionState memory position;
         {
             ActionData memory assetData;
@@ -215,55 +218,63 @@ contract Rebalancer is IActionBase {
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
         if (isPoolUnbalanced(position)) revert UnbalancedPool();
 
+        uint256 newId;
+
         // Remove liquidity of the position and claim outstanding fees/rewards.
         (uint256 balance0, uint256 balance1, uint256 reward) = BurnLogic._burn(positionManager, id, position);
 
-        // Get the rebalance parameters.
-        // These are calculated based on a hypothetical swap through the pool, without slippage.
-        (uint256 minLiquidity, bool zeroToOne, uint256 amountInitiatorFee, uint256 amountIn, uint256 amountOut) =
-        RebalanceLogic.getRebalanceParams(
-            MAX_SLIPPAGE_RATIO,
-            position.fee,
-            initiatorInfo[initiator].fee,
-            position.sqrtPriceX96,
-            position.sqrtRatioLower,
-            position.sqrtRatioUpper,
-            balance0,
-            balance1
-        );
-
-        // Do the actual swap to rebalance the position.
-        // This can be done either directly through the pool, or via a router with custom swap data.
-        // For swaps directly through the pool, if slippage is bigger than calculated, the transaction will not immediately revert,
-        // but excess slippage will be subtracted from the initiatorFee.
-        // For swaps via the router, tokenOut should be the limiting factor when increasing liquidity.
-        // Leftovers must be in tokenIn, otherwise the total tokenIn balance will be added as liquidity,
-        // and the initiator fee will be 0 (but the transaction will not revert).
-        (balance0, balance1) = SwapLogic._swap(
-            positionManager, position, swapData, zeroToOne, amountInitiatorFee, amountIn, amountOut, balance0, balance1
-        );
-
-        // Check that the pool is still balanced after the swap.
-        if (isPoolUnbalanced(position)) revert UnbalancedPool();
-
-        // Mint the new liquidity position.
-        // We mint with the total available balances of token0 and token1.
-        uint256 newId;
         {
+            // Get the rebalance parameters.
+            // These are calculated based on a hypothetical swap through the pool, without slippage.
+            (uint256 minLiquidity, bool zeroToOne, uint256 amountInitiatorFee, uint256 amountIn, uint256 amountOut) =
+            RebalanceLogic.getRebalanceParams(
+                MAX_SLIPPAGE_RATIO,
+                position.fee,
+                initiatorInfo[initiator].fee,
+                position.sqrtPriceX96,
+                position.sqrtRatioLower,
+                position.sqrtRatioUpper,
+                balance0,
+                balance1
+            );
+
+            // Do the actual swap to rebalance the position.
+            // This can be done either directly through the pool, or via a router with custom swap data.
+            // For swaps directly through the pool, if slippage is bigger than calculated, the transaction will not immediately revert,
+            // but excess slippage will be subtracted from the initiatorFee.
+            // For swaps via the router, tokenOut should be the limiting factor when increasing liquidity.
+            (balance0, balance1) = SwapLogic._swap(
+                positionManager,
+                position,
+                swapData,
+                zeroToOne,
+                amountInitiatorFee,
+                amountIn,
+                amountOut,
+                balance0,
+                balance1
+            );
+
+            // Check that the pool is still balanced after the swap.
+            if (isPoolUnbalanced(position)) revert UnbalancedPool();
+
+            // Mint the new liquidity position.
+            // We mint with the total available balances of token0 and token1, not subtracting the initiator fee.
+            // Leftovers must be in tokenIn, otherwise the total tokenIn balance will be added as liquidity,
+            // and the initiator fee will be 0 (but the transaction will not revert).
             uint256 liquidity;
             (newId, liquidity, balance0, balance1) = MintLogic._mint(positionManager, position, balance0, balance1);
 
             // Check that the actual liquidity of the position is above the minimum threshold.
             // This prevents loss of principal of the liquidity position due to slippage,
-            // or malicious initiators who remove liquidity during the custom swap..
-            emit Log(liquidity, minLiquidity);
+            // or malicious initiators who remove liquidity during a custom swap.
             if (liquidity < minLiquidity) revert InsufficientLiquidity();
-        }
 
-        // Transfer fee to the initiator.
-        (balance0, balance1) = FeeLogic._transfer(
-            initiator, zeroToOne, amountInitiatorFee, position.token0, position.token1, balance0, balance1
-        );
+            // Transfer fee to the initiator.
+            (balance0, balance1) = FeeLogic._transfer(
+                initiator, zeroToOne, amountInitiatorFee, position.token0, position.token1, balance0, balance1
+            );
+        }
 
         // Approve Account to redeposit Liquidity Position and leftovers.
         {
@@ -286,6 +297,15 @@ contract Rebalancer is IActionBase {
             depositData =
                 ArcadiaLogic._encodeDeposit(positionManager, newId, position, count, balance0, balance1, reward);
         }
+
+        // If set, call the strategy hook after the rebalance.
+        // This can be used to enforce additional constraints on the rebalance, such as:
+        // - Directional preferences.
+        // - Minimum Cool Down Periods.
+        // - Excluding rebalancing of certain positions.
+        // - ...
+        address hook = strategyHook[msg.sender];
+        if (hook != address(0)) IStrategyHook(hook).afterRebalance(positionManager, id, newId);
 
         return depositData;
     }
@@ -395,21 +415,31 @@ contract Rebalancer is IActionBase {
     }
 
     /* ///////////////////////////////////////////////////////////////
-                        INITIATORS LOGIC
+                            ACCOUNT LOGIC
     /////////////////////////////////////////////////////////////// */
     /**
-     * @notice Sets an initiator for an Account. An initiator will be permissioned to rebalance any
-     * Liquidity Position held in the specified Arcadia Account.
+     * @notice Sets the required information for an Account.
+     * @param account_ The contract address of the Arcadia Account to set the information for.
      * @param initiator The address of the initiator.
-     * @param account_ The address of the Arcadia Account to set an initiator for.
+     * @param hook The contract address of the hook.
+     * @dev An initiator will be permissioned to rebalance any
+     * Liquidity Position held in the specified Arcadia Account.
+     * @dev If the hook is set to address(0), the hook will be disabled.
      * @dev When an account is transferred to a new owner,
-     * the asset manager itself (this contract) and hence all its initiators will no longer be allowed by the Account.
+     * the asset manager itself (this contract) and hence its initiator and hook will no longer be allowed by the Account.
      */
-    function setInitiatorForAccount(address initiator, address account_) external {
+    function setAccountInfo(address account_, address initiator, address hook) external {
+        if (account != address(0)) revert Reentered();
         if (!ArcadiaLogic.FACTORY.isAccount(account_)) revert NotAnAccount();
         if (msg.sender != IAccount(account_).owner()) revert OnlyAccountOwner();
+
         accountToInitiator[account_] = initiator;
+        strategyHook[account_] = hook;
     }
+
+    /* ///////////////////////////////////////////////////////////////
+                            INITIATORS LOGIC
+    /////////////////////////////////////////////////////////////// */
 
     /**
      * @notice Sets the information requested for an initiator.
@@ -422,6 +452,8 @@ contract Rebalancer is IActionBase {
      * allowed deviation of the sqrtPriceX96 for the lower and upper boundaries.
      */
     function setInitiatorInfo(uint256 tolerance, uint256 fee) external {
+        if (account != address(0)) revert Reentered();
+
         // Cache struct
         InitiatorInfo memory initiatorInfo_ = initiatorInfo[msg.sender];
 
