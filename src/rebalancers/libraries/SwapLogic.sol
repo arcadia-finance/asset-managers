@@ -76,7 +76,7 @@ library SwapLogic {
         uint256 balance1
     ) internal returns (uint256 balance0_, uint256 balance1_) {
         // Calculate the exact amountOut, with slippage that will be swapped.
-        amountOut = SwapMath.getAmountOutWithSlippage(
+        amountOut = SwapMath._getAmountOutWithSlippage(
             zeroToOne,
             position.fee,
             IPool(position.pool).liquidity(),

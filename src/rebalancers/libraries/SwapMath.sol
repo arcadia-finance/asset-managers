@@ -45,7 +45,7 @@ library SwapMath {
      * For illiquid pools, or positions that are large relatively to the pool liquidity, this might result in reverting rebalances.
      * But since a minimum amount of liquidity is enforced, should not lead to loss of principal.
      */
-    function getAmountOutWithSlippage(
+    function _getAmountOutWithSlippage(
         bool zeroToOne,
         uint256 fee,
         uint128 usableLiquidity,
@@ -67,13 +67,15 @@ library SwapMath {
             // If the position is out of range, we can calculate the exact solution.
             if (sqrtPriceNew > sqrtRatioUpper) {
                 // Position is out of range and fully in token1.
-                // Swapping token0 to token1 decreases the sqrtPrice, hence a swap with more amount0 might bring position in range again.
-                // This would not lead to a reverting swap, but slightly less optimised, so we ignore this edge case.
-                return _getAmount1OutFromAmountOIn(fee, usableLiquidity, sqrtPriceOld, amount0);
+                // We ignore one edge case: Swapping token0 to token1 decreases the sqrtPrice,
+                // hence a swap with more amount0 might bring position in range again.
+                // This might lead to a suboptimal swap, worst case slippage exceeds limit and rebalance reverts.
+                return _getAmount1OutFromAmount0In(fee, usableLiquidity, sqrtPriceOld, amount0);
             } else if (sqrtPriceNew < sqrtRatioLower) {
                 // Position is out of range and fully in token0.
-                // Swapping token1 to token0 increases the sqrtPrice, hence a swap with more amount1 might bring position in range again.
-                // This would not lead to a reverting swap, but slightly less optimised, so we ignore this edge case.
+                // We ignore one edge case: Swapping token1 to token0 increases the sqrtPrice,
+                // hence a swap with more amount1 might bring position in range again.
+                // This might lead to a suboptimal swap, worst case slippage exceeds limit and rebalance reverts.
                 return _getAmount0OutFromAmount1In(fee, usableLiquidity, sqrtPriceOld, amount1);
             }
 
@@ -147,7 +149,7 @@ library SwapMath {
      * @return amountOut The amount of token1 that is swapped to.
      * @dev The calculations take both fees and slippage into account, but assume constant liquidity.
      */
-    function _getAmount1OutFromAmountOIn(uint256 fee, uint128 usableLiquidity, uint160 sqrtPriceOld, uint256 amount0)
+    function _getAmount1OutFromAmount0In(uint256 fee, uint128 usableLiquidity, uint160 sqrtPriceOld, uint256 amount0)
         internal
         pure
         returns (uint256 amountOut)
