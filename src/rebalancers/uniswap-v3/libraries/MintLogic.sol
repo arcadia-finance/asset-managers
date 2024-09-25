@@ -9,14 +9,14 @@ import { ICLPositionManager } from "../interfaces/ICLPositionManager.sol";
 import { IUniswapV3PositionManager } from "../interfaces/IUniswapV3PositionManager.sol";
 import { SlipstreamLogic } from "./SlipstreamLogic.sol";
 import { UniswapV3Logic } from "./UniswapV3Logic.sol";
-import { UniswapV3Rebalancer } from "../UniswapV3Rebalancer.sol";
+import { Rebalancer } from "../Rebalancer.sol";
 
 library MintLogic {
     using SafeTransferLib for ERC20;
 
     function _mint(
         address positionManager,
-        UniswapV3Rebalancer.PositionState memory position,
+        Rebalancer.PositionState memory position,
         uint256 balance0,
         uint256 balance1
     ) internal returns (uint256 newTokenId, uint256 liquidity, uint256 balance0_, uint256 balance1_) {
@@ -37,8 +37,8 @@ library MintLogic {
                     token0: position.token0,
                     token1: position.token1,
                     tickSpacing: position.tickSpacing,
-                    tickLower: position.lowerTick,
-                    tickUpper: position.upperTick,
+                    tickLower: position.tickLower,
+                    tickUpper: position.tickUpper,
                     amount0Desired: balance0,
                     amount1Desired: balance1,
                     amount0Min: 0,
@@ -53,8 +53,8 @@ library MintLogic {
                     token0: position.token0,
                     token1: position.token1,
                     fee: position.fee,
-                    tickLower: position.lowerTick,
-                    tickUpper: position.upperTick,
+                    tickLower: position.tickLower,
+                    tickUpper: position.tickUpper,
                     amount0Desired: balance0,
                     amount1Desired: balance1,
                     amount0Min: 0,

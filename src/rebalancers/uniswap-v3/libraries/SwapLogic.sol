@@ -10,14 +10,14 @@ import { IPool } from "../interfaces/IPool.sol";
 import { IUniswapV3Pool } from "../interfaces/IUniswapV3Pool.sol";
 import { SlipstreamLogic } from "./SlipstreamLogic.sol";
 import { SwapMath } from "./SwapMath.sol";
-import { UniswapV3Rebalancer } from "../UniswapV3Rebalancer.sol";
+import { Rebalancer } from "../Rebalancer.sol";
 
 library SwapLogic {
     using SafeTransferLib for ERC20;
 
     function _swap(
         address positionManager,
-        UniswapV3Rebalancer.PositionState memory position,
+        Rebalancer.PositionState memory position,
         bytes memory swapData,
         bool zeroToOne,
         uint256 amountInitiatorFee,
@@ -46,7 +46,7 @@ library SwapLogic {
      */
     function _swapViaPool(
         address positionManager,
-        UniswapV3Rebalancer.PositionState memory position,
+        Rebalancer.PositionState memory position,
         bool zeroToOne,
         uint256 amountInitiatorFee,
         uint256 amountIn,
@@ -75,8 +75,8 @@ library SwapLogic {
         // Do the swap.
         // Callback (external function) must be implemented in the main contract.
         bytes memory data = (positionManager == address(SlipstreamLogic.POSITION_MANAGER))
-            ? abi.encode(position.token0, position.token1, position.tickSpacing)
-            : abi.encode(position.token0, position.token1, position.fee);
+            ? abi.encode(positionManager, position.token0, position.token1, position.tickSpacing)
+            : abi.encode(positionManager, position.token0, position.token1, position.fee);
         (int256 deltaAmount0, int256 deltaAmount1) =
             IPool(position.pool).swap(address(this), zeroToOne, -int256(amountOut), sqrtPriceLimitX96, data);
 
@@ -100,7 +100,7 @@ library SwapLogic {
      */
     function _swapViaRouter(
         address positionManager,
-        UniswapV3Rebalancer.PositionState memory position,
+        Rebalancer.PositionState memory position,
         bool zeroToOne,
         bytes memory swapData
     ) internal returns (uint256 balance0, uint256 balance1) {

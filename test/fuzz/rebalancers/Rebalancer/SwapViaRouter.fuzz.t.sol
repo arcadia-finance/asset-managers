@@ -9,20 +9,20 @@ import { ISwapRouter02 } from
     "../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/interfaces/ISwapRouter02.sol";
 import { RouterMock } from "../../../utils/mocks/RouterMock.sol";
 import { SwapMath } from "../../../../src/rebalancers/libraries/SwapMath.sol";
-import { UniswapV3Rebalancer } from "../../../../src/rebalancers/uniswap-v3/UniswapV3Rebalancer.sol";
-import { UniswapV3Rebalancer_Fuzz_Test } from "./_UniswapV3Rebalancer.fuzz.t.sol";
+import { Rebalancer } from "../../../../src/rebalancers/uniswap-v3/Rebalancer.sol";
+import { Rebalancer_Fuzz_Test } from "./_Rebalancer.fuzz.t.sol";
 
 /**
- * @notice Fuzz tests for the function "SwapViaRouter" of contract "UniswapV3Rebalancer".
+ * @notice Fuzz tests for the function "SwapViaRouter" of contract "Rebalancer".
  */
-contract SwapViaRouter_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
+contract SwapViaRouter_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     using FixedPointMathLib for uint256;
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public override {
-        UniswapV3Rebalancer_Fuzz_Test.setUp();
+        Rebalancer_Fuzz_Test.setUp();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -32,7 +32,7 @@ contract SwapViaRouter_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
     function testFuzz_Revert_swapViaRouter_oneToZero_UnbalancedPool(
         InitVariables memory initVars,
         LpVariables memory lpVars,
-        UniswapV3Rebalancer.PositionState memory position,
+        Rebalancer.PositionState memory position,
         uint128 amountIn,
         uint128 amountOut
     ) public {
@@ -99,14 +99,14 @@ contract SwapViaRouter_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
 
         // When : calling swapViaRouter
         // Then : it should revert
-        vm.expectRevert(UniswapV3Rebalancer.UnbalancedPool.selector);
+        vm.expectRevert(Rebalancer.UnbalancedPool.selector);
         rebalancer.swapViaRouter(position, zeroToOne, amountIn, swapData);
     }
 
     function testFuzz_Revert_swapViaRouter_zeroToOne_UnbalancedPool(
         InitVariables memory initVars,
         LpVariables memory lpVars,
-        UniswapV3Rebalancer.PositionState memory position,
+        Rebalancer.PositionState memory position,
         uint128 amountIn,
         uint128 amountOut
     ) public {
@@ -172,14 +172,14 @@ contract SwapViaRouter_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
 
         // When : calling swapViaRouter
         // Then : it should revert
-        vm.expectRevert(UniswapV3Rebalancer.UnbalancedPool.selector);
+        vm.expectRevert(Rebalancer.UnbalancedPool.selector);
         rebalancer.swapViaRouter(position, zeroToOne, amountIn, swapData);
     }
 
     function testFuzz_Success_swapViaRouter_oneToZero(
         InitVariables memory initVars,
         LpVariables memory lpVars,
-        UniswapV3Rebalancer.PositionState memory position,
+        Rebalancer.PositionState memory position,
         uint128 amountIn,
         uint128 amountOut
     ) public {
@@ -221,7 +221,7 @@ contract SwapViaRouter_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz
     function testFuzz_Success_swapViaRouter_zeroToOne(
         InitVariables memory initVars,
         LpVariables memory lpVars,
-        UniswapV3Rebalancer.PositionState memory position,
+        Rebalancer.PositionState memory position,
         uint128 amountIn,
         uint128 amountOut
     ) public {

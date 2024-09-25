@@ -9,20 +9,20 @@ import { AssetValueAndRiskFactors } from "../../../../lib/accounts-v2/src/Regist
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { PricingLogic } from "../../../../src/rebalancers/uniswap-v3/libraries/PricingLogic.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
-import { UniswapV3Rebalancer } from "../../../../src/rebalancers/uniswap-v3/UniswapV3Rebalancer.sol";
-import { UniswapV3Rebalancer_Fuzz_Test } from "./_UniswapV3Rebalancer.fuzz.t.sol";
+import { Rebalancer } from "../../../../src/rebalancers/uniswap-v3/Rebalancer.sol";
+import { Rebalancer_Fuzz_Test } from "./_Rebalancer.fuzz.t.sol";
 
 /**
- * @notice Fuzz tests for the function "_getPositionState" of contract "UniswapV3Rebalancer".
+ * @notice Fuzz tests for the function "_getPositionState" of contract "Rebalancer".
  */
-contract GetPositionState_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
+contract GetPositionState_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     using FixedPointMathLib for uint256;
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public override {
-        UniswapV3Rebalancer_Fuzz_Test.setUp();
+        Rebalancer_Fuzz_Test.setUp();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -36,8 +36,8 @@ contract GetPositionState_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_F
         (initVars, lpVars, tokenId) = initPoolAndCreatePositionWithFees(initVars, lpVars);
 
         // When : Calling getPositionState()
-        UniswapV3Rebalancer.PositionState memory position =
-            rebalancer.getPositionState(tokenId, 0, 0, initVars.initiator);
+        Rebalancer.PositionState memory position =
+            rebalancer.getPositionState(address(nonfungiblePositionManager), tokenId, 0, 0, initVars.initiator);
 
         // Then : It should return the correct values
         assertEq(position.token0, address(token0));
@@ -49,7 +49,7 @@ contract GetPositionState_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_F
         // and the effective deposit of liquidity can have a small diff (we check to max 0,01% diff)
         assertApproxEqRel(position.liquidity, lpVars.liquidity, 1e14);
 
-        (uint160 sqrtPriceX96, int24 currentTick,,,,,) = uniV3Pool.slot0();
+        (uint160 sqrtPriceX96, int24 tickCurrent,,,,,) = uniV3Pool.slot0();
 
         int24 halfRangeTicks;
         {
@@ -57,10 +57,10 @@ contract GetPositionState_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_F
             halfRangeTicks = ((lpVars.tickUpper - lpVars.tickLower) / tickSpacing) / 2;
             halfRangeTicks *= tickSpacing;
         }
-        int24 upperTick = currentTick + halfRangeTicks;
-        int24 lowerTick = currentTick - halfRangeTicks;
-        assertEq(position.upperTick, upperTick);
-        assertEq(position.lowerTick, lowerTick);
+        int24 tickUpper = tickCurrent + halfRangeTicks;
+        int24 tickLower = tickCurrent - halfRangeTicks;
+        assertEq(position.tickUpper, tickUpper);
+        assertEq(position.tickLower, tickLower);
 
         assertEq(position.sqrtPriceX96, sqrtPriceX96);
 
@@ -111,8 +111,9 @@ contract GetPositionState_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_F
         (initVars, lpVars, tokenId) = initPoolAndCreatePositionWithFees(initVars, lpVars);
 
         // When : Calling getPositionState()
-        UniswapV3Rebalancer.PositionState memory position =
-            rebalancer.getPositionState(tokenId, tickLower, tickUpper, initVars.initiator);
+        Rebalancer.PositionState memory position = rebalancer.getPositionState(
+            address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, initVars.initiator
+        );
 
         // Then : It should return the correct values
         assertEq(position.token0, address(token0));
@@ -126,8 +127,8 @@ contract GetPositionState_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_F
 
         (uint160 sqrtPriceX96,,,,,,) = uniV3Pool.slot0();
 
-        assertEq(position.upperTick, tickUpper);
-        assertEq(position.lowerTick, tickLower);
+        assertEq(position.tickUpper, tickUpper);
+        assertEq(position.tickLower, tickLower);
 
         assertEq(position.sqrtPriceX96, sqrtPriceX96);
 

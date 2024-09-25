@@ -5,7 +5,7 @@
 pragma solidity 0.8.22;
 
 import { CollectParams, DecreaseLiquidityParams, IPositionManager } from "../interfaces/IPositionManager.sol";
-import { UniswapV3Rebalancer } from "../UniswapV3Rebalancer.sol";
+import { Rebalancer } from "../Rebalancer.sol";
 
 library BurnLogic {
     function _burn(address positionManager, uint256 id, uint128 liquidity)

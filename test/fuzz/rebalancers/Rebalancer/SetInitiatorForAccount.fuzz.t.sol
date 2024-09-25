@@ -4,19 +4,19 @@
  */
 pragma solidity 0.8.22;
 
-import { UniswapV3Rebalancer } from "../../../../src/rebalancers/uniswap-v3/UniswapV3Rebalancer.sol";
-import { UniswapV3Rebalancer_Fuzz_Test } from "./_UniswapV3Rebalancer.fuzz.t.sol";
+import { Rebalancer } from "../../../../src/rebalancers/uniswap-v3/Rebalancer.sol";
+import { Rebalancer_Fuzz_Test } from "./_Rebalancer.fuzz.t.sol";
 
 /**
- * @notice Fuzz tests for the function "setInitiatorForAccount" of contract "UniswapV3Rebalancer".
+ * @notice Fuzz tests for the function "setInitiatorForAccount" of contract "Rebalancer".
  */
-contract SetInitiatorForAccount_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
+contract SetInitiatorForAccount_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public override {
-        UniswapV3Rebalancer_Fuzz_Test.setUp();
+        Rebalancer_Fuzz_Test.setUp();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -30,7 +30,7 @@ contract SetInitiatorForAccount_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebala
         // Given : account is not an Arcadia Account
         // When : calling rebalancePosition
         // Then : it should revert
-        vm.expectRevert(UniswapV3Rebalancer.NotAnAccount.selector);
+        vm.expectRevert(Rebalancer.NotAnAccount.selector);
         // When : A randon address calls setInitiator on the rebalancer
         vm.prank(owner);
         rebalancer.setInitiatorForAccount(initiator, account_);

@@ -4,19 +4,19 @@
  */
 pragma solidity 0.8.22;
 
-import { UniswapV3Rebalancer } from "../../../../src/rebalancers/uniswap-v3/UniswapV3Rebalancer.sol";
-import { UniswapV3Rebalancer_Fuzz_Test } from "./_UniswapV3Rebalancer.fuzz.t.sol";
+import { Rebalancer } from "../../../../src/rebalancers/uniswap-v3/Rebalancer.sol";
+import { Rebalancer_Fuzz_Test } from "./_Rebalancer.fuzz.t.sol";
 
 /**
- * @notice Fuzz tests for the function "_isPoolUnbalanced" of contract "UniswapV3Rebalancer".
+ * @notice Fuzz tests for the function "_isPoolUnbalanced" of contract "Rebalancer".
  */
-contract IsPoolUnbalanced_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
+contract IsPoolUnbalanced_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public override {
-        UniswapV3Rebalancer_Fuzz_Test.setUp();
+        Rebalancer_Fuzz_Test.setUp();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -24,7 +24,7 @@ contract IsPoolUnbalanced_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_F
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Success_isPoolUnbalanced_true_lowerBound() public {
         // Given : sqrtPriceX96 < lowerBoundSqrtPriceX96
-        UniswapV3Rebalancer.PositionState memory position;
+        Rebalancer.PositionState memory position;
         position.sqrtPriceX96 = 0;
         position.lowerBoundSqrtPriceX96 = 1;
 
@@ -37,7 +37,7 @@ contract IsPoolUnbalanced_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_F
 
     function testFuzz_Success_isPoolUnbalanced_true_upperBound() public {
         // Given : sqrtPriceX96 > upperBoundSqrtPriceX96
-        UniswapV3Rebalancer.PositionState memory position;
+        Rebalancer.PositionState memory position;
         position.sqrtPriceX96 = 1;
         position.upperBoundSqrtPriceX96 = 0;
 
@@ -50,7 +50,7 @@ contract IsPoolUnbalanced_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_F
 
     function testFuzz_Success_isPoolUnbalanced_false() public {
         // Given : sqrtPriceX96 is between lower and upper bounds.
-        UniswapV3Rebalancer.PositionState memory position;
+        Rebalancer.PositionState memory position;
         position.sqrtPriceX96 = 1;
         position.lowerBoundSqrtPriceX96 = 0;
         position.upperBoundSqrtPriceX96 = 2;

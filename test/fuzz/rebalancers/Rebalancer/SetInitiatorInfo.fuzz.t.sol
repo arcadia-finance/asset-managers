@@ -5,19 +5,19 @@
 pragma solidity 0.8.22;
 
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { UniswapV3Rebalancer } from "../../../../src/rebalancers/uniswap-v3/UniswapV3Rebalancer.sol";
-import { UniswapV3Rebalancer_Fuzz_Test } from "./_UniswapV3Rebalancer.fuzz.t.sol";
+import { Rebalancer } from "../../../../src/rebalancers/uniswap-v3/Rebalancer.sol";
+import { Rebalancer_Fuzz_Test } from "./_Rebalancer.fuzz.t.sol";
 
 /**
- * @notice Fuzz tests for the function "setInitiatorInfo" of contract "UniswapV3Rebalancer".
+ * @notice Fuzz tests for the function "setInitiatorInfo" of contract "Rebalancer".
  */
-contract SetInitiatorInfo_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
+contract SetInitiatorInfo_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public override {
-        UniswapV3Rebalancer_Fuzz_Test.setUp();
+        Rebalancer_Fuzz_Test.setUp();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -37,7 +37,7 @@ contract SetInitiatorInfo_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_F
 
         // When : Initiator updates the fee to a higher value
         // Then : It should revert
-        vm.expectRevert(UniswapV3Rebalancer.DecreaseFeeOnly.selector);
+        vm.expectRevert(Rebalancer.DecreaseFeeOnly.selector);
         rebalancer.setInitiatorInfo(0, newFee);
     }
 
@@ -48,7 +48,7 @@ contract SetInitiatorInfo_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_F
         vm.startPrank(initiator);
         // When : Initiator sets a fee higher than the max
         // Then : It should revert
-        vm.expectRevert(UniswapV3Rebalancer.MaxInitiatorFee.selector);
+        vm.expectRevert(Rebalancer.MaxInitiatorFee.selector);
         rebalancer.setInitiatorInfo(0, fee);
     }
 
@@ -59,7 +59,7 @@ contract SetInitiatorInfo_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_F
         vm.startPrank(initiator);
         // When : Initiator sets a tolerance higher than the max
         // Then : It should revert
-        vm.expectRevert(UniswapV3Rebalancer.MaxTolerance.selector);
+        vm.expectRevert(Rebalancer.MaxTolerance.selector);
         rebalancer.setInitiatorInfo(tolerance, 0);
     }
 
@@ -82,7 +82,7 @@ contract SetInitiatorInfo_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_F
 
         // When : Initiator updates the fee to a higher value
         // Then : It should revert
-        vm.expectRevert(UniswapV3Rebalancer.DecreaseToleranceOnly.selector);
+        vm.expectRevert(Rebalancer.DecreaseToleranceOnly.selector);
         rebalancer.setInitiatorInfo(newTolerance, 0);
     }
 

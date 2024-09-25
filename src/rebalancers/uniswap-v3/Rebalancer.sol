@@ -14,11 +14,10 @@ import { FullMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/l
 import { IAccount } from "../interfaces/IAccount.sol";
 import { IPool } from "./interfaces/IPool.sol";
 import { IPositionManager } from "./interfaces/IPositionManager.sol";
-import { IUniswapV3Pool } from "./interfaces/IUniswapV3Pool.sol";
-import { LiquidityAmounts } from "../libraries/LiquidityAmounts.sol";
 import { MintLogic } from "./libraries/MintLogic.sol";
 import { PricingLogic } from "./libraries/PricingLogic.sol";
 import { RebalanceLogic } from "./libraries/RebalanceLogic.sol";
+import { SlipstreamLogic } from "./libraries/SlipstreamLogic.sol";
 import { SwapLogic } from "./libraries/SwapLogic.sol";
 import { SwapMath } from "./libraries/SwapMath.sol";
 import { SqrtPriceMath } from "../libraries/SqrtPriceMath.sol";
@@ -38,7 +37,7 @@ import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
  * pools and sandwiching the swap and/or increase liquidity. This asset manager should not be used for Arcadia Account that have/will have
  * Uniswap V3 Liquidity Positions where one of the underlying assets is priced with such low precision oracles.
  */
-contract UniswapV3Rebalancer is IActionBase {
+contract Rebalancer is IActionBase {
     using FixedPointMathLib for uint256;
     using SafeTransferLib for ERC20;
     /* //////////////////////////////////////////////////////////////
@@ -62,9 +61,6 @@ contract UniswapV3Rebalancer is IActionBase {
                                 STORAGE
     ////////////////////////////////////////////////////////////// */
 
-    // Flag Indicating if a function is locked to protect against reentrancy.
-    uint8 internal locked;
-
     // The Account to compound the fees for, used as transient storage.
     address internal account;
 
@@ -75,12 +71,6 @@ contract UniswapV3Rebalancer is IActionBase {
     // A mapping from initiator to rebalancing fee.
     mapping(address initiator => InitiatorInfo) public initiatorInfo;
 
-    struct SwapParams {
-        uint256 amountIn;
-        uint256 amountOut;
-        bool zeroToOne;
-    }
-
     // A struct with the state of a specific position, only used in memory.
     struct PositionState {
         address pool;
@@ -88,8 +78,8 @@ contract UniswapV3Rebalancer is IActionBase {
         address token1;
         uint24 fee;
         int24 tickSpacing;
-        int24 upperTick;
-        int24 lowerTick;
+        int24 tickUpper;
+        int24 tickLower;
         uint128 liquidity;
         uint160 sqrtRatioLower;
         uint160 sqrtRatioUpper;
@@ -100,8 +90,8 @@ contract UniswapV3Rebalancer is IActionBase {
 
     // A struct used to store information for each specific initiator
     struct InitiatorInfo {
-        uint256 upperSqrtPriceDeviation;
-        uint256 lowerSqrtPriceDeviation;
+        uint88 upperSqrtPriceDeviation;
+        uint88 lowerSqrtPriceDeviation;
         uint64 fee;
         bool initialized;
     }
@@ -126,7 +116,7 @@ contract UniswapV3Rebalancer is IActionBase {
                                 EVENTS
     ////////////////////////////////////////////////////////////// */
 
-    event Rebalance(address indexed account, uint256 id);
+    event Rebalance(address indexed account, address indexed positionManager, uint256 id);
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -153,9 +143,9 @@ contract UniswapV3Rebalancer is IActionBase {
      * @param account_ The Arcadia Account owning the position.
      * @param positionManager The contract address of the Position Manager.
      * @param id The id of the Liquidity Position to rebalance.
-     * @param lowerTick The new lower tick to rebalance to.
-     * @param upperTick The new upper tick to rebalance to.
-     * @dev When both lowerTick and upperTick are zero, ticks will be updated with same tick-spacing as current position
+     * @param tickLower The new lower tick to rebalance to.
+     * @param tickUpper The new upper tick to rebalance to.
+     * @dev When both tickLower and tickUpper are zero, ticks will be updated with same tick-spacing as current position
      * and with a balanced, 50/50 ratio around current tick.
      * @dev ToDo: should we validate the positionManager?
      */
@@ -163,8 +153,8 @@ contract UniswapV3Rebalancer is IActionBase {
         address account_,
         address positionManager,
         uint256 id,
-        int24 lowerTick,
-        int24 upperTick,
+        int24 tickLower,
+        int24 tickUpper,
         bytes calldata swapData
     ) external {
         // Store Account address, used to validate the caller of the executeAction() callback.
@@ -175,7 +165,7 @@ contract UniswapV3Rebalancer is IActionBase {
 
         // Encode data for the flash-action.
         bytes memory actionData =
-            ArcadiaLogic._encodeActionData(positionManager, id, msg.sender, lowerTick, upperTick, swapData);
+            ArcadiaLogic._encodeActionData(positionManager, id, msg.sender, tickLower, tickUpper, swapData);
 
         // Call flashAction() with this contract as actionTarget.
         IAccount(account_).flashAction(address(this), actionData);
@@ -183,7 +173,7 @@ contract UniswapV3Rebalancer is IActionBase {
         // Reset account.
         account = address(0);
 
-        emit Rebalance(account_, id);
+        emit Rebalance(account_, positionManager, id);
     }
 
     event Log(uint256 liquidity, uint256 minLiquidity);
@@ -207,15 +197,15 @@ contract UniswapV3Rebalancer is IActionBase {
         PositionState memory position;
         {
             ActionData memory assetData;
-            int24 lowerTick;
-            int24 upperTick;
-            (assetData, initiator, lowerTick, upperTick, swapData) =
+            int24 tickLower;
+            int24 tickUpper;
+            (assetData, initiator, tickLower, tickUpper, swapData) =
                 abi.decode(rebalanceData, (ActionData, address, int24, int24, bytes));
             positionManager = assetData.assets[0];
             id = assetData.assetIds[0];
 
             // Fetch and cache all position related data.
-            position = getPositionState(id, lowerTick, upperTick, initiator);
+            position = getPositionState(positionManager, id, tickLower, tickUpper, initiator);
         }
 
         // Check that pool is initially balanced.
@@ -261,7 +251,8 @@ contract UniswapV3Rebalancer is IActionBase {
             (newTokenId, liquidity, balance0, balance1) = MintLogic._mint(positionManager, position, balance0, balance1);
 
             // Check that the actual liquidity of the position is above the minimum threshold.
-            // This prevents loss of principal of the liquidity position due to slippage.
+            // This prevents loss of principal of the liquidity position due to slippage,
+            // or malicious initiators who remove liquidity during the custom swap..
             emit Log(liquidity, minLiquidity);
             if (liquidity < minLiquidity) revert InsufficientLiquidity();
         }
@@ -286,10 +277,106 @@ contract UniswapV3Rebalancer is IActionBase {
     }
 
     /* ///////////////////////////////////////////////////////////////
+                          SWAP CALLBACK
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Callback after executing a swap via IPool.swap.
+     * @param amount0Delta The amount of token0 that was sent (negative) or must be received (positive) by the pool by
+     * the end of the swap. If positive, the callback must send that amount of token0 to the pool.
+     * @param amount1Delta The amount of token1 that was sent (negative) or must be received (positive) by the pool by
+     * the end of the swap. If positive, the callback must send that amount of token1 to the pool.
+     * @param data Any data passed by this contract via the IPool.swap() call.
+     */
+    function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external {
+        // Check that callback came from an actual Uniswap V3 pool.
+        (address positionManager, address token0, address token1, uint24 feeOrTickSpacing) =
+            abi.decode(data, (address, address, address, uint24));
+        if (positionManager == address(SlipstreamLogic.POSITION_MANAGER)) {
+            if (SlipstreamLogic._computePoolAddress(token0, token1, int24(feeOrTickSpacing)) != msg.sender) {
+                revert OnlyPool();
+            }
+        } else {
+            if (UniswapV3Logic._computePoolAddress(token0, token1, feeOrTickSpacing) != msg.sender) revert OnlyPool();
+        }
+
+        if (amount0Delta > 0) {
+            ERC20(token0).safeTransfer(msg.sender, uint256(amount0Delta));
+        } else if (amount1Delta > 0) {
+            ERC20(token1).safeTransfer(msg.sender, uint256(amount1Delta));
+        }
+    }
+
+    /* ///////////////////////////////////////////////////////////////
+                    PUBLIC POSITION VIEW FUNCTIONS
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice returns if the pool of a Liquidity Position is unbalanced.
+     * @param position Struct with the position data.
+     * @return isPoolUnbalanced_ Bool indicating if the pool is unbalanced.
+     */
+    function isPoolUnbalanced(PositionState memory position) public pure returns (bool isPoolUnbalanced_) {
+        // Check if current priceX96 of the Pool is within accepted tolerance of the calculated trusted priceX96.
+        isPoolUnbalanced_ = position.sqrtPriceX96 <= position.lowerBoundSqrtPriceX96
+            || position.sqrtPriceX96 >= position.upperBoundSqrtPriceX96;
+    }
+
+    /**
+     * @notice Fetches all required position data from external contracts.
+     * @param id The id of the Liquidity Position.
+     * @param tickLower The lower tick of the newly minted position.
+     * @param tickUpper The upper tick of the newly minted position.
+     * @return position Struct with the position data.
+     */
+    function getPositionState(address positionManager, uint256 id, int24 tickLower, int24 tickUpper, address initiator)
+        public
+        view
+        returns (PositionState memory position)
+    {
+        // Get data of the Liquidity Position.
+        (int24 tickCurrent, int24 tickRange) = positionManager == address(SlipstreamLogic.POSITION_MANAGER)
+            ? SlipstreamLogic._getPositionState(position, id)
+            : UniswapV3Logic._getPositionState(position, id, tickLower == tickUpper);
+
+        // Store the new ticks for the rebalance
+        if (tickLower == tickUpper) {
+            // Round current tick down to a tick that is a multiple of the tick spacing (can be initialised).
+            // ToDo: handle TICK_MAX and TICK_MIN
+            tickCurrent = tickCurrent / position.tickSpacing * position.tickSpacing;
+            (position.tickLower, position.tickUpper) = tickRange > position.tickSpacing
+                ? (tickCurrent - tickRange / 2, tickCurrent + tickRange / 2)
+                : (tickCurrent, tickCurrent + tickRange);
+        } else {
+            (position.tickLower, position.tickUpper) = (tickLower, tickUpper);
+        }
+
+        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(position.tickLower);
+        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.tickUpper);
+
+        // Get trusted USD prices for 1e18 gwei of token0 and token1.
+        (uint256 usdPriceToken0, uint256 usdPriceToken1) =
+            ArcadiaLogic._getValuesInUsd(position.token0, position.token1);
+
+        // Calculate the square root of the relative rate sqrt(token1/token0) from the trusted USD price of both tokens.
+        uint256 trustedSqrtPriceX96 = PricingLogic._getSqrtPriceX96(usdPriceToken0, usdPriceToken1);
+
+        // Calculate the upper and lower bounds of sqrtPriceX96 for the Pool to be balanced.
+        uint256 lowerBoundSqrtPriceX96 =
+            trustedSqrtPriceX96.mulDivDown(initiatorInfo[initiator].lowerSqrtPriceDeviation, 1e18);
+        uint256 upperBoundSqrtPriceX96 =
+            trustedSqrtPriceX96.mulDivDown(initiatorInfo[initiator].upperSqrtPriceDeviation, 1e18);
+        position.lowerBoundSqrtPriceX96 =
+            lowerBoundSqrtPriceX96 <= TickMath.MIN_SQRT_RATIO ? TickMath.MIN_SQRT_RATIO + 1 : lowerBoundSqrtPriceX96;
+        position.upperBoundSqrtPriceX96 =
+            upperBoundSqrtPriceX96 >= TickMath.MAX_SQRT_RATIO ? TickMath.MAX_SQRT_RATIO - 1 : upperBoundSqrtPriceX96;
+    }
+
+    /* ///////////////////////////////////////////////////////////////
                         INITIATORS LOGIC
     /////////////////////////////////////////////////////////////// */
     /**
-     * @notice Sets an initiator for an Account. An initiator will be permisionned to rebalance any UniswapV3
+     * @notice Sets an initiator for an Account. An initiator will be permissioned to rebalance any UniswapV3
      * Liquidity Position held in the specified Arcadia Account.
      * @param initiator The address of the initiator.
      * @param account_ The address of the Arcadia Account to set an initiator for.
@@ -321,170 +408,18 @@ contract UniswapV3Rebalancer is IActionBase {
 
         // SQRT_PRICE_DEVIATION is the square root of maximum/minimum price deviation.
         // Sqrt halves the number of decimals.
-        uint256 upperSqrtPriceDeviation = FixedPointMathLib.sqrt((1e18 + tolerance) * 1e18);
+        uint88 upperSqrtPriceDeviation = uint88(FixedPointMathLib.sqrt((1e18 + tolerance) * 1e18));
         if (initiatorInfo_.initialized == true && upperSqrtPriceDeviation > initiatorInfo_.upperSqrtPriceDeviation) {
             revert DecreaseToleranceOnly();
         }
 
-        initiatorInfo_.lowerSqrtPriceDeviation = FixedPointMathLib.sqrt((1e18 - tolerance) * 1e18);
+        initiatorInfo_.lowerSqrtPriceDeviation = uint88(FixedPointMathLib.sqrt((1e18 - tolerance) * 1e18));
         initiatorInfo_.upperSqrtPriceDeviation = upperSqrtPriceDeviation;
 
         // Set initiator as initialized if it wasn't already.
         if (initiatorInfo_.initialized == false) initiatorInfo_.initialized = true;
 
         initiatorInfo[msg.sender] = initiatorInfo_;
-    }
-
-    /* ///////////////////////////////////////////////////////////////
-                         SWAPPING LOGIC
-    /////////////////////////////////////////////////////////////// */
-
-    /**
-     * @notice Swaps one token to the other token in the Uniswap V3 Pool of the Liquidity Position.
-     * @param position Struct with the position data.
-     * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
-     * @param amountOut The amount that of tokenOut that must be swapped to.
-     * @return isPoolUnbalanced_ Bool indicating if the pool is unbalanced due to slippage of the swap.
-     */
-    function _swapViaPool(PositionState memory position, bool zeroToOne, uint256 amountOut)
-        internal
-        returns (bool isPoolUnbalanced_)
-    {
-        // Don't do swaps with zero amount.
-        if (amountOut == 0) return false;
-
-        // Pool should still be balanced (within tolerance boundaries) after the swap.
-        uint160 sqrtPriceLimitX96 =
-            uint160(zeroToOne ? position.lowerBoundSqrtPriceX96 : position.upperBoundSqrtPriceX96);
-
-        // Do the swap.
-        bytes memory data = abi.encode(position.token0, position.token1, position.fee);
-        (int256 deltaAmount0, int256 deltaAmount1) =
-            IPool(position.pool).swap(address(this), zeroToOne, -int256(amountOut), sqrtPriceLimitX96, data);
-
-        // Check if pool is still balanced (sqrtPriceLimitX96 is reached before an amountOut of tokenOut is received).
-        isPoolUnbalanced_ = (amountOut > (zeroToOne ? uint256(-deltaAmount1) : uint256(-deltaAmount0)));
-    }
-
-    /**
-     * @notice Callback after executing a swap via IPool.swap.
-     * @param amount0Delta The amount of token0 that was sent (negative) or must be received (positive) by the pool by
-     * the end of the swap. If positive, the callback must send that amount of token0 to the pool.
-     * @param amount1Delta The amount of token1 that was sent (negative) or must be received (positive) by the pool by
-     * the end of the swap. If positive, the callback must send that amount of token1 to the pool.
-     * @param data Any data passed by this contract via the IPool.swap() call.
-     */
-    function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external {
-        // Check that callback came from an actual Uniswap V3 pool.
-        (address token0, address token1, uint24 fee) = abi.decode(data, (address, address, uint24));
-        if (UniswapV3Logic._computePoolAddress(token0, token1, fee) != msg.sender) revert OnlyPool();
-
-        if (amount0Delta > 0) {
-            ERC20(token0).safeTransfer(msg.sender, uint256(amount0Delta));
-        } else if (amount1Delta > 0) {
-            ERC20(token1).safeTransfer(msg.sender, uint256(amount1Delta));
-        }
-    }
-
-    /**
-     * @notice Allows an initiator to perform an arbitrary swap.
-     * @param amountIn The amount of tokenIn that must be swapped.
-     * @param position Struct with the position data.
-     * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
-     * @param swapData A bytes object containing a contract address and another bytes object with the calldata to send to that address.
-     * @dev In order for such a swap to be valid, the amountOut should be at least equal to the amountOut expected if the swap
-     * occured in the pool of the position itself. The amountIn should also fully have been utilized, to keep target ratio valid.
-     */
-    function _swapViaRouter(PositionState memory position, bool zeroToOne, uint256 amountIn, bytes memory swapData)
-        internal
-    {
-        (address to, bytes memory data) = abi.decode(swapData, (address, bytes));
-
-        // Approve token to swap.
-        address tokenToSwap = zeroToOne ? position.token0 : position.token1;
-        ERC20(tokenToSwap).safeApprove(to, 0);
-        ERC20(tokenToSwap).safeApprove(to, amountIn);
-
-        // Execute arbitrary swap.
-        (bool success, bytes memory result) = to.call(data);
-        require(success, string(result));
-
-        (uint160 sqrtPriceX96,,,,,,) = IUniswapV3Pool(position.pool).slot0();
-        // Uniswap V3 pool should still be balanced.
-        if (sqrtPriceX96 < position.lowerBoundSqrtPriceX96 || sqrtPriceX96 > position.upperBoundSqrtPriceX96) {
-            revert UnbalancedPool();
-        }
-    }
-
-    /* ///////////////////////////////////////////////////////////////
-                    POSITION AND POOL VIEW FUNCTIONS
-    /////////////////////////////////////////////////////////////// */
-
-    /**
-     * @notice Fetches all required position data from external contracts.
-     * @param id The id of the Liquidity Position.
-     * @param lowerTick The lower tick of the newly minted position.
-     * @param upperTick The upper tick of the newly minted position.
-     * @return position Struct with the position data.
-     */
-    function getPositionState(uint256 id, int24 lowerTick, int24 upperTick, address initiator)
-        public
-        view
-        returns (PositionState memory position)
-    {
-        // Get data of the Liquidity Position.
-        int24 currentLowerTick;
-        int24 currentUpperTick;
-        (,, position.token0, position.token1, position.fee, currentLowerTick, currentUpperTick, position.liquidity,,,,)
-        = UniswapV3Logic.POSITION_MANAGER.positions(id);
-
-        // Get trusted USD prices for 1e18 gwei of token0 and token1.
-        (uint256 usdPriceToken0, uint256 usdPriceToken1) =
-            ArcadiaLogic._getValuesInUsd(position.token0, position.token1);
-
-        // Get data of the Liquidity Pool.
-        position.pool = UniswapV3Logic._computePoolAddress(position.token0, position.token1, position.fee);
-        int24 currentTick;
-        (position.sqrtPriceX96, currentTick,,,,,) = IUniswapV3Pool(position.pool).slot0();
-
-        // Store the new ticks for the rebalance
-        if (lowerTick == 0 && upperTick == 0) {
-            int24 tickSpacing = IUniswapV3Pool(position.pool).tickSpacing();
-            int24 halfRangeTicks = ((currentUpperTick - currentLowerTick) / tickSpacing) / 2;
-            halfRangeTicks *= tickSpacing;
-            position.upperTick = currentTick + halfRangeTicks;
-            position.lowerTick = currentTick - halfRangeTicks;
-        } else {
-            position.upperTick = upperTick;
-            position.lowerTick = lowerTick;
-        }
-
-        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(position.lowerTick);
-        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.upperTick);
-
-        // Calculate the square root of the relative rate sqrt(token1/token0) from the trusted USD price of both tokens.
-        uint256 trustedSqrtPriceX96 = PricingLogic._getSqrtPriceX96(usdPriceToken0, usdPriceToken1);
-
-        // Calculate the upper and lower bounds of sqrtPriceX96 for the Pool to be balanced.
-        uint256 lowerBoundSqrtPriceX96 =
-            trustedSqrtPriceX96.mulDivDown(initiatorInfo[initiator].lowerSqrtPriceDeviation, 1e18);
-        uint256 upperBoundSqrtPriceX96 =
-            trustedSqrtPriceX96.mulDivDown(initiatorInfo[initiator].upperSqrtPriceDeviation, 1e18);
-        position.lowerBoundSqrtPriceX96 =
-            lowerBoundSqrtPriceX96 <= TickMath.MIN_SQRT_RATIO ? TickMath.MIN_SQRT_RATIO + 1 : lowerBoundSqrtPriceX96;
-        position.upperBoundSqrtPriceX96 =
-            upperBoundSqrtPriceX96 >= TickMath.MAX_SQRT_RATIO ? TickMath.MAX_SQRT_RATIO - 1 : upperBoundSqrtPriceX96;
-    }
-
-    /**
-     * @notice returns if the pool of a Liquidity Position is unbalanced.
-     * @param position Struct with the position data.
-     * @return isPoolUnbalanced_ Bool indicating if the pool is unbalanced.
-     */
-    function isPoolUnbalanced(PositionState memory position) public pure returns (bool isPoolUnbalanced_) {
-        // Check if current priceX96 of the Pool is within accepted tolerance of the calculated trusted priceX96.
-        isPoolUnbalanced_ = position.sqrtPriceX96 <= position.lowerBoundSqrtPriceX96
-            || position.sqrtPriceX96 >= position.upperBoundSqrtPriceX96;
     }
 
     /* ///////////////////////////////////////////////////////////////

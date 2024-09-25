@@ -8,30 +8,28 @@ import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/u
 import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/LiquidityAmounts.sol";
 import { SwapMath } from "../../../../src/rebalancers/libraries/SwapMath.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
-import { UniswapV3Rebalancer } from "../../../../src/rebalancers/uniswap-v3/UniswapV3Rebalancer.sol";
-import { UniswapV3Rebalancer_Fuzz_Test } from "./_UniswapV3Rebalancer.fuzz.t.sol";
+import { Rebalancer } from "../../../../src/rebalancers/uniswap-v3/Rebalancer.sol";
+import { Rebalancer_Fuzz_Test } from "./_Rebalancer.fuzz.t.sol";
 import { UniswapV3Logic } from "../../../../src/rebalancers/uniswap-v3/libraries/UniswapV3Logic.sol";
 
 /**
- * @notice Fuzz tests for the function "swapViaPool" of contract "UniswapV3Rebalancer".
+ * @notice Fuzz tests for the function "swapViaPool" of contract "Rebalancer".
  */
-contract SwapViaPool_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
+contract SwapViaPool_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     using FixedPointMathLib for uint256;
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public override {
-        UniswapV3Rebalancer_Fuzz_Test.setUp();
+        Rebalancer_Fuzz_Test.setUp();
     }
 
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function testFuzz_Success_swapViaPool_ZeroAmount(UniswapV3Rebalancer.PositionState memory position, bool zeroToOne)
-        public
-    {
+    function testFuzz_Success_swapViaPool_ZeroAmount(Rebalancer.PositionState memory position, bool zeroToOne) public {
         // Given : amountOut is 0
         uint256 amountOut = 0;
         // When : Calling _swap()
@@ -43,7 +41,7 @@ contract SwapViaPool_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_T
     function testFuzz_Success_swapViaPool_OneToZero_UnbalancedPool(
         InitVariables memory initVars,
         LpVariables memory lpVars,
-        UniswapV3Rebalancer.PositionState memory position,
+        Rebalancer.PositionState memory position,
         bool zeroToOne
     ) public {
         // Given : oneToZero swapViaPool
@@ -86,7 +84,7 @@ contract SwapViaPool_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_T
     function testFuzz_Success_swapViaPool_OneToZero_BalancedPool(
         InitVariables memory initVars,
         LpVariables memory lpVars,
-        UniswapV3Rebalancer.PositionState memory position,
+        Rebalancer.PositionState memory position,
         bool zeroToOne
     ) public {
         // Given : oneToZero swapViaPool
@@ -129,7 +127,7 @@ contract SwapViaPool_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_T
     function testFuzz_Success_swapViaPool_ZeroToOne_UnbalancedPool(
         InitVariables memory initVars,
         LpVariables memory lpVars,
-        UniswapV3Rebalancer.PositionState memory position,
+        Rebalancer.PositionState memory position,
         bool zeroToOne
     ) public {
         // Given : zeroToOne swapViaPool
@@ -172,7 +170,7 @@ contract SwapViaPool_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_T
     function testFuzz_Success_swapViaPool_ZeroToOne_BalancedPool(
         InitVariables memory initVars,
         LpVariables memory lpVars,
-        UniswapV3Rebalancer.PositionState memory position,
+        Rebalancer.PositionState memory position,
         bool zeroToOne
     ) public {
         // Given : zeroToOne swapViaPool

@@ -31,13 +31,13 @@ import { UniswapV3Fixture } from "../../../../lib/accounts-v2/test/utils/fixture
 import { UniswapV3AMFixture } from
     "../../../../lib/accounts-v2/test/utils/fixtures/arcadia-accounts/UniswapV3AMFixture.f.sol";
 import { UniswapV3AMExtension } from "../../../../lib/accounts-v2/test/utils/extensions/UniswapV3AMExtension.sol";
-import { UniswapV3RebalancerExtension } from "../../../utils/extensions/UniswapV3RebalancerExtension.sol";
+import { RebalancerExtension } from "../../../utils/extensions/RebalancerExtension.sol";
 import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
 
 /**
- * @notice Common logic needed by all "UniswapV3Rebalancer" fuzz tests.
+ * @notice Common logic needed by all "Rebalancer" fuzz tests.
  */
-abstract contract UniswapV3Rebalancer_Fuzz_Test is
+abstract contract Rebalancer_Fuzz_Test is
     Fuzz_Test,
     UniswapV3Fixture,
     UniswapV3AMFixture,
@@ -111,7 +111,7 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
                             TEST CONTRACTS
     /////////////////////////////////////////////////////////////// */
 
-    UniswapV3RebalancerExtension internal rebalancer;
+    RebalancerExtension internal rebalancer;
     RouterMock internal routerMock;
 
     /* ///////////////////////////////////////////////////////////////
@@ -166,7 +166,7 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
 
     function deployRebalancer(uint256 maxTolerance, uint256 maxInitiatorFee) public {
         vm.prank(users.owner);
-        rebalancer = new UniswapV3RebalancerExtension(maxTolerance, maxInitiatorFee, MAX_SLIPPAGE_RATIO);
+        rebalancer = new RebalancerExtension(maxTolerance, maxInitiatorFee, MAX_SLIPPAGE_RATIO);
 
         // Get the bytecode of the UniswapV3PoolExtension.
         bytes memory args = abi.encode();
@@ -274,11 +274,11 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         // And : Create new uniV3 pool
         uniV3Pool = createPoolUniV3(address(token0), address(token1), POOL_FEE, uint160(sqrtPriceX96), 300);
 
-        int24 currentTick = uniV3Pool.getCurrentTick();
+        int24 tickCurrent = uniV3Pool.getCurrentTick();
 
         // And : Supply an initial LP position around a specific amount of ticks
-        initVars.tickLower = currentTick - (INIT_LP_TICK_RANGE / 2);
-        initVars.tickUpper = currentTick + (INIT_LP_TICK_RANGE / 2) - 1;
+        initVars.tickLower = tickCurrent - (INIT_LP_TICK_RANGE / 2);
+        initVars.tickUpper = tickCurrent + (INIT_LP_TICK_RANGE / 2) - 1;
 
         // And : Supply a minimal amount of tokens such that the next LP that we will deposit would not be too small
         // compared to the value of the initial one.
@@ -311,10 +311,10 @@ abstract contract UniswapV3Rebalancer_Fuzz_Test is
         lpVars.liquidity = uint128(bound(lpVars.liquidity, minLiquidity, maxLiquidity));
 
         // And : Lower and upper ticks of the position are within the initial liquidity range
-        int24 currentTick = uniV3Pool.getCurrentTick();
+        int24 tickCurrent = uniV3Pool.getCurrentTick();
 
-        lpVars.tickLower = int24(bound(lpVars.tickLower, initVars.tickLower + 1, currentTick - MIN_TICK_SPACING));
-        lpVars.tickUpper = int24(bound(lpVars.tickUpper, currentTick + MIN_TICK_SPACING, initVars.tickUpper - 1));
+        lpVars.tickLower = int24(bound(lpVars.tickLower, initVars.tickLower + 1, tickCurrent - MIN_TICK_SPACING));
+        lpVars.tickUpper = int24(bound(lpVars.tickUpper, tickCurrent + MIN_TICK_SPACING, initVars.tickUpper - 1));
 
         lpVars_ = lpVars;
     }

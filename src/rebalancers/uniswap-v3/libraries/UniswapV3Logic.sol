@@ -4,8 +4,10 @@
  */
 pragma solidity 0.8.22;
 
+import { IUniswapV3Pool } from "../interfaces/IUniswapV3Pool.sol";
 import { IUniswapV3PositionManager } from "../interfaces/IUniswapV3PositionManager.sol";
 import { PoolAddress } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/PoolAddress.sol";
+import { Rebalancer } from "../Rebalancer.sol";
 
 library UniswapV3Logic {
     // The Uniswap V3 Factory contract.
@@ -24,5 +26,24 @@ library UniswapV3Logic {
      */
     function _computePoolAddress(address token0, address token1, uint24 fee) internal pure returns (address pool) {
         pool = PoolAddress.computeAddress(UNISWAP_V3_FACTORY, token0, token1, fee);
+    }
+
+    function _getPositionState(Rebalancer.PositionState memory position, uint256 id, bool getTickSpacing)
+        internal
+        view
+        returns (int24 tickCurrent, int24 tickRange)
+    {
+        // Get data of the Liquidity Position.
+        int24 tickLower;
+        int24 tickUpper;
+        (,, position.token0, position.token1, position.fee, tickLower, tickUpper, position.liquidity,,,,) =
+            POSITION_MANAGER.positions(id);
+        tickRange = tickUpper - tickLower;
+
+        // Get data of the Liquidity Pool.
+        position.pool = _computePoolAddress(position.token0, position.token1, position.fee);
+        (position.sqrtPriceX96, tickCurrent,,,,,) = IUniswapV3Pool(position.pool).slot0();
+
+        if (getTickSpacing) position.tickSpacing = IUniswapV3Pool(position.pool).tickSpacing();
     }
 }

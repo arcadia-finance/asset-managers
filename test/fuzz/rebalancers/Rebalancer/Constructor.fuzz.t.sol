@@ -4,13 +4,13 @@
  */
 pragma solidity 0.8.22;
 
-import { UniswapV3Rebalancer } from "../../../../src/rebalancers/uniswap-v3/UniswapV3Rebalancer.sol";
-import { UniswapV3Rebalancer_Fuzz_Test } from "./_UniswapV3Rebalancer.fuzz.t.sol";
+import { Rebalancer } from "../../../../src/rebalancers/uniswap-v3/Rebalancer.sol";
+import { Rebalancer_Fuzz_Test } from "./_Rebalancer.fuzz.t.sol";
 
 /**
- * @notice Fuzz tests for the function "Constructor" of contract "UniswapV3Rebalancer".
+ * @notice Fuzz tests for the function "Constructor" of contract "Rebalancer".
  */
-contract Constructor_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_Test {
+contract Constructor_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
@@ -24,7 +24,7 @@ contract Constructor_UniswapV3Rebalancer_Fuzz_Test is UniswapV3Rebalancer_Fuzz_T
         public
     {
         vm.prank(users.owner);
-        UniswapV3Rebalancer rebalancer_ = new UniswapV3Rebalancer(maxTolerance, maxInitiatorFee, maxSlippageRatio);
+        Rebalancer rebalancer_ = new Rebalancer(maxTolerance, maxInitiatorFee, maxSlippageRatio);
 
         assertEq(rebalancer_.MAX_TOLERANCE(), maxTolerance);
         assertEq(rebalancer_.MAX_INITIATOR_FEE(), maxInitiatorFee);
