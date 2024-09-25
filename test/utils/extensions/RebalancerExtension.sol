@@ -5,12 +5,12 @@
 pragma solidity 0.8.22;
 
 import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
-import { IPool } from "../../../src/rebalancers/uniswap-v3/interfaces/IPool.sol";
-import { IUniswapV3Pool } from "../../../src/rebalancers/uniswap-v3/interfaces/IUniswapV3Pool.sol";
-import { PricingLogic } from "../../../src/rebalancers/uniswap-v3/libraries/PricingLogic.sol";
-import { RebalanceLogic } from "../../../src/rebalancers/uniswap-v3/libraries/RebalanceLogic.sol";
-import { UniswapV3Logic } from "../../../src/rebalancers/uniswap-v3/libraries/UniswapV3Logic.sol";
-import { Rebalancer } from "../../../src/rebalancers/uniswap-v3/Rebalancer.sol";
+import { IPool } from "../../../src/rebalancers/interfaces/IPool.sol";
+import { IUniswapV3Pool } from "../../../src/rebalancers/interfaces/IUniswapV3Pool.sol";
+import { PricingLogic } from "../../../src/rebalancers/libraries/PricingLogic.sol";
+import { RebalanceLogic } from "../../../src/rebalancers/libraries/RebalanceLogic.sol";
+import { UniswapV3Logic } from "../../../src/rebalancers/libraries/UniswapV3Logic.sol";
+import { Rebalancer } from "../../../src/rebalancers/Rebalancer.sol";
 
 contract RebalancerExtension is Rebalancer {
     using SafeTransferLib for ERC20;

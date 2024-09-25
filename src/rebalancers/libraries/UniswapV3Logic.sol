@@ -6,7 +6,7 @@ pragma solidity 0.8.22;
 
 import { IUniswapV3Pool } from "../interfaces/IUniswapV3Pool.sol";
 import { IUniswapV3PositionManager } from "../interfaces/IUniswapV3PositionManager.sol";
-import { PoolAddress } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/PoolAddress.sol";
+import { PoolAddress } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/PoolAddress.sol";
 import { Rebalancer } from "../Rebalancer.sol";
 
 library UniswapV3Logic {

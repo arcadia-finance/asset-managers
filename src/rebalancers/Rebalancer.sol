@@ -4,14 +4,14 @@
  */
 pragma solidity 0.8.22;
 
-import { ActionData, IActionBase } from "../../../lib/accounts-v2/src/interfaces/IActionBase.sol";
-import { ArcadiaLogic } from "../libraries/ArcadiaLogic.sol";
+import { ActionData, IActionBase } from "../../lib/accounts-v2/src/interfaces/IActionBase.sol";
+import { ArcadiaLogic } from "./libraries/ArcadiaLogic.sol";
 import { BurnLogic } from "./libraries/BurnLogic.sol";
-import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
+import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { FeeLogic } from "./libraries/FeeLogic.sol";
-import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { FullMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
-import { IAccount } from "../interfaces/IAccount.sol";
+import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { FullMath } from "../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
+import { IAccount } from "./interfaces/IAccount.sol";
 import { IPool } from "./interfaces/IPool.sol";
 import { IPositionManager } from "./interfaces/IPositionManager.sol";
 import { MintLogic } from "./libraries/MintLogic.sol";
@@ -20,8 +20,8 @@ import { RebalanceLogic } from "./libraries/RebalanceLogic.sol";
 import { SlipstreamLogic } from "./libraries/SlipstreamLogic.sol";
 import { SwapLogic } from "./libraries/SwapLogic.sol";
 import { SwapMath } from "./libraries/SwapMath.sol";
-import { SqrtPriceMath } from "../libraries/SqrtPriceMath.sol";
-import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
+import { SqrtPriceMath } from "./libraries/uniswap-v3/SqrtPriceMath.sol";
+import { TickMath } from "../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
 
 /**

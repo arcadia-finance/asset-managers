@@ -5,12 +5,12 @@
 pragma solidity 0.8.22;
 
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/LiquidityAmounts.sol";
-import { SwapMath } from "../../../../src/rebalancers/libraries/SwapMath.sol";
+import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/uniswap-v3/LiquidityAmounts.sol";
+import { SwapMath } from "../../../../src/rebalancers/libraries/uniswap-v3/SwapMath.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
-import { Rebalancer } from "../../../../src/rebalancers/uniswap-v3/Rebalancer.sol";
+import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { Rebalancer_Fuzz_Test } from "./_Rebalancer.fuzz.t.sol";
-import { UniswapV3Logic } from "../../../../src/rebalancers/uniswap-v3/libraries/UniswapV3Logic.sol";
+import { UniswapV3Logic } from "../../../../src/rebalancers/libraries/UniswapV3Logic.sol";
 
 /**
  * @notice Fuzz tests for the function "swapViaPool" of contract "Rebalancer".

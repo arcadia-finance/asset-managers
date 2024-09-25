@@ -6,7 +6,7 @@ pragma solidity 0.8.22;
 
 import { ICLPool } from "../interfaces/ICLPool.sol";
 import { ICLPositionManager } from "../interfaces/ICLPositionManager.sol";
-import { PoolAddress } from "../../../../lib/accounts-v2/src/asset-modules/Slipstream/libraries/PoolAddress.sol";
+import { PoolAddress } from "../../../lib/accounts-v2/src/asset-modules/Slipstream/libraries/PoolAddress.sol";
 import { Rebalancer } from "../Rebalancer.sol";
 
 library SlipstreamLogic {

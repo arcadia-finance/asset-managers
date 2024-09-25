@@ -4,7 +4,7 @@
  */
 pragma solidity 0.8.22;
 
-import { ERC20, SafeTransferLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
+import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 
 library FeeLogic {
     using SafeTransferLib for ERC20;

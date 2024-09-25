@@ -4,7 +4,7 @@
  */
 pragma solidity 0.8.22;
 
-import { ERC20, SafeTransferLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
+import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { ICLPositionManager } from "../interfaces/ICLPositionManager.sol";
 import { IUniswapV3PositionManager } from "../interfaces/IUniswapV3PositionManager.sol";
 import { SlipstreamLogic } from "./SlipstreamLogic.sol";
