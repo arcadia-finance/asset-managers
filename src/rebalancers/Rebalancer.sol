@@ -69,9 +69,8 @@ contract Rebalancer is IActionBase {
     // A mapping from initiator to rebalancing fee.
     mapping(address initiator => InitiatorInfo) public initiatorInfo;
 
-    // A mapping that sets an initiator per position of an owner.
-    // An initiator is approved by the owner to rebalance its specified uniswapV3 position.
-    mapping(address owner => mapping(address account => address initiator)) public ownerToAccountToInitiator;
+    // A mapping that sets the approved initiator per account.
+    mapping(address account => address initiator) public accountToInitiator;
 
     // A struct with the state of a specific position, only used in memory.
     struct PositionState {
@@ -111,6 +110,7 @@ contract Rebalancer is IActionBase {
     error MaxTolerance();
     error NotAnAccount();
     error OnlyAccount();
+    error OnlyAccountOwner();
     error OnlyPool();
     error Reentered();
     error UnbalancedPool();
@@ -161,8 +161,9 @@ contract Rebalancer is IActionBase {
         bytes calldata swapData
     ) external {
         // Store Account address, used to validate the caller of the executeAction() callback.
+        // If the initiator is set, account_ is an actual Arcadia Account.
         if (account != address(0)) revert Reentered();
-        if (ownerToAccountToInitiator[IAccount(account_).owner()][account_] != msg.sender) revert InitiatorNotValid();
+        if (accountToInitiator[account_] != msg.sender) revert InitiatorNotValid();
         account = account_;
 
         // Encode data for the flash-action.
@@ -401,10 +402,13 @@ contract Rebalancer is IActionBase {
      * Liquidity Position held in the specified Arcadia Account.
      * @param initiator The address of the initiator.
      * @param account_ The address of the Arcadia Account to set an initiator for.
+     * @dev When an account is transferred to a new owner,
+     * the asset manager itself (this contract) and hence all its initiators will no longer be allowed by the Account.
      */
     function setInitiatorForAccount(address initiator, address account_) external {
         if (!ArcadiaLogic.FACTORY.isAccount(account_)) revert NotAnAccount();
-        ownerToAccountToInitiator[msg.sender][account_] = initiator;
+        if (msg.sender != IAccount(account_).owner()) revert OnlyAccountOwner();
+        accountToInitiator[account_] = initiator;
     }
 
     /**

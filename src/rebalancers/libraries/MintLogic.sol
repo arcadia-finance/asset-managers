@@ -7,10 +7,10 @@ pragma solidity 0.8.22;
 import { ERC20, SafeApprove } from "./SafeApprove.sol";
 import { ICLPositionManager } from "../interfaces/ICLPositionManager.sol";
 import { IUniswapV3PositionManager } from "../interfaces/IUniswapV3PositionManager.sol";
+import { Rebalancer } from "../Rebalancer.sol";
 import { SlipstreamLogic } from "./SlipstreamLogic.sol";
 import { StakedSlipstreamLogic } from "./StakedSlipstreamLogic.sol";
 import { UniswapV3Logic } from "./UniswapV3Logic.sol";
-import { Rebalancer } from "../Rebalancer.sol";
 
 library MintLogic {
     using SafeApprove for ERC20;
