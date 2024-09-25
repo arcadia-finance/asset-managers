@@ -17,6 +17,7 @@ import { IPositionManager } from "./interfaces/IPositionManager.sol";
 import { MintLogic } from "./libraries/MintLogic.sol";
 import { PricingLogic } from "./libraries/PricingLogic.sol";
 import { RebalanceLogic } from "./libraries/RebalanceLogic.sol";
+import { SafeApprove } from "./libraries/SafeApprove.sol";
 import { SlipstreamLogic } from "./libraries/SlipstreamLogic.sol";
 import { StakedSlipstreamLogic } from "./libraries/StakedSlipstreamLogic.sol";
 import { SwapLogic } from "./libraries/SwapLogic.sol";
@@ -40,6 +41,7 @@ import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
  */
 contract Rebalancer is IActionBase {
     using FixedPointMathLib for uint256;
+    using SafeApprove for ERC20;
     using SafeTransferLib for ERC20;
     /* //////////////////////////////////////////////////////////////
                                 CONSTANTS
@@ -268,15 +270,15 @@ contract Rebalancer is IActionBase {
             uint256 count = 1;
             IPositionManager(positionManager).approve(msg.sender, newId);
             if (balance0 > 0) {
-                ERC20(position.token0).safeApprove(msg.sender, balance0);
+                ERC20(position.token0).safeApproveWithRetry(msg.sender, balance0);
                 count = 2;
             }
             if (balance1 > 0) {
-                ERC20(position.token1).safeApprove(msg.sender, balance1);
+                ERC20(position.token1).safeApproveWithRetry(msg.sender, balance1);
                 ++count;
             }
             if (reward > 0) {
-                ERC20(position.tokenR).safeApprove(msg.sender, reward);
+                ERC20(position.tokenR).safeApproveWithRetry(msg.sender, reward);
                 ++count;
             }
 
@@ -301,7 +303,7 @@ contract Rebalancer is IActionBase {
      * @param data Any data passed by this contract via the IPool.swap() call.
      */
     function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external {
-        // Check that callback came from an actual Uniswap V3 pool.
+        // Check that callback came from an actual Uniswap V3 or Slipstream pool.
         (address positionManager, address token0, address token1, uint24 feeOrTickSpacing) =
             abi.decode(data, (address, address, address, uint24));
         if (positionManager == address(UniswapV3Logic.POSITION_MANAGER)) {

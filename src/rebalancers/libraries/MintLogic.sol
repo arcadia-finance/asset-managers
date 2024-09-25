@@ -4,7 +4,7 @@
  */
 pragma solidity 0.8.22;
 
-import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
+import { ERC20, SafeApprove } from "./SafeApprove.sol";
 import { ICLPositionManager } from "../interfaces/ICLPositionManager.sol";
 import { IUniswapV3PositionManager } from "../interfaces/IUniswapV3PositionManager.sol";
 import { SlipstreamLogic } from "./SlipstreamLogic.sol";
@@ -13,7 +13,7 @@ import { UniswapV3Logic } from "./UniswapV3Logic.sol";
 import { Rebalancer } from "../Rebalancer.sol";
 
 library MintLogic {
-    using SafeTransferLib for ERC20;
+    using SafeApprove for ERC20;
 
     function _mint(
         address positionManager,
@@ -21,14 +21,8 @@ library MintLogic {
         uint256 balance0,
         uint256 balance1
     ) internal returns (uint256 newTokenId, uint256 liquidity, uint256 balance0_, uint256 balance1_) {
-        // The approval for at least one token after increasing liquidity will remain non-zero.
-        // We have to set approval first to 0 for ERC20 tokens that require the approval to be set to zero
-        // before setting it to a non-zero value.
-        // ToDo: use Solady library that handles revert on non-zero approval.
-        ERC20(position.token0).safeApprove(positionManager, 0);
-        ERC20(position.token0).safeApprove(positionManager, balance0);
-        ERC20(position.token1).safeApprove(positionManager, 0);
-        ERC20(position.token1).safeApprove(positionManager, balance1);
+        ERC20(position.token0).safeApproveWithRetry(positionManager, balance0);
+        ERC20(position.token1).safeApproveWithRetry(positionManager, balance1);
 
         uint256 amount0;
         uint256 amount1;

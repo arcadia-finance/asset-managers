@@ -4,7 +4,7 @@
  */
 pragma solidity 0.8.22;
 
-import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
+import { ERC20, SafeApprove } from "./SafeApprove.sol";
 import { ICLPool } from "../interfaces/ICLPool.sol";
 import { IPool } from "../interfaces/IPool.sol";
 import { IUniswapV3Pool } from "../interfaces/IUniswapV3Pool.sol";
@@ -13,7 +13,7 @@ import { Rebalancer } from "../Rebalancer.sol";
 import { UniswapV3Logic } from "./UniswapV3Logic.sol";
 
 library SwapLogic {
-    using SafeTransferLib for ERC20;
+    using SafeApprove for ERC20;
 
     function _swap(
         address positionManager,
@@ -109,8 +109,7 @@ library SwapLogic {
 
         // Approve token to swap.
         address tokenToSwap = zeroToOne ? position.token0 : position.token1;
-        ERC20(tokenToSwap).safeApprove(router, 0);
-        ERC20(tokenToSwap).safeApprove(router, amountIn);
+        ERC20(tokenToSwap).safeApproveWithRetry(router, amountIn);
 
         // Execute arbitrary swap.
         (bool success, bytes memory result) = router.call(data);
