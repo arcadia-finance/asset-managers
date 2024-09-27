@@ -4,8 +4,8 @@
  */
 pragma solidity 0.8.22;
 
-import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
 import { FixedPoint96 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
+import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
 import { SwapMath_Fuzz_Test } from "./_SwapMath.fuzz.t.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 
@@ -40,7 +40,6 @@ contract GetAmount0OutFromAmount1In_SwapMath_Fuzz_Test is SwapMath_Fuzz_Test {
         sqrtPriceOld = uint160(bound(sqrtPriceOld, TickMath.MIN_SQRT_RATIO, TickMath.MIN_SQRT_RATIO));
 
         // And: amountOut without slippage would not overflow.
-        sqrtPriceOld = uint160(bound(sqrtPriceOld, TickMath.MIN_SQRT_RATIO, TickMath.MIN_SQRT_RATIO));
         if (sqrtPriceOld > FixedPoint96.Q96) {
             amount1 = uint128(
                 bound(amount1, 0, type(uint256).max / sqrtPriceOld * FixedPoint96.Q96 / sqrtPriceOld * FixedPoint96.Q96)

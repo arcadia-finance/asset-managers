@@ -56,7 +56,7 @@ library SwapMath {
         uint256 amount1,
         uint256 amountIn,
         uint256 amountOut
-    ) internal pure returns (uint256) {
+    ) internal returns (uint256) {
         uint160 sqrtPriceNew;
         bool stopCondition;
         // We iteratively solve for sqrtPrice, amountOut and amountIn, so that the maximal amount of liquidity can be added to the position.
@@ -65,17 +65,17 @@ library SwapMath {
             sqrtPriceNew = _approximateSqrtPriceNew(zeroToOne, fee, usableLiquidity, sqrtPriceOld, amountIn, amountOut);
 
             // If the position is out of range, we can calculate the exact solution.
-            if (sqrtPriceNew > sqrtRatioUpper) {
+            if (sqrtPriceNew >= sqrtRatioUpper) {
                 // Position is out of range and fully in token1.
                 // We ignore one edge case: Swapping token0 to token1 decreases the sqrtPrice,
-                // hence a swap with more amount0 might bring position in range again.
-                // This might lead to a suboptimal swap, worst case slippage exceeds limit and rebalance reverts.
+                // hence a swap for a position that is just out of range might become in range due to slippage.
+                // This might lead to a suboptimal rebalance, which worst case results in too little liquidity and the rebalance reverts.
                 return _getAmount1OutFromAmount0In(fee, usableLiquidity, sqrtPriceOld, amount0);
-            } else if (sqrtPriceNew < sqrtRatioLower) {
+            } else if (sqrtPriceNew <= sqrtRatioLower) {
                 // Position is out of range and fully in token0.
                 // We ignore one edge case: Swapping token1 to token0 increases the sqrtPrice,
-                // hence a swap with more amount1 might bring position in range again.
-                // This might lead to a suboptimal swap, worst case slippage exceeds limit and rebalance reverts.
+                // hence a swap for a position that is just out of range might become in range due to slippage.
+                // This might lead to a suboptimal rebalance, which worst case results in too little liquidity and the rebalance reverts.
                 return _getAmount0OutFromAmount1In(fee, usableLiquidity, sqrtPriceOld, amount1);
             }
 
@@ -117,7 +117,7 @@ library SwapMath {
         uint256 amountOut
     ) internal pure returns (uint160 sqrtPriceNew) {
         // Calculate the exact sqrtPriceNew for both amountIn and amountOut.
-        // Both solutions will be different, but they with converge with every iteration closer to the same solution.
+        // Both solutions will be different, but they will converge with every iteration closer to the same solution.
         uint256 amountInLessFee = amountIn.mulDivDown(1e6 - fee, 1e6);
         uint160 sqrtPriceNew0;
         uint160 sqrtPriceNew1;
@@ -128,11 +128,11 @@ library SwapMath {
             sqrtPriceNew1 =
                 SqrtPriceMath.getNextSqrtPriceFromAmount1RoundingDown(sqrtPriceOld, usableLiquidity, amountOut, false);
         } else {
+            sqrtPriceNew0 =
+                SqrtPriceMath.getNextSqrtPriceFromAmount0RoundingUp(sqrtPriceOld, usableLiquidity, amountOut, false);
             sqrtPriceNew1 = SqrtPriceMath.getNextSqrtPriceFromAmount1RoundingDown(
                 sqrtPriceOld, usableLiquidity, amountInLessFee, true
             );
-            sqrtPriceNew0 =
-                SqrtPriceMath.getNextSqrtPriceFromAmount0RoundingUp(sqrtPriceOld, usableLiquidity, amountOut, false);
         }
         // Calculate the new best approximation as the arithmetic average of both solutions.
         // We could as well use the geometric average, but empirically we found no difference in conversion speed,
@@ -209,6 +209,8 @@ library SwapMath {
         }
     }
 
+    event Log(uint256 liquidity0, uint256 liquidity1);
+
     /**
      * @notice Approximates the amountIn and amountOut that maximise liquidity added,
      * given an approximation for the SqrtPrice after the swap and an approximation of the balances of token0 and token1 after the swap.
@@ -233,7 +235,7 @@ library SwapMath {
         uint256 amountIn,
         uint256 amountOut,
         uint160 sqrtPrice
-    ) internal pure returns (bool converged, uint256 amountIn_, uint256 amountOut_) {
+    ) internal returns (bool converged, uint256 amountIn_, uint256 amountOut_) {
         // Calculate the liquidity for the given approximated sqrtPrice and the approximated balances of token0 and token1 after the swap.
         uint128 liquidity;
         {
@@ -250,6 +252,7 @@ library SwapMath {
                     sqrtRatioLower, sqrtPrice, amount1 > amountIn ? amount1 - amountIn : 0
                 );
             }
+            emit Log(liquidity0, liquidity1);
 
             // Calculate the relative difference of liquidity0 and liquidity1.
             uint256 relDiff = 1e18
@@ -269,7 +272,7 @@ library SwapMath {
             liquidity = liquidity0 < liquidity1 ? liquidity0 : liquidity1;
         }
 
-        // calculate the new approximated amountIn and amountOut,
+        // Calculate the new approximated amountIn and amountOut,
         // for which that liquidity would be the optimal solution.
         uint256 amount0New = SqrtPriceMath.getAmount0Delta(sqrtPrice, sqrtRatioUpper, liquidity, true);
         uint256 amount1New = SqrtPriceMath.getAmount1Delta(sqrtRatioLower, sqrtPrice, liquidity, true);

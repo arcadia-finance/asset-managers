@@ -18,7 +18,7 @@ contract SwapMathExtension {
         uint256 amount1,
         uint256 amountIn,
         uint256 amountOut
-    ) external pure returns (uint256) {
+    ) external returns (uint256) {
         return SwapMath._getAmountOutWithSlippage(
             zeroToOne,
             fee,
@@ -81,7 +81,7 @@ contract SwapMathExtension {
         uint256 amountIn,
         uint256 amountOut,
         uint160 sqrtPrice
-    ) external pure returns (bool converged, uint256 amountIn_, uint256 amountOut_) {
+    ) external returns (bool converged, uint256 amountIn_, uint256 amountOut_) {
         (converged, amountIn_, amountOut_) = SwapMath._approximateOptimalSwapAmounts(
             zeroToOne, sqrtRatioLower, sqrtRatioUpper, amount0, amount1, amountIn, amountOut, sqrtPrice
         );
