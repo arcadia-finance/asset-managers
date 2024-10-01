@@ -4,9 +4,9 @@
  */
 pragma solidity 0.8.22;
 
-import { SwapMath } from "../../../src/rebalancers/libraries/SwapMath.sol";
+import { RebalanceOptimizationMath } from "../../../src/rebalancers/libraries/RebalanceOptimizationMath.sol";
 
-contract SwapMathExtension {
+contract RebalanceOptimizationMathExtension {
     function getAmountOutWithSlippage(
         bool zeroToOne,
         uint256 fee,
@@ -19,7 +19,7 @@ contract SwapMathExtension {
         uint256 amountIn,
         uint256 amountOut
     ) external returns (uint256) {
-        return SwapMath._getAmountOutWithSlippage(
+        return RebalanceOptimizationMath._getAmountOutWithSlippage(
             zeroToOne,
             fee,
             usableLiquidity,
@@ -41,8 +41,9 @@ contract SwapMathExtension {
         uint256 amountIn,
         uint256 amountOut
     ) external returns (uint160 sqrtPriceNew) {
-        sqrtPriceNew =
-            SwapMath._approximateSqrtPriceNew(zeroToOne, fee, usableLiquidity, sqrtPriceOld, amountIn, amountOut);
+        sqrtPriceNew = RebalanceOptimizationMath._approximateSqrtPriceNew(
+            zeroToOne, fee, usableLiquidity, sqrtPriceOld, amountIn, amountOut
+        );
     }
 
     function getAmount1OutFromAmount0In(uint256 fee, uint128 usableLiquidity, uint160 sqrtPriceOld, uint256 amount0)
@@ -50,7 +51,7 @@ contract SwapMathExtension {
         pure
         returns (uint256 amountOut)
     {
-        amountOut = SwapMath._getAmount1OutFromAmount0In(fee, usableLiquidity, sqrtPriceOld, amount0);
+        amountOut = RebalanceOptimizationMath._getAmount1OutFromAmount0In(fee, usableLiquidity, sqrtPriceOld, amount0);
     }
 
     function getAmount0OutFromAmount1In(uint256 fee, uint128 usableLiquidity, uint160 sqrtPriceOld, uint256 amount1)
@@ -58,7 +59,7 @@ contract SwapMathExtension {
         pure
         returns (uint256 amountOut)
     {
-        amountOut = SwapMath._getAmount0OutFromAmount1In(fee, usableLiquidity, sqrtPriceOld, amount1);
+        amountOut = RebalanceOptimizationMath._getAmount0OutFromAmount1In(fee, usableLiquidity, sqrtPriceOld, amount1);
     }
 
     function getSwapParamsExact(
@@ -69,7 +70,7 @@ contract SwapMathExtension {
         uint160 sqrtPriceNew
     ) external pure returns (uint256 amountIn, uint256 amountOut) {
         (amountIn, amountOut) =
-            SwapMath._getSwapParamsExact(zeroToOne, fee, usableLiquidity, sqrtPriceOld, sqrtPriceNew);
+            RebalanceOptimizationMath._getSwapParamsExact(zeroToOne, fee, usableLiquidity, sqrtPriceOld, sqrtPriceNew);
     }
 
     function approximateOptimalSwapAmounts(
@@ -82,7 +83,7 @@ contract SwapMathExtension {
         uint256 amountOut,
         uint160 sqrtPrice
     ) external returns (bool converged, uint256 amountIn_, uint256 amountOut_) {
-        (converged, amountIn_, amountOut_) = SwapMath._approximateOptimalSwapAmounts(
+        (converged, amountIn_, amountOut_) = RebalanceOptimizationMath._approximateOptimalSwapAmounts(
             zeroToOne, sqrtRatioLower, sqrtRatioUpper, amount0, amount1, amountIn, amountOut, sqrtPrice
         );
     }

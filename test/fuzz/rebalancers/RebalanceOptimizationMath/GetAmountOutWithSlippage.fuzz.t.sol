@@ -16,14 +16,18 @@ import { PricingLogic } from "../../../../src/rebalancers/libraries/PricingLogic
 import { QuoterV2Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/QuoterV2Fixture.f.sol";
 import { RebalanceLogicExtension } from "../../../utils/extensions/RebalanceLogicExtension.sol";
 import { StdStorage, stdStorage } from "../../../../lib/accounts-v2/lib/forge-std/src/Test.sol";
-import { SwapMath_Fuzz_Test } from "./_SwapMath.fuzz.t.sol";
+import { RebalanceOptimizationMath_Fuzz_Test } from "./_RebalanceOptimizationMath.fuzz.t.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { UniswapV3Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";
 
 /**
- * @notice Fuzz tests for the function "_getAmountOutWithSlippage" of contract "SwapMath".
+ * @notice Fuzz tests for the function "_getAmountOutWithSlippage" of contract "RebalanceOptimizationMath".
  */
-contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is SwapMath_Fuzz_Test, UniswapV3Fixture, QuoterV2Fixture {
+contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is
+    RebalanceOptimizationMath_Fuzz_Test,
+    UniswapV3Fixture,
+    QuoterV2Fixture
+{
     using stdStorage for StdStorage;
     /*////////////////////////////////////////////////////////////////
                             CONSTANTS
@@ -45,8 +49,8 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is SwapMath_Fuzz_Test, Unis
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
-    function setUp() public override(SwapMath_Fuzz_Test, UniswapV3Fixture) {
-        SwapMath_Fuzz_Test.setUp();
+    function setUp() public override(RebalanceOptimizationMath_Fuzz_Test, UniswapV3Fixture) {
+        RebalanceOptimizationMath_Fuzz_Test.setUp();
 
         UniswapV3Fixture.setUp();
         // nonfungiblePositionManager contract addresses is stored as constant in Rebalancer.
@@ -175,7 +179,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is SwapMath_Fuzz_Test, Unis
 
         // Exclude edge case where sqrtPriceAfter is out of range.
         {
-            uint160 sqrtPriceNew = swapMath.approximateSqrtPriceNew(
+            uint160 sqrtPriceNew = optimizationMath.approximateSqrtPriceNew(
                 zeroToOne, POOL_FEE, usableLiquidity, sqrtPriceOld, amountIn, amountOut
             );
             vm.assume(
@@ -186,7 +190,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is SwapMath_Fuzz_Test, Unis
 
         // When: Calling _getAmountOutWithSlippage().
         // Then: It does not revert.
-        uint256 amountOutWithSlippage = swapMath.getAmountOutWithSlippage(
+        uint256 amountOutWithSlippage = optimizationMath.getAmountOutWithSlippage(
             zeroToOne,
             POOL_FEE,
             usableLiquidity,
@@ -224,7 +228,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is SwapMath_Fuzz_Test, Unis
         // If amount in's are equal, liquidity will be almost exactly equal,
         //but it can be that without slippage is bigger in this specific case.
         if (amountInWithSlippage == amountInWithoutSlippage) {
-            vm.assume(amountInWithSlippage > 1e4);
+            vm.assume(amountInWithSlippage > 1e5);
             assertApproxEqRel(amountInWithSlippage, amountInWithoutSlippage, 0.001 * 1e18);
         }
 

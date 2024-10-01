@@ -22,7 +22,6 @@ import { SafeApprove } from "./libraries/SafeApprove.sol";
 import { SlipstreamLogic } from "./libraries/SlipstreamLogic.sol";
 import { StakedSlipstreamLogic } from "./libraries/StakedSlipstreamLogic.sol";
 import { SwapLogic } from "./libraries/SwapLogic.sol";
-import { SwapMath } from "./libraries/SwapMath.sol";
 import { SqrtPriceMath } from "./libraries/uniswap-v3/SqrtPriceMath.sol";
 import { TickMath } from "../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";

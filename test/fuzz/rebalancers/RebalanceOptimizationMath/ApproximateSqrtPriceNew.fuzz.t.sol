@@ -6,19 +6,19 @@ pragma solidity 0.8.22;
 
 import { FixedPoint96 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
 import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
-import { SwapMath_Fuzz_Test } from "./_SwapMath.fuzz.t.sol";
+import { RebalanceOptimizationMath_Fuzz_Test } from "./_RebalanceOptimizationMath.fuzz.t.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 
 /**
- * @notice Fuzz tests for the function "_approximateSqrtPriceNew" of contract "SwapMath".
+ * @notice Fuzz tests for the function "_approximateSqrtPriceNew" of contract "RebalanceOptimizationMath".
  */
-contract ApproximateSqrtPriceNew_SwapMath_Fuzz_Test is SwapMath_Fuzz_Test {
+contract ApproximateSqrtPriceNew_SwapMath_Fuzz_Test is RebalanceOptimizationMath_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public override {
-        SwapMath_Fuzz_Test.setUp();
+        RebalanceOptimizationMath_Fuzz_Test.setUp();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -66,7 +66,7 @@ contract ApproximateSqrtPriceNew_SwapMath_Fuzz_Test is SwapMath_Fuzz_Test {
         // When: Calling _approximateSqrtPriceNew().
         // Then: It does not revert.
         uint256 sqrtPriceNew =
-            swapMath.approximateSqrtPriceNew(zeroToOne, fee, usableLiquidity, sqrtPriceOld, amountIn, amountOut);
+            optimizationMath.approximateSqrtPriceNew(zeroToOne, fee, usableLiquidity, sqrtPriceOld, amountIn, amountOut);
 
         // And: sqrtPriceNew is always smaller or equal than sqrtPriceOld.
         assertLe(sqrtPriceNew, sqrtPriceOld);
@@ -123,7 +123,7 @@ contract ApproximateSqrtPriceNew_SwapMath_Fuzz_Test is SwapMath_Fuzz_Test {
         // When: Calling _approximateSqrtPriceNew().
         // Then: It does not revert.
         uint256 sqrtPriceNew =
-            swapMath.approximateSqrtPriceNew(zeroToOne, fee, usableLiquidity, sqrtPriceOld, amountIn, amountOut);
+            optimizationMath.approximateSqrtPriceNew(zeroToOne, fee, usableLiquidity, sqrtPriceOld, amountIn, amountOut);
 
         // And: sqrtPriceNew is always greater or equal than sqrtPriceOld.
         assertGe(sqrtPriceNew, sqrtPriceOld);

@@ -8,13 +8,13 @@ import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV
 import { Fuzz_Test } from "../../Fuzz.t.sol";
 import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/uniswap-v3/LiquidityAmounts.sol";
 import { PricingLogic } from "../../../../src/rebalancers/libraries/PricingLogic.sol";
-import { SwapMathExtension } from "../../../utils/extensions/SwapMathExtension.sol";
+import { RebalanceOptimizationMathExtension } from "../../../utils/extensions/RebalanceOptimizationMathExtension.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 
 /**
- * @notice Common logic needed by all "SwapMath" fuzz tests.
+ * @notice Common logic needed by all "RebalanceOptimizationMath" fuzz tests.
  */
-abstract contract SwapMath_Fuzz_Test is Fuzz_Test {
+abstract contract RebalanceOptimizationMath_Fuzz_Test is Fuzz_Test {
     /*////////////////////////////////////////////////////////////////
                             CONSTANTS
     /////////////////////////////////////////////////////////////// */
@@ -34,7 +34,7 @@ abstract contract SwapMath_Fuzz_Test is Fuzz_Test {
                             TEST CONTRACTS
     /////////////////////////////////////////////////////////////// */
 
-    SwapMathExtension internal swapMath;
+    RebalanceOptimizationMathExtension internal optimizationMath;
 
     /* ///////////////////////////////////////////////////////////////
                               SETUP
@@ -43,7 +43,7 @@ abstract contract SwapMath_Fuzz_Test is Fuzz_Test {
     function setUp() public virtual override(Fuzz_Test) {
         Fuzz_Test.setUp();
 
-        swapMath = new SwapMathExtension();
+        optimizationMath = new RebalanceOptimizationMathExtension();
     }
 
     /*////////////////////////////////////////////////////////////////

@@ -8,7 +8,7 @@ import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/util
 import { LiquidityAmounts } from "../libraries/uniswap-v3/LiquidityAmounts.sol";
 import { SqrtPriceMath } from "../libraries/uniswap-v3/SqrtPriceMath.sol";
 
-library SwapMath {
+library RebalanceOptimizationMath {
     using FixedPointMathLib for uint256;
 
     // The minimal relative difference between liquidity0 and liquidity1, with 18 decimals precision.

@@ -4,19 +4,19 @@
  */
 pragma solidity 0.8.22;
 
-import { SwapMath_Fuzz_Test } from "./_SwapMath.fuzz.t.sol";
+import { RebalanceOptimizationMath_Fuzz_Test } from "./_RebalanceOptimizationMath.fuzz.t.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 
 /**
- * @notice Fuzz tests for the function "_getSwapParamsExact" of contract "SwapMath".
+ * @notice Fuzz tests for the function "_getSwapParamsExact" of contract "RebalanceOptimizationMath".
  */
-contract GetSwapParamsExact_SwapMath_Fuzz_Test is SwapMath_Fuzz_Test {
+contract GetSwapParamsExact_SwapMath_Fuzz_Test is RebalanceOptimizationMath_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public override {
-        SwapMath_Fuzz_Test.setUp();
+        RebalanceOptimizationMath_Fuzz_Test.setUp();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -42,7 +42,7 @@ contract GetSwapParamsExact_SwapMath_Fuzz_Test is SwapMath_Fuzz_Test {
 
         // When: calling _getSwapParamsExact().
         // Then: it does not revert.
-        swapMath.getSwapParamsExact(zeroToOne, fee, usableLiquidity, sqrtPriceOld, sqrtPriceNew);
+        optimizationMath.getSwapParamsExact(zeroToOne, fee, usableLiquidity, sqrtPriceOld, sqrtPriceNew);
     }
 
     function testFuzz_Success_getSwapParamsExact_OneToZero(
@@ -65,6 +65,6 @@ contract GetSwapParamsExact_SwapMath_Fuzz_Test is SwapMath_Fuzz_Test {
 
         // When: calling _getSwapParamsExact().
         // Then: it does not revert.
-        swapMath.getSwapParamsExact(zeroToOne, fee, usableLiquidity, sqrtPriceOld, sqrtPriceNew);
+        optimizationMath.getSwapParamsExact(zeroToOne, fee, usableLiquidity, sqrtPriceOld, sqrtPriceNew);
     }
 }

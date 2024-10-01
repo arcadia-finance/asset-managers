@@ -8,19 +8,19 @@ import { FixedPoint96 } from "../../../../lib/accounts-v2/src/asset-modules/Unis
 import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
 import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/uniswap-v3/LiquidityAmounts.sol";
 import { SqrtPriceMath } from "../../../../src/rebalancers/libraries/uniswap-v3/SqrtPriceMath.sol";
-import { SwapMath_Fuzz_Test } from "./_SwapMath.fuzz.t.sol";
+import { RebalanceOptimizationMath_Fuzz_Test } from "./_RebalanceOptimizationMath.fuzz.t.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 
 /**
- * @notice Fuzz tests for the function "_approximateOptimalSwapAmounts" of contract "SwapMath".
+ * @notice Fuzz tests for the function "_approximateOptimalSwapAmounts" of contract "RebalanceOptimizationMath".
  */
-contract ApproximateOptimalSwapAmounts_SwapMath_Fuzz_Test is SwapMath_Fuzz_Test {
+contract ApproximateOptimalSwapAmounts_SwapMath_Fuzz_Test is RebalanceOptimizationMath_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public override {
-        SwapMath_Fuzz_Test.setUp();
+        RebalanceOptimizationMath_Fuzz_Test.setUp();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -75,7 +75,7 @@ contract ApproximateOptimalSwapAmounts_SwapMath_Fuzz_Test is SwapMath_Fuzz_Test 
 
         // When: Calling _approximateOptimalSwapAmounts().
         // Then: It does not revert.
-        (, uint256 amountIn_, uint256 amountOut_) = swapMath.approximateOptimalSwapAmounts(
+        (, uint256 amountIn_, uint256 amountOut_) = optimizationMath.approximateOptimalSwapAmounts(
             zeroToOne, sqrtRatioLower, sqrtRatioUpper, amount0, amount1, amountIn, amountOut, sqrtPrice
         );
         balance0 = amount0 - amountIn_;
@@ -145,7 +145,7 @@ contract ApproximateOptimalSwapAmounts_SwapMath_Fuzz_Test is SwapMath_Fuzz_Test 
 
         // When: Calling _approximateOptimalSwapAmounts().
         // Then: It does not revert.
-        (, uint256 amountIn_, uint256 amountOut_) = swapMath.approximateOptimalSwapAmounts(
+        (, uint256 amountIn_, uint256 amountOut_) = optimizationMath.approximateOptimalSwapAmounts(
             zeroToOne, sqrtRatioLower, sqrtRatioUpper, amount0, amount1, amountIn, amountOut, sqrtPrice
         );
 
@@ -205,7 +205,7 @@ contract ApproximateOptimalSwapAmounts_SwapMath_Fuzz_Test is SwapMath_Fuzz_Test 
 
         // When: Calling _approximateOptimalSwapAmounts().
         // Then: It does not revert.
-        (, uint256 amountIn_, uint256 amountOut_) = swapMath.approximateOptimalSwapAmounts(
+        (, uint256 amountIn_, uint256 amountOut_) = optimizationMath.approximateOptimalSwapAmounts(
             zeroToOne, sqrtRatioLower, sqrtRatioUpper, amount0, amount1, amountIn, amountOut, sqrtPrice
         );
         balance0 = amount0 + amountOut_;
@@ -275,7 +275,7 @@ contract ApproximateOptimalSwapAmounts_SwapMath_Fuzz_Test is SwapMath_Fuzz_Test 
 
         // When: Calling _approximateOptimalSwapAmounts().
         // Then: It does not revert.
-        (, uint256 amountIn_, uint256 amountOut_) = swapMath.approximateOptimalSwapAmounts(
+        (, uint256 amountIn_, uint256 amountOut_) = optimizationMath.approximateOptimalSwapAmounts(
             zeroToOne, sqrtRatioLower, sqrtRatioUpper, amount0, amount1, amountIn, amountOut, sqrtPrice
         );
 

@@ -9,7 +9,7 @@ import { ICLPool } from "../interfaces/ICLPool.sol";
 import { IPool } from "../interfaces/IPool.sol";
 import { IUniswapV3Pool } from "../interfaces/IUniswapV3Pool.sol";
 import { Rebalancer } from "../Rebalancer.sol";
-import { SwapMath } from "./SwapMath.sol";
+import { RebalanceOptimizationMath } from "./RebalanceOptimizationMath.sol";
 import { UniswapV3Logic } from "./UniswapV3Logic.sol";
 
 library SwapLogic {
@@ -76,7 +76,7 @@ library SwapLogic {
         uint256 balance1
     ) internal returns (uint256 balance0_, uint256 balance1_) {
         // Calculate the exact amountOut, with slippage that will be swapped.
-        amountOut = SwapMath._getAmountOutWithSlippage(
+        amountOut = RebalanceOptimizationMath._getAmountOutWithSlippage(
             zeroToOne,
             position.fee,
             IPool(position.pool).liquidity(),

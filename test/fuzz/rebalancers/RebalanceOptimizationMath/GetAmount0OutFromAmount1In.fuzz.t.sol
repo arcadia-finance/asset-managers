@@ -6,19 +6,19 @@ pragma solidity 0.8.22;
 
 import { FixedPoint96 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
 import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
-import { SwapMath_Fuzz_Test } from "./_SwapMath.fuzz.t.sol";
+import { RebalanceOptimizationMath_Fuzz_Test } from "./_RebalanceOptimizationMath.fuzz.t.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 
 /**
- * @notice Fuzz tests for the function "_getAmount0OutFromAmount1In" of contract "SwapMath".
+ * @notice Fuzz tests for the function "_getAmount0OutFromAmount1In" of contract "RebalanceOptimizationMath".
  */
-contract GetAmount0OutFromAmount1In_SwapMath_Fuzz_Test is SwapMath_Fuzz_Test {
+contract GetAmount0OutFromAmount1In_SwapMath_Fuzz_Test is RebalanceOptimizationMath_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public override {
-        SwapMath_Fuzz_Test.setUp();
+        RebalanceOptimizationMath_Fuzz_Test.setUp();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -46,9 +46,18 @@ contract GetAmount0OutFromAmount1In_SwapMath_Fuzz_Test is SwapMath_Fuzz_Test {
             );
         }
 
+        uint256 amountInLessFee = amount1 * (1e6 - fee) / 1e6;
+        uint256 quotient = (
+            amountInLessFee <= type(uint160).max
+                ? (amountInLessFee << FixedPoint96.RESOLUTION) / usableLiquidity
+                : FullMath.mulDiv(amountInLessFee, FixedPoint96.Q96, usableLiquidity)
+        );
+        uint256 sqrtPriceNew = sqrtPriceOld + quotient;
+        vm.assume(sqrtPriceNew < type(uint160).max);
+
         // When: calling _getAmount0OutFromAmount1In().
         // Then: it does not revert.
-        uint256 amountOut = swapMath.getAmount0OutFromAmount1In(fee, usableLiquidity, sqrtPriceOld, amount1);
+        uint256 amountOut = optimizationMath.getAmount0OutFromAmount1In(fee, usableLiquidity, sqrtPriceOld, amount1);
 
         // And: amountOut is always smaller or equal than result without slippage.
         uint256 amountOutWithoutSlippage = FullMath.mulDiv(amount1, FixedPoint96.Q96, sqrtPriceOld);

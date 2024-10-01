@@ -6,19 +6,19 @@ pragma solidity 0.8.22;
 
 import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
 import { FixedPoint96 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
-import { SwapMath_Fuzz_Test } from "./_SwapMath.fuzz.t.sol";
+import { RebalanceOptimizationMath_Fuzz_Test } from "./_RebalanceOptimizationMath.fuzz.t.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 
 /**
- * @notice Fuzz tests for the function "_getAmount1OutFromAmount0In" of contract "SwapMath".
+ * @notice Fuzz tests for the function "_getAmount1OutFromAmount0In" of contract "RebalanceOptimizationMath".
  */
-contract GetAmount1OutFromAmount0In_SwapMath_Fuzz_Test is SwapMath_Fuzz_Test {
+contract GetAmount1OutFromAmount0In_SwapMath_Fuzz_Test is RebalanceOptimizationMath_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public override {
-        SwapMath_Fuzz_Test.setUp();
+        RebalanceOptimizationMath_Fuzz_Test.setUp();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -42,7 +42,7 @@ contract GetAmount1OutFromAmount0In_SwapMath_Fuzz_Test is SwapMath_Fuzz_Test {
 
         // When: calling _getAmount1OutFromAmount0In().
         // Then: it does not revert.
-        uint256 amountOut = swapMath.getAmount1OutFromAmount0In(fee, usableLiquidity, sqrtPriceOld, amount0);
+        uint256 amountOut = optimizationMath.getAmount1OutFromAmount0In(fee, usableLiquidity, sqrtPriceOld, amount0);
 
         // And: amountOut is always smaller or equal than result without slippage.
         uint256 amountOutWithoutSlippage = FullMath.mulDiv(amount0, sqrtPriceOld, FixedPoint96.Q96);
