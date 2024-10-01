@@ -33,7 +33,7 @@ contract RebalancerExtension is Rebalancer {
         pure
         returns (uint256 minLiquidity, bool zeroToOne, uint256 amountInitiatorFee, uint256 amountIn, uint256 amountOut)
     {
-        return RebalanceLogic.getRebalanceParams(
+        return RebalanceLogic._getRebalanceParams(
             maxSlippageRatio, poolFee, initiatorFee, sqrtPrice, sqrtRatioLower, sqrtRatioUpper, amount0, amount1
         );
     }
@@ -48,7 +48,7 @@ contract RebalancerExtension is Rebalancer {
         view
         returns (uint256 minLiquidity, bool zeroToOne, uint256 amountInitiatorFee, uint256 amountIn, uint256 amountOut)
     {
-        return RebalanceLogic.getRebalanceParams(
+        return RebalanceLogic._getRebalanceParams(
             Rebalancer.MAX_SLIPPAGE_RATIO,
             position.fee,
             initiatorFee,

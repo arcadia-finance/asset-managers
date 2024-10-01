@@ -78,6 +78,12 @@ abstract contract UniswapV3Compounder_Fuzz_Test is
     function setUp() public virtual override(Fuzz_Test, UniswapV3Fixture, Base_Test) {
         Fuzz_Test.setUp();
 
+        // Warp to have a timestamp of at least two days old.
+        vm.warp(2 days);
+
+        // Deploy Arcadia  Accounts Contracts.
+        deployArcadiaAccounts();
+
         UniswapV3Fixture.setUp();
         SwapRouter02Fixture.deploySwapRouter02(
             address(0), address(uniswapV3Factory), address(nonfungiblePositionManager), address(weth9)

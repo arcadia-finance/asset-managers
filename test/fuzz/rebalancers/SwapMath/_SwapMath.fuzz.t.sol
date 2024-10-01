@@ -19,10 +19,12 @@ abstract contract SwapMath_Fuzz_Test is Fuzz_Test {
                             CONSTANTS
     /////////////////////////////////////////////////////////////// */
 
-    uint256 MAX_INITIATOR_FEE = 0.01 * 1e18;
+    uint256 internal constant MAX_INITIATOR_FEE = 0.01 * 1e18;
 
-    uint256 BOUND_SQRT_PRICE_LOWER = TickMath.getSqrtRatioAtTick(-TickMath.getTickAtSqrtRatio(type(uint128).max));
-    uint256 BOUND_SQRT_PRICE_UPPER = type(uint128).max;
+    uint160 internal BOUND_SQRT_PRICE_UPPER = type(uint120).max;
+    int24 internal BOUND_TICK_UPPER = TickMath.getTickAtSqrtRatio(BOUND_SQRT_PRICE_UPPER);
+    int24 internal BOUND_TICK_LOWER = -BOUND_TICK_UPPER;
+    uint160 internal BOUND_SQRT_PRICE_LOWER = TickMath.getSqrtRatioAtTick(BOUND_TICK_LOWER);
 
     /*////////////////////////////////////////////////////////////////
                             VARIABLES
@@ -39,6 +41,8 @@ abstract contract SwapMath_Fuzz_Test is Fuzz_Test {
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public virtual override(Fuzz_Test) {
+        Fuzz_Test.setUp();
+
         swapMath = new SwapMathExtension();
     }
 

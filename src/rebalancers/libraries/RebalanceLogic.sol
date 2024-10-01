@@ -32,9 +32,8 @@ library RebalanceLogic {
      * @return amountInitiatorFee The amount of initiator fee, in tokenIn.
      * @return amountIn An approximation of the amount of tokenIn, based on the optimal swap through the pool itself without slippage.
      * @return amountOut An approximation of the amount of tokenOut, based on the optimal swap through the pool itself without slippage.
-     * @dev ToDo: Add derivation of the formulas.
      */
-    function getRebalanceParams(
+    function _getRebalanceParams(
         uint256 maxSlippageRatio,
         uint256 poolFee,
         uint256 initiatorFee,
@@ -51,6 +50,71 @@ library RebalanceLogic {
         // Total fee is pool fee + initiator fee, with 18 decimals precision.
         // Since Uniswap uses 6 decimals precision for the fee, we have to multiply the pool fee by 1e12.
         uint256 fee = initiatorFee + poolFee * 1e12;
+
+        // Calculate the swap parameters
+        (zeroToOne, amountIn, amountOut) =
+            _getSwapParams(sqrtPrice, sqrtRatioLower, sqrtRatioUpper, balance0, balance1, fee);
+
+        // Calculate the maximum amount of liquidity that can be added to the position.
+        {
+            uint256 liquidity = LiquidityAmounts.getLiquidityForAmounts(
+                uint160(sqrtPrice),
+                uint160(sqrtRatioLower),
+                uint160(sqrtRatioUpper),
+                zeroToOne ? balance0 - amountIn : balance0 + amountOut,
+                zeroToOne ? balance1 + amountOut : balance1 - amountIn
+            );
+            minLiquidity = liquidity.mulDivDown(maxSlippageRatio, 1e18);
+        }
+
+        // Get initiator fee amount and the actual amountIn of the swap (without initiator fee).
+        amountInitiatorFee = amountIn.mulDivDown(initiatorFee, 1e18);
+        amountIn = amountIn - amountInitiatorFee;
+    }
+
+    /**
+     * @notice Calculates the swap parameters, calculated based on a hypothetical swap (in the pool itself with fees but without slippage).
+     * that maximizes the amount of liquidity that can be added to the positions (no leftovers of either token0 or token1).
+     * @param sqrtPrice The square root of the price (token1/token0), with 96 binary precision.
+     * @param sqrtRatioLower The square root price of the lower tick of the liquidity position, with 96 binary precision.
+     * @param sqrtRatioUpper The square root price of the upper tick of the liquidity position, with 96 binary precision.
+     * @param balance0 The amount of token0 that is available for the rebalance.
+     * @param balance1 The amount of token1 that is available for the rebalance.
+     * @param fee The swapping fees, with 18 decimals precision.
+     * @return zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
+     * @return amountIn An approximation of the amount of tokenIn, based on the optimal swap through the pool itself without slippage.
+     * @return amountOut An approximation of the amount of tokenOut, based on the optimal swap through the pool itself without slippage.
+     * @dev The swap parameters are derived as follows:
+     * First we check if the position is in or out of range. For positions out of range the solution is trivial:
+     *   - If the current price is above the position, we swap the full position to token1.
+     *   - If it is below the position, we swap the full position to token0.
+     * If the position is in range, we first calculate the "Target Ratio" and "Current Ratio".
+     * Both ratio's are defined as the value of the amount of token1 compared to the total value of the position.
+     * The "Target Ratio" (R_target) is the ratio that should be obtained after the swap.
+     * It is a function of the current price and the upper and lower prices of the liquidity position, see _getTargetRatio() for the derivation.
+     * The "Current Ratio" (R_current) is calculated as follows:
+     * R_current = amount1 / (amount0 * sqrtPrice² + amount1).
+     * If R_current is smaller than R_target, we have to swap an amount of token0 to token1, and vice versa.
+     * The swap parameters can finally be found by solving the following equalities:
+     *   1) The ratio of the token balances after the swap equal the "Target Ratio".
+     *   2) The swap between token0 and token1 is done in the pool itself, taking into account fees, but without slippage.
+     * If R_current < R_target:
+     *   1) R_target = (amount1 + amoutOut) / [(amount0 - amountIn) * sqrtPrice² + (amount1 + amoutOut)].
+     *   2) amountOut = (1 - fee) * amountIn * sqrtPrice².
+     *   => amountOut = (R_target - R_current) * (amount0 * sqrtPrice² + amount1) / [1 + R_target * fee / (1 - fee)].
+     * If R_current > R_target:
+     *   1) R_target = (amount1 - amountIn) / [(amount0 + amoutOut) * sqrtPrice² + (amount1 - amountIn)].
+     *   2) amountIn = (1 - fee) * amountOut / sqrtPrice².
+     *   => amountIn = (R_current - R_target) * (amount0 * sqrtPrice² + amount1) / (1 - R_target * fee).
+     */
+    function _getSwapParams(
+        uint256 sqrtPrice,
+        uint256 sqrtRatioLower,
+        uint256 sqrtRatioUpper,
+        uint256 balance0,
+        uint256 balance1,
+        uint256 fee
+    ) internal pure returns (bool zeroToOne, uint256 amountIn, uint256 amountOut) {
         if (sqrtPrice >= sqrtRatioUpper) {
             // Position is out of range and fully in token 1.
             // Swap full amount of token0 to token1.
@@ -72,7 +136,6 @@ library RebalanceLogic {
 
             // Calculate the current ratio of liquidity in token1 terms.
             uint256 currentRatio = balance1.mulDivDown(1e18, totalValueInToken1);
-
             if (currentRatio < targetRatio) {
                 // Swap token0 partially to token1.
                 zeroToOne = true;
@@ -91,22 +154,6 @@ library RebalanceLogic {
                 amountOut = _getAmountOut(sqrtPrice, false, amountIn, fee);
             }
         }
-
-        // Calculate the maximum amount of liquidity that can be added to the position.
-        {
-            uint256 liquidity = LiquidityAmounts.getLiquidityForAmounts(
-                uint160(sqrtPrice),
-                uint160(sqrtRatioLower),
-                uint160(sqrtRatioUpper),
-                zeroToOne ? balance0 - amountIn : balance0 + amountOut,
-                zeroToOne ? balance1 + amountOut : balance1 - amountIn
-            );
-            minLiquidity = liquidity.mulDivDown(maxSlippageRatio, 1e18);
-        }
-
-        // Get initiator fee amount and the actual amountIn of the swap (without initiator fee).
-        amountInitiatorFee = amountIn.mulDivDown(initiatorFee, 1e18);
-        amountIn = amountIn - amountInitiatorFee;
     }
 
     /**

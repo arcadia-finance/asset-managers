@@ -54,10 +54,13 @@ contract ApproximateSqrtPriceNew_SwapMath_Fuzz_Test is SwapMath_Fuzz_Test {
             );
         }
 
+        // And: usableLiquidity is greater than 0.
+        usableLiquidity = uint128(bound(usableLiquidity, 1, type(uint128).max));
+
         // sqrtPriceOld is greater than quotient (requirement for getNextSqrtPriceFromAmount1RoundingUp).
-        vm.assume(amountOut * FixedPoint96.Q96 / sqrtPriceOld <= type(uint128).max);
+        vm.assume(uint256(amountOut) * FixedPoint96.Q96 / sqrtPriceOld <= type(uint128).max);
         usableLiquidity =
-            uint128(bound(usableLiquidity, amountOut * FixedPoint96.Q96 / sqrtPriceOld, type(uint128).max));
+            uint128(bound(usableLiquidity, uint256(amountOut) * FixedPoint96.Q96 / sqrtPriceOld, type(uint128).max));
         vm.assume(sqrtPriceOld > FullMath.mulDivRoundingUp(amountOut, FixedPoint96.Q96, usableLiquidity));
 
         // When: Calling _approximateSqrtPriceNew().

@@ -40,7 +40,7 @@ contract SwapMathExtension {
         uint160 sqrtPriceOld,
         uint256 amountIn,
         uint256 amountOut
-    ) external pure returns (uint160 sqrtPriceNew) {
+    ) external returns (uint160 sqrtPriceNew) {
         sqrtPriceNew =
             SwapMath._approximateSqrtPriceNew(zeroToOne, fee, usableLiquidity, sqrtPriceOld, amountIn, amountOut);
     }

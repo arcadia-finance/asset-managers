@@ -120,6 +120,12 @@ abstract contract Rebalancer_Fuzz_Test is
     function setUp() public virtual override(Fuzz_Test, UniswapV3Fixture, Base_Test) {
         Fuzz_Test.setUp();
 
+        // Warp to have a timestamp of at least two days old.
+        vm.warp(2 days);
+
+        // Deploy Arcadia  Accounts Contracts.
+        deployArcadiaAccounts();
+
         UniswapV3Fixture.setUp();
         // nonfungiblePositionManager contract addresses is stored as constant in Rebalancer.
         vm.etch(0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1, address(nonfungiblePositionManager).code);

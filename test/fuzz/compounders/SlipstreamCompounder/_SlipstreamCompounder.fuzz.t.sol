@@ -78,6 +78,12 @@ abstract contract SlipstreamCompounder_Fuzz_Test is
     function setUp() public virtual override(Fuzz_Test, SlipstreamFixture) {
         Fuzz_Test.setUp();
 
+        // Warp to have a timestamp of at least two days old.
+        vm.warp(2 days);
+
+        // Deploy Arcadia  Accounts Contracts.
+        deployArcadiaAccounts();
+
         AerodromeFixture.deployAerodromePeriphery();
         SlipstreamFixture.setUp();
         SlipstreamFixture.deploySlipstream();

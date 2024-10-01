@@ -227,7 +227,7 @@ contract Rebalancer is IActionBase {
             // Get the rebalance parameters.
             // These are calculated based on a hypothetical swap through the pool, without slippage.
             (uint256 minLiquidity, bool zeroToOne, uint256 amountInitiatorFee, uint256 amountIn, uint256 amountOut) =
-            RebalanceLogic.getRebalanceParams(
+            RebalanceLogic._getRebalanceParams(
                 MAX_SLIPPAGE_RATIO,
                 position.fee,
                 initiatorInfo[initiator].fee,
