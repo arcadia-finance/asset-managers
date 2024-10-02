@@ -45,6 +45,7 @@ library BurnLogic {
             })
         );
 
+        // We assume that the amount of tokens to collect never exceeds type(uint128).max.
         (balance0, balance1) = IPositionManager(positionManager).collect(
             CollectParams({
                 tokenId: id,
