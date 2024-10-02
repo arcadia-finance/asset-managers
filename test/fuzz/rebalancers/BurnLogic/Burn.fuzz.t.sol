@@ -53,7 +53,7 @@ contract Burn_BurnLogic_Fuzz_Test is BurnLogic_Fuzz_Test, UniswapV3Fixture, Slip
                               TESTS
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Success_burn_UniswapV3(Rebalancer.PositionState memory position) public {
-        // Given: a valid position.
+        // Given: A valid position.
         position.tickLower = int24(bound(position.tickLower, TickMath.MIN_TICK, TickMath.MAX_TICK - 1));
         position.tickUpper = int24(bound(position.tickUpper, position.tickLower + 1, TickMath.MAX_TICK));
         position.sqrtPriceX96 =
@@ -68,7 +68,7 @@ contract Burn_BurnLogic_Fuzz_Test is BurnLogic_Fuzz_Test, UniswapV3Fixture, Slip
         position.token0 = address(token0);
         position.token1 = address(token1);
 
-        // Deploy fixture for Slipstream.
+        // Deploy fixture for Uniswap V3.
         UniswapV3Fixture.setUp();
 
         // Create pool.
@@ -103,7 +103,7 @@ contract Burn_BurnLogic_Fuzz_Test is BurnLogic_Fuzz_Test, UniswapV3Fixture, Slip
     }
 
     function testFuzz_Success_burn_Slipstream(Rebalancer.PositionState memory position) public {
-        // Given: a valid position.
+        // Given: A valid position.
         position.tickLower = int24(bound(position.tickLower, TickMath.MIN_TICK, TickMath.MAX_TICK - 1));
         position.tickUpper = int24(bound(position.tickUpper, position.tickLower + 1, TickMath.MAX_TICK));
         position.sqrtPriceX96 =
@@ -157,7 +157,7 @@ contract Burn_BurnLogic_Fuzz_Test is BurnLogic_Fuzz_Test, UniswapV3Fixture, Slip
         uint256 rewardGrowthGlobalX128Current,
         Rebalancer.PositionState memory position
     ) public {
-        // Given: a valid position.
+        // Given: A valid position.
         position.tickLower = int24(bound(position.tickLower, TickMath.MIN_TICK, TickMath.MAX_TICK - 1));
         position.tickUpper = int24(bound(position.tickUpper, position.tickLower + 1, TickMath.MAX_TICK));
         position.sqrtPriceX96 =

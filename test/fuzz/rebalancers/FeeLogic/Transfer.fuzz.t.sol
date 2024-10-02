@@ -72,8 +72,9 @@ contract Transfer_FeeLogic_Fuzz_Test is FeeLogic_Fuzz_Test {
         deal(address(token1), address(feeLogic), amountInitiatorFee, true);
 
         // When: Calling _transfer().
-        (uint256 balanceNew0, uint256 balanceNew1) =
-            feeLogic.transfer(initiator, false, amountInitiatorFee, address(token0), address(token1), balance0, balance1);
+        (uint256 balanceNew0, uint256 balanceNew1) = feeLogic.transfer(
+            initiator, false, amountInitiatorFee, address(token0), address(token1), balance0, balance1
+        );
 
         // Then: It should return the correct values.
         assertEq(balanceNew0, balance0);
