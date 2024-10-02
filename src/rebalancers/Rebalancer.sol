@@ -184,7 +184,7 @@ contract Rebalancer is IActionBase {
     }
 
     /**
-     * @notice Callback function called by the Arcadia Account during a flashAction.
+     * @notice Callback function called by the Arcadia Account during the flashAction.
      * @param rebalanceData A bytes object containing a struct with the assetData of the position and the address of the initiator.
      * @return depositData A struct with the asset data of the Liquidity Position and with the leftovers after mint, if any.
      * @dev The Liquidity Position is already transferred to this contract before executeAction() is called.
