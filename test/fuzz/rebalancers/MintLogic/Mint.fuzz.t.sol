@@ -55,14 +55,13 @@ contract Mint_MintLogic_Fuzz_Test is MintLogic_Fuzz_Test, UniswapV3Fixture, Slip
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Success_mint_UniswapV3(
         Rebalancer.PositionState memory position,
-        uint128 balance0,
-        uint128 balance1
+        uint112 balance0,
+        uint112 balance1
     ) public {
         // Given: A valid position.
-        position.tickLower = int24(bound(position.tickLower, TickMath.MIN_TICK, TickMath.MAX_TICK - 1));
-        position.tickUpper = int24(bound(position.tickUpper, position.tickLower + 1, TickMath.MAX_TICK));
-        position.sqrtPriceX96 =
-            uint160(bound(position.sqrtPriceX96, TickMath.MIN_SQRT_RATIO, TickMath.MAX_SQRT_RATIO - 1));
+        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, BOUND_TICK_UPPER - 1));
+        position.tickUpper = int24(bound(position.tickUpper, position.tickLower + 1, BOUND_TICK_UPPER));
+        position.sqrtPriceX96 = uint160(bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER, BOUND_SQRT_PRICE_UPPER));
 
         // And: Liquidity is not 0, does not overflow and is below max liquidity.
         if (position.sqrtPriceX96 <= TickMath.getSqrtRatioAtTick(position.tickLower)) {
@@ -131,14 +130,13 @@ contract Mint_MintLogic_Fuzz_Test is MintLogic_Fuzz_Test, UniswapV3Fixture, Slip
 
     function testFuzz_Success_mint_Slipstream(
         Rebalancer.PositionState memory position,
-        uint128 balance0,
-        uint128 balance1
+        uint112 balance0,
+        uint112 balance1
     ) public {
         // Given: A valid position.
-        position.tickLower = int24(bound(position.tickLower, TickMath.MIN_TICK, TickMath.MAX_TICK - 1));
-        position.tickUpper = int24(bound(position.tickUpper, position.tickLower + 1, TickMath.MAX_TICK));
-        position.sqrtPriceX96 =
-            uint160(bound(position.sqrtPriceX96, TickMath.MIN_SQRT_RATIO, TickMath.MAX_SQRT_RATIO - 1));
+        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, BOUND_TICK_UPPER - 1));
+        position.tickUpper = int24(bound(position.tickUpper, position.tickLower + 1, BOUND_TICK_UPPER));
+        position.sqrtPriceX96 = uint160(bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER, BOUND_SQRT_PRICE_UPPER));
 
         // And: Liquidity is not 0, does not overflow and is below max liquidity.
         if (position.sqrtPriceX96 <= TickMath.getSqrtRatioAtTick(position.tickLower)) {
@@ -209,14 +207,13 @@ contract Mint_MintLogic_Fuzz_Test is MintLogic_Fuzz_Test, UniswapV3Fixture, Slip
 
     function testFuzz_Success_mint_StakedSlipstream(
         Rebalancer.PositionState memory position,
-        uint128 balance0,
-        uint128 balance1
+        uint112 balance0,
+        uint112 balance1
     ) public {
         // Given: a valid position.
-        position.tickLower = int24(bound(position.tickLower, TickMath.MIN_TICK, TickMath.MAX_TICK - 1));
-        position.tickUpper = int24(bound(position.tickUpper, position.tickLower + 1, TickMath.MAX_TICK));
-        position.sqrtPriceX96 =
-            uint160(bound(position.sqrtPriceX96, TickMath.MIN_SQRT_RATIO, TickMath.MAX_SQRT_RATIO - 1));
+        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, BOUND_TICK_UPPER - 1));
+        position.tickUpper = int24(bound(position.tickUpper, position.tickLower + 1, BOUND_TICK_UPPER));
+        position.sqrtPriceX96 = uint160(bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER, BOUND_SQRT_PRICE_UPPER));
 
         // And: Liquidity is not 0, does not overflow and is below max liquidity.
         if (position.sqrtPriceX96 <= TickMath.getSqrtRatioAtTick(position.tickLower)) {

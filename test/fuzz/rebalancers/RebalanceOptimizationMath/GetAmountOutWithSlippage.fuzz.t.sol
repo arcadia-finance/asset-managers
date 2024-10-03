@@ -220,10 +220,12 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is
             true
         );
 
+        // Rounding errors are relatively too big with very low amountIns.
+        vm.assume(amountInWithSlippage > 1e5);
+
         // If amount in's are equal, liquidity will be almost exactly equal,
-        //but it can be that without slippage is bigger in this specific case.
+        // but it can be that "without slippage" is bigger in this specific case due to rounding errors.
         if (amountInWithSlippage == amountInWithoutSlippage) {
-            vm.assume(amountInWithSlippage > 1e5);
             assertApproxEqRel(amountInWithSlippage, amountInWithoutSlippage, 0.001 * 1e18);
         }
 
@@ -252,8 +254,10 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is
             amountIn = amountIn_;
             sqrtPriceAfter = sqrtPriceAfter_;
         } catch {
-            vm.assume(canRevertOnQuote);
-            revert();
+            // Swaps with amountOutWithoutSlippage can revert on the swap (it is due to slippage),
+            // but swaps with amountOutWithSlippage should not revert.
+            if (canRevertOnQuote) vm.assume(false);
+            else revert();
         }
 
         liquidity = LiquidityAmounts.getLiquidityForAmounts(

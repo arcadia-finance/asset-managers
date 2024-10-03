@@ -9,7 +9,6 @@ import { Fuzz_Test } from "../../Fuzz.t.sol";
 import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/uniswap-v3/LiquidityAmounts.sol";
 import { PricingLogic } from "../../../../src/rebalancers/libraries/PricingLogic.sol";
 import { RebalanceOptimizationMathExtension } from "../../../utils/extensions/RebalanceOptimizationMathExtension.sol";
-import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 
 /**
  * @notice Common logic needed by all "RebalanceOptimizationMath" fuzz tests.
@@ -20,11 +19,6 @@ abstract contract RebalanceOptimizationMath_Fuzz_Test is Fuzz_Test {
     /////////////////////////////////////////////////////////////// */
 
     uint256 internal constant MAX_INITIATOR_FEE = 0.01 * 1e18;
-
-    uint160 internal BOUND_SQRT_PRICE_UPPER = type(uint120).max;
-    int24 internal BOUND_TICK_UPPER = TickMath.getTickAtSqrtRatio(BOUND_SQRT_PRICE_UPPER);
-    int24 internal BOUND_TICK_LOWER = -BOUND_TICK_UPPER;
-    uint160 internal BOUND_SQRT_PRICE_LOWER = TickMath.getSqrtRatioAtTick(BOUND_TICK_LOWER);
 
     /*////////////////////////////////////////////////////////////////
                             VARIABLES

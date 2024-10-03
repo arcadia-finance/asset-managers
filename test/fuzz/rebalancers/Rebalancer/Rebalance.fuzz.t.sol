@@ -519,9 +519,9 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     function testFuzz_Success_rebalancePosition_MoveTickRight_CustomTicks(
         uint256 amount1ToSwap,
         LpVariables memory lpVars,
-        InitVariables memory initVars,
         int24 tickLower,
-        int24 tickUpper
+        int24 tickUpper,
+        InitVariables memory initVars
     ) public {
         // Given : deploy new rebalancer with a high maxTolerance to avoid unbalancedPool due to external usd prices not aligned
         {
@@ -581,8 +581,13 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
             uint256 amountIn;
             uint256 amountOut;
             bool zeroToOne;
-            (amount0, amount1, zeroToOne, amountIn, amountOut,) =
-                getRebalanceParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initVars.initiator);
+            {
+                uint256 amountInitiatorFee;
+                (amount0, amount1, zeroToOne, amountIn, amountOut, amountInitiatorFee) =
+                    getRebalanceParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initVars.initiator);
+                // Initiator fee should be greater than one to at least compensate for rounding errors.
+                vm.assume(amountInitiatorFee > 0);
+            }
 
             // Exclude edge case where sqrtPrice starts in range, but sqrtPriceNew goes out of range during calculations.
             (sqrtPrice,,,,,,) = uniV3Pool.slot0();
@@ -640,9 +645,9 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     function testFuzz_Success_rebalancePosition_MoveTickLeft_CustomTicks(
         uint256 amount0ToSwap,
         LpVariables memory lpVars,
-        InitVariables memory initVars,
         int24 tickLower,
-        int24 tickUpper
+        int24 tickUpper,
+        InitVariables memory initVars
     ) public {
         // Given : deploy new rebalancer with a high maxTolerance to avoid unbalancedPool due to external usd prices not aligned
         {
@@ -703,8 +708,13 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
             uint256 amountIn;
             uint256 amountOut;
             bool zeroToOne;
-            (amount0, amount1, zeroToOne, amountIn, amountOut,) =
-                getRebalanceParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initVars.initiator);
+            {
+                uint256 amountInitiatorFee;
+                (amount0, amount1, zeroToOne, amountIn, amountOut, amountInitiatorFee) =
+                    getRebalanceParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initVars.initiator);
+                // Initiator fee should be greater than one to at least compensate for rounding errors.
+                vm.assume(amountInitiatorFee > 0);
+            }
 
             // Exclude edge case where sqrtPrice starts in range, but sqrtPriceNew goes out of range during calculations.
             (sqrtPrice,,,,,,) = uniV3Pool.slot0();
