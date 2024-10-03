@@ -6,12 +6,15 @@ pragma solidity 0.8.22;
 
 import { ICLPool } from "../interfaces/ICLPool.sol";
 import { ICLPositionManager } from "../interfaces/ICLPositionManager.sol";
-import { PoolAddress } from "../../../lib/accounts-v2/src/asset-modules/Slipstream/libraries/PoolAddress.sol";
+import { PoolAddress } from "./slipstream/PoolAddress.sol";
 import { Rebalancer } from "../Rebalancer.sol";
 
 library SlipstreamLogic {
     // The Slipstream Factory contract.
     address internal constant CL_FACTORY = 0x5e7BB104d84c7CB9B682AaC2F3d509f5F406809A;
+
+    // The Slipstream Pool Implementation contract.
+    address internal constant POOL_IMPLEMENTATION = 0xF926b5acC092E396A3b337642Be2E4cAe3f5da8E;
 
     // The Slipstream NonfungiblePositionManager contract.
     ICLPositionManager internal constant POSITION_MANAGER =
@@ -26,10 +29,10 @@ library SlipstreamLogic {
      */
     function _computePoolAddress(address token0, address token1, int24 tickSpacing)
         internal
-        view
+        pure
         returns (address pool)
     {
-        pool = PoolAddress.computeAddress(CL_FACTORY, token0, token1, tickSpacing);
+        pool = PoolAddress.computeAddress(POOL_IMPLEMENTATION, CL_FACTORY, token0, token1, tickSpacing);
     }
 
     /**

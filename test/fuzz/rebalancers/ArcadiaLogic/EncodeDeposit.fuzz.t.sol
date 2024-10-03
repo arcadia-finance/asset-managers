@@ -75,7 +75,7 @@ contract EncodeDeposit_ArcadiaLogic_Fuzz_Test is ArcadiaLogic_Fuzz_Test {
 
         // And: Asset 3 should be the correct asset.
         if (reward > 0) {
-            assertEq(depositData.assets[index], position.tokenR);
+            assertEq(depositData.assets[index], 0x940181a94A35A4569E4529A3CDfB74e38FD98631);
             assertEq(depositData.assetIds[index], 0);
             assertEq(depositData.assetAmounts[index], reward);
             assertEq(depositData.assetTypes[index], 1);

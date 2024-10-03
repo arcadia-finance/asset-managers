@@ -24,12 +24,13 @@ library BurnLogic {
         returns (uint256 balance0, uint256 balance1, uint256 rewards)
     {
         // If position is a staked slipstream position, first unstake the position.
-        if (positionManager == address(StakedSlipstreamLogic.POSITION_MANAGER)) {
+        bool staked = positionManager == address(StakedSlipstreamLogic.POSITION_MANAGER);
+        if (staked) {
             // Staking rewards are deposited back into the account at the end of the transaction.
             // Or, if rewardToken is an underlying token of the position, added to the balances
             rewards = StakedSlipstreamLogic.POSITION_MANAGER.burn(id);
 
-            // After position is unstaked, it becomes a slipstream position.
+            // After the position is unstaked, it becomes a slipstream position.
             positionManager = address(SlipstreamLogic.POSITION_MANAGER);
         }
 
@@ -58,9 +59,13 @@ library BurnLogic {
         // Burn the position
         IPositionManager(positionManager).burn(id);
 
-        if (positionManager == address(StakedSlipstreamLogic.POSITION_MANAGER)) {
-            if (position.tokenR == position.token0) (balance0, rewards) = (balance0 + rewards, 0);
-            else if (position.tokenR == position.token1) (balance1, rewards) = (balance1 + rewards, 0);
+        // If the reward token is the same as one of the underlying tokens, update the token-balance instead.
+        if (staked) {
+            if (StakedSlipstreamLogic.REWARD_TOKEN == position.token0) {
+                (balance0, rewards) = (balance0 + rewards, 0);
+            } else if (StakedSlipstreamLogic.REWARD_TOKEN == position.token1) {
+                (balance1, rewards) = (balance1 + rewards, 0);
+            }
         }
     }
 }

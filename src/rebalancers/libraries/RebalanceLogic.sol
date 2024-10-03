@@ -85,27 +85,40 @@ library RebalanceLogic {
      * @return amountIn An approximation of the amount of tokenIn, based on the optimal swap through the pool itself without slippage.
      * @return amountOut An approximation of the amount of tokenOut, based on the optimal swap through the pool itself without slippage.
      * @dev The swap parameters are derived as follows:
-     * First we check if the position is in or out of range. For positions out of range the solution is trivial:
-     *   - If the current price is above the position, we swap the full position to token1.
-     *   - If it is below the position, we swap the full position to token0.
-     * If the position is in range, we first calculate the "Target Ratio" and "Current Ratio".
-     * Both ratio's are defined as the value of the amount of token1 compared to the total value of the position.
-     * The "Target Ratio" (R_target) is the ratio that should be obtained after the swap.
-     * It is a function of the current price and the upper and lower prices of the liquidity position, see _getTargetRatio() for the derivation.
-     * The "Current Ratio" (R_current) is calculated as follows:
-     * R_current = amount1 / (amount0 * sqrtPrice² + amount1).
-     * If R_current is smaller than R_target, we have to swap an amount of token0 to token1, and vice versa.
-     * The swap parameters can finally be found by solving the following equalities:
-     *   1) The ratio of the token balances after the swap equal the "Target Ratio".
-     *   2) The swap between token0 and token1 is done in the pool itself, taking into account fees, but without slippage.
-     * If R_current < R_target:
-     *   1) R_target = (amount1 + amoutOut) / [(amount0 - amountIn) * sqrtPrice² + (amount1 + amoutOut)].
-     *   2) amountOut = (1 - fee) * amountIn * sqrtPrice².
-     *   => amountOut = (R_target - R_current) * (amount0 * sqrtPrice² + amount1) / [1 + R_target * fee / (1 - fee)].
-     * If R_current > R_target:
-     *   1) R_target = (amount1 - amountIn) / [(amount0 + amoutOut) * sqrtPrice² + (amount1 - amountIn)].
-     *   2) amountIn = (1 - fee) * amountOut / sqrtPrice².
-     *   => amountIn = (R_current - R_target) * (amount0 * sqrtPrice² + amount1) / (1 - R_target * fee).
+     * 1) First we check if the position is in or out of range.
+     *   - If the current price is above the position, the solution is trivial: we swap the full position to token1.
+     *   - If the current price is below the position, similar, we swap the full position to token0.
+     *   - If the position is in range we proceed with step 2.
+     *
+     * 2) If the position is in range, we start with calculating the "Target Ratio" and "Current Ratio".
+     *    Both ratio's are defined as the value of the amount of token1 compared to the total value of the position:
+     *    R = valueToken1 / [valueToken0 + valueToken1]
+     *    If we express all values in token1 and use the current pool price to denominate token0 in token1:
+     *    R = amount1 / [amount0 * sqrtPrice² + amount1]
+     *
+     *    a) The "Target Ratio" (R_target) is the ratio of the new liquidity position.
+     *       It is calculated with the current price and the upper and lower prices of the liquidity position,
+     *       see _getTargetRatio() for the derivation.
+     *       To maximise the liquidity of the new position, the balances after the swap should approximate it as close as possible to not have any leftovers.
+     *    b) The "Current Ratio" (R_current) is the ratio of the current token balances, it is calculated as follows:
+     *       R_current = balance1 / [balance0 * sqrtPrice² + balance1].
+     *
+     * 3) From R_target and R_current we can finally derive the direction of the swap, amountIn and amountOut.
+     *    If R_current is smaller than R_target, we have to swap an amount of token0 to token1, and vice versa.
+     *    amountIn and amountOut can be found by solving the following equalities:
+     *      a) The ratio of the token balances after the swap equal the "Target Ratio".
+     *      b) The swap between token0 and token1 is done in the pool itself,
+     *         taking into account fees, but ignoring slippage (-> sqrtPrice remains constant).
+     *
+     *    - If R_current < R_target (swap token0 to token1):
+     *      a) R_target = [amount1 + amoutOut] / [(amount0 - amountIn) * sqrtPrice² + (amount1 + amoutOut)].
+     *      b) amountOut = (1 - fee) * amountIn * sqrtPrice².
+     *         => amountOut = [(R_target - R_current) * (amount0 * sqrtPrice² + amount1)] / [1 + R_target * fee / (1 - fee)].
+     *
+     *    - If R_current > R_target (swap token1 to token0):
+     *      a) R_target = [(amount1 - amountIn)] / [(amount0 + amoutOut) * sqrtPrice² + (amount1 - amountIn)].
+     *      b) amountOut = (1 - fee) * amountIn / sqrtPrice².
+     *         => amountIn = [(R_current - R_target) * (amount0 * sqrtPrice² + amount1)] / (1 - R_target * fee).
      */
     function _getSwapParams(
         uint256 sqrtPrice,
@@ -216,9 +229,9 @@ library RebalanceLogic {
      * which does two consecutive mulDivs.
      * @dev Derivation of the formula:
      * 1) The ratio is defined as:
-     *    R = valueToken1 / (valueToken0 + valueToken1)
-     *    If we express all values in token1 en use the current pool price to denominate token0 in token1:
-     *    R = amount1 / (amount0 * sqrtPrice² + amount1)
+     *    R = valueToken1 / [valueToken0 + valueToken1]
+     *    If we express all values in token1 and use the current pool price to denominate token0 in token1:
+     *    R = amount1 / [amount0 * sqrtPrice² + amount1]
      * 2) Amount0 for a given liquidity position of a Uniswap V3 pool is given as:
      *    Amount0 = liquidity * (sqrtRatioUpper - sqrtPrice) / (sqrtRatioUpper * sqrtPrice)
      * 3) Amount1 for a given liquidity position of a Uniswap V3 pool is given as:

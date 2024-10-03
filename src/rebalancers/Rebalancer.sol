@@ -80,7 +80,6 @@ contract Rebalancer is IActionBase {
         address pool;
         address token0;
         address token1;
-        address tokenR;
         uint24 fee;
         int24 tickSpacing;
         int24 tickUpper;
@@ -288,7 +287,7 @@ contract Rebalancer is IActionBase {
                 ++count;
             }
             if (reward > 0) {
-                ERC20(position.tokenR).safeApproveWithRetry(msg.sender, reward);
+                ERC20(StakedSlipstreamLogic.REWARD_TOKEN).safeApproveWithRetry(msg.sender, reward);
                 ++count;
             }
 
@@ -375,10 +374,6 @@ contract Rebalancer is IActionBase {
             ? UniswapV3Logic._getPositionState(position, id, tickLower == tickUpper)
             // Logic holds for both Slipstream and staked Slipstream positions.
             : SlipstreamLogic._getPositionState(position, id);
-
-        if (positionManager == address(StakedSlipstreamLogic.POSITION_MANAGER)) {
-            StakedSlipstreamLogic._getPositionState(position);
-        }
 
         // Store the new ticks for the rebalance
         if (tickLower == tickUpper) {
