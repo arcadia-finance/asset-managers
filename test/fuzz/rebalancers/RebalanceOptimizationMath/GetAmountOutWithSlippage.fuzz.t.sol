@@ -178,8 +178,8 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is
                 zeroToOne, POOL_FEE, usableLiquidity, sqrtPriceOld, amountIn, amountOut
             );
             vm.assume(
-                TickMath.getSqrtRatioAtTick(tickLower) < sqrtPriceNew - 100
-                    && sqrtPriceNew + 100 < TickMath.getSqrtRatioAtTick(tickUpper)
+                TickMath.getSqrtRatioAtTick(tickLower) < sqrtPriceNew * 99_999 / 100_000
+                    && sqrtPriceNew * 100_001 / 100_000 < TickMath.getSqrtRatioAtTick(tickUpper)
             );
         }
 

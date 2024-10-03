@@ -45,7 +45,7 @@ contract GetSpotValue_PricingLogic_Fuzz_Test is PricingLogic_Fuzz_Test {
         // And: amountIn is too big.
         amountIn = bound(
             amountIn,
-            FullMath.mulDivRoundingUp(type(uint256).max, PricingLogic.Q192, sqrtPriceX96 ** 2),
+            FullMath.mulDivRoundingUp(type(uint256).max, PricingLogic.Q192, sqrtPriceX96 ** 2) + 1,
             type(uint256).max
         );
 
@@ -62,7 +62,7 @@ contract GetSpotValue_PricingLogic_Fuzz_Test is PricingLogic_Fuzz_Test {
         // And: amountIn is too small.
         amountIn = bound(
             amountIn,
-            FullMath.mulDivRoundingUp(type(uint256).max, sqrtPriceX96 ** 2, PricingLogic.Q192),
+            FullMath.mulDivRoundingUp(type(uint256).max, sqrtPriceX96 ** 2, PricingLogic.Q192) + 1,
             type(uint256).max
         );
 

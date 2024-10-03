@@ -4,7 +4,6 @@
  */
 pragma solidity 0.8.22;
 
-import { MintLogic_Fuzz_Test } from "./_MintLogic.fuzz.t.sol";
 import { ERC20, ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { FixedPoint128 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint128.sol";
@@ -17,6 +16,7 @@ import { INonfungiblePositionManagerExtension } from
 import { IUniswapV3PoolExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/IUniswapV3PoolExtension.sol";
 import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/uniswap-v3/LiquidityAmounts.sol";
+import { MintLogic_Fuzz_Test } from "./_MintLogic.fuzz.t.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RegistryMock } from "../../../utils/mocks/RegistryMock.sol";
 import { SlipstreamFixture } from "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/Slipstream.f.sol";

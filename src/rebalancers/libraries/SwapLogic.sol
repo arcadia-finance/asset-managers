@@ -45,11 +45,24 @@ library SwapLogic {
 
         // Do the actual swap to rebalance the position.
         // This can be done either directly through the pool, or via a router with custom swap data.
-        (balance0_, balance1_) = swapData.length == 0
-            ? _swapViaPool(
-                positionManager, position, zeroToOne, amountInitiatorFee, amountIn, amountOut, balance0, balance1
-            )
-            : _swapViaRouter(positionManager, position, zeroToOne, swapData);
+        if (swapData.length == 0) {
+            // Calculate a more accurate amountOut, with slippage.
+            amountOut = RebalanceOptimizationMath._getAmountOutWithSlippage(
+                zeroToOne,
+                position.fee,
+                IPool(position.pool).liquidity(),
+                uint160(position.sqrtPriceX96),
+                position.sqrtRatioLower,
+                position.sqrtRatioUpper,
+                zeroToOne ? balance0 - amountInitiatorFee : balance0,
+                zeroToOne ? balance1 : balance1 - amountInitiatorFee,
+                amountIn,
+                amountOut
+            );
+            (balance0_, balance1_) = _swapViaPool(positionManager, position, zeroToOne, amountOut, balance0, balance1);
+        } else {
+            (balance0_, balance1_) = _swapViaRouter(positionManager, position, zeroToOne, swapData);
+        }
     }
 
     /**
@@ -57,9 +70,7 @@ library SwapLogic {
      * @param positionManager The contract address of the Position Manager.
      * @param position Struct with the position data.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
-     * @param amountInitiatorFee The amount of initiator fee, in tokenIn.
-     * @param amountIn An approximation of the amount of tokenIn, based on the optimal swap through the pool itself without slippage.
-     * @param amountOut An approximation of the amount of tokenOut, based on the optimal swap through the pool itself without slippage.
+     * @param amountOut The amount of tokenOut that must be swapped to.
      * @param balance0 The balance of token0 before the swap.
      * @param balance1 The balance of token1 before the swap.
      * @return balance0_ The balance of token0 after the swap.
@@ -69,36 +80,22 @@ library SwapLogic {
         address positionManager,
         Rebalancer.PositionState memory position,
         bool zeroToOne,
-        uint256 amountInitiatorFee,
-        uint256 amountIn,
         uint256 amountOut,
         uint256 balance0,
         uint256 balance1
     ) internal returns (uint256 balance0_, uint256 balance1_) {
-        // Calculate the exact amountOut, with slippage that will be swapped.
-        amountOut = RebalanceOptimizationMath._getAmountOutWithSlippage(
-            zeroToOne,
-            position.fee,
-            IPool(position.pool).liquidity(),
-            uint160(position.sqrtPriceX96),
-            position.sqrtRatioLower,
-            position.sqrtRatioUpper,
-            zeroToOne ? balance0 - amountInitiatorFee : balance0,
-            zeroToOne ? balance1 : balance1 - amountInitiatorFee,
-            amountIn,
-            amountOut
-        );
-
         // Pool should still be balanced (within tolerance boundaries) after the swap.
         uint160 sqrtPriceLimitX96 =
             uint160(zeroToOne ? position.lowerBoundSqrtPriceX96 : position.upperBoundSqrtPriceX96);
 
-        // Do the swap.
-        // Callback (external function) must be implemented in the main contract.
+        // Encode the swap data.
         bytes memory data = (positionManager == address(UniswapV3Logic.POSITION_MANAGER))
             ? abi.encode(positionManager, position.token0, position.token1, position.fee)
             // Logic holds for both Slipstream and staked Slipstream positions.
             : abi.encode(positionManager, position.token0, position.token1, position.tickSpacing);
+
+        // Do the swap.
+        // Callback (external function) must be implemented in the main contract.
         (int256 deltaAmount0, int256 deltaAmount1) =
             IPool(position.pool).swap(address(this), zeroToOne, -int256(amountOut), sqrtPriceLimitX96, data);
 
