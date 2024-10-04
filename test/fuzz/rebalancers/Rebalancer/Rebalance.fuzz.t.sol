@@ -143,7 +143,6 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         address initiator
     )
         public
-        view
         returns (
             uint256 amount0,
             uint256 amount1,

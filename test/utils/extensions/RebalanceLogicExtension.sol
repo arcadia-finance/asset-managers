@@ -18,7 +18,6 @@ contract RebalanceLogicExtension {
         uint256 balance1
     )
         external
-        pure
         returns (uint256 minLiquidity, bool zeroToOne, uint256 amountInitiatorFee, uint256 amountIn, uint256 amountOut)
     {
         return RebalanceLogic._getRebalanceParams(

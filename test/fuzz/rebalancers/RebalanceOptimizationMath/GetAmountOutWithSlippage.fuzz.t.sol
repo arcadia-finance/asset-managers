@@ -168,8 +168,8 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is
                 pool, usableLiquidity, users.liquidityProvider, TickMath.MIN_TICK, TickMath.MAX_TICK, false
             );
             stdstore.target(address(pool)).sig(pool.liquidity.selector).checked_write(usableLiquidity);
-            deal(address(token0), address(pool), type(uint128).max, true);
-            deal(address(token1), address(pool), type(uint128).max, true);
+            deal(address(token0), address(pool), type(uint160).max, true);
+            deal(address(token1), address(pool), type(uint160).max, true);
         }
 
         // Exclude edge case where sqrtPriceAfter is out of range.
