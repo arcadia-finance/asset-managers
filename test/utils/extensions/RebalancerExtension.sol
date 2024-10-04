@@ -20,32 +20,12 @@ contract RebalancerExtension is Rebalancer {
     { }
 
     function getRebalanceParams(
-        uint256 maxSlippageRatio,
-        uint256 poolFee,
-        uint256 initiatorFee,
-        uint256 sqrtPrice,
-        uint256 sqrtRatioLower,
-        uint256 sqrtRatioUpper,
-        uint256 amount0,
-        uint256 amount1
-    )
-        public
-        pure
-        returns (uint256 minLiquidity, bool zeroToOne, uint256 amountInitiatorFee, uint256 amountIn, uint256 amountOut)
-    {
-        return RebalanceLogic._getRebalanceParams(
-            maxSlippageRatio, poolFee, initiatorFee, sqrtPrice, sqrtRatioLower, sqrtRatioUpper, amount0, amount1
-        );
-    }
-
-    function getRebalanceParams(
         Rebalancer.PositionState memory position,
         uint256 amount0,
         uint256 amount1,
         uint256 initiatorFee
     )
         public
-        view
         returns (uint256 minLiquidity, bool zeroToOne, uint256 amountInitiatorFee, uint256 amountIn, uint256 amountOut)
     {
         return RebalanceLogic._getRebalanceParams(
@@ -58,10 +38,6 @@ contract RebalancerExtension is Rebalancer {
             amount0,
             amount1
         );
-    }
-
-    function getSqrtPriceX96(uint256 priceToken0, uint256 priceToken1) public pure returns (uint256) {
-        return PricingLogic._getSqrtPriceX96(priceToken0, priceToken1);
     }
 
     function swapViaPool(PositionState memory position, bool zeroToOne, uint256 amountOut)

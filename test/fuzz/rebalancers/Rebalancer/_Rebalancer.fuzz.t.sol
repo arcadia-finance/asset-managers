@@ -269,8 +269,8 @@ abstract contract Rebalancer_Fuzz_Test is
             uint256 priceXd28 = priceToken0ScaledForDecimals * 1e28 / priceToken1ScaledForDecimals;
             uint256 sqrtPriceXd14 = FixedPointMathLib.sqrt(priceXd28);
             sqrtPriceX96 = sqrtPriceXd14 * 2 ** 96 / 1e14;
-            vm.assume(sqrtPriceX96 >= 4_295_128_739);
-            vm.assume(sqrtPriceX96 <= 1_461_446_703_485_210_103_287_273_052_203_988_822_378_723_970_342);
+            vm.assume(sqrtPriceX96 > TickMath.MIN_SQRT_RATIO);
+            vm.assume(sqrtPriceX96 < TickMath.MAX_SQRT_RATIO);
         }
 
         addAssetToArcadia(address(token0), int256(initVars.priceToken0));

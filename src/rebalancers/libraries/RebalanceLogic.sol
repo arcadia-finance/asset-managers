@@ -15,6 +15,9 @@ library RebalanceLogic {
     // The binary precision of sqrtPriceX96 squared.
     uint256 internal constant Q192 = PricingLogic.Q192;
 
+    event Log(uint256 balance0, uint256 balance1, uint256 amountIn, uint256 amountOut);
+    event Log2(uint256 sqrtPrice, uint256 sqrtRatioLower, uint256 sqrtRatioUpper);
+
     /**
      * @notice Returns the parameters and constraints to rebalance the position.
      * Both parameters and constraints are calculated based on a hypothetical swap (in the pool itself with fees but without slippage).
@@ -44,7 +47,6 @@ library RebalanceLogic {
         uint256 balance1
     )
         internal
-        pure
         returns (uint256 minLiquidity, bool zeroToOne, uint256 amountInitiatorFee, uint256 amountIn, uint256 amountOut)
     {
         // Total fee is pool fee + initiator fee, with 18 decimals precision.
@@ -54,6 +56,8 @@ library RebalanceLogic {
         // Calculate the swap parameters
         (zeroToOne, amountIn, amountOut) =
             _getSwapParams(sqrtPrice, sqrtRatioLower, sqrtRatioUpper, balance0, balance1, fee);
+        emit Log(balance0, balance1, amountIn, amountOut);
+        emit Log2(sqrtPrice, sqrtRatioLower, sqrtRatioUpper);
 
         // Calculate the maximum amount of liquidity that can be added to the position.
         {
@@ -110,12 +114,12 @@ library RebalanceLogic {
      *      b) The swap between token0 and token1 is done in the pool itself,
      *         taking into account fees, but ignoring slippage (-> sqrtPrice remains constant).
      *
-     *    - If R_current < R_target (swap token0 to token1):
+     *    If R_current < R_target (swap token0 to token1):
      *      a) R_target = [amount1 + amoutOut] / [(amount0 - amountIn) * sqrtPrice² + (amount1 + amoutOut)].
      *      b) amountOut = (1 - fee) * amountIn * sqrtPrice².
      *         => amountOut = [(R_target - R_current) * (amount0 * sqrtPrice² + amount1)] / [1 + R_target * fee / (1 - fee)].
      *
-     *    - If R_current > R_target (swap token1 to token0):
+     *    If R_current > R_target (swap token1 to token0):
      *      a) R_target = [(amount1 - amountIn)] / [(amount0 + amoutOut) * sqrtPrice² + (amount1 - amountIn)].
      *      b) amountOut = (1 - fee) * amountIn / sqrtPrice².
      *         => amountIn = [(R_current - R_target) * (amount0 * sqrtPrice² + amount1)] / (1 - R_target * fee).
