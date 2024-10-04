@@ -80,7 +80,6 @@ contract Rebalancer is IActionBase {
         address pool;
         address token0;
         address token1;
-        address tokenR;
         uint24 fee;
         int24 tickSpacing;
         int24 tickUpper;
@@ -155,7 +154,7 @@ contract Rebalancer is IActionBase {
      * @dev When tickLower and tickUpper are equal, ticks will be updated with same tick-spacing as current position
      * and with a balanced, 50/50 ratio around current tick.
      */
-    function rebalancePosition(
+    function rebalance(
         address account_,
         address positionManager,
         uint256 id,
@@ -184,14 +183,14 @@ contract Rebalancer is IActionBase {
     }
 
     /**
-     * @notice Callback function called by the Arcadia Account during a flashAction.
+     * @notice Callback function called by the Arcadia Account during the flashAction.
      * @param rebalanceData A bytes object containing a struct with the assetData of the position and the address of the initiator.
      * @return depositData A struct with the asset data of the Liquidity Position and with the leftovers after mint, if any.
      * @dev The Liquidity Position is already transferred to this contract before executeAction() is called.
      * @dev When rebalancing we will burn the current Liquidity Position and mint a new one with a new tokenId.
      */
     function executeAction(bytes calldata rebalanceData) external override returns (ActionData memory depositData) {
-        // Caller should be the Account, provided as input in rebalancePosition().
+        // Caller should be the Account, provided as input in rebalance().
         if (msg.sender != account) revert OnlyAccount();
 
         // Decode rebalanceData.
@@ -241,7 +240,7 @@ contract Rebalancer is IActionBase {
             // This can be done either directly through the pool, or via a router with custom swap data.
             // For swaps directly through the pool, if slippage is bigger than calculated, the transaction will not immediately revert,
             // but excess slippage will be subtracted from the initiatorFee.
-            // For swaps via the router, tokenOut should be the limiting factor when increasing liquidity.
+            // For swaps via a router, tokenOut should be the limiting factor when increasing liquidity.
             (balance0, balance1) = SwapLogic._swap(
                 positionManager,
                 position,
@@ -288,7 +287,7 @@ contract Rebalancer is IActionBase {
                 ++count;
             }
             if (reward > 0) {
-                ERC20(position.tokenR).safeApproveWithRetry(msg.sender, reward);
+                ERC20(StakedSlipstreamLogic.REWARD_TOKEN).safeApproveWithRetry(msg.sender, reward);
                 ++count;
             }
 
@@ -375,10 +374,6 @@ contract Rebalancer is IActionBase {
             ? UniswapV3Logic._getPositionState(position, id, tickLower == tickUpper)
             // Logic holds for both Slipstream and staked Slipstream positions.
             : SlipstreamLogic._getPositionState(position, id);
-
-        if (positionManager == address(StakedSlipstreamLogic.POSITION_MANAGER)) {
-            StakedSlipstreamLogic._getPositionState(position);
-        }
 
         // Store the new ticks for the rebalance
         if (tickLower == tickUpper) {

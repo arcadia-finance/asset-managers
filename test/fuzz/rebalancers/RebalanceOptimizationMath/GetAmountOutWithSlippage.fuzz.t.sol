@@ -19,6 +19,7 @@ import { StdStorage, stdStorage } from "../../../../lib/accounts-v2/lib/forge-st
 import { RebalanceOptimizationMath_Fuzz_Test } from "./_RebalanceOptimizationMath.fuzz.t.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { UniswapV3Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";
+import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
 
 /**
  * @notice Fuzz tests for the function "_getAmountOutWithSlippage" of contract "RebalanceOptimizationMath".
@@ -35,7 +36,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is
 
     uint256 internal constant INITIATOR_FEE = 0.01 * 1e18;
     uint24 internal constant POOL_FEE = 100;
-    uint128 internal MAX_LIQUIDITY = maxLiquidity(1);
+    uint128 internal MAX_LIQUIDITY = UniswapHelpers.maxLiquidity(1);
 
     /*////////////////////////////////////////////////////////////////
                             VARIABLES
@@ -72,12 +73,6 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is
         uint128 amount1,
         uint160 sqrtPriceOld
     ) public {
-        // usableLiquidity = 1;
-        // tickLower = -140;
-        // tickUpper = 8388604;
-        // amount0 = 0;
-        // amount1 = 60858134604592005446543;
-        // sqrtPriceOld = 2;
         // Given: Prices are within reasonable boundaries.
         tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, BOUND_TICK_UPPER - 1));
         tickUpper = int24(bound(tickUpper, tickLower + 1, BOUND_TICK_UPPER));
@@ -152,7 +147,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is
         if (zeroToOne) {
             vm.assume(amountOut * FixedPoint96.Q96 / sqrtPriceOld <= MAX_LIQUIDITY);
             usableLiquidity =
-                uint128(bound(usableLiquidity, amountOut * FixedPoint96.Q96 / sqrtPriceOld, maxLiquidity(1)));
+                uint128(bound(usableLiquidity, amountOut * FixedPoint96.Q96 / sqrtPriceOld, MAX_LIQUIDITY));
             vm.assume(sqrtPriceOld > FullMath.mulDivRoundingUp(amountOut, FixedPoint96.Q96, usableLiquidity));
         } else {
             uint256 product = uint256(amountOut) * sqrtPriceOld;
@@ -183,8 +178,8 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is
                 zeroToOne, POOL_FEE, usableLiquidity, sqrtPriceOld, amountIn, amountOut
             );
             vm.assume(
-                TickMath.getSqrtRatioAtTick(tickLower) < sqrtPriceNew - 100
-                    && sqrtPriceNew + 100 < TickMath.getSqrtRatioAtTick(tickUpper)
+                TickMath.getSqrtRatioAtTick(tickLower) < sqrtPriceNew * 99_999 / 100_000
+                    && sqrtPriceNew * 100_001 / 100_000 < TickMath.getSqrtRatioAtTick(tickUpper)
             );
         }
 
@@ -225,10 +220,12 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is
             true
         );
 
+        // Rounding errors are relatively too big with very low amountIns.
+        vm.assume(amountInWithSlippage > 1e5);
+
         // If amount in's are equal, liquidity will be almost exactly equal,
-        //but it can be that without slippage is bigger in this specific case.
+        // but it can be that "without slippage" is bigger in this specific case due to rounding errors.
         if (amountInWithSlippage == amountInWithoutSlippage) {
-            vm.assume(amountInWithSlippage > 1e5);
             assertApproxEqRel(amountInWithSlippage, amountInWithoutSlippage, 0.001 * 1e18);
         }
 
@@ -257,8 +254,10 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is
             amountIn = amountIn_;
             sqrtPriceAfter = sqrtPriceAfter_;
         } catch {
-            vm.assume(canRevertOnQuote);
-            revert();
+            // Swaps with amountOutWithoutSlippage can revert on the swap (it is due to slippage),
+            // but swaps with amountOutWithSlippage should not revert.
+            if (canRevertOnQuote) vm.assume(false);
+            else revert();
         }
 
         liquidity = LiquidityAmounts.getLiquidityForAmounts(
@@ -268,12 +267,5 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is
             zeroToOne ? (amount0 > amountIn ? amount0 - amountIn : 0) : amount0 + amountOut,
             zeroToOne ? amount1 + amountOut : (amount1 > amountIn ? amount1 - amountIn : 0)
         );
-    }
-
-    function maxLiquidity(int24 tickSpacing) internal pure returns (uint128) {
-        int24 minTick = (TickMath.MIN_TICK / tickSpacing) * tickSpacing;
-        int24 maxTick = (TickMath.MAX_TICK / tickSpacing) * tickSpacing;
-        uint24 numTicks = uint24((maxTick - minTick) / tickSpacing) + 1;
-        return type(uint128).max / numTicks;
     }
 }

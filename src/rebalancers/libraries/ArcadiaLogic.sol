@@ -10,6 +10,7 @@ import { IFactory } from "../interfaces/IFactory.sol";
 import { IPermit2 } from "../../../lib/accounts-v2/src/interfaces/IPermit2.sol";
 import { IRegistry } from "../interfaces/IRegistry.sol";
 import { Rebalancer } from "../Rebalancer.sol";
+import { StakedSlipstreamLogic } from "./StakedSlipstreamLogic.sol";
 
 library ArcadiaLogic {
     // The contract address of the Arcadia Factory.
@@ -134,7 +135,7 @@ library ArcadiaLogic {
         }
 
         if (reward > 0) {
-            depositData.assets[index] = position.tokenR;
+            depositData.assets[index] = StakedSlipstreamLogic.REWARD_TOKEN;
             depositData.assetAmounts[index] = reward;
             depositData.assetTypes[index] = 1;
         }

@@ -33,7 +33,7 @@ contract SetAccountInfo_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         vm.assume(account_ != address(0));
         rebalancer.setAccount(account_);
 
-        // When : calling rebalancePosition
+        // When : calling rebalance
         // Then : it should revert
         vm.prank(caller);
         vm.expectRevert(Rebalancer.Reentered.selector);
@@ -49,7 +49,7 @@ contract SetAccountInfo_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         // Given : account is not an Arcadia Account
         vm.assume(account_ != address(account));
 
-        // When : calling rebalancePosition
+        // When : calling rebalance
         // Then : it should revert
         vm.prank(caller);
         vm.expectRevert(Rebalancer.NotAnAccount.selector);

@@ -20,9 +20,9 @@ import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV
 import { Rebalancer_Fuzz_Test } from "./_Rebalancer.fuzz.t.sol";
 
 /**
- * @notice Fuzz tests for the function "rebalancePosition" of contract "Rebalancer".
+ * @notice Fuzz tests for the function "rebalance" of contract "Rebalancer".
  */
-contract RebalancePosition_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
+contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     using FixedPointMathLib for uint256;
 
     /* ///////////////////////////////////////////////////////////////
@@ -186,10 +186,10 @@ contract RebalancePosition_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         // Given : account is not address(0)
         rebalancer.setAccount(account_);
 
-        // When : calling rebalancePosition
+        // When : calling rebalance
         // Then : it should revert
         vm.expectRevert(Rebalancer.Reentered.selector);
-        rebalancer.rebalancePosition(account_, positionManager, tokenId, tickLower, tickUpper, "");
+        rebalancer.rebalance(account_, positionManager, tokenId, tickLower, tickUpper, "");
     }
 
     function testFuzz_Revert_rebalancePosition_InitiatorNotValid(
@@ -199,10 +199,10 @@ contract RebalancePosition_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         int24 tickUpper
     ) public {
         // Given : Owner of the account has not set an initiator yet
-        // When : calling rebalancePosition
+        // When : calling rebalance
         // Then : it should revert
         vm.expectRevert(Rebalancer.InitiatorNotValid.selector);
-        rebalancer.rebalancePosition(address(account), positionManager, tokenId, tickLower, tickUpper, "");
+        rebalancer.rebalance(address(account), positionManager, tokenId, tickLower, tickUpper, "");
     }
 
     function testFuzz_Success_rebalancePosition_SamePriceNewTicks(
@@ -242,13 +242,11 @@ contract RebalancePosition_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
             vm.stopPrank();
         }
 
-        // When : calling rebalancePosition()
+        // When : calling rebalance()
         vm.prank(initVars.initiator);
         vm.expectEmit();
         emit Rebalancer.Rebalance(address(account), address(nonfungiblePositionManager), tokenId);
-        rebalancer.rebalancePosition(
-            address(account), address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, ""
-        );
+        rebalancer.rebalance(address(account), address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, "");
 
         // Then : It should return the correct values
         (,,,,, int24 tickLowerActual, int24 tickUpperActual, uint256 liquidity,,,,) =
@@ -320,11 +318,9 @@ contract RebalancePosition_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
             vm.assume(zeroToOne == false);
         }
 
-        // When : calling rebalancePosition()
+        // When : calling rebalance()
         vm.prank(initVars.initiator);
-        rebalancer.rebalancePosition(
-            address(account), address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, ""
-        );
+        rebalancer.rebalance(address(account), address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, "");
 
         // Then : It should return the correct values
         assertGt(token1.balanceOf(initVars.initiator), 0);
@@ -379,11 +375,9 @@ contract RebalancePosition_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
             vm.assume(zeroToOne == true);
         }
 
-        // When : calling rebalancePosition()
+        // When : calling rebalance()
         vm.prank(initVars.initiator);
-        rebalancer.rebalancePosition(
-            address(account), address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, ""
-        );
+        rebalancer.rebalance(address(account), address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, "");
 
         // Then : It should return the correct values
         assertGt(token0.balanceOf(initVars.initiator), 0);
@@ -438,9 +432,9 @@ contract RebalancePosition_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
 
         (, int24 tickBeforeRebalance,,,,,) = uniV3Pool.slot0();
 
-        // When : calling rebalancePosition() with 0 value for lower and upper ticks
+        // When : calling rebalance() with 0 value for lower and upper ticks
         vm.prank(initVars.initiator);
-        rebalancer.rebalancePosition(address(account), address(nonfungiblePositionManager), tokenId, 0, 0, "");
+        rebalancer.rebalance(address(account), address(nonfungiblePositionManager), tokenId, 0, 0, "");
 
         // Then : It should return correct values
         int24 halfRangeTicks;
@@ -504,9 +498,9 @@ contract RebalancePosition_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
 
         (, int24 tickBeforeRebalance,,,,,) = uniV3Pool.slot0();
 
-        // When : calling rebalancePosition() with 0 value for lower and upper ticks
+        // When : calling rebalance() with 0 value for lower and upper ticks
         vm.prank(initVars.initiator);
-        rebalancer.rebalancePosition(address(account), address(nonfungiblePositionManager), tokenId, 0, 0, "");
+        rebalancer.rebalance(address(account), address(nonfungiblePositionManager), tokenId, 0, 0, "");
 
         // Then : It should return correct values
         int24 halfRangeTicks;
@@ -525,9 +519,9 @@ contract RebalancePosition_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     function testFuzz_Success_rebalancePosition_MoveTickRight_CustomTicks(
         uint256 amount1ToSwap,
         LpVariables memory lpVars,
-        InitVariables memory initVars,
         int24 tickLower,
-        int24 tickUpper
+        int24 tickUpper,
+        InitVariables memory initVars
     ) public {
         // Given : deploy new rebalancer with a high maxTolerance to avoid unbalancedPool due to external usd prices not aligned
         {
@@ -587,8 +581,13 @@ contract RebalancePosition_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
             uint256 amountIn;
             uint256 amountOut;
             bool zeroToOne;
-            (amount0, amount1, zeroToOne, amountIn, amountOut,) =
-                getRebalanceParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initVars.initiator);
+            {
+                uint256 amountInitiatorFee;
+                (amount0, amount1, zeroToOne, amountIn, amountOut, amountInitiatorFee) =
+                    getRebalanceParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initVars.initiator);
+                // Initiator fee should be greater than one to at least compensate for rounding errors.
+                vm.assume(amountInitiatorFee > 0);
+            }
 
             // Exclude edge case where sqrtPrice starts in range, but sqrtPriceNew goes out of range during calculations.
             (sqrtPrice,,,,,,) = uniV3Pool.slot0();
@@ -633,11 +632,9 @@ contract RebalancePosition_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
             vm.assume(liquidity > 0);
         }
 
-        // When : calling rebalancePosition()
+        // When : calling rebalance()
         vm.prank(initVars.initiator);
-        rebalancer.rebalancePosition(
-            address(account), address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, ""
-        );
+        rebalancer.rebalance(address(account), address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, "");
 
         // Then : It should return the correct values
         (,,,,, int24 tickLowerActual, int24 tickUpperActual,,,,,) = nonfungiblePositionManager.positions(tokenId + 1);
@@ -648,9 +645,9 @@ contract RebalancePosition_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     function testFuzz_Success_rebalancePosition_MoveTickLeft_CustomTicks(
         uint256 amount0ToSwap,
         LpVariables memory lpVars,
-        InitVariables memory initVars,
         int24 tickLower,
-        int24 tickUpper
+        int24 tickUpper,
+        InitVariables memory initVars
     ) public {
         // Given : deploy new rebalancer with a high maxTolerance to avoid unbalancedPool due to external usd prices not aligned
         {
@@ -711,8 +708,13 @@ contract RebalancePosition_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
             uint256 amountIn;
             uint256 amountOut;
             bool zeroToOne;
-            (amount0, amount1, zeroToOne, amountIn, amountOut,) =
-                getRebalanceParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initVars.initiator);
+            {
+                uint256 amountInitiatorFee;
+                (amount0, amount1, zeroToOne, amountIn, amountOut, amountInitiatorFee) =
+                    getRebalanceParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initVars.initiator);
+                // Initiator fee should be greater than one to at least compensate for rounding errors.
+                vm.assume(amountInitiatorFee > 0);
+            }
 
             // Exclude edge case where sqrtPrice starts in range, but sqrtPriceNew goes out of range during calculations.
             (sqrtPrice,,,,,,) = uniV3Pool.slot0();
@@ -757,11 +759,9 @@ contract RebalancePosition_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
             vm.assume(liquidity > 0);
         }
 
-        // When : calling rebalancePosition()
+        // When : calling rebalance()
         vm.prank(initVars.initiator);
-        rebalancer.rebalancePosition(
-            address(account), address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, ""
-        );
+        rebalancer.rebalance(address(account), address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, "");
 
         // Then : It should return the correct values
         (,,,,, int24 tickLowerActual, int24 tickUpperActual,,,,,) = nonfungiblePositionManager.positions(tokenId + 1);
@@ -875,12 +875,12 @@ contract RebalancePosition_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
             swapData = abi.encode(address(routerMock), amountIn, routerData);
         }
 
-        // When : Calling rebalancePosition()
+        // When : Calling rebalance()
         // Then : It should process an Arbitrary swap.
         vm.prank(initVars.initiator);
         vm.expectEmit();
         emit RouterMock.ArbitrarySwap(true);
-        rebalancer.rebalancePosition(
+        rebalancer.rebalance(
             address(account),
             address(nonfungiblePositionManager),
             tokenId,
@@ -997,12 +997,12 @@ contract RebalancePosition_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
             swapData = abi.encode(address(routerMock), amountIn, routerData);
         }
 
-        // When : calling rebalancePosition()
+        // When : calling rebalance()
         // Then : It should process to an arbitrary swap
         vm.prank(initVars.initiator);
         vm.expectEmit();
         emit RouterMock.ArbitrarySwap(true);
-        rebalancer.rebalancePosition(
+        rebalancer.rebalance(
             address(account), address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, swapData
         );
     }
