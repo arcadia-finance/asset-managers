@@ -57,5 +57,7 @@ library SlipstreamLogic {
         // Get data of the Liquidity Pool.
         position.pool = _computePoolAddress(position.token0, position.token1, position.tickSpacing);
         (position.sqrtPriceX96, tickCurrent,,,,) = ICLPool(position.pool).slot0();
+
+        position.fee = ICLPool(position.pool).fee();
     }
 }

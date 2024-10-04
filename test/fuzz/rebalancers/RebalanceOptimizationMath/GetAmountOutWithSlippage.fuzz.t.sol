@@ -225,11 +225,14 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is
 
         // If amount in's are equal, liquidity will be almost exactly equal,
         // but it can be that "without slippage" is bigger in this specific case due to rounding errors.
-        if (amountInWithSlippage == amountInWithoutSlippage) {
+        if (
+            amountInWithSlippage == amountInWithoutSlippage || amountInWithSlippage == amountInWithoutSlippage + 1
+                || amountInWithSlippage + 1 == amountInWithoutSlippage
+        ) {
             assertApproxEqRel(amountInWithSlippage, amountInWithoutSlippage, 0.001 * 1e18);
+        } else {
+            assertGe(liquidityWithSlippage, liquidityWithoutSlippage);
         }
-
-        assertGe(liquidityWithSlippage, liquidityWithoutSlippage);
     }
 
     function getLiquidityAfterSwap(

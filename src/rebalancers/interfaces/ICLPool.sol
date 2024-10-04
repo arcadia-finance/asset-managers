@@ -13,4 +13,6 @@ interface ICLPool {
             uint16 observationCardinalityNext,
             bool unlocked
         );
+
+    function fee() external view returns (uint24);
 }

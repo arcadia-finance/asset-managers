@@ -92,7 +92,7 @@ contract Rebalancer is IActionBase {
         uint256 upperBoundSqrtPriceX96;
     }
 
-    // A struct used to store information for each specific initiator
+    // A struct with information for each specific initiator
     struct InitiatorInfo {
         uint88 upperSqrtPriceDeviation;
         uint88 lowerSqrtPriceDeviation;
@@ -378,15 +378,16 @@ contract Rebalancer is IActionBase {
         // Store the new ticks for the rebalance
         if (tickLower == tickUpper) {
             // Round current tick down to a tick that is a multiple of the tick spacing (can be initialised).
-            // ToDo: handle TICK_MAX and TICK_MIN
+            // We do not handle the edge cases where the new ticks might exceed MIN_TICK or MAX_TICK.
+            // This will result in a revert during the mint, if ever needed a different rebalancer has to be deployed
             tickCurrent = tickCurrent / position.tickSpacing * position.tickSpacing;
-            (position.tickLower, position.tickUpper) = tickRange > position.tickSpacing
-                ? (tickCurrent - tickRange / 2, tickCurrent + tickRange / 2)
-                : (tickCurrent, tickCurrent + tickRange);
+            // For tick ranges that are an even multiple of the tick spacing, we use a symmetric spacing around the current tick.
+            // For uneven multiples, the smaller part is below the current tick.
+            position.tickLower = tickCurrent - tickRange / (2 * position.tickSpacing) * position.tickSpacing;
+            position.tickUpper = position.tickLower + tickRange;
         } else {
             (position.tickLower, position.tickUpper) = (tickLower, tickUpper);
         }
-
         position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(position.tickLower);
         position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.tickUpper);
 
@@ -398,14 +399,12 @@ contract Rebalancer is IActionBase {
         uint256 trustedSqrtPriceX96 = PricingLogic._getSqrtPriceX96(usdPriceToken0, usdPriceToken1);
 
         // Calculate the upper and lower bounds of sqrtPriceX96 for the Pool to be balanced.
-        uint256 lowerBoundSqrtPriceX96 =
-            trustedSqrtPriceX96.mulDivDown(initiatorInfo[initiator].lowerSqrtPriceDeviation, 1e18);
-        uint256 upperBoundSqrtPriceX96 =
-            trustedSqrtPriceX96.mulDivDown(initiatorInfo[initiator].upperSqrtPriceDeviation, 1e18);
+        // We do not handle the edge cases where exceed MIN_SQRT_RATIO or MAX_SQRT_RATIO.
+        // This will result in a revert during swapViaPool, if ever needed a different rebalancer has to be deployed.
         position.lowerBoundSqrtPriceX96 =
-            lowerBoundSqrtPriceX96 <= TickMath.MIN_SQRT_RATIO ? TickMath.MIN_SQRT_RATIO + 1 : lowerBoundSqrtPriceX96;
+            trustedSqrtPriceX96.mulDivDown(initiatorInfo[initiator].lowerSqrtPriceDeviation, 1e18);
         position.upperBoundSqrtPriceX96 =
-            upperBoundSqrtPriceX96 >= TickMath.MAX_SQRT_RATIO ? TickMath.MAX_SQRT_RATIO - 1 : upperBoundSqrtPriceX96;
+            trustedSqrtPriceX96.mulDivDown(initiatorInfo[initiator].upperSqrtPriceDeviation, 1e18);
     }
 
     /* ///////////////////////////////////////////////////////////////

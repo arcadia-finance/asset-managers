@@ -389,7 +389,7 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         uint256 amount1ToSwap
     ) public {
         // Given : deploy new rebalancer with a high maxTolerance to avoid unbalancedPool due to external usd prices not aligned
-        uint256 maxTolerance = 1e18;
+        uint256 maxTolerance = 0.9 * 1e18;
         deployRebalancer(maxTolerance, MAX_INITIATOR_FEE);
 
         // And : Rebalancer is allowed as Asset Manager
@@ -436,14 +436,15 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         rebalancer.rebalance(address(account), address(nonfungiblePositionManager), tokenId, 0, 0, "");
 
         // Then : It should return correct values
-        int24 halfRangeTicks;
+        int24 tickLowerExpected;
+        int24 tickUpperExpected;
         {
             int24 tickSpacing = uniV3Pool.tickSpacing();
-            halfRangeTicks = (((lpVars.tickUpper - lpVars.tickLower)) / tickSpacing) / 2;
-            halfRangeTicks *= tickSpacing;
+            int24 tickRange = lpVars.tickUpper - lpVars.tickLower;
+            int24 rangeBelow = tickRange / (2 * tickSpacing) / tickSpacing;
+            tickLowerExpected = tickBeforeRebalance - rangeBelow;
+            tickUpperExpected = tickLowerExpected + tickRange;
         }
-        int24 tickUpperExpected = tickBeforeRebalance + halfRangeTicks;
-        int24 tickLowerExpected = tickBeforeRebalance - halfRangeTicks;
         (,,,,, int24 tickLower, int24 tickUpper,,,,,) = nonfungiblePositionManager.positions(tokenId + 1);
         assertEq(tickUpperExpected, tickUpper);
         assertEq(tickLowerExpected, tickLower);
@@ -455,7 +456,7 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         uint256 amount0ToSwap
     ) public {
         // Given : deploy new rebalancer with a high maxTolerance to avoid unbalancedPool due to external usd prices not aligned
-        uint256 maxTolerance = 1e18;
+        uint256 maxTolerance = 0.9 * 1e18;
         deployRebalancer(maxTolerance, MAX_INITIATOR_FEE);
 
         // And : Rebalancer is allowed as Asset Manager
@@ -502,14 +503,15 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         rebalancer.rebalance(address(account), address(nonfungiblePositionManager), tokenId, 0, 0, "");
 
         // Then : It should return correct values
-        int24 halfRangeTicks;
+        int24 tickLowerExpected;
+        int24 tickUpperExpected;
         {
             int24 tickSpacing = uniV3Pool.tickSpacing();
-            halfRangeTicks = (((lpVars.tickUpper - lpVars.tickLower)) / tickSpacing) / 2;
-            halfRangeTicks *= tickSpacing;
+            int24 tickRange = lpVars.tickUpper - lpVars.tickLower;
+            int24 rangeBelow = tickRange / (2 * tickSpacing) / tickSpacing;
+            tickLowerExpected = tickBeforeRebalance - rangeBelow;
+            tickUpperExpected = tickLowerExpected + tickRange;
         }
-        int24 tickUpperExpected = tickBeforeRebalance + halfRangeTicks;
-        int24 tickLowerExpected = tickBeforeRebalance - halfRangeTicks;
         (,,,,, int24 tickLower, int24 tickUpper,,,,,) = nonfungiblePositionManager.positions(tokenId + 1);
         assertEq(tickUpperExpected, tickUpper);
         assertEq(tickLowerExpected, tickLower);
@@ -524,7 +526,7 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     ) public {
         // Given : deploy new rebalancer with a high maxTolerance to avoid unbalancedPool due to external usd prices not aligned
         {
-            uint256 maxTolerance = 1e18;
+            uint256 maxTolerance = 0.9 * 1e18;
             deployRebalancer(maxTolerance, MAX_INITIATOR_FEE);
         }
 
@@ -650,7 +652,7 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     ) public {
         // Given : deploy new rebalancer with a high maxTolerance to avoid unbalancedPool due to external usd prices not aligned
         {
-            uint256 maxTolerance = 1e18;
+            uint256 maxTolerance = 0.9 * 1e18;
             deployRebalancer(maxTolerance, MAX_INITIATOR_FEE);
         }
 
@@ -774,7 +776,7 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         uint256 amount1ToSwap
     ) public {
         // Given : deploy new rebalancer with a high maxTolerance to avoid unbalancedPool due to external usd prices not aligned
-        uint256 maxTolerance = 1e18;
+        uint256 maxTolerance = 0.9 * 1e18;
         deployRebalancer(maxTolerance, MAX_INITIATOR_FEE);
 
         // And : Rebalancer is allowed as Asset Manager
@@ -897,7 +899,7 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         uint256 amount0ToSwap
     ) public {
         // Given : deploy new rebalancer with a high maxTolerance to avoid unbalancedPool due to external usd prices not aligned
-        uint256 maxTolerance = 1e18;
+        uint256 maxTolerance = 0.9 * 1e18;
         deployRebalancer(maxTolerance, MAX_INITIATOR_FEE);
 
         // And : Rebalancer is allowed as Asset Manager
