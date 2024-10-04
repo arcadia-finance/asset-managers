@@ -29,12 +29,12 @@ contract SetAccountInfo_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         address initiator,
         address hook
     ) public {
-        // Given : A rebalance is ongoing.
+        // Given: A rebalance is ongoing.
         vm.assume(account_ != address(0));
         rebalancer.setAccount(account_);
 
-        // When : calling rebalance
-        // Then : it should revert
+        // When: calling rebalance
+        // Then: it should revert
         vm.prank(caller);
         vm.expectRevert(Rebalancer.Reentered.selector);
         rebalancer.setAccountInfo(account__, initiator, hook);
@@ -46,34 +46,34 @@ contract SetAccountInfo_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         address initiator,
         address hook
     ) public {
-        // Given : account is not an Arcadia Account
+        // Given: account is not an Arcadia Account
         vm.assume(account_ != address(account));
 
-        // When : calling rebalance
-        // Then : it should revert
+        // When: calling rebalance
+        // Then: it should revert
         vm.prank(caller);
         vm.expectRevert(Rebalancer.NotAnAccount.selector);
         rebalancer.setAccountInfo(account_, initiator, hook);
     }
 
     function testFuzz_Revert_setAccountInfo_OnlyAccountOwner(address caller, address initiator, address hook) public {
-        // Given : caller is not the Arcadia Account owner.
+        // Given: caller is not the Arcadia Account owner.
         vm.assume(caller != account.owner());
 
-        // When : A random address calls setInitiator on the rebalancer
-        // Then : it should revert
+        // When: A random address calls setInitiator on the rebalancer
+        // Then: it should revert
         vm.prank(caller);
         vm.expectRevert(Rebalancer.OnlyAccountOwner.selector);
         rebalancer.setAccountInfo(address(account), initiator, hook);
     }
 
     function testFuzz_Success_setAccountInfo(address initiator, address hook) public {
-        // Given : account is a valid Arcadia Account
-        // When : Owner calls setInitiator on the rebalancer
+        // Given: account is a valid Arcadia Account
+        // When: Owner calls setInitiator on the rebalancer
         vm.prank(account.owner());
         rebalancer.setAccountInfo(address(account), initiator, hook);
 
-        // Then : Initiator should be set for that Account
+        // Then: Initiator should be set for that Account
         assertEq(rebalancer.accountToInitiator(address(account)), initiator);
 
         // And: Hook should be set for that Account.

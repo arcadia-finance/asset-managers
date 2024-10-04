@@ -451,24 +451,22 @@ contract Rebalancer is IActionBase {
         // Cache struct
         InitiatorInfo memory initiatorInfo_ = initiatorInfo[msg.sender];
 
-        if (initiatorInfo_.initialized == true && fee > initiatorInfo_.fee) revert DecreaseFeeOnly();
-        if (fee > MAX_INITIATOR_FEE) revert MaxInitiatorFee();
-        if (tolerance > MAX_TOLERANCE) revert MaxTolerance();
+        // Calculation required for checks.
+        uint88 upperSqrtPriceDeviation = uint88(FixedPointMathLib.sqrt((1e18 + tolerance) * 1e18));
+
+        if (initiatorInfo_.initialized) {
+            if (fee > initiatorInfo_.fee) revert DecreaseFeeOnly();
+            if (upperSqrtPriceDeviation > initiatorInfo_.upperSqrtPriceDeviation) revert DecreaseToleranceOnly();
+        } else {
+            if (fee > MAX_INITIATOR_FEE) revert MaxInitiatorFee();
+            if (tolerance > MAX_TOLERANCE) revert MaxTolerance();
+            initiatorInfo_.initialized = true;
+        }
 
         initiatorInfo_.fee = uint64(fee);
 
-        // SQRT_PRICE_DEVIATION is the square root of maximum/minimum price deviation.
-        // Sqrt halves the number of decimals.
-        uint88 upperSqrtPriceDeviation = uint88(FixedPointMathLib.sqrt((1e18 + tolerance) * 1e18));
-        if (initiatorInfo_.initialized == true && upperSqrtPriceDeviation > initiatorInfo_.upperSqrtPriceDeviation) {
-            revert DecreaseToleranceOnly();
-        }
-
         initiatorInfo_.lowerSqrtPriceDeviation = uint88(FixedPointMathLib.sqrt((1e18 - tolerance) * 1e18));
         initiatorInfo_.upperSqrtPriceDeviation = upperSqrtPriceDeviation;
-
-        // Set initiator as initialized if it wasn't already.
-        if (initiatorInfo_.initialized == false) initiatorInfo_.initialized = true;
 
         initiatorInfo[msg.sender] = initiatorInfo_;
     }
