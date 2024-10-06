@@ -15,7 +15,7 @@ import { PricingLogic } from "../../../../src/rebalancers/libraries/PricingLogic
 import { RebalanceOptimizationMath } from "../../../../src/rebalancers/libraries/RebalanceOptimizationMath.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RouterMock } from "../../../utils/mocks/RouterMock.sol";
-import { SwapMath } from "../../../../src/rebalancers/libraries/uniswap-v3/SwapMath.sol";
+import { SwapMath } from "../../../utils/uniswap-v3/SwapMath.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { Rebalancer_Fuzz_Test } from "./_Rebalancer.fuzz.t.sol";
 

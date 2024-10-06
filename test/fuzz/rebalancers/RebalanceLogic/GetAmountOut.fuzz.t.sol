@@ -43,7 +43,7 @@ contract GetAmountOut_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test {
 
         // When: Calling _getAmountOut().
         // Then: It should revert.
-        vm.expectRevert(stdError.arithmeticError);
+        vm.expectRevert(bytes(""));
         rebalanceLogic.getAmountOut(sqrtPriceX96, zeroToOne, amountIn, fee);
     }
 

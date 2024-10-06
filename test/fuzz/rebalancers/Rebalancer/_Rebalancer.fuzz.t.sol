@@ -21,7 +21,7 @@ import { ISwapRouter02 } from
 import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/uniswap-v3/LiquidityAmounts.sol";
 import { QuoterV2Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/QuoterV2Fixture.f.sol";
 import { RouterMock } from "../../../utils/mocks/RouterMock.sol";
-import { SwapMath } from "../../../../src/rebalancers/libraries/uniswap-v3/SwapMath.sol";
+import { SwapMath } from "../../../utils/uniswap-v3/SwapMath.sol";
 import { SwapRouter02Fixture } from
     "../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/SwapRouter02Fixture.f.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";

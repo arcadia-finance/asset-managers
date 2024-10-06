@@ -8,7 +8,7 @@ import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/u
 import { ISwapRouter02 } from
     "../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/interfaces/ISwapRouter02.sol";
 import { RouterMock } from "../../../utils/mocks/RouterMock.sol";
-import { SwapMath } from "../../../../src/rebalancers/libraries/uniswap-v3/SwapMath.sol";
+import { SwapMath } from "../../../utils/uniswap-v3/SwapMath.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { Rebalancer_Fuzz_Test } from "./_Rebalancer.fuzz.t.sol";
 

@@ -45,7 +45,7 @@ contract ComputePoolAddress_UniswapV3Logic_Fuzz_Test is UniswapV3Logic_Fuzz_Test
         FEES[0] = 100;
         FEES[1] = 500;
         FEES[2] = 3000;
-        for (uint256 i = 0; i < FEES.length; i++) {
+        for (uint256 i = 0; i < FEES.length; ++i) {
             assertEq(
                 uniswapV3Logic.computePoolAddress(address(token0), address(token1), FEES[i]),
                 address(createPoolUniV3(address(token0), address(token1), FEES[i], 1e18, 300))

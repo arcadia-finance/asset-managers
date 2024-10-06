@@ -49,7 +49,10 @@ library RebalanceLogic {
     {
         // Total fee is pool fee + initiator fee, with 18 decimals precision.
         // Since Uniswap uses 6 decimals precision for the fee, we have to multiply the pool fee by 1e12.
-        uint256 fee = initiatorFee + poolFee * 1e12;
+        uint256 fee;
+        unchecked {
+            fee = initiatorFee + poolFee * 1e12;
+        }
 
         // Calculate the swap parameters
         (zeroToOne, amountIn, amountOut) =
@@ -68,8 +71,10 @@ library RebalanceLogic {
         }
 
         // Get initiator fee amount and the actual amountIn of the swap (without initiator fee).
-        amountInitiatorFee = amountIn.mulDivDown(initiatorFee, 1e18);
-        amountIn = amountIn - amountInitiatorFee;
+        unchecked {
+            amountInitiatorFee = amountIn.mulDivDown(initiatorFee, 1e18);
+            amountIn = amountIn - amountInitiatorFee;
+        }
     }
 
     /**
@@ -147,24 +152,26 @@ library RebalanceLogic {
             uint256 token0ValueInToken1 = PricingLogic._getSpotValue(sqrtPrice, true, balance0);
             uint256 totalValueInToken1 = balance1 + token0ValueInToken1;
 
-            // Calculate the current ratio of liquidity in token1 terms.
-            uint256 currentRatio = balance1.mulDivDown(1e18, totalValueInToken1);
-            if (currentRatio < targetRatio) {
-                // Swap token0 partially to token1.
-                zeroToOne = true;
-                {
-                    uint256 denominator = 1e18 + targetRatio.mulDivDown(fee, 1e18 - fee);
-                    amountOut = (targetRatio - currentRatio).mulDivDown(totalValueInToken1, denominator);
+            unchecked {
+                // Calculate the current ratio of liquidity in token1 terms.
+                uint256 currentRatio = balance1.mulDivDown(1e18, totalValueInToken1);
+                if (currentRatio < targetRatio) {
+                    // Swap token0 partially to token1.
+                    zeroToOne = true;
+                    {
+                        uint256 denominator = 1e18 + targetRatio.mulDivDown(fee, 1e18 - fee);
+                        amountOut = (targetRatio - currentRatio).mulDivDown(totalValueInToken1, denominator);
+                    }
+                    amountIn = _getAmountIn(sqrtPrice, true, amountOut, fee);
+                } else {
+                    // Swap token1 partially to token0.
+                    zeroToOne = false;
+                    {
+                        uint256 denominator = 1e18 - targetRatio.mulDivDown(fee, 1e18);
+                        amountIn = (currentRatio - targetRatio).mulDivDown(totalValueInToken1, denominator);
+                    }
+                    amountOut = _getAmountOut(sqrtPrice, false, amountIn, fee);
                 }
-                amountIn = _getAmountIn(sqrtPrice, true, amountOut, fee);
-            } else {
-                // Swap token1 partially to token0.
-                zeroToOne = false;
-                {
-                    uint256 denominator = 1e18 - targetRatio.mulDivDown(fee, 1e18);
-                    amountIn = (currentRatio - targetRatio).mulDivDown(totalValueInToken1, denominator);
-                }
-                amountOut = _getAmountOut(sqrtPrice, false, amountIn, fee);
             }
         }
     }
@@ -187,10 +194,13 @@ library RebalanceLogic {
         pure
         returns (uint256 amountOut)
     {
-        uint256 amountInWithoutFees = (1e18 - fee).mulDivDown(amountIn, 1e18);
-        amountOut = zeroToOne
-            ? FullMath.mulDiv(amountInWithoutFees, sqrtPriceX96 ** 2, Q192)
-            : FullMath.mulDiv(amountInWithoutFees, Q192, sqrtPriceX96 ** 2);
+        require(sqrtPriceX96 <= type(uint128).max);
+        unchecked {
+            uint256 amountInWithoutFees = (1e18 - fee).mulDivDown(amountIn, 1e18);
+            amountOut = zeroToOne
+                ? FullMath.mulDiv(amountInWithoutFees, sqrtPriceX96 ** 2, Q192)
+                : FullMath.mulDiv(amountInWithoutFees, Q192, sqrtPriceX96 ** 2);
+        }
     }
 
     /**
@@ -211,10 +221,13 @@ library RebalanceLogic {
         pure
         returns (uint256 amountIn)
     {
-        uint256 amountInWithoutFees = zeroToOne
-            ? FullMath.mulDiv(amountOut, Q192, sqrtPriceX96 ** 2)
-            : FullMath.mulDiv(amountOut, sqrtPriceX96 ** 2, Q192);
-        amountIn = amountInWithoutFees.mulDivDown(1e18, 1e18 - fee);
+        require(sqrtPriceX96 <= type(uint128).max);
+        unchecked {
+            uint256 amountInWithoutFees = zeroToOne
+                ? FullMath.mulDiv(amountOut, Q192, sqrtPriceX96 ** 2)
+                : FullMath.mulDiv(amountOut, sqrtPriceX96 ** 2, Q192);
+            amountIn = amountInWithoutFees.mulDivDown(1e18, 1e18 - fee);
+        }
     }
 
     /**
@@ -244,9 +257,14 @@ library RebalanceLogic {
         pure
         returns (uint256 targetRatio)
     {
-        uint256 numerator = sqrtPriceX96 - sqrtRatioLower;
-        uint256 denominator = 2 * sqrtPriceX96 - sqrtRatioLower - sqrtPriceX96 ** 2 / sqrtRatioUpper;
+        require(sqrtPriceX96 <= type(uint128).max);
+        // Unchecked: sqrtPriceX96 is always bigger than sqrtRatioLower.
+        // Unchecked: sqrtPriceX96 is always smaller than sqrtRatioUpper -> sqrtPriceX96 > sqrtPriceX96 ** 2 / sqrtRatioUpper.
+        unchecked {
+            uint256 numerator = sqrtPriceX96 - sqrtRatioLower;
+            uint256 denominator = 2 * sqrtPriceX96 - sqrtRatioLower - sqrtPriceX96 ** 2 / sqrtRatioUpper;
 
-        targetRatio = numerator.mulDivDown(1e18, denominator);
+            targetRatio = numerator.mulDivDown(1e18, denominator);
+        }
     }
 }
