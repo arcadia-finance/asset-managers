@@ -15,12 +15,9 @@ library RebalanceLogic {
     // The binary precision of sqrtPriceX96 squared.
     uint256 internal constant Q192 = PricingLogic.Q192;
 
-    event Log(uint256 balance0, uint256 balance1, uint256 amountIn, uint256 amountOut);
-    event Log2(uint256 sqrtPrice, uint256 sqrtRatioLower, uint256 sqrtRatioUpper);
-
     /**
      * @notice Returns the parameters and constraints to rebalance the position.
-     * Both parameters and constraints are calculated based on a hypothetical swap (in the pool itself with fees but without slippage).
+     * Both parameters and constraints are calculated based on a hypothetical swap (in the pool itself with fees but without slippage),
      * that maximizes the amount of liquidity that can be added to the positions (no leftovers of either token0 or token1).
      * @param maxSlippageRatio The maximum decrease of the liquidity due to slippage, with 18 decimals precision.
      * @param poolFee The fee of the pool, with 6 decimals precision.
@@ -47,6 +44,7 @@ library RebalanceLogic {
         uint256 balance1
     )
         internal
+        pure
         returns (uint256 minLiquidity, bool zeroToOne, uint256 amountInitiatorFee, uint256 amountIn, uint256 amountOut)
     {
         // Total fee is pool fee + initiator fee, with 18 decimals precision.
@@ -56,8 +54,6 @@ library RebalanceLogic {
         // Calculate the swap parameters
         (zeroToOne, amountIn, amountOut) =
             _getSwapParams(sqrtPrice, sqrtRatioLower, sqrtRatioUpper, balance0, balance1, fee);
-        emit Log(balance0, balance1, amountIn, amountOut);
-        emit Log2(sqrtPrice, sqrtRatioLower, sqrtRatioUpper);
 
         // Calculate the maximum amount of liquidity that can be added to the position.
         {
@@ -133,14 +129,14 @@ library RebalanceLogic {
         uint256 fee
     ) internal pure returns (bool zeroToOne, uint256 amountIn, uint256 amountOut) {
         if (sqrtPrice >= sqrtRatioUpper) {
-            // Position is out of range and fully in token 1.
-            // Swap full amount of token0 to token1.
+            // New position is out of range and fully in token 1.
+            // Rebalance to a single-sided liquidity position in token 1.
             zeroToOne = true;
             amountIn = balance0;
             amountOut = _getAmountOut(sqrtPrice, true, balance0, fee);
         } else if (sqrtPrice <= sqrtRatioLower) {
-            // Position is out of range and fully in token 0.
-            // Swap full amount of token1 to token0.
+            // New position is out of range and fully in token 0.
+            // Rebalance to a single-sided liquidity position in token 0.
             amountIn = balance1;
             amountOut = _getAmountOut(sqrtPrice, false, balance1, fee);
         } else {

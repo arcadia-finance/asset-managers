@@ -223,9 +223,9 @@ contract ApproximateOptimalSwapAmounts_SwapMath_Fuzz_Test is RebalanceOptimizati
             (uint256 lAmount0, uint256 lAmount1) =
                 getLiquidityAmounts(sqrtPrice, sqrtRatioLower, sqrtRatioUpper, balance0, balance1);
             vm.assume(lAmount0 > 1e5);
-            assertApproxEqRel(balance0, lAmount0, 1e18 / 1e3);
+            assertApproxEqRel(balance0, lAmount0, 1e18 / 1e2);
             vm.assume(lAmount1 > 1e5);
-            assertApproxEqRel(balance1, lAmount1, 1e18 / 1e3);
+            assertApproxEqRel(balance1, lAmount1, 1e18 / 1e2);
         }
     }
 

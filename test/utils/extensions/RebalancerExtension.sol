@@ -27,6 +27,7 @@ contract RebalancerExtension is Rebalancer {
         uint256 initiatorFee
     )
         public
+        view
         returns (uint256 minLiquidity, bool zeroToOne, uint256 amountInitiatorFee, uint256 amountIn, uint256 amountOut)
     {
         return RebalanceLogic._getRebalanceParams(

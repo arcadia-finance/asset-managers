@@ -14,11 +14,8 @@ library RebalanceOptimizationMath {
     // The minimal relative difference between liquidity0 and liquidity1, with 18 decimals precision.
     uint256 internal constant CONVERGENCE_THRESHOLD = 1e6;
 
-    // The maximal number of iterations to find the optimal swap parameters.
-    uint256 internal constant MAX_ITERATIONS = 50;
-
-    event Log(uint256 sqrtPriceNew, uint256 amountIn, uint256 amountOut);
-    event Log2(uint160 sqrtPriceOld, uint160 sqrtRatioLower, uint160 sqrtRatioUpper);
+    // The maximal number of iterations to find the optimal swap parameters (15 iterations equals roughly 100k gas).
+    uint256 internal constant MAX_ITERATIONS = 15;
 
     /**
      * @notice Iteratively calculates the amountOut for a swap through the pool itself, that maximizes the amount of liquidity that is added.
@@ -34,7 +31,7 @@ library RebalanceOptimizationMath {
      * @param amountIn An approximation of the amount of tokenIn, based on the optimal swap through the pool itself without slippage.
      * @param amountOut An approximation of the amount of tokenOut, based on the optimal swap through the pool itself without slippage.
      * @return amountOut The amount of tokenOut.
-     * @dev The optimal amountIn and amountOut are defined such that after the swap the maximum amount of liquidity that can be added to the position.
+     * @dev The optimal amountIn and amountOut are defined as the amounts that maximize the amount of liquidity that can be added to the position.
      * This means that there are no leftovers of either token0 or token1,
      * and liquidity0 (calculated via getLiquidityForAmount0) will be exactly equal to liquidity1 (calculated via getLiquidityForAmount1).
      * @dev The optimal amountIn and amountOut depend on the sqrtPrice of the pool via the liquidity calculations,
@@ -59,25 +56,25 @@ library RebalanceOptimizationMath {
         uint256 amount1,
         uint256 amountIn,
         uint256 amountOut
-    ) internal returns (uint256) {
-        emit Log2(sqrtPriceOld, sqrtRatioLower, sqrtRatioUpper);
+    ) internal pure returns (uint256) {
         uint160 sqrtPriceNew;
         bool stopCondition;
         // We iteratively solve for sqrtPrice, amountOut and amountIn, so that the maximal amount of liquidity can be added to the position.
         for (uint256 i = 0; i < MAX_ITERATIONS; i++) {
-            emit Log(sqrtPriceNew, amountIn, amountOut);
             // Find a better approximation for sqrtPrice, given the best approximations for the optimal amountIn and amountOut.
             sqrtPriceNew = _approximateSqrtPriceNew(zeroToOne, fee, usableLiquidity, sqrtPriceOld, amountIn, amountOut);
 
             // If the position is out of range, we can calculate the exact solution.
             if (sqrtPriceNew >= sqrtRatioUpper) {
-                // Position is out of range and fully in token1.
+                // New position is out of range and fully in token 1.
+                // Rebalance to a single-sided liquidity position in token 1.
                 // We ignore one edge case: Swapping token0 to token1 decreases the sqrtPrice,
                 // hence a swap for a position that is just out of range might become in range due to slippage.
                 // This might lead to a suboptimal rebalance, which worst case results in too little liquidity and the rebalance reverts.
                 return _getAmount1OutFromAmount0In(fee, usableLiquidity, sqrtPriceOld, amount0);
             } else if (sqrtPriceNew <= sqrtRatioLower) {
-                // Position is out of range and fully in token0.
+                // New position is out of range and fully in token 0.
+                // Rebalance to a single-sided liquidity position in token 0.
                 // We ignore one edge case: Swapping token1 to token0 increases the sqrtPrice,
                 // hence a swap for a position that is just out of range might become in range due to slippage.
                 // This might lead to a suboptimal rebalance, which worst case results in too little liquidity and the rebalance reverts.
@@ -86,7 +83,6 @@ library RebalanceOptimizationMath {
 
             // If the position is not out of range, calculate the amountIn and amountOut, given the new approximated sqrtPrice.
             (amountIn, amountOut) = _getSwapParamsExact(zeroToOne, fee, usableLiquidity, sqrtPriceOld, sqrtPriceNew);
-            emit Log(sqrtPriceNew, amountIn, amountOut);
 
             // Given the new approximated sqrtPriceNew and its swap amounts,
             // calculate a better approximation for the optimal amountIn and amountOut, that would maximise the liquidity provided
@@ -103,8 +99,6 @@ library RebalanceOptimizationMath {
         // If solution did not converge within MAX_ITERATIONS steps, we use the amountOut of the last iteration step.
         return amountOut;
     }
-
-    event Log3(uint256 sqrtPriceNew0, uint256 sqrtPriceNew1);
 
     /**
      * @notice Approximates the SqrtPrice after the swap, given an approximation for the amountIn and amountOut that maximise liquidity added.
@@ -123,7 +117,7 @@ library RebalanceOptimizationMath {
         uint160 sqrtPriceOld,
         uint256 amountIn,
         uint256 amountOut
-    ) internal returns (uint160 sqrtPriceNew) {
+    ) internal pure returns (uint160 sqrtPriceNew) {
         // Calculate the exact sqrtPriceNew for both amountIn and amountOut.
         // Both solutions will be different, but they will converge with every iteration closer to the same solution.
         uint256 amountInLessFee = amountIn.mulDivDown(1e6 - fee, 1e6);
@@ -142,7 +136,6 @@ library RebalanceOptimizationMath {
                 sqrtPriceOld, usableLiquidity, amountInLessFee, true
             );
         }
-        emit Log3(sqrtPriceNew0, sqrtPriceNew1);
         // Calculate the new best approximation as the arithmetic average of both solutions (rounded towards current price).
         // We could as well use the geometric average, but empirically we found no difference in conversion speed,
         // and the geometric average is more expensive to calculate.
@@ -220,8 +213,6 @@ library RebalanceOptimizationMath {
         }
     }
 
-    event Log(uint256 liquidity0, uint256 liquidity1);
-
     /**
      * @notice Approximates the amountIn and amountOut that maximise liquidity added,
      * given an approximation for the SqrtPrice after the swap and an approximation of the balances of token0 and token1 after the swap.
@@ -246,7 +237,7 @@ library RebalanceOptimizationMath {
         uint256 amountIn,
         uint256 amountOut,
         uint160 sqrtPrice
-    ) internal returns (bool, uint256, uint256) {
+    ) internal pure returns (bool, uint256, uint256) {
         // Calculate the liquidity for the given approximated sqrtPrice and the approximated balances of token0 and token1 after the swap.
         uint256 liquidity0;
         uint256 liquidity1;
@@ -261,7 +252,6 @@ library RebalanceOptimizationMath {
                 sqrtRatioLower, sqrtPrice, amount1 > amountIn ? amount1 - amountIn : 0
             );
         }
-        emit Log(liquidity0, liquidity1);
 
         // Calculate the relative difference of liquidity0 and liquidity1.
         uint256 relDiff = 1e18

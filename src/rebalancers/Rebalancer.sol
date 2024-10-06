@@ -34,9 +34,9 @@ import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
  * all Liquidity Positions held in that Account.
  * @dev The contract prevents frontrunning/sandwiching by comparing the actual pool price with a pool price calculated from trusted
  * price feeds (oracles). The tolerance in terms of price deviation is specific to the initiator but limited by a global MAX_TOLERANCE.
- * @dev The contract guarantees a very limited loss of principal with each rebalance by enforcing a minimum amount of liquidity that must be added,
+ * @dev The contract guarantees a limited slippage with each rebalance by enforcing a minimum amount of liquidity that must be added,
  * based on a hypothetical optimal swap through the pool itself without slippage.
- * This prevents them Account owners from incompetent or malicious initiators who route swaps poorly, or try to skim off liquidity from the position.
+ * This protects the Account owners from incompetent or malicious initiators who route swaps poorly, or try to skim off liquidity from the position.
  */
 contract Rebalancer is IActionBase {
     using FixedPointMathLib for uint256;

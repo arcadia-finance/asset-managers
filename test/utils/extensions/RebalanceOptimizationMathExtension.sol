@@ -18,7 +18,7 @@ contract RebalanceOptimizationMathExtension {
         uint256 amount1,
         uint256 amountIn,
         uint256 amountOut
-    ) external returns (uint256) {
+    ) external pure returns (uint256) {
         return RebalanceOptimizationMath._getAmountOutWithSlippage(
             zeroToOne,
             fee,
@@ -40,7 +40,7 @@ contract RebalanceOptimizationMathExtension {
         uint160 sqrtPriceOld,
         uint256 amountIn,
         uint256 amountOut
-    ) external returns (uint160 sqrtPriceNew) {
+    ) external pure returns (uint160 sqrtPriceNew) {
         sqrtPriceNew = RebalanceOptimizationMath._approximateSqrtPriceNew(
             zeroToOne, fee, usableLiquidity, sqrtPriceOld, amountIn, amountOut
         );
@@ -82,7 +82,7 @@ contract RebalanceOptimizationMathExtension {
         uint256 amountIn,
         uint256 amountOut,
         uint160 sqrtPrice
-    ) external returns (bool converged, uint256 amountIn_, uint256 amountOut_) {
+    ) external pure returns (bool converged, uint256 amountIn_, uint256 amountOut_) {
         (converged, amountIn_, amountOut_) = RebalanceOptimizationMath._approximateOptimalSwapAmounts(
             zeroToOne, sqrtRatioLower, sqrtRatioUpper, amount0, amount1, amountIn, amountOut, sqrtPrice
         );

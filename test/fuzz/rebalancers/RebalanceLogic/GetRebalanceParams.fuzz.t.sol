@@ -374,6 +374,7 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
     ////////////////////////////////////////////////////////////////*/
     function getRebalanceParams(uint256 sqrtRatioLower, uint256 sqrtRatioUpper, TestVariables memory testVars)
         internal
+        view
         returns (uint256 minLiquidity, bool zeroToOne, uint256 amountInitiatorFee, uint256 amountIn, uint256 amountOut)
     {
         return rebalanceLogic.getRebalanceParams(

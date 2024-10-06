@@ -20,5 +20,5 @@ import { SwapRouter02 } from "../lib/accounts-v2/lib/swap-router-contracts/contr
 import { Test } from "../lib/accounts-v2/lib/forge-std/src/Test.sol";
 
 contract CompileDifferentPragmaVersions is Test {
-    function testFuzz_Success_executeAction_StakedSlipstream_RewardTokenIsToken0Or1() public { }
+    function test() public { }
 }

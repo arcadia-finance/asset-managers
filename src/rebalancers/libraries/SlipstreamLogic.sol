@@ -14,7 +14,7 @@ library SlipstreamLogic {
     address internal constant CL_FACTORY = 0x5e7BB104d84c7CB9B682AaC2F3d509f5F406809A;
 
     // The Slipstream Pool Implementation contract.
-    address internal constant POOL_IMPLEMENTATION = 0xF926b5acC092E396A3b337642Be2E4cAe3f5da8E;
+    address internal constant POOL_IMPLEMENTATION = 0xeC8E5342B19977B4eF8892e02D8DAEcfa1315831;
 
     // The Slipstream NonfungiblePositionManager contract.
     ICLPositionManager internal constant POSITION_MANAGER =

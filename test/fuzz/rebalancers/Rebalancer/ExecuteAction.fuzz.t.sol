@@ -833,6 +833,10 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         if (fee > 1e16) assertGt(token0.balanceOf(initiator), 0);
     }
 
+    /*////////////////////////////////////////////////////////////////
+                        HELPER FUNCTIONS
+    ////////////////////////////////////////////////////////////////*/
+
     function encodeRebalanceData(
         address positionManager,
         uint256 id,
