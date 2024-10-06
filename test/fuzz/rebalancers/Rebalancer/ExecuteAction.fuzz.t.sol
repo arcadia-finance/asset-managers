@@ -807,7 +807,7 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         }
 
         // And: It should return the correct values to be deposited back into the account.
-        assertEq(depositData.assets[0], address(slipstreamPositionManager));
+        assertEq(depositData.assets[0], address(stakedSlipstreamAM));
         assertEq(depositData.assetIds[0], id + 1);
         assertEq(depositData.assetAmounts[0], 1);
         assertEq(depositData.assetTypes[0], 2);
@@ -823,7 +823,7 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         }
 
         // And: Approvals are given.
-        assertEq(ERC721(address(slipstreamPositionManager)).getApproved(id + 1), account_);
+        assertEq(ERC721(address(stakedSlipstreamAM)).getApproved(id + 1), account_);
         assertEq(token0.allowance(address(rebalancer), account_), depositData.assetAmounts[1]);
         if (depositData.assets.length == 3) {
             assertEq(token1.allowance(address(rebalancer), account_), depositData.assetAmounts[2]);

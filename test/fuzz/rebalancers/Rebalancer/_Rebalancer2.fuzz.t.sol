@@ -171,8 +171,8 @@ abstract contract Rebalancer_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, Slipstrea
         }
 
         // Create tokens.
-        token0 = new ERC20Mock("TokenA", "TOKA", 0);
-        token1 = useAero ? ERC20Mock(AERO) : new ERC20Mock("TokenB", "TOKB", 0);
+        token0 = new ERC20Mock("TokenA", "TOKA", 18);
+        token1 = useAero ? ERC20Mock(AERO) : new ERC20Mock("TokenB", "TOKB", 18);
         (token0, token1) = (token0 < token1) ? (token0, token1) : (token1, token0);
 
         addAssetsToArcadia(sqrtPriceX96);
