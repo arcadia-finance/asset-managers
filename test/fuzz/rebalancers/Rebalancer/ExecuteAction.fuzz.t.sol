@@ -230,7 +230,7 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         position.tickLower = position.tickLower / tickSpacing * tickSpacing;
         position.tickUpper = int24(bound(position.tickUpper, tickCurrent, BOUND_TICK_UPPER));
         position.tickUpper = position.tickUpper / tickSpacing * tickSpacing;
-        position.liquidity = uint128(bound(position.liquidity, 1e6, poolUniswap.liquidity() / 1e6));
+        position.liquidity = uint128(bound(position.liquidity, 1e6, 1e10));
         (uint256 id,,) = addLiquidityUniV3(
             poolUniswap, position.liquidity, users.liquidityProvider, position.tickLower, position.tickUpper, false
         );

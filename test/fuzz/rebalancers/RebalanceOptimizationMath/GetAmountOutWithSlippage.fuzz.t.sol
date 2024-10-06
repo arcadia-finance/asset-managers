@@ -136,10 +136,11 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is
                 uint256 liquidity1 = FullMath.mulDiv(balance1, FixedPoint96.Q96, sqrtPriceOld - sqrtRatioLower);
                 vm.assume(liquidity1 < type(uint128).max);
 
-                // And: usableLiquidity is at least as big as liquidity of position.
-                vm.assume((liquidity0 < liquidity1 ? liquidity0 : liquidity1) < MAX_LIQUIDITY);
-                usableLiquidity =
-                    uint128(bound(usableLiquidity, liquidity0 < liquidity1 ? liquidity0 : liquidity1, MAX_LIQUIDITY));
+                // And: usableLiquidity is at least double as big as liquidity of position.
+                vm.assume(2 * (liquidity0 < liquidity1 ? liquidity0 : liquidity1) < MAX_LIQUIDITY);
+                usableLiquidity = uint128(
+                    bound(usableLiquidity, 2 * (liquidity0 < liquidity1 ? liquidity0 : liquidity1), MAX_LIQUIDITY)
+                );
             }
         }
 
