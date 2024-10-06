@@ -159,9 +159,9 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
 
         // And: A new position with a valid tick range.
         // And: New Position is above current tick.
-        tickLower = int24(bound(tickLower, tickCurrent, BOUND_TICK_UPPER - 1));
+        tickLower = int24(bound(tickLower, tickCurrent, BOUND_TICK_UPPER - 10));
         tickLower = tickLower / tickSpacing * tickSpacing;
-        tickUpper = int24(bound(tickUpper, tickLower + 1, BOUND_TICK_UPPER));
+        tickUpper = int24(bound(tickUpper, tickLower + 10, BOUND_TICK_UPPER));
         tickUpper = tickUpper / tickSpacing * tickSpacing;
 
         // And: The initiator is initiated.
@@ -240,9 +240,9 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
 
         // And: A new position with a valid tick range.
         // And: New Position is above current tick.
-        tickLower = int24(bound(tickLower, tickCurrent, BOUND_TICK_UPPER - 1));
+        tickLower = int24(bound(tickLower, tickCurrent, BOUND_TICK_UPPER - 10));
         tickLower = tickLower / tickSpacing * tickSpacing;
-        tickUpper = int24(bound(tickUpper, tickLower + 1, BOUND_TICK_UPPER));
+        tickUpper = int24(bound(tickUpper, tickLower + 10, BOUND_TICK_UPPER));
         tickUpper = tickUpper / tickSpacing * tickSpacing;
 
         // And: The initiator is initiated.
@@ -296,9 +296,9 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         // And: A valid position with multiple tickSpacing.
         // And: Position is in range (has both tokens).
         int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(position.sqrtPriceX96));
-        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, tickCurrent - 1));
+        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, tickCurrent - 10));
         position.tickLower = position.tickLower / tickSpacing * tickSpacing;
-        position.tickUpper = int24(bound(position.tickUpper, tickCurrent + 1, BOUND_TICK_UPPER));
+        position.tickUpper = int24(bound(position.tickUpper, tickCurrent + 10, BOUND_TICK_UPPER));
         position.tickUpper = position.tickUpper / tickSpacing * tickSpacing;
         position.liquidity = uint128(bound(position.liquidity, 1e6, 1e10));
         (uint256 id,,) = addLiquidityUniV3(
@@ -408,9 +408,9 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         // And: A valid position with multiple tickSpacing.
         // And: Position is in range (has both tokens).
         int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(position.sqrtPriceX96));
-        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, tickCurrent - 1));
+        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, tickCurrent - 10));
         position.tickLower = position.tickLower / tickSpacing * tickSpacing;
-        position.tickUpper = int24(bound(position.tickUpper, tickCurrent + 1, BOUND_TICK_UPPER));
+        position.tickUpper = int24(bound(position.tickUpper, tickCurrent + 10, BOUND_TICK_UPPER));
         position.tickUpper = position.tickUpper / tickSpacing * tickSpacing;
         position.liquidity = uint128(bound(position.liquidity, 1e6, 1e10));
         (uint256 id,,) = addLiquidityUniV3(
@@ -422,9 +422,9 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
 
         // And: A new position with a valid tick range.
         // And: New Position is above current tick.
-        tickLower = int24(bound(tickLower, tickCurrent + 1, BOUND_TICK_UPPER - 1));
+        tickLower = int24(bound(tickLower, tickCurrent + 1, BOUND_TICK_UPPER - 10));
         tickLower = tickLower / tickSpacing * tickSpacing;
-        tickUpper = int24(bound(tickUpper, tickLower + 1, BOUND_TICK_UPPER));
+        tickUpper = int24(bound(tickUpper, tickLower + 10, BOUND_TICK_UPPER));
         tickUpper = tickUpper / tickSpacing * tickSpacing;
 
         // And: The initiator is initiated.
@@ -526,9 +526,9 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
 
         // And: A new position with a valid tick range.
         // And: New Position is below current tick.
-        tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, tickCurrent - 2));
+        tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, tickCurrent - 11));
         tickLower = tickLower / TICK_SPACING * TICK_SPACING;
-        tickUpper = int24(bound(tickUpper, tickLower + 1, tickCurrent - 1));
+        tickUpper = int24(bound(tickUpper, tickLower + 10, tickCurrent - 1));
         tickUpper = tickUpper / TICK_SPACING * TICK_SPACING;
 
         // And: The initiator is initiated.
@@ -645,9 +645,9 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
 
         // And: A new position with a valid tick range.
         // And: New Position is below current tick.
-        tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, tickCurrent - 2));
+        tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, tickCurrent - 11));
         tickLower = tickLower / TICK_SPACING * TICK_SPACING;
-        tickUpper = int24(bound(tickUpper, tickLower + 1, tickCurrent - 1));
+        tickUpper = int24(bound(tickUpper, tickLower + 10, tickCurrent - 1));
         tickUpper = tickUpper / TICK_SPACING * TICK_SPACING;
 
         // And: The initiator is initiated.
@@ -769,9 +769,9 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
 
         // And: A new position with a valid tick range.
         // And: New Position is below current tick.
-        tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, tickCurrent - 2));
+        tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, tickCurrent - 11));
         tickLower = tickLower / TICK_SPACING * TICK_SPACING;
-        tickUpper = int24(bound(tickUpper, tickLower + 1, tickCurrent - 1));
+        tickUpper = int24(bound(tickUpper, tickLower + 10, tickCurrent - 1));
         tickUpper = tickUpper / TICK_SPACING * TICK_SPACING;
 
         // And: The initiator is initiated.
