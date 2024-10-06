@@ -84,8 +84,8 @@ contract GetPositionState_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         assertEq(position_.sqrtRatioLower, TickMath.getSqrtRatioAtTick(position_.tickLower));
         assertEq(position_.sqrtRatioUpper, TickMath.getSqrtRatioAtTick(position_.tickUpper));
         assertEq(position_.sqrtPriceX96, position.sqrtPriceX96);
-        uint256 price0 = 1e18;
-        uint256 price1 = FullMath.mulDiv(1e18, position.sqrtPriceX96 ** 2, PricingLogic.Q192);
+        uint256 price0 = FullMath.mulDiv(1e18, position.sqrtPriceX96 ** 2, PricingLogic.Q192);
+        uint256 price1 = 1e18;
         uint256 trustedSqrtPriceX96 = PricingLogic._getSqrtPriceX96(price0, price1);
         (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,,) = rebalancer.initiatorInfo(initiator);
         assertEq(position_.lowerBoundSqrtPriceX96, trustedSqrtPriceX96 * lowerSqrtPriceDeviation / 1e18);
@@ -152,8 +152,8 @@ contract GetPositionState_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         assertEq(position_.sqrtPriceX96, position.sqrtPriceX96);
         uint256 trustedSqrtPriceX96;
         {
-            uint256 price0 = 1e18;
-            uint256 price1 = FullMath.mulDiv(1e18, position.sqrtPriceX96 ** 2, PricingLogic.Q192);
+            uint256 price0 = FullMath.mulDiv(1e18, position.sqrtPriceX96 ** 2, PricingLogic.Q192);
+            uint256 price1 = 1e18;
             trustedSqrtPriceX96 = PricingLogic._getSqrtPriceX96(price0, price1);
         }
         (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,,) = rebalancer.initiatorInfo(initiator);
@@ -228,8 +228,8 @@ contract GetPositionState_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         assertEq(position_.sqrtPriceX96, position.sqrtPriceX96);
         uint256 trustedSqrtPriceX96;
         {
-            uint256 price0 = 1e18;
-            uint256 price1 = FullMath.mulDiv(1e18, position.sqrtPriceX96 ** 2, PricingLogic.Q192);
+            uint256 price0 = FullMath.mulDiv(1e18, position.sqrtPriceX96 ** 2, PricingLogic.Q192);
+            uint256 price1 = 1e18;
             trustedSqrtPriceX96 = PricingLogic._getSqrtPriceX96(price0, price1);
         }
         (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,,) = rebalancer.initiatorInfo(initiator);
@@ -308,8 +308,8 @@ contract GetPositionState_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         assertEq(position_.sqrtPriceX96, position.sqrtPriceX96);
         uint256 trustedSqrtPriceX96;
         {
-            uint256 price0 = 1e18;
-            uint256 price1 = FullMath.mulDiv(1e18, position.sqrtPriceX96 ** 2, PricingLogic.Q192);
+            uint256 price0 = FullMath.mulDiv(1e18, position.sqrtPriceX96 ** 2, PricingLogic.Q192);
+            uint256 price1 = 1e18;
             trustedSqrtPriceX96 = PricingLogic._getSqrtPriceX96(price0, price1);
         }
         (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,,) = rebalancer.initiatorInfo(initiator);

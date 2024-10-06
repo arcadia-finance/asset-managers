@@ -8,12 +8,15 @@ import { ERC20, ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/t
 import { FixedPoint96 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
 import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
 import { Fuzz_Test } from "../../Fuzz.t.sol";
+import { ICLGauge } from "../../../../lib/accounts-v2/src/asset-modules/Slipstream/interfaces/ICLGauge.sol";
 import { ICLPoolExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/extensions/interfaces/ICLPoolExtension.sol";
 import { IUniswapV3PoolExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/IUniswapV3PoolExtension.sol";
-import { SlipstreamFixture } from "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/Slipstream.f.sol";
 import { RebalancerExtension } from "../../../utils/extensions/RebalancerExtension.sol";
+import { RegistryMock } from "../../../utils/mocks/RegistryMock.sol";
+import { SlipstreamFixture } from "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/Slipstream.f.sol";
+import { StakedSlipstreamAM } from "../../../../lib/accounts-v2/src/asset-modules/Slipstream/StakedSlipstreamAM.sol";
 import { UniswapV3Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";
 import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
 import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
@@ -42,6 +45,9 @@ abstract contract Rebalancer_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, Slipstrea
 
     ICLPoolExtension internal poolCl;
     IUniswapV3PoolExtension internal poolUniswap;
+
+    StakedSlipstreamAM internal stakedSlipstreamAM;
+    ICLGauge internal gauge;
 
     /*////////////////////////////////////////////////////////////////
                             TEST CONTRACTS
@@ -89,8 +95,8 @@ abstract contract Rebalancer_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, Slipstrea
     ////////////////////////////////////////////////////////////////*/
 
     function addAssetsToArcadia(uint256 sqrtPriceX96) internal {
-        uint256 price0 = 1e18;
-        uint256 price1 = FullMath.mulDiv(1e18, sqrtPriceX96 ** 2, FixedPoint96.Q96 ** 2);
+        uint256 price0 = FullMath.mulDiv(1e18, sqrtPriceX96 ** 2, FixedPoint96.Q96 ** 2);
+        uint256 price1 = 1e18;
 
         addAssetToArcadia(address(token0), int256(price0));
         addAssetToArcadia(address(token1), int256(price1));
@@ -137,6 +143,50 @@ abstract contract Rebalancer_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, Slipstrea
 
         // Create pool.
         poolCl = createPoolCL(address(token0), address(token1), tickSpacing, sqrtPriceX96, 300);
+
+        // Create initial position.
+        addLiquidityCL(
+            poolCl,
+            liquidityPool,
+            users.liquidityProvider,
+            BOUND_TICK_LOWER / tickSpacing * tickSpacing,
+            BOUND_TICK_UPPER / tickSpacing * tickSpacing,
+            false
+        );
+    }
+
+    function deployAndInitStakedSlipstream(uint160 sqrtPriceX96, uint128 liquidityPool, int24 tickSpacing, bool useAero)
+        internal
+    {
+        SlipstreamFixture.setUp();
+        deployAerodromePeriphery();
+        deploySlipstream();
+        deployCLGaugeFactory();
+        {
+            RegistryMock registry_ = new RegistryMock();
+            bytes memory args = abi.encode(address(registry_), address(slipstreamPositionManager), address(voter), AERO);
+            vm.prank(users.owner);
+            deployCodeTo("StakedSlipstreamAM.sol", args, 0x1Dc7A0f5336F52724B650E39174cfcbbEdD67bF1);
+            stakedSlipstreamAM = StakedSlipstreamAM(0x1Dc7A0f5336F52724B650E39174cfcbbEdD67bF1);
+        }
+
+        // Create tokens.
+        token0 = new ERC20Mock("TokenA", "TOKA", 0);
+        token1 = useAero ? ERC20Mock(AERO) : new ERC20Mock("TokenB", "TOKB", 0);
+        (token0, token1) = (token0 < token1) ? (token0, token1) : (token1, token0);
+
+        addAssetsToArcadia(sqrtPriceX96);
+
+        // Create pool.
+        poolCl = createPoolCL(address(token0), address(token1), tickSpacing, sqrtPriceX96, 300);
+
+        // Create gauge.
+        vm.prank(address(voter));
+        gauge = ICLGauge(cLGaugeFactory.createGauge(address(0), address(poolCl), address(0), AERO, true));
+        voter.setGauge(address(gauge));
+        voter.setAlive(address(gauge), true);
+        vm.prank(users.owner);
+        stakedSlipstreamAM.addGauge(address(gauge));
 
         // Create initial position.
         addLiquidityCL(

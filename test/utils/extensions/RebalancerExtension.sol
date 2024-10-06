@@ -4,6 +4,7 @@
  */
 pragma solidity 0.8.22;
 
+import { ArcadiaLogic } from "../../../src/rebalancers/libraries/ArcadiaLogic.sol";
 import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { IPool } from "../../../src/rebalancers/interfaces/IPool.sol";
 import { IUniswapV3Pool } from "../../../src/rebalancers/interfaces/IUniswapV3Pool.sol";
@@ -82,7 +83,22 @@ contract RebalancerExtension is Rebalancer {
         }
     }
 
+    function encodeAction(
+        address positionManager,
+        uint256 id,
+        address initiator,
+        int24 tickLower,
+        int24 tickUpper,
+        bytes calldata swapData
+    ) public pure returns (bytes memory actionData) {
+        actionData = ArcadiaLogic._encodeAction(positionManager, id, initiator, tickLower, tickUpper, swapData);
+    }
+
     function setAccount(address account_) public {
         account = account_;
+    }
+
+    function setHook(address account_, address hook) public {
+        strategyHook[account_] = hook;
     }
 }
