@@ -14,7 +14,7 @@ library RebalanceOptimizationMath {
     // The minimal relative difference between liquidity0 and liquidity1, with 18 decimals precision.
     uint256 internal constant CONVERGENCE_THRESHOLD = 1e6;
 
-    // The maximal number of iterations to find the optimal swap parameters (15 iterations equals roughly 100k gas).
+    // The maximal number of iterations to find the optimal swap parameters (15 iterations equals roughly 90k gas).
     uint256 internal constant MAX_ITERATIONS = 15;
 
     /**
@@ -60,7 +60,7 @@ library RebalanceOptimizationMath {
         uint160 sqrtPriceNew;
         bool stopCondition;
         // We iteratively solve for sqrtPrice, amountOut and amountIn, so that the maximal amount of liquidity can be added to the position.
-        for (uint256 i = 0; i < MAX_ITERATIONS; i++) {
+        for (uint256 i = 0; i < MAX_ITERATIONS; ++i) {
             // Find a better approximation for sqrtPrice, given the best approximations for the optimal amountIn and amountOut.
             sqrtPriceNew = _approximateSqrtPriceNew(zeroToOne, fee, usableLiquidity, sqrtPriceOld, amountIn, amountOut);
 
@@ -118,30 +118,34 @@ library RebalanceOptimizationMath {
         uint256 amountIn,
         uint256 amountOut
     ) internal pure returns (uint160 sqrtPriceNew) {
-        // Calculate the exact sqrtPriceNew for both amountIn and amountOut.
-        // Both solutions will be different, but they will converge with every iteration closer to the same solution.
-        uint256 amountInLessFee = amountIn.mulDivDown(1e6 - fee, 1e6);
-        uint160 sqrtPriceNew0;
-        uint160 sqrtPriceNew1;
-        if (zeroToOne) {
-            sqrtPriceNew0 = SqrtPriceMath.getNextSqrtPriceFromAmount0RoundingUp(
-                sqrtPriceOld, usableLiquidity, amountInLessFee, true
-            );
-            sqrtPriceNew1 =
-                SqrtPriceMath.getNextSqrtPriceFromAmount1RoundingDown(sqrtPriceOld, usableLiquidity, amountOut, false);
-        } else {
-            sqrtPriceNew0 =
-                SqrtPriceMath.getNextSqrtPriceFromAmount0RoundingUp(sqrtPriceOld, usableLiquidity, amountOut, false);
-            sqrtPriceNew1 = SqrtPriceMath.getNextSqrtPriceFromAmount1RoundingDown(
-                sqrtPriceOld, usableLiquidity, amountInLessFee, true
-            );
+        unchecked {
+            // Calculate the exact sqrtPriceNew for both amountIn and amountOut.
+            // Both solutions will be different, but they will converge with every iteration closer to the same solution.
+            uint256 amountInLessFee = amountIn.mulDivDown(1e6 - fee, 1e6);
+            uint256 sqrtPriceNew0;
+            uint256 sqrtPriceNew1;
+            if (zeroToOne) {
+                sqrtPriceNew0 = SqrtPriceMath.getNextSqrtPriceFromAmount0RoundingUp(
+                    sqrtPriceOld, usableLiquidity, amountInLessFee, true
+                );
+                sqrtPriceNew1 = SqrtPriceMath.getNextSqrtPriceFromAmount1RoundingDown(
+                    sqrtPriceOld, usableLiquidity, amountOut, false
+                );
+            } else {
+                sqrtPriceNew0 =
+                    SqrtPriceMath.getNextSqrtPriceFromAmount0RoundingUp(sqrtPriceOld, usableLiquidity, amountOut, false);
+                sqrtPriceNew1 = SqrtPriceMath.getNextSqrtPriceFromAmount1RoundingDown(
+                    sqrtPriceOld, usableLiquidity, amountInLessFee, true
+                );
+            }
+            // Calculate the new best approximation as the arithmetic average of both solutions (rounded towards current price).
+            // We could as well use the geometric average, but empirically we found no difference in conversion speed,
+            // and the geometric average is more expensive to calculate.
+            // Unchecked + unsafe cast: sqrtPriceNew0 and sqrtPriceNew1 are always smaller than type(uint160).max.
+            sqrtPriceNew = zeroToOne
+                ? uint160(FixedPointMathLib.unsafeDiv(sqrtPriceNew0 + sqrtPriceNew1, 2))
+                : uint160(FixedPointMathLib.unsafeDivUp(sqrtPriceNew0 + sqrtPriceNew1, 2));
         }
-        // Calculate the new best approximation as the arithmetic average of both solutions (rounded towards current price).
-        // We could as well use the geometric average, but empirically we found no difference in conversion speed,
-        // and the geometric average is more expensive to calculate.
-        sqrtPriceNew = zeroToOne
-            ? uint160(FixedPointMathLib.unsafeDiv(sqrtPriceNew0 + sqrtPriceNew1, 2))
-            : uint160(FixedPointMathLib.unsafeDivUp(sqrtPriceNew0 + sqrtPriceNew1, 2));
     }
 
     /**
@@ -158,10 +162,13 @@ library RebalanceOptimizationMath {
         pure
         returns (uint256 amountOut)
     {
-        uint256 amountInLessFee = amount0.mulDivUp(1e6 - fee, 1e6);
-        uint160 sqrtPriceNew =
-            SqrtPriceMath.getNextSqrtPriceFromAmount0RoundingUp(sqrtPriceOld, usableLiquidity, amountInLessFee, true);
-        amountOut = SqrtPriceMath.getAmount1Delta(sqrtPriceNew, sqrtPriceOld, usableLiquidity, false);
+        unchecked {
+            uint256 amountInLessFee = amount0.mulDivUp(1e6 - fee, 1e6);
+            uint160 sqrtPriceNew = SqrtPriceMath.getNextSqrtPriceFromAmount0RoundingUp(
+                sqrtPriceOld, usableLiquidity, amountInLessFee, true
+            );
+            amountOut = SqrtPriceMath.getAmount1Delta(sqrtPriceNew, sqrtPriceOld, usableLiquidity, false);
+        }
     }
 
     /**
@@ -178,10 +185,13 @@ library RebalanceOptimizationMath {
         pure
         returns (uint256 amountOut)
     {
-        uint256 amountInLessFee = amount1.mulDivUp(1e6 - fee, 1e6);
-        uint160 sqrtPriceNew =
-            SqrtPriceMath.getNextSqrtPriceFromAmount1RoundingDown(sqrtPriceOld, usableLiquidity, amountInLessFee, true);
-        amountOut = SqrtPriceMath.getAmount0Delta(sqrtPriceOld, sqrtPriceNew, usableLiquidity, false);
+        unchecked {
+            uint256 amountInLessFee = amount1.mulDivUp(1e6 - fee, 1e6);
+            uint160 sqrtPriceNew = SqrtPriceMath.getNextSqrtPriceFromAmount1RoundingDown(
+                sqrtPriceOld, usableLiquidity, amountInLessFee, true
+            );
+            amountOut = SqrtPriceMath.getAmount0Delta(sqrtPriceOld, sqrtPriceNew, usableLiquidity, false);
+        }
     }
 
     /**
@@ -202,14 +212,18 @@ library RebalanceOptimizationMath {
         uint160 sqrtPriceOld,
         uint160 sqrtPriceNew
     ) internal pure returns (uint256 amountIn, uint256 amountOut) {
-        if (zeroToOne) {
-            uint256 amountInLessFee = SqrtPriceMath.getAmount0Delta(sqrtPriceNew, sqrtPriceOld, usableLiquidity, true);
-            amountIn = amountInLessFee.mulDivUp(1e6, 1e6 - fee);
-            amountOut = SqrtPriceMath.getAmount1Delta(sqrtPriceNew, sqrtPriceOld, usableLiquidity, false);
-        } else {
-            uint256 amountInLessFee = SqrtPriceMath.getAmount1Delta(sqrtPriceOld, sqrtPriceNew, usableLiquidity, true);
-            amountIn = amountInLessFee.mulDivUp(1e6, 1e6 - fee);
-            amountOut = SqrtPriceMath.getAmount0Delta(sqrtPriceOld, sqrtPriceNew, usableLiquidity, false);
+        unchecked {
+            if (zeroToOne) {
+                uint256 amountInLessFee =
+                    SqrtPriceMath.getAmount0Delta(sqrtPriceNew, sqrtPriceOld, usableLiquidity, true);
+                amountIn = amountInLessFee.mulDivUp(1e6, 1e6 - fee);
+                amountOut = SqrtPriceMath.getAmount1Delta(sqrtPriceNew, sqrtPriceOld, usableLiquidity, false);
+            } else {
+                uint256 amountInLessFee =
+                    SqrtPriceMath.getAmount1Delta(sqrtPriceOld, sqrtPriceNew, usableLiquidity, true);
+                amountIn = amountInLessFee.mulDivUp(1e6, 1e6 - fee);
+                amountOut = SqrtPriceMath.getAmount0Delta(sqrtPriceOld, sqrtPriceNew, usableLiquidity, false);
+            }
         }
     }
 
@@ -238,49 +252,57 @@ library RebalanceOptimizationMath {
         uint256 amountOut,
         uint160 sqrtPrice
     ) internal pure returns (bool, uint256, uint256) {
-        // Calculate the liquidity for the given approximated sqrtPrice and the approximated balances of token0 and token1 after the swap.
-        uint256 liquidity0;
-        uint256 liquidity1;
-        if (zeroToOne) {
-            liquidity0 = LiquidityAmounts.getLiquidityForAmount0(
-                sqrtPrice, sqrtRatioUpper, amount0 > amountIn ? amount0 - amountIn : 0
-            );
-            liquidity1 = LiquidityAmounts.getLiquidityForAmount1(sqrtRatioLower, sqrtPrice, amount1 + amountOut);
-        } else {
-            liquidity0 = LiquidityAmounts.getLiquidityForAmount0(sqrtPrice, sqrtRatioUpper, amount0 + amountOut);
-            liquidity1 = LiquidityAmounts.getLiquidityForAmount1(
-                sqrtRatioLower, sqrtPrice, amount1 > amountIn ? amount1 - amountIn : 0
-            );
+        unchecked {
+            // Calculate the liquidity for the given approximated sqrtPrice and the approximated balances of token0 and token1 after the swap.
+            uint256 liquidity0;
+            uint256 liquidity1;
+            if (zeroToOne) {
+                liquidity0 = LiquidityAmounts.getLiquidityForAmount0(
+                    sqrtPrice, sqrtRatioUpper, amount0 > amountIn ? amount0 - amountIn : 0
+                );
+                liquidity1 = LiquidityAmounts.getLiquidityForAmount1(sqrtRatioLower, sqrtPrice, amount1 + amountOut);
+            } else {
+                liquidity0 = LiquidityAmounts.getLiquidityForAmount0(sqrtPrice, sqrtRatioUpper, amount0 + amountOut);
+                liquidity1 = LiquidityAmounts.getLiquidityForAmount1(
+                    sqrtRatioLower, sqrtPrice, amount1 > amountIn ? amount1 - amountIn : 0
+                );
+            }
+
+            // Calculate the relative difference of liquidity0 and liquidity1.
+            uint256 relDiff = 1e18
+                - (
+                    liquidity0 < liquidity1
+                        ? liquidity0.mulDivDown(1e18, liquidity1)
+                        : liquidity1.mulDivDown(1e18, liquidity0)
+                );
+            // In the optimal solution liquidity0 equals liquidity1,
+            // and there are no leftovers for token0 or token1 after minting the liquidity.
+            // Hence the relative distance between liquidity0 and liquidity1
+            // is a good estimator how close we are to the optimal solution.
+            bool converged = relDiff < CONVERGENCE_THRESHOLD;
+
+            // The new approximated liquidity is the minimum of liquidity0 and liquidity1.
+            // Calculate the new approximated amountIn or amountOut,
+            // for which this liquidity would be the optimal solution.
+            if (liquidity0 < liquidity1) {
+                uint256 amount1New = SqrtPriceMath.getAmount1Delta(
+                    sqrtRatioLower, sqrtPrice, LiquidityAmounts.toUint128(liquidity0), true
+                );
+                zeroToOne
+                    // Since amountOut can't be negative, we use 90% of the previous amountOut as a fallback.
+                    ? amountOut = amount1New > amount1 ? amount1New - amount1 : amountOut.mulDivDown(9, 10)
+                    : amountIn = amount1 - amount1New;
+            } else {
+                uint256 amount0New = SqrtPriceMath.getAmount0Delta(
+                    sqrtPrice, sqrtRatioUpper, LiquidityAmounts.toUint128(liquidity1), true
+                );
+                zeroToOne
+                    ? amountIn = amount0 - amount0New
+                    // Since amountOut can't be negative, we use 90% of the previous amountOut as a fallback.
+                    : amountOut = amount0New > amount0 ? amount0New - amount0 : amountOut.mulDivDown(9, 10);
+            }
+
+            return (converged, amountIn, amountOut);
         }
-
-        // Calculate the relative difference of liquidity0 and liquidity1.
-        uint256 relDiff = 1e18
-            - (liquidity0 < liquidity1 ? liquidity0.mulDivDown(1e18, liquidity1) : liquidity1.mulDivDown(1e18, liquidity0));
-        // In the optimal solution liquidity0 equals liquidity1,
-        // and there are no leftovers for token0 or token1 after minting the liquidity.
-        // Hence the relative distance between liquidity0 and liquidity1
-        // is a good estimator how close we are to the optimal solution.
-        bool converged = relDiff < CONVERGENCE_THRESHOLD;
-
-        // The new approximated liquidity is the minimum of liquidity0 and liquidity1.
-        // Calculate the new approximated amountIn or amountOut,
-        // for which this liquidity would be the optimal solution.
-        if (liquidity0 < liquidity1) {
-            uint256 amount1New =
-                SqrtPriceMath.getAmount1Delta(sqrtRatioLower, sqrtPrice, LiquidityAmounts.toUint128(liquidity0), true);
-            zeroToOne
-                // Since amountOut can't be negative, we use 90% of the previous amountOut as a fallback.
-                ? amountOut = amount1New > amount1 ? amount1New - amount1 : amountOut.mulDivDown(9, 10)
-                : amountIn = amount1 - amount1New;
-        } else {
-            uint256 amount0New =
-                SqrtPriceMath.getAmount0Delta(sqrtPrice, sqrtRatioUpper, LiquidityAmounts.toUint128(liquidity1), true);
-            zeroToOne
-                ? amountIn = amount0 - amount0New
-                // Since amountOut can't be negative, we use 90% of the previous amountOut as a fallback.
-                : amountOut = amount0New > amount0 ? amount0New - amount0 : amountOut.mulDivDown(9, 10);
-        }
-
-        return (converged, amountIn, amountOut);
     }
 }

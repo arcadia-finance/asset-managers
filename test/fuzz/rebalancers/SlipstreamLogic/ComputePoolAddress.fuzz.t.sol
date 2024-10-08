@@ -46,7 +46,7 @@ contract ComputePoolAddress_SlipstreamLogic_Fuzz_Test is SlipstreamLogic_Fuzz_Te
         TICK_SPACINGS[1] = 50;
         TICK_SPACINGS[2] = 100;
         TICK_SPACINGS[3] = 200;
-        for (uint256 i = 0; i < TICK_SPACINGS.length; i++) {
+        for (uint256 i = 0; i < TICK_SPACINGS.length; ++i) {
             assertEq(
                 slipstreamLogic.computePoolAddress(address(token0), address(token1), TICK_SPACINGS[i]),
                 address(createPoolCL(address(token0), address(token1), TICK_SPACINGS[i], 1e18, 300))

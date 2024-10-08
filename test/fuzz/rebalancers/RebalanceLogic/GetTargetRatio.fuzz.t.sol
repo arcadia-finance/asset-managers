@@ -42,7 +42,7 @@ contract GetTargetRatio_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test {
 
         // When: Calling _getTargetRatio().
         // Then: It should revert.
-        vm.expectRevert(stdError.arithmeticError);
+        vm.expectRevert(bytes(""));
         rebalanceLogic.getTargetRatio(sqrtPriceX96, sqrtRatioLower, sqrtRatioUpper);
     }
 
