@@ -62,6 +62,7 @@ contract IsCompoundable_SlipstreamCompounderHelper_Fuzz_Test is SlipstreamCompou
 
         // And : We generate one sided fees to move the pool in an unbalanced state
         generateFees(1000, 1);
+        (position.sqrtPriceX96,,,,,) = usdStablePool.slot0();
 
         // And : Ensure isCompoundable returns false for being unbalanced
         bool poolIsUnbalanced = compounder.isPoolUnbalanced(position);
