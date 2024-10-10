@@ -69,7 +69,7 @@ abstract contract Rebalancer_Fuzz_Test is
     int24 internal INIT_LP_TICK_RANGE = 20_000;
 
     // Max slippage of 1% (for testing purposes).
-    uint256 internal MAX_SLIPPAGE_RATIO = 0.99 * 1e18;
+    uint256 internal MIN_LIQUIDITY_RATIO = 0.99 * 1e18;
 
     // If set to "true" during tests, will enable to mock high tolerance
     bool public increaseTolerance;
@@ -171,7 +171,7 @@ abstract contract Rebalancer_Fuzz_Test is
 
     function deployRebalancer(uint256 maxTolerance, uint256 maxInitiatorFee) public {
         vm.prank(users.owner);
-        rebalancer = new RebalancerExtension(maxTolerance, maxInitiatorFee, MAX_SLIPPAGE_RATIO);
+        rebalancer = new RebalancerExtension(maxTolerance, maxInitiatorFee, MIN_LIQUIDITY_RATIO);
 
         // Get the bytecode of the UniswapV3PoolExtension.
         bytes memory args = abi.encode();
@@ -235,7 +235,7 @@ abstract contract Rebalancer_Fuzz_Test is
         }
 
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, fee);
+        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
 
         return (tolerance, fee);
     }

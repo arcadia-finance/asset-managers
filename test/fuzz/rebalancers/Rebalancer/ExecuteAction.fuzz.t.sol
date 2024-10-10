@@ -95,7 +95,7 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         // And: The initiator is initiated.
         vm.prank(initiator);
         tolerance = bound(tolerance, 0, MAX_TOLERANCE);
-        rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE);
+        rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
 
         // And: The pool is unbalanced.
         uint256 lowerBoundSqrtPriceX96;
@@ -167,7 +167,7 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         // And: The initiator is initiated.
         vm.prank(initiator);
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
-        rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE);
+        rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
 
         // And: The pool is unbalanced.
         uint256 lowerBoundSqrtPriceX96;
@@ -248,7 +248,7 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
         fee = bound(fee, 0, MAX_INITIATOR_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, fee);
+        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
 
         // And: Caller is the account.
         rebalancer.setAccount(account_);
@@ -318,7 +318,7 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
         fee = bound(fee, 0, MAX_INITIATOR_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, fee);
+        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
 
         // And: Caller is the account.
         rebalancer.setAccount(account_);
@@ -430,7 +430,7 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
         fee = bound(fee, 0, MAX_INITIATOR_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, fee);
+        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
 
         // And: Caller is the account.
         rebalancer.setAccount(account_);
@@ -534,7 +534,7 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
         fee = bound(fee, 0, MAX_INITIATOR_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, fee);
+        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
 
         // And: Caller is the account.
         rebalancer.setAccount(account_);
@@ -614,9 +614,9 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         // And: A valid position with multiple tickSpacing.
         // And: Position is in range (has both tokens).
         int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(position.sqrtPriceX96));
-        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, tickCurrent - 11));
+        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, tickCurrent - 100));
         position.tickLower = position.tickLower / TICK_SPACING * TICK_SPACING;
-        position.tickUpper = int24(bound(position.tickUpper, tickCurrent + 10, BOUND_TICK_UPPER));
+        position.tickUpper = int24(bound(position.tickUpper, tickCurrent + 100, BOUND_TICK_UPPER));
         position.tickUpper = position.tickUpper / TICK_SPACING * TICK_SPACING;
         position.liquidity = uint128(bound(position.liquidity, 1e6, 1e10));
         (uint256 id,,) = addLiquidityCL(
@@ -653,7 +653,7 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
         fee = bound(fee, 0, MAX_INITIATOR_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, fee);
+        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
 
         // And: Caller is the account.
         rebalancer.setAccount(account_);
@@ -738,9 +738,9 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         // And: A valid position with multiple tickSpacing.
         // And: Position is in range (has both tokens).
         int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(position.sqrtPriceX96));
-        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, tickCurrent - 11));
+        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, tickCurrent - 100));
         position.tickLower = position.tickLower / TICK_SPACING * TICK_SPACING;
-        position.tickUpper = int24(bound(position.tickUpper, tickCurrent + 10, BOUND_TICK_UPPER));
+        position.tickUpper = int24(bound(position.tickUpper, tickCurrent + 100, BOUND_TICK_UPPER));
         position.tickUpper = position.tickUpper / TICK_SPACING * TICK_SPACING;
         position.liquidity = uint128(bound(position.liquidity, 1e6, 1e10));
         (uint256 id,,) = addLiquidityCL(
@@ -777,7 +777,7 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
         fee = bound(fee, 0, MAX_INITIATOR_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, fee);
+        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
 
         // And: Caller is the account.
         rebalancer.setAccount(account_);

@@ -16,8 +16,8 @@ import { Rebalancer } from "../../../src/rebalancers/Rebalancer.sol";
 contract RebalancerExtension is Rebalancer {
     using SafeTransferLib for ERC20;
 
-    constructor(uint256 maxTolerance, uint256 maxInitiatorFee, uint256 maxSlippageRatio)
-        Rebalancer(maxTolerance, maxInitiatorFee, maxSlippageRatio)
+    constructor(uint256 maxTolerance, uint256 maxInitiatorFee, uint256 minLiquidityRatio)
+        Rebalancer(maxTolerance, maxInitiatorFee, minLiquidityRatio)
     { }
 
     function getRebalanceParams(
@@ -31,7 +31,7 @@ contract RebalancerExtension is Rebalancer {
         returns (uint256 minLiquidity, bool zeroToOne, uint256 amountInitiatorFee, uint256 amountIn, uint256 amountOut)
     {
         return RebalanceLogic._getRebalanceParams(
-            Rebalancer.MAX_SLIPPAGE_RATIO,
+            Rebalancer.MIN_LIQUIDITY_RATIO,
             position.fee,
             initiatorFee,
             position.sqrtPriceX96,

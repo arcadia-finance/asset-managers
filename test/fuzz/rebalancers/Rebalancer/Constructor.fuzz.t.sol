@@ -28,6 +28,6 @@ contract Constructor_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
 
         assertEq(rebalancer_.MAX_TOLERANCE(), maxTolerance);
         assertEq(rebalancer_.MAX_INITIATOR_FEE(), maxInitiatorFee);
-        assertEq(rebalancer_.MAX_SLIPPAGE_RATIO(), maxSlippageRatio);
+        assertEq(rebalancer_.MIN_LIQUIDITY_RATIO(), maxSlippageRatio);
     }
 }

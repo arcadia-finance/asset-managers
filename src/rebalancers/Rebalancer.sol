@@ -56,8 +56,8 @@ contract Rebalancer is IActionBase {
     // The ratio that limits the amount of slippage of the swap, with 18 decimals precision.
     // It is defined as the quotient between the minimal amount of liquidity that must be added,
     // and the amount of liquidity that would be added if the swap was executed through the pool without slippage.
-    // MAX_SLIPPAGE_RATIO = minLiquidity / liquidityWithoutSlippage
-    uint256 public immutable MAX_SLIPPAGE_RATIO;
+    // MIN_LIQUIDITY_RATIO = minLiquidity / liquidityWithoutSlippage
+    uint256 public immutable MIN_LIQUIDITY_RATIO;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
@@ -94,22 +94,19 @@ contract Rebalancer is IActionBase {
 
     // A struct with information for each specific initiator
     struct InitiatorInfo {
-        uint88 upperSqrtPriceDeviation;
-        uint88 lowerSqrtPriceDeviation;
+        uint64 upperSqrtPriceDeviation;
+        uint64 lowerSqrtPriceDeviation;
         uint64 fee;
-        bool initialized;
+        uint64 minLiquidityRatio;
     }
 
     /* //////////////////////////////////////////////////////////////
                                 ERRORS
     ////////////////////////////////////////////////////////////// */
 
-    error DecreaseFeeOnly();
-    error DecreaseToleranceOnly();
     error InitiatorNotValid();
     error InsufficientLiquidity();
-    error MaxInitiatorFee();
-    error MaxTolerance();
+    error InvalidValue();
     error NotAnAccount();
     error OnlyAccount();
     error OnlyAccountOwner();
@@ -132,12 +129,13 @@ contract Rebalancer is IActionBase {
      * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
      * @param maxInitiatorFee The maximum fee an initiator can set,
      * relative to the ideal amountIn, with 18 decimals precision.
-     * @param maxSlippageRatio The maximum decrease of the liquidity due to slippage, with 18 decimals precision.
+     * @param minLiquidityRatio The ratio of the minimum amount of liquidity that must be minted,
+     * relative to the hypothetical amount of liquidity when we rebalance without slippage, with 18 decimals precision.
      */
-    constructor(uint256 maxTolerance, uint256 maxInitiatorFee, uint256 maxSlippageRatio) {
+    constructor(uint256 maxTolerance, uint256 maxInitiatorFee, uint256 minLiquidityRatio) {
         MAX_TOLERANCE = maxTolerance;
         MAX_INITIATOR_FEE = maxInitiatorFee;
-        MAX_SLIPPAGE_RATIO = maxSlippageRatio;
+        MIN_LIQUIDITY_RATIO = minLiquidityRatio;
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -226,7 +224,7 @@ contract Rebalancer is IActionBase {
             // These are calculated based on a hypothetical swap through the pool, without slippage.
             (uint256 minLiquidity, bool zeroToOne, uint256 amountInitiatorFee, uint256 amountIn, uint256 amountOut) =
             RebalanceLogic._getRebalanceParams(
-                MAX_SLIPPAGE_RATIO,
+                initiatorInfo[initiator].minLiquidityRatio,
                 position.fee,
                 initiatorInfo[initiator].fee,
                 position.sqrtPriceX96,
@@ -439,32 +437,42 @@ contract Rebalancer is IActionBase {
      * @param tolerance The maximum deviation of the actual pool price,
      * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
      * @param fee The fee paid to to the initiator, with 18 decimals precision.
+     * @param minLiquidityRatio The ratio of the minimum amount of liquidity that must be minted,
+     * relative to the hypothetical amount of liquidity when we rebalance without slippage, with 18 decimals precision.
      * @dev The tolerance for the pool price will be converted to an upper and lower max sqrtPrice deviation,
      * using the square root of the basis (one with 18 decimals precision) +- tolerance (18 decimals precision).
      * The tolerance boundaries are symmetric around the price, but taking the square root will result in a different
      * allowed deviation of the sqrtPriceX96 for the lower and upper boundaries.
      */
-    function setInitiatorInfo(uint256 tolerance, uint256 fee) external {
+    function setInitiatorInfo(uint256 tolerance, uint256 fee, uint256 minLiquidityRatio) external {
         if (account != address(0)) revert Reentered();
 
         // Cache struct
         InitiatorInfo memory initiatorInfo_ = initiatorInfo[msg.sender];
 
         // Calculation required for checks.
-        uint88 upperSqrtPriceDeviation = uint88(FixedPointMathLib.sqrt((1e18 + tolerance) * 1e18));
+        uint64 upperSqrtPriceDeviation = uint64(FixedPointMathLib.sqrt((1e18 + tolerance) * 1e18));
 
-        if (initiatorInfo_.initialized) {
-            if (fee > initiatorInfo_.fee) revert DecreaseFeeOnly();
-            if (upperSqrtPriceDeviation > initiatorInfo_.upperSqrtPriceDeviation) revert DecreaseToleranceOnly();
+        // Check if initiator is already set.
+        if (initiatorInfo_.minLiquidityRatio > 0) {
+            // If so, the initiator can only change parameters to more favourable values for users.
+            if (
+                fee > initiatorInfo_.fee || upperSqrtPriceDeviation > initiatorInfo_.upperSqrtPriceDeviation
+                    || minLiquidityRatio < initiatorInfo_.minLiquidityRatio || minLiquidityRatio > 1e18
+            ) revert InvalidValue();
         } else {
-            if (fee > MAX_INITIATOR_FEE) revert MaxInitiatorFee();
-            if (tolerance > MAX_TOLERANCE) revert MaxTolerance();
-            initiatorInfo_.initialized = true;
+            // If not, the parameters can not exceed certain thresholds.
+            if (
+                fee > MAX_INITIATOR_FEE || tolerance > MAX_TOLERANCE || minLiquidityRatio < MIN_LIQUIDITY_RATIO
+                    || minLiquidityRatio > 1e18
+            ) {
+                revert InvalidValue();
+            }
         }
 
         initiatorInfo_.fee = uint64(fee);
-
-        initiatorInfo_.lowerSqrtPriceDeviation = uint88(FixedPointMathLib.sqrt((1e18 - tolerance) * 1e18));
+        initiatorInfo_.minLiquidityRatio = uint64(minLiquidityRatio);
+        initiatorInfo_.lowerSqrtPriceDeviation = uint64(FixedPointMathLib.sqrt((1e18 - tolerance) * 1e18));
         initiatorInfo_.upperSqrtPriceDeviation = upperSqrtPriceDeviation;
 
         initiatorInfo[msg.sender] = initiatorInfo_;

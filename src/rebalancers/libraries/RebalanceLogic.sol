@@ -19,7 +19,8 @@ library RebalanceLogic {
      * @notice Returns the parameters and constraints to rebalance the position.
      * Both parameters and constraints are calculated based on a hypothetical swap (in the pool itself with fees but without slippage),
      * that maximizes the amount of liquidity that can be added to the positions (no leftovers of either token0 or token1).
-     * @param maxSlippageRatio The maximum decrease of the liquidity due to slippage, with 18 decimals precision.
+     * @param minLiquidityRatio The ratio of the minimum amount of liquidity that must be minted,
+     * relative to the hypothetical amount of liquidity when we rebalance without slippage, with 18 decimals precision.
      * @param poolFee The fee of the pool, with 6 decimals precision.
      * @param initiatorFee The fee of the initiator, with 18 decimals precision.
      * @param sqrtPrice The square root of the price (token1/token0), with 96 binary precision.
@@ -34,7 +35,7 @@ library RebalanceLogic {
      * @return amountOut An approximation of the amount of tokenOut, based on the optimal swap through the pool itself without slippage.
      */
     function _getRebalanceParams(
-        uint256 maxSlippageRatio,
+        uint256 minLiquidityRatio,
         uint256 poolFee,
         uint256 initiatorFee,
         uint256 sqrtPrice,
@@ -67,7 +68,7 @@ library RebalanceLogic {
                 zeroToOne ? balance0 - amountIn : balance0 + amountOut,
                 zeroToOne ? balance1 + amountOut : balance1 - amountIn
             );
-            minLiquidity = liquidity.mulDivDown(maxSlippageRatio, 1e18);
+            minLiquidity = liquidity.mulDivDown(minLiquidityRatio, 1e18);
         }
 
         // Get initiator fee amount and the actual amountIn of the swap (without initiator fee).
