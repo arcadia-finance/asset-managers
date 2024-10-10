@@ -275,11 +275,14 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         LpVariables memory lpVars,
         int24 tickUpper
     ) public {
-        // Given : Initialize a uniswapV3 pool and a lp position with valid test variables. Also generate fees for that position.
+        // Given: Initiator is not the liquidity provider.
+        vm.assume(initVars.initiator != users.liquidityProvider);
+
+        // And : Initialize a uniswapV3 pool and a lp position with valid test variables. Also generate fees for that position.
         uint256 tokenId;
         (initVars, lpVars, tokenId) = initPoolAndCreatePositionWithFees(initVars, lpVars);
 
-        // Given : Move upper tick to the right (should trigger a oneToZero swap)
+        // And : Move upper tick to the right (should trigger a oneToZero swap)
         int24 tickLower = lpVars.tickLower;
         tickUpper = int24(bound(tickUpper, lpVars.tickUpper + 10, lpVars.tickUpper + ((INIT_LP_TICK_RANGE / 2) - 100)));
 
@@ -332,11 +335,14 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         LpVariables memory lpVars,
         int24 tickLower
     ) public {
-        // Given : Initialize a uniswapV3 pool and a lp position with valid test variables. Also generate fees for that position.
+        // Given: Initiator is not the liquidity provider.
+        vm.assume(initVars.initiator != users.liquidityProvider);
+
+        // And : Initialize a uniswapV3 pool and a lp position with valid test variables. Also generate fees for that position.
         uint256 tokenId;
         (initVars, lpVars, tokenId) = initPoolAndCreatePositionWithFees(initVars, lpVars);
 
-        // Given : Move lower tick to the left (should trigger a zeroToOne swap)
+        // And : Move lower tick to the left (should trigger a zeroToOne swap)
         tickLower = int24(bound(tickLower, lpVars.tickLower - ((INIT_LP_TICK_RANGE / 2) - 100), lpVars.tickLower - 10));
         int24 tickUpper = lpVars.tickUpper;
 

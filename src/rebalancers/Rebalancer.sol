@@ -130,8 +130,8 @@ contract Rebalancer is IActionBase {
     /**
      * @param maxTolerance The maximum allowed deviation of the actual pool price for any initiator,
      * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
-     * @param maxInitiatorFee The maximum fee an initiator can set, with 6 decimals precision.
-     * The fee is calculated on the swap amount needed to rebalance.
+     * @param maxInitiatorFee The maximum fee an initiator can set,
+     * relative to the ideal amountIn, with 18 decimals precision.
      * @param maxSlippageRatio The maximum decrease of the liquidity due to slippage, with 18 decimals precision.
      */
     constructor(uint256 maxTolerance, uint256 maxInitiatorFee, uint256 maxSlippageRatio) {
@@ -145,7 +145,7 @@ contract Rebalancer is IActionBase {
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Rebalances a UniswapV3 Liquidity Position owned by an Arcadia Account.
+     * @notice Rebalances a UniswapV3 or Slipstream Liquidity Position, owned by an Arcadia Account.
      * @param account_ The Arcadia Account owning the position.
      * @param positionManager The contract address of the Position Manager.
      * @param id The id of the Liquidity Position to rebalance.

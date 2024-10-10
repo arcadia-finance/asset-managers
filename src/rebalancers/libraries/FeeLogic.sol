@@ -32,20 +32,12 @@ library FeeLogic {
     ) internal returns (uint256, uint256) {
         unchecked {
             if (zeroToOne) {
-                if (balance0 > amountInitiatorFee) {
-                    balance0 -= amountInitiatorFee;
-                } else {
-                    amountInitiatorFee = balance0;
-                    balance0 = 0;
-                }
+                (balance0, amountInitiatorFee) =
+                    balance0 > amountInitiatorFee ? (balance0 - amountInitiatorFee, amountInitiatorFee) : (0, balance0);
                 if (amountInitiatorFee > 0) ERC20(token0).safeTransfer(initiator, amountInitiatorFee);
             } else {
-                if (balance1 > amountInitiatorFee) {
-                    balance1 -= amountInitiatorFee;
-                } else {
-                    amountInitiatorFee = balance1;
-                    balance1 = 0;
-                }
+                (balance1, amountInitiatorFee) =
+                    balance1 > amountInitiatorFee ? (balance1 - amountInitiatorFee, amountInitiatorFee) : (0, balance1);
                 if (amountInitiatorFee > 0) ERC20(token1).safeTransfer(initiator, amountInitiatorFee);
             }
             return (balance0, balance1);
