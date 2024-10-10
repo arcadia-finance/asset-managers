@@ -5,11 +5,11 @@
 pragma solidity 0.8.22;
 
 import { FixedPoint96 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
-import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
+import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/FullMath.sol";
 import { RebalanceLogic } from "../../../../src/rebalancers/libraries/RebalanceLogic.sol";
 import { RebalanceLogic_Fuzz_Test } from "./_RebalanceLogic.fuzz.t.sol";
 import { stdError } from "../../../../lib/accounts-v2/lib/forge-std/src/StdError.sol";
-import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
+import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/TickMath.sol";
 
 /**
  * @notice Fuzz tests for the function "_getSwapParams" of contract "RebalanceLogic".
@@ -41,14 +41,14 @@ contract GetSwapParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test {
         uint256 fee
     ) public {
         // Given: sqrtPrice is smaller than type(uint128).max (no overflow).
-        sqrtPrice = bound(sqrtPrice, TickMath.MIN_SQRT_RATIO, type(uint128).max);
+        sqrtPrice = bound(sqrtPrice, TickMath.MIN_SQRT_PRICE, type(uint128).max);
 
         // And: Position is single sided in token0.
-        int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(sqrtPrice));
+        int24 tickCurrent = TickMath.getTickAtSqrtPrice(uint160(sqrtPrice));
         tickLower = int24(bound(tickLower, tickCurrent + 1, TickMath.MAX_TICK - 1));
         tickUpper = int24(bound(tickUpper, tickLower + 1, TickMath.MAX_TICK));
-        uint256 sqrtRatioLower = TickMath.getSqrtRatioAtTick(tickLower);
-        uint256 sqrtRatioUpper = TickMath.getSqrtRatioAtTick(tickUpper);
+        uint256 sqrtRatioLower = TickMath.getSqrtPriceAtTick(tickLower);
+        uint256 sqrtRatioUpper = TickMath.getSqrtPriceAtTick(tickUpper);
 
         // And: fee is smaller than MAX_FEE (invariant).
         fee = bound(fee, 0, MAX_FEE);
@@ -76,14 +76,14 @@ contract GetSwapParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test {
         uint256 fee
     ) public {
         // Given: sqrtPrice is smaller than type(uint128).max (no overflow).
-        sqrtPrice = bound(sqrtPrice, TickMath.getSqrtRatioAtTick(TickMath.MIN_TICK + 2), type(uint128).max);
+        sqrtPrice = bound(sqrtPrice, TickMath.getSqrtPriceAtTick(TickMath.MIN_TICK + 2), type(uint128).max);
 
         // And: Position is single sided in token0.
-        int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(sqrtPrice));
+        int24 tickCurrent = TickMath.getTickAtSqrtPrice(uint160(sqrtPrice));
         tickUpper = int24(bound(tickUpper, TickMath.MIN_TICK + 1, tickCurrent));
         tickLower = int24(bound(tickLower, TickMath.MIN_TICK, tickUpper - 1));
-        uint256 sqrtRatioLower = TickMath.getSqrtRatioAtTick(tickLower);
-        uint256 sqrtRatioUpper = TickMath.getSqrtRatioAtTick(tickUpper);
+        uint256 sqrtRatioLower = TickMath.getSqrtPriceAtTick(tickLower);
+        uint256 sqrtRatioUpper = TickMath.getSqrtPriceAtTick(tickUpper);
 
         // And: fee is smaller than MAX_FEE (invariant).
         fee = bound(fee, 0, MAX_FEE);
@@ -112,19 +112,19 @@ contract GetSwapParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test {
     ) public {
         // Given: sqrtPrice is smaller than type(uint128).max (no overflow).
         {
-            uint256 sqrtPriceMin = TickMath.getSqrtRatioAtTick(TickMath.MIN_TICK + 1);
+            uint256 sqrtPriceMin = TickMath.getSqrtPriceAtTick(TickMath.MIN_TICK + 1);
             sqrtPrice = bound(sqrtPrice, sqrtPriceMin, type(uint128).max);
         }
 
         // And: Position is in range.
         {
-            int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(sqrtPrice));
+            int24 tickCurrent = TickMath.getTickAtSqrtPrice(uint160(sqrtPrice));
             tickUpper = int24(bound(tickUpper, tickCurrent + 1, TickMath.MAX_TICK));
             tickLower = int24(bound(tickLower, TickMath.MIN_TICK, tickCurrent - 1));
         }
 
-        uint256 sqrtRatioLower = TickMath.getSqrtRatioAtTick(tickLower);
-        uint256 sqrtRatioUpper = TickMath.getSqrtRatioAtTick(tickUpper);
+        uint256 sqrtRatioLower = TickMath.getSqrtPriceAtTick(tickLower);
+        uint256 sqrtRatioUpper = TickMath.getSqrtPriceAtTick(tickUpper);
 
         // And: fee is smaller than MAX_FEE (invariant).
         fee = bound(fee, 0, MAX_FEE);
@@ -176,19 +176,19 @@ contract GetSwapParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test {
     ) public {
         // Given: sqrtPrice is smaller than type(uint128).max (no overflow).
         {
-            uint256 sqrtPriceMin = TickMath.getSqrtRatioAtTick(TickMath.MIN_TICK + 1);
+            uint256 sqrtPriceMin = TickMath.getSqrtPriceAtTick(TickMath.MIN_TICK + 1);
             sqrtPrice = bound(sqrtPrice, sqrtPriceMin, type(uint128).max);
         }
 
         // And: Position is in range.
         {
-            int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(sqrtPrice));
+            int24 tickCurrent = TickMath.getTickAtSqrtPrice(uint160(sqrtPrice));
             tickUpper = int24(bound(tickUpper, tickCurrent + 1, TickMath.MAX_TICK));
             tickLower = int24(bound(tickLower, TickMath.MIN_TICK, tickCurrent - 1));
         }
 
-        uint256 sqrtRatioLower = TickMath.getSqrtRatioAtTick(tickLower);
-        uint256 sqrtRatioUpper = TickMath.getSqrtRatioAtTick(tickUpper);
+        uint256 sqrtRatioLower = TickMath.getSqrtPriceAtTick(tickLower);
+        uint256 sqrtRatioUpper = TickMath.getSqrtPriceAtTick(tickUpper);
 
         // And: fee is smaller than MAX_FEE (invariant).
         fee = bound(fee, 0, MAX_FEE);

@@ -5,7 +5,7 @@
 pragma solidity 0.8.22;
 
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { FullMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
+import { FullMath } from "../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/FullMath.sol";
 import { LiquidityAmounts } from "../libraries/uniswap-v3/LiquidityAmounts.sol";
 import { PricingLogic } from "./PricingLogic.sol";
 

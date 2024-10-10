@@ -7,11 +7,11 @@ pragma solidity 0.8.22;
 import { ArcadiaLogic } from "../../../../src/rebalancers/libraries/ArcadiaLogic.sol";
 import { AssetValueAndRiskFactors } from "../../../../lib/accounts-v2/src/Registry.sol";
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
+import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/FullMath.sol";
 import { PricingLogic } from "../../../../src/rebalancers/libraries/PricingLogic.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { Rebalancer_Fuzz_Test } from "./_Rebalancer2.fuzz.t.sol";
-import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
+import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/TickMath.sol";
 import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
 import { UniswapV3Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";
 import { UniswapV3Logic } from "../../../../src/rebalancers/libraries/UniswapV3Logic.sol";
@@ -77,12 +77,12 @@ contract GetPositionState_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         assertEq(position_.token1, address(token1));
         assertEq(position_.fee, POOL_FEE_);
         assertEq(position_.tickSpacing, poolUniswap.tickSpacing());
-        int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(position.sqrtPriceX96)) / tickSpacing * tickSpacing;
+        int24 tickCurrent = TickMath.getTickAtSqrtPrice(uint160(position.sqrtPriceX96)) / tickSpacing * tickSpacing;
         assertEq(position_.tickLower, tickCurrent);
         assertEq(position_.tickUpper, position_.tickLower + tickSpacing);
         assertEq(position_.liquidity, position.liquidity);
-        assertEq(position_.sqrtRatioLower, TickMath.getSqrtRatioAtTick(position_.tickLower));
-        assertEq(position_.sqrtRatioUpper, TickMath.getSqrtRatioAtTick(position_.tickUpper));
+        assertEq(position_.sqrtRatioLower, TickMath.getSqrtPriceAtTick(position_.tickLower));
+        assertEq(position_.sqrtRatioUpper, TickMath.getSqrtPriceAtTick(position_.tickUpper));
         assertEq(position_.sqrtPriceX96, position.sqrtPriceX96);
         uint256 price0 = FullMath.mulDiv(1e18, position.sqrtPriceX96 ** 2, PricingLogic.Q192);
         uint256 price1 = 1e18;
@@ -139,7 +139,7 @@ contract GetPositionState_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         assertEq(position_.fee, POOL_FEE_);
         assertEq(position_.tickSpacing, poolUniswap.tickSpacing());
         {
-            int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(position.sqrtPriceX96)) / tickSpacing * tickSpacing;
+            int24 tickCurrent = TickMath.getTickAtSqrtPrice(uint160(position.sqrtPriceX96)) / tickSpacing * tickSpacing;
             int24 tickRange = position_.tickUpper - position_.tickLower;
             int24 rangeBelow = tickRange / (2 * position_.tickSpacing) * position_.tickSpacing;
             assertEq(position_.tickLower, tickCurrent - rangeBelow);
@@ -147,8 +147,8 @@ contract GetPositionState_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
             assertEq(position_.tickUpper, tickCurrent + rangeAbove);
         }
         assertEq(position_.liquidity, position.liquidity);
-        assertEq(position_.sqrtRatioLower, TickMath.getSqrtRatioAtTick(position_.tickLower));
-        assertEq(position_.sqrtRatioUpper, TickMath.getSqrtRatioAtTick(position_.tickUpper));
+        assertEq(position_.sqrtRatioLower, TickMath.getSqrtPriceAtTick(position_.tickLower));
+        assertEq(position_.sqrtRatioUpper, TickMath.getSqrtPriceAtTick(position_.tickUpper));
         assertEq(position_.sqrtPriceX96, position.sqrtPriceX96);
         uint256 trustedSqrtPriceX96;
         {
@@ -223,8 +223,8 @@ contract GetPositionState_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         assertEq(position_.tickLower, tickLower);
         assertEq(position_.tickUpper, tickUpper);
         assertEq(position_.liquidity, position.liquidity);
-        assertEq(position_.sqrtRatioLower, TickMath.getSqrtRatioAtTick(position_.tickLower));
-        assertEq(position_.sqrtRatioUpper, TickMath.getSqrtRatioAtTick(position_.tickUpper));
+        assertEq(position_.sqrtRatioLower, TickMath.getSqrtPriceAtTick(position_.tickLower));
+        assertEq(position_.sqrtRatioUpper, TickMath.getSqrtPriceAtTick(position_.tickUpper));
         assertEq(position_.sqrtPriceX96, position.sqrtPriceX96);
         uint256 trustedSqrtPriceX96;
         {
@@ -303,8 +303,8 @@ contract GetPositionState_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         assertEq(position_.tickLower, tickLower);
         assertEq(position_.tickUpper, tickUpper);
         assertEq(position_.liquidity, position.liquidity);
-        assertEq(position_.sqrtRatioLower, TickMath.getSqrtRatioAtTick(position_.tickLower));
-        assertEq(position_.sqrtRatioUpper, TickMath.getSqrtRatioAtTick(position_.tickUpper));
+        assertEq(position_.sqrtRatioLower, TickMath.getSqrtPriceAtTick(position_.tickLower));
+        assertEq(position_.sqrtRatioUpper, TickMath.getSqrtPriceAtTick(position_.tickUpper));
         assertEq(position_.sqrtPriceX96, position.sqrtPriceX96);
         uint256 trustedSqrtPriceX96;
         {

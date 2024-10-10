@@ -5,13 +5,13 @@
 pragma solidity 0.8.22;
 
 import { FixedPoint96 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
-import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
+import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/FullMath.sol";
 import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/uniswap-v3/LiquidityAmounts.sol";
 import { PricingLogic } from "../../../../src/rebalancers/libraries/PricingLogic.sol";
 import { RebalanceLogic } from "../../../../src/rebalancers/libraries/RebalanceLogic.sol";
 import { RebalanceLogic_Fuzz_Test } from "./_RebalanceLogic.fuzz.t.sol";
 import { stdError } from "../../../../lib/accounts-v2/lib/forge-std/src/StdError.sol";
-import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
+import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/TickMath.sol";
 
 /**
  * @notice Fuzz tests for the function "_getRebalanceParams" of contract "RebalanceLogic".
@@ -60,12 +60,12 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
 
         // And: Position is single sided in token0.
         {
-            int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(testVars.sqrtPrice));
+            int24 tickCurrent = TickMath.getTickAtSqrtPrice(uint160(testVars.sqrtPrice));
             testVars.tickLower = int24(bound(testVars.tickLower, tickCurrent + 1, TickMath.MAX_TICK - 1));
         }
         testVars.tickUpper = int24(bound(testVars.tickUpper, testVars.tickLower + 1, TickMath.MAX_TICK));
-        uint160 sqrtRatioLower = TickMath.getSqrtRatioAtTick(testVars.tickLower);
-        uint160 sqrtRatioUpper = TickMath.getSqrtRatioAtTick(testVars.tickUpper);
+        uint160 sqrtRatioLower = TickMath.getSqrtPriceAtTick(testVars.tickLower);
+        uint160 sqrtRatioUpper = TickMath.getSqrtPriceAtTick(testVars.tickUpper);
 
         // And: Liquidity0 doesn't overflow (A lot of amount1 in very narrow ranges at small prices).
         {
@@ -122,12 +122,12 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
 
         // And: Position is single sided in token0.
         {
-            int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(testVars.sqrtPrice));
+            int24 tickCurrent = TickMath.getTickAtSqrtPrice(uint160(testVars.sqrtPrice));
             testVars.tickUpper = int24(bound(testVars.tickUpper, TickMath.MIN_TICK + 1, tickCurrent));
         }
         testVars.tickLower = int24(bound(testVars.tickLower, TickMath.MIN_TICK, testVars.tickUpper - 1));
-        uint160 sqrtRatioLower = TickMath.getSqrtRatioAtTick(testVars.tickLower);
-        uint160 sqrtRatioUpper = TickMath.getSqrtRatioAtTick(testVars.tickUpper);
+        uint160 sqrtRatioLower = TickMath.getSqrtPriceAtTick(testVars.tickLower);
+        uint160 sqrtRatioUpper = TickMath.getSqrtPriceAtTick(testVars.tickUpper);
 
         // And: Liquidity1 doesn't overflow (A lot of amount1 in very narrow ranges at small prices).
         {
@@ -184,12 +184,12 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
 
         // And: Position is in range.
         {
-            int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(testVars.sqrtPrice));
+            int24 tickCurrent = TickMath.getTickAtSqrtPrice(uint160(testVars.sqrtPrice));
             testVars.tickUpper = int24(bound(testVars.tickUpper, tickCurrent + 1, TickMath.MAX_TICK));
             testVars.tickLower = int24(bound(testVars.tickLower, TickMath.MIN_TICK, tickCurrent - 1));
         }
-        uint160 sqrtRatioLower = TickMath.getSqrtRatioAtTick(testVars.tickLower);
-        uint160 sqrtRatioUpper = TickMath.getSqrtRatioAtTick(testVars.tickUpper);
+        uint160 sqrtRatioLower = TickMath.getSqrtPriceAtTick(testVars.tickLower);
+        uint160 sqrtRatioUpper = TickMath.getSqrtPriceAtTick(testVars.tickUpper);
 
         // And: Liquidity0 doesn't overflow (A lot of amount1 in very narrow ranges at small prices).
         {
@@ -278,12 +278,12 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
 
         // And: Position is in range.
         {
-            int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(testVars.sqrtPrice));
+            int24 tickCurrent = TickMath.getTickAtSqrtPrice(uint160(testVars.sqrtPrice));
             testVars.tickUpper = int24(bound(testVars.tickUpper, tickCurrent + 1, TickMath.MAX_TICK));
             testVars.tickLower = int24(bound(testVars.tickLower, TickMath.MIN_TICK, tickCurrent - 1));
         }
-        uint160 sqrtRatioLower = TickMath.getSqrtRatioAtTick(testVars.tickLower);
-        uint160 sqrtRatioUpper = TickMath.getSqrtRatioAtTick(testVars.tickUpper);
+        uint160 sqrtRatioLower = TickMath.getSqrtPriceAtTick(testVars.tickLower);
+        uint160 sqrtRatioUpper = TickMath.getSqrtPriceAtTick(testVars.tickUpper);
 
         // And: Liquidity0 doesn't overflow (A lot of amount1 in very narrow ranges at small prices).
         {

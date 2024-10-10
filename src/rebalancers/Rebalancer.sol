@@ -10,7 +10,7 @@ import { BurnLogic } from "./libraries/BurnLogic.sol";
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { FeeLogic } from "./libraries/FeeLogic.sol";
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { FullMath } from "../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
+import { FullMath } from "../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/FullMath.sol";
 import { IAccount } from "./interfaces/IAccount.sol";
 import { IPool } from "./interfaces/IPool.sol";
 import { IPositionManager } from "./interfaces/IPositionManager.sol";
@@ -22,8 +22,7 @@ import { SafeApprove } from "./libraries/SafeApprove.sol";
 import { SlipstreamLogic } from "./libraries/SlipstreamLogic.sol";
 import { StakedSlipstreamLogic } from "./libraries/StakedSlipstreamLogic.sol";
 import { SwapLogic } from "./libraries/SwapLogic.sol";
-import { SqrtPriceMath } from "./libraries/uniswap-v3/SqrtPriceMath.sol";
-import { TickMath } from "../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
+import { TickMath } from "../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/TickMath.sol";
 import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
 
 /**
@@ -386,8 +385,8 @@ contract Rebalancer is IActionBase {
         } else {
             (position.tickLower, position.tickUpper) = (tickLower, tickUpper);
         }
-        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(position.tickLower);
-        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.tickUpper);
+        position.sqrtRatioLower = TickMath.getSqrtPriceAtTick(position.tickLower);
+        position.sqrtRatioUpper = TickMath.getSqrtPriceAtTick(position.tickUpper);
 
         // Get trusted USD prices for 1e18 gwei of token0 and token1.
         (uint256 usdPriceToken0, uint256 usdPriceToken1) =

@@ -6,8 +6,8 @@ pragma solidity 0.8.22;
 
 import { FixedPoint96 } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { FullMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
-import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
+import { FullMath } from "../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/FullMath.sol";
+import { TickMath } from "../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/TickMath.sol";
 
 library PricingLogic {
     using FixedPointMathLib for uint256;
@@ -50,7 +50,7 @@ library PricingLogic {
      * price = (amountUsd/usdPriceToken1)/(amountUsd/usdPriceToken0) = usdPriceToken0/usdPriceToken1.
      */
     function _getSqrtPriceX96(uint256 priceToken0, uint256 priceToken1) internal pure returns (uint160 sqrtPriceX96) {
-        if (priceToken1 == 0) return TickMath.MAX_SQRT_RATIO;
+        if (priceToken1 == 0) return TickMath.MAX_SQRT_PRICE;
 
         // Both priceTokens have 18 decimals precision and result of division should have 28 decimals precision.
         // -> multiply by 1e28

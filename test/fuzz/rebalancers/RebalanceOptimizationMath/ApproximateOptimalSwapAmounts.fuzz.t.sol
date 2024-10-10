@@ -5,11 +5,12 @@
 pragma solidity 0.8.22;
 
 import { FixedPoint96 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
-import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
+import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/FullMath.sol";
 import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/uniswap-v3/LiquidityAmounts.sol";
-import { SqrtPriceMath } from "../../../../src/rebalancers/libraries/uniswap-v3/SqrtPriceMath.sol";
+import { SqrtPriceMath } from
+    "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/SqrtPriceMath.sol";
 import { RebalanceOptimizationMath_Fuzz_Test } from "./_RebalanceOptimizationMath.fuzz.t.sol";
-import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
+import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/TickMath.sol";
 
 /**
  * @notice Fuzz tests for the function "_approximateOptimalSwapAmounts" of contract "RebalanceOptimizationMath".
@@ -39,7 +40,7 @@ contract ApproximateOptimalSwapAmounts_SwapMath_Fuzz_Test is RebalanceOptimizati
         bool zeroToOne = true;
 
         // And: all prices are in range and within boundaries.
-        sqrtRatioLower = uint128(bound(sqrtRatioLower, TickMath.MIN_SQRT_RATIO, type(uint128).max - 2));
+        sqrtRatioLower = uint128(bound(sqrtRatioLower, TickMath.MIN_SQRT_PRICE, type(uint128).max - 2));
         sqrtPrice = uint128(bound(sqrtPrice, sqrtRatioLower + 1, type(uint128).max - 1));
         sqrtRatioUpper = uint128(bound(sqrtRatioUpper, sqrtPrice + 1, type(uint128).max));
 
@@ -112,7 +113,7 @@ contract ApproximateOptimalSwapAmounts_SwapMath_Fuzz_Test is RebalanceOptimizati
         bool zeroToOne = true;
 
         // And: all prices are in range and within boundaries.
-        sqrtRatioLower = uint128(bound(sqrtRatioLower, TickMath.MIN_SQRT_RATIO, type(uint128).max - 2));
+        sqrtRatioLower = uint128(bound(sqrtRatioLower, TickMath.MIN_SQRT_PRICE, type(uint128).max - 2));
         sqrtPrice = uint128(bound(sqrtPrice, sqrtRatioLower + 1, type(uint128).max - 1));
         sqrtRatioUpper = uint128(bound(sqrtRatioUpper, sqrtPrice + 1, type(uint128).max));
 
@@ -169,7 +170,7 @@ contract ApproximateOptimalSwapAmounts_SwapMath_Fuzz_Test is RebalanceOptimizati
         bool zeroToOne = false;
 
         // And: all prices are in range and within boundaries.
-        sqrtRatioLower = uint128(bound(sqrtRatioLower, TickMath.MIN_SQRT_RATIO * 100, type(uint128).max - 2));
+        sqrtRatioLower = uint128(bound(sqrtRatioLower, TickMath.MIN_SQRT_PRICE * 100, type(uint128).max - 2));
         sqrtPrice = uint128(bound(sqrtPrice, sqrtRatioLower + 1, type(uint128).max - 1));
         sqrtRatioUpper = uint128(bound(sqrtRatioUpper, sqrtPrice + 1, type(uint128).max));
 
@@ -242,7 +243,7 @@ contract ApproximateOptimalSwapAmounts_SwapMath_Fuzz_Test is RebalanceOptimizati
         bool zeroToOne = false;
 
         // And: all prices are in range and within boundaries.
-        sqrtRatioLower = uint128(bound(sqrtRatioLower, TickMath.MIN_SQRT_RATIO, type(uint128).max - 2));
+        sqrtRatioLower = uint128(bound(sqrtRatioLower, TickMath.MIN_SQRT_PRICE, type(uint128).max - 2));
         sqrtPrice = uint128(bound(sqrtPrice, sqrtRatioLower + 1, type(uint128).max - 1));
         sqrtRatioUpper = uint128(bound(sqrtRatioUpper, sqrtPrice + 1, type(uint128).max));
 

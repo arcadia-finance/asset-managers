@@ -6,7 +6,8 @@ pragma solidity 0.8.22;
 
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { SwapLogic_Fuzz_Test } from "./_SwapLogic.fuzz.t.sol";
-import { SqrtPriceMath } from "../../../../src/rebalancers/libraries/uniswap-v3/SqrtPriceMath.sol";
+import { SqrtPriceMath } from
+    "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/SqrtPriceMath.sol";
 import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
 
 /**

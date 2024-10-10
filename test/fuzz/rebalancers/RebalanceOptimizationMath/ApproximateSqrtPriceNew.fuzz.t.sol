@@ -5,9 +5,9 @@
 pragma solidity 0.8.22;
 
 import { FixedPoint96 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
-import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
+import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/FullMath.sol";
 import { RebalanceOptimizationMath_Fuzz_Test } from "./_RebalanceOptimizationMath.fuzz.t.sol";
-import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
+import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/TickMath.sol";
 
 /**
  * @notice Fuzz tests for the function "_approximateSqrtPriceNew" of contract "RebalanceOptimizationMath".
@@ -38,7 +38,7 @@ contract ApproximateSqrtPriceNew_SwapMath_Fuzz_Test is RebalanceOptimizationMath
         fee = bound(fee, 0, 1e6 - 1);
 
         // And: sqrtPriceOld is within boundaries.
-        sqrtPriceOld = uint160(bound(sqrtPriceOld, TickMath.MIN_SQRT_RATIO, TickMath.MIN_SQRT_RATIO));
+        sqrtPriceOld = uint160(bound(sqrtPriceOld, TickMath.MIN_SQRT_PRICE, TickMath.MIN_SQRT_PRICE));
 
         // And: amountIn without slippage would not result in an amountOut that would overflow.
         amountIn = uint128(
@@ -86,7 +86,7 @@ contract ApproximateSqrtPriceNew_SwapMath_Fuzz_Test is RebalanceOptimizationMath
         fee = bound(fee, 0, 1e6 - 1);
 
         // And: sqrtPriceOld is within boundaries.
-        sqrtPriceOld = uint160(bound(sqrtPriceOld, TickMath.MIN_SQRT_RATIO, TickMath.MIN_SQRT_RATIO));
+        sqrtPriceOld = uint160(bound(sqrtPriceOld, TickMath.MIN_SQRT_PRICE, TickMath.MIN_SQRT_PRICE));
 
         // And: amountOut without slippage would not result in an amountIn that would overflow.
         amountOut = uint128(

@@ -5,7 +5,7 @@
 pragma solidity 0.8.22;
 
 import { RebalanceOptimizationMath_Fuzz_Test } from "./_RebalanceOptimizationMath.fuzz.t.sol";
-import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
+import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/TickMath.sol";
 
 /**
  * @notice Fuzz tests for the function "_getSwapParamsExact" of contract "RebalanceOptimizationMath".
@@ -35,10 +35,10 @@ contract GetSwapParamsExact_SwapMath_Fuzz_Test is RebalanceOptimizationMath_Fuzz
         fee = bound(fee, 0, 1e6 - 1);
 
         // And: sqrtPriceOld is within boundaries.
-        sqrtPriceOld = uint160(bound(sqrtPriceOld, TickMath.MIN_SQRT_RATIO, TickMath.MIN_SQRT_RATIO));
+        sqrtPriceOld = uint160(bound(sqrtPriceOld, TickMath.MIN_SQRT_PRICE, TickMath.MIN_SQRT_PRICE));
 
         // And: sqrtPriceNew is smaller or equal than sqrtPriceOld (zeroToOne).
-        sqrtPriceNew = uint160(bound(sqrtPriceNew, TickMath.MIN_SQRT_RATIO, sqrtPriceOld));
+        sqrtPriceNew = uint160(bound(sqrtPriceNew, TickMath.MIN_SQRT_PRICE, sqrtPriceOld));
 
         // When: calling _getSwapParamsExact().
         // Then: it does not revert.
@@ -58,10 +58,10 @@ contract GetSwapParamsExact_SwapMath_Fuzz_Test is RebalanceOptimizationMath_Fuzz
         fee = bound(fee, 0, 1e6 - 1);
 
         // And: sqrtPriceOld is within boundaries.
-        sqrtPriceOld = uint160(bound(sqrtPriceOld, TickMath.MIN_SQRT_RATIO, TickMath.MIN_SQRT_RATIO));
+        sqrtPriceOld = uint160(bound(sqrtPriceOld, TickMath.MIN_SQRT_PRICE, TickMath.MIN_SQRT_PRICE));
 
         // And: sqrtPriceNew is bigger or equal than sqrtPriceOld (oneToZero).
-        sqrtPriceNew = uint160(bound(sqrtPriceNew, sqrtPriceOld, TickMath.MIN_SQRT_RATIO));
+        sqrtPriceNew = uint160(bound(sqrtPriceNew, sqrtPriceOld, TickMath.MIN_SQRT_PRICE));
 
         // When: calling _getSwapParamsExact().
         // Then: it does not revert.

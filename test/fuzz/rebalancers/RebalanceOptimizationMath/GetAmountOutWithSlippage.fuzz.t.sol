@@ -6,7 +6,7 @@ pragma solidity 0.8.22;
 
 import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { FixedPoint96 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
-import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
+import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/FullMath.sol";
 import { IQuoterV2 } from
     "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/IQuoterV2.sol";
 import { IUniswapV3PoolExtension } from
@@ -17,7 +17,7 @@ import { QuoterV2Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures
 import { RebalanceLogicExtension } from "../../../utils/extensions/RebalanceLogicExtension.sol";
 import { StdStorage, stdStorage } from "../../../../lib/accounts-v2/lib/forge-std/src/Test.sol";
 import { RebalanceOptimizationMath_Fuzz_Test } from "./_RebalanceOptimizationMath.fuzz.t.sol";
-import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
+import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/TickMath.sol";
 import { UniswapV3Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";
 import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
 
@@ -81,8 +81,8 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is
         uint256 amountIn;
         uint256 amountOut;
         {
-            uint160 sqrtRatioLower = TickMath.getSqrtRatioAtTick(tickLower);
-            uint160 sqrtRatioUpper = TickMath.getSqrtRatioAtTick(tickUpper);
+            uint160 sqrtRatioLower = TickMath.getSqrtPriceAtTick(tickLower);
+            uint160 sqrtRatioUpper = TickMath.getSqrtPriceAtTick(tickUpper);
             sqrtPriceOld = uint160(bound(sqrtPriceOld, sqrtRatioLower + 1, sqrtRatioUpper - 1));
 
             // And: Spot value of the tokens is smaller than type(uint120).max for values denominated in both assets.
@@ -179,8 +179,8 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is
                 zeroToOne, POOL_FEE, usableLiquidity, sqrtPriceOld, amountIn, amountOut
             );
             vm.assume(
-                TickMath.getSqrtRatioAtTick(tickLower) < sqrtPriceNew * 99_999 / 100_000
-                    && sqrtPriceNew * 100_001 / 100_000 < TickMath.getSqrtRatioAtTick(tickUpper)
+                TickMath.getSqrtPriceAtTick(tickLower) < sqrtPriceNew * 99_999 / 100_000
+                    && sqrtPriceNew * 100_001 / 100_000 < TickMath.getSqrtPriceAtTick(tickUpper)
             );
         }
 
@@ -191,8 +191,8 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is
             POOL_FEE,
             usableLiquidity,
             sqrtPriceOld,
-            TickMath.getSqrtRatioAtTick(tickLower),
-            TickMath.getSqrtRatioAtTick(tickUpper),
+            TickMath.getSqrtPriceAtTick(tickLower),
+            TickMath.getSqrtPriceAtTick(tickUpper),
             amount0,
             amount1,
             amountIn,
@@ -202,8 +202,8 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is
         // And:Liquidity added with swap params calculated with slippage,
         // is bigger than or equal to the liquidity added with swap params calculated without slippage.
         (uint256 liquidityWithSlippage, uint256 amountInWithSlippage) = getLiquidityAfterSwap(
-            TickMath.getSqrtRatioAtTick(tickLower),
-            TickMath.getSqrtRatioAtTick(tickUpper),
+            TickMath.getSqrtPriceAtTick(tickLower),
+            TickMath.getSqrtPriceAtTick(tickUpper),
             amount0,
             amount1,
             zeroToOne,
@@ -212,8 +212,8 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is
         );
 
         (uint256 liquidityWithoutSlippage, uint256 amountInWithoutSlippage) = getLiquidityAfterSwap(
-            TickMath.getSqrtRatioAtTick(tickLower),
-            TickMath.getSqrtRatioAtTick(tickUpper),
+            TickMath.getSqrtPriceAtTick(tickLower),
+            TickMath.getSqrtPriceAtTick(tickUpper),
             amount0,
             amount1,
             zeroToOne,
