@@ -27,7 +27,8 @@ contract SetInitiatorInfo_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         address initiator,
         address account_,
         uint256 tolerance,
-        uint256 fee
+        uint256 fee,
+        uint256 minLiquidityRatio
     ) public {
         // Given: A rebalance is ongoing.
         vm.assume(account_ != address(0));
@@ -37,17 +38,18 @@ contract SetInitiatorInfo_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         // Then: it should revert
         vm.prank(initiator);
         vm.expectRevert(Rebalancer.Reentered.selector);
-        rebalancer.setInitiatorInfo(tolerance, fee);
+        rebalancer.setInitiatorInfo(tolerance, fee, minLiquidityRatio);
     }
 
-    function testFuzz_Revert_setInitiatorInfo_NotInitialised_MaxInitiatorFee(
+    function testFuzz_Revert_setInitiatorInfo_NotInitialised_InvalidFee(
         address initiator,
         uint256 tolerance,
-        uint256 fee
+        uint256 fee,
+        uint256 minLiquidityRatio
     ) public {
         // Given: Initiator is not initialised.
-        (,,, bool initialized) = rebalancer.initiatorInfo(initiator);
-        vm.assume(!initialized);
+        (,,, uint256 minLiquidityRatio__) = rebalancer.initiatorInfo(initiator);
+        vm.assume(minLiquidityRatio__ == 0);
 
         // And: upperSqrtPriceDeviation does not overflow.
         tolerance = bound(tolerance, 0, type(uint88).max);
@@ -58,18 +60,19 @@ contract SetInitiatorInfo_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         // When: calling rebalance
         // Then: it should revert
         vm.prank(initiator);
-        vm.expectRevert(Rebalancer.MaxInitiatorFee.selector);
-        rebalancer.setInitiatorInfo(tolerance, fee);
+        vm.expectRevert(Rebalancer.InvalidValue.selector);
+        rebalancer.setInitiatorInfo(tolerance, fee, minLiquidityRatio);
     }
 
-    function testFuzz_Revert_setInitiatorInfo_NotInitialised_MaxTolerance(
+    function testFuzz_Revert_setInitiatorInfo_NotInitialised_InvalidTolerance(
         address initiator,
         uint256 tolerance,
-        uint256 fee
+        uint256 fee,
+        uint256 minLiquidityRatio
     ) public {
         // Given: Initiator is not initialised.
-        (,,, bool initialized) = rebalancer.initiatorInfo(initiator);
-        vm.assume(!initialized);
+        (,,, uint256 minLiquidityRatio__) = rebalancer.initiatorInfo(initiator);
+        vm.assume(minLiquidityRatio__ == 0);
 
         // And: fee is < Max Initiator Fee.
         fee = bound(fee, 0, rebalancer.MAX_INITIATOR_FEE());
@@ -80,22 +83,77 @@ contract SetInitiatorInfo_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         // When: calling rebalance
         // Then: it should revert
         vm.prank(initiator);
-        vm.expectRevert(Rebalancer.MaxTolerance.selector);
-        rebalancer.setInitiatorInfo(tolerance, fee);
+        vm.expectRevert(Rebalancer.InvalidValue.selector);
+        rebalancer.setInitiatorInfo(tolerance, fee, minLiquidityRatio);
     }
 
-    function testFuzz_Revert_setInitiatorInfo_Initialised_DecreaseFeeOnly(
+    function testFuzz_Revert_setInitiatorInfo_NotInitialised_InvalidMinLiquidityRatio_TooBig(
+        address initiator,
+        uint256 tolerance,
+        uint256 fee,
+        uint256 minLiquidityRatio
+    ) public {
+        // Given: Initiator is not initialised.
+        (,,, uint256 minLiquidityRatio__) = rebalancer.initiatorInfo(initiator);
+        vm.assume(minLiquidityRatio__ == 0);
+
+        // And: fee is < Max Initiator Fee.
+        fee = bound(fee, 0, rebalancer.MAX_INITIATOR_FEE());
+
+        // And: Tolerance is < maximum tolerance.
+        tolerance = bound(tolerance, 0, rebalancer.MAX_TOLERANCE());
+
+        // And: Min Liquidity Ratio is > 1e18.
+        minLiquidityRatio = bound(minLiquidityRatio, 1e18 + 1, type(uint88).max);
+
+        // When: calling rebalance
+        // Then: it should revert
+        vm.prank(initiator);
+        vm.expectRevert(Rebalancer.InvalidValue.selector);
+        rebalancer.setInitiatorInfo(tolerance, fee, minLiquidityRatio);
+    }
+
+    function testFuzz_Revert_setInitiatorInfo_NotInitialised_InvalidMinLiquidityRatio_TooSmall(
+        address initiator,
+        uint256 tolerance,
+        uint256 fee,
+        uint256 minLiquidityRatio
+    ) public {
+        // Given: Initiator is not initialised.
+        (,,, uint256 minLiquidityRatio__) = rebalancer.initiatorInfo(initiator);
+        vm.assume(minLiquidityRatio__ == 0);
+
+        // And: fee is < Max Initiator Fee.
+        fee = bound(fee, 0, rebalancer.MAX_INITIATOR_FEE());
+
+        // And: Tolerance is < maximum tolerance.
+        tolerance = bound(tolerance, 0, rebalancer.MAX_TOLERANCE());
+
+        // And: Min Liquidity Ratio is < minimum liquidity ratio.
+        minLiquidityRatio = bound(minLiquidityRatio, 0, rebalancer.MIN_LIQUIDITY_RATIO() - 1);
+
+        // When: calling rebalance
+        // Then: it should revert
+        vm.prank(initiator);
+        vm.expectRevert(Rebalancer.InvalidValue.selector);
+        rebalancer.setInitiatorInfo(tolerance, fee, minLiquidityRatio);
+    }
+
+    function testFuzz_Revert_setInitiatorInfo_Initialised_InvalidFee(
         address initiator,
         uint256 initTolerance,
         uint256 initFee,
+        uint256 initMinLiquidityRatio,
         uint256 newTolerance,
-        uint256 newFee
+        uint256 newFee,
+        uint256 newMinLiquidityRatio
     ) public {
         // Given: Initiator is initialised.
         initFee = bound(initFee, 0, rebalancer.MAX_INITIATOR_FEE());
         initTolerance = bound(initTolerance, 0, rebalancer.MAX_TOLERANCE());
+        initMinLiquidityRatio = bound(initMinLiquidityRatio, rebalancer.MIN_LIQUIDITY_RATIO(), 1e18);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(initTolerance, initFee);
+        rebalancer.setInitiatorInfo(initTolerance, initFee, initMinLiquidityRatio);
 
         // And: New upperSqrtPriceDeviation does not overflow.
         newTolerance = bound(newTolerance, 0, type(uint88).max);
@@ -105,23 +163,26 @@ contract SetInitiatorInfo_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
 
         // When: Initiator updates the fee to a higher value.
         // Then: It should revert.
-        vm.expectRevert(Rebalancer.DecreaseFeeOnly.selector);
+        vm.expectRevert(Rebalancer.InvalidValue.selector);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(newTolerance, newFee);
+        rebalancer.setInitiatorInfo(newTolerance, newFee, newMinLiquidityRatio);
     }
 
-    function testFuzz_Revert_setInitiatorInfo_Initialised_DecreaseToleranceOnly(
+    function testFuzz_Revert_setInitiatorInfo_Initialised_InvalidTolerance(
         address initiator,
         uint256 initTolerance,
         uint256 initFee,
+        uint256 initMinLiquidityRatio,
         uint256 newTolerance,
-        uint256 newFee
+        uint256 newFee,
+        uint256 newMinLiquidityRatio
     ) public {
         // Given: Initiator is initialised.
         initFee = bound(initFee, 0, rebalancer.MAX_INITIATOR_FEE());
         initTolerance = bound(initTolerance, 0, rebalancer.MAX_TOLERANCE());
+        initMinLiquidityRatio = bound(initMinLiquidityRatio, rebalancer.MIN_LIQUIDITY_RATIO(), 1e18);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(initTolerance, initFee);
+        rebalancer.setInitiatorInfo(initTolerance, initFee, initMinLiquidityRatio);
 
         // And: New Fee is < initial fee.
         newFee = bound(newFee, 0, initFee);
@@ -134,51 +195,26 @@ contract SetInitiatorInfo_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
 
         // When : Initiator updates the fee to a higher value
         // Then : It should revert
-        vm.expectRevert(Rebalancer.DecreaseToleranceOnly.selector);
+        vm.expectRevert(Rebalancer.InvalidValue.selector);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(newTolerance, 0);
+        rebalancer.setInitiatorInfo(newTolerance, newFee, newMinLiquidityRatio);
     }
 
-    function testFuzz_Success_setInitiatorInfo_NotInitialised(address initiator, uint256 tolerance, uint256 fee)
-        public
-    {
-        // Given: Initiator is not initialised.
-        (,,, bool initialized) = rebalancer.initiatorInfo(initiator);
-        vm.assume(!initialized);
-
-        // And: fee is < Max Initiator Fee.
-        fee = bound(fee, 0, rebalancer.MAX_INITIATOR_FEE());
-
-        // And: tolerance is < maximum tolerance.
-        tolerance = bound(tolerance, 0, rebalancer.MAX_TOLERANCE());
-
-        // When: Initiator sets a tolerance and fee.
-        vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, fee);
-
-        // Then: Values should be set and correct.
-        uint256 upperSqrtPriceDeviation_ = FixedPointMathLib.sqrt((1e18 + tolerance) * 1e18);
-        uint256 lowerSqrtPriceDeviation_ = FixedPointMathLib.sqrt((1e18 - tolerance) * 1e18);
-        (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation, uint256 fee_, bool initialized_) =
-            rebalancer.initiatorInfo(initiator);
-        assertEq(upperSqrtPriceDeviation, upperSqrtPriceDeviation_);
-        assertEq(lowerSqrtPriceDeviation, lowerSqrtPriceDeviation_);
-        assertEq(fee, fee_);
-        assertTrue(initialized_);
-    }
-
-    function testFuzz_Success_setInitiatorInfo_Initialised(
+    function testFuzz_Revert_setInitiatorInfo_Initialised_InvalidMinLiquidityRatio_TooBig(
         address initiator,
         uint256 initTolerance,
         uint256 initFee,
+        uint256 initMinLiquidityRatio,
         uint256 newTolerance,
-        uint256 newFee
+        uint256 newFee,
+        uint256 newMinLiquidityRatio
     ) public {
         // Given: Initiator is initialised.
         initFee = bound(initFee, 0, rebalancer.MAX_INITIATOR_FEE());
         initTolerance = bound(initTolerance, 0, rebalancer.MAX_TOLERANCE());
+        initMinLiquidityRatio = bound(initMinLiquidityRatio, rebalancer.MIN_LIQUIDITY_RATIO(), 1e18);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(initTolerance, initFee);
+        rebalancer.setInitiatorInfo(initTolerance, initFee, initMinLiquidityRatio);
 
         // And: New Fee is < initial fee.
         newFee = bound(newFee, 0, initFee);
@@ -186,18 +222,119 @@ contract SetInitiatorInfo_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         // And: New tolerance is < initial tolerance.
         newTolerance = bound(newTolerance, 0, initTolerance);
 
+        // And: New newMinLiquidityRatio > 1e18.
+        newMinLiquidityRatio = bound(newMinLiquidityRatio, 1e18 + 1, type(uint88).max);
+
+        // When : Initiator updates the fee to a higher value
+        // Then : It should revert
+        vm.expectRevert(Rebalancer.InvalidValue.selector);
+        vm.prank(initiator);
+        rebalancer.setInitiatorInfo(newTolerance, newFee, newMinLiquidityRatio);
+    }
+
+    function testFuzz_Revert_setInitiatorInfo_Initialised_InvalidMinLiquidityRatio_TooSmall(
+        address initiator,
+        uint256 initTolerance,
+        uint256 initFee,
+        uint256 initMinLiquidityRatio,
+        uint256 newTolerance,
+        uint256 newFee,
+        uint256 newMinLiquidityRatio
+    ) public {
+        // Given: Initiator is initialised.
+        initFee = bound(initFee, 0, rebalancer.MAX_INITIATOR_FEE());
+        initTolerance = bound(initTolerance, 0, rebalancer.MAX_TOLERANCE());
+        initMinLiquidityRatio = bound(initMinLiquidityRatio, rebalancer.MIN_LIQUIDITY_RATIO(), 1e18);
+        vm.prank(initiator);
+        rebalancer.setInitiatorInfo(initTolerance, initFee, initMinLiquidityRatio);
+
+        // And: New Fee is < initial fee.
+        newFee = bound(newFee, 0, initFee);
+
+        // And: New tolerance is < initial tolerance.
+        newTolerance = bound(newTolerance, 0, initTolerance);
+
+        // And: New newMinLiquidityRatio <  initial minLiquidityRatio.
+        newMinLiquidityRatio = bound(newMinLiquidityRatio, 0, initMinLiquidityRatio - 1);
+
+        // When : Initiator updates the fee to a higher value
+        // Then : It should revert
+        vm.expectRevert(Rebalancer.InvalidValue.selector);
+        vm.prank(initiator);
+        rebalancer.setInitiatorInfo(newTolerance, newFee, newMinLiquidityRatio);
+    }
+
+    function testFuzz_Success_setInitiatorInfo_NotInitialised(
+        address initiator,
+        uint256 tolerance,
+        uint256 fee,
+        uint256 minLiquidityRatio
+    ) public {
+        // Given: Initiator is not initialised.
+        (,,, uint256 minLiquidityRatio__) = rebalancer.initiatorInfo(initiator);
+        vm.assume(minLiquidityRatio__ == 0);
+
+        // And: fee is < Max Initiator Fee.
+        fee = bound(fee, 0, rebalancer.MAX_INITIATOR_FEE());
+
+        // And: tolerance is < maximum tolerance.
+        tolerance = bound(tolerance, 0, rebalancer.MAX_TOLERANCE());
+
+        // And: Min Liquidity Ratio is within boundaries.
+        minLiquidityRatio = bound(minLiquidityRatio, rebalancer.MIN_LIQUIDITY_RATIO(), 1e18);
+
         // When: Initiator sets a tolerance and fee.
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(newTolerance, newFee);
+        rebalancer.setInitiatorInfo(tolerance, fee, minLiquidityRatio);
+
+        // Then: Values should be set and correct.
+        uint256 upperSqrtPriceDeviation_ = FixedPointMathLib.sqrt((1e18 + tolerance) * 1e18);
+        uint256 lowerSqrtPriceDeviation_ = FixedPointMathLib.sqrt((1e18 - tolerance) * 1e18);
+        (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation, uint256 fee_, uint256 minLiquidityRatio_) =
+            rebalancer.initiatorInfo(initiator);
+        assertEq(upperSqrtPriceDeviation, upperSqrtPriceDeviation_);
+        assertEq(lowerSqrtPriceDeviation, lowerSqrtPriceDeviation_);
+        assertEq(fee, fee_);
+        assertEq(minLiquidityRatio, minLiquidityRatio_);
+    }
+
+    function testFuzz_Success_setInitiatorInfo_Initialised(
+        address initiator,
+        uint256 initTolerance,
+        uint256 initFee,
+        uint256 initMinLiquidityRatio,
+        uint256 newTolerance,
+        uint256 newFee,
+        uint256 newMinLiquidityRatio
+    ) public {
+        // Given: Initiator is initialised.
+        initFee = bound(initFee, 0, rebalancer.MAX_INITIATOR_FEE());
+        initTolerance = bound(initTolerance, 0, rebalancer.MAX_TOLERANCE());
+        initMinLiquidityRatio = bound(initMinLiquidityRatio, rebalancer.MIN_LIQUIDITY_RATIO(), 1e18);
+        vm.prank(initiator);
+        rebalancer.setInitiatorInfo(initTolerance, initFee, initMinLiquidityRatio);
+
+        // And: New Fee is < initial fee.
+        newFee = bound(newFee, 0, initFee);
+
+        // And: New tolerance is < initial tolerance.
+        newTolerance = bound(newTolerance, 0, initTolerance);
+
+        // And: New Min Liquidity Ratio is within boundaries.
+        newMinLiquidityRatio = bound(newMinLiquidityRatio, initMinLiquidityRatio, 1e18);
+
+        // When: Initiator sets a tolerance and fee.
+        vm.prank(initiator);
+        rebalancer.setInitiatorInfo(newTolerance, newFee, newMinLiquidityRatio);
 
         // Then: Values should be set and correct.
         uint256 upperSqrtPriceDeviation_ = FixedPointMathLib.sqrt((1e18 + newTolerance) * 1e18);
         uint256 lowerSqrtPriceDeviation_ = FixedPointMathLib.sqrt((1e18 - newTolerance) * 1e18);
-        (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation, uint256 fee, bool initialized) =
+        (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation, uint256 fee, uint256 minLiquidityRatio_) =
             rebalancer.initiatorInfo(initiator);
         assertEq(upperSqrtPriceDeviation, upperSqrtPriceDeviation_);
         assertEq(lowerSqrtPriceDeviation, lowerSqrtPriceDeviation_);
         assertEq(newFee, fee);
-        assertTrue(initialized);
+        assertEq(newMinLiquidityRatio, minLiquidityRatio_);
     }
 }

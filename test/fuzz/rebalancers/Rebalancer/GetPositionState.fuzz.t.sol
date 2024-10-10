@@ -65,7 +65,7 @@ contract GetPositionState_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         // And: The initiator is initiated.
         vm.prank(initiator);
         tolerance = bound(tolerance, 0, MAX_TOLERANCE);
-        rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE);
+        rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
 
         // When: Calling getPositionState().
         Rebalancer.PositionState memory position_ =
@@ -126,7 +126,7 @@ contract GetPositionState_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         // And: The initiator is initiated.
         vm.prank(initiator);
         tolerance = bound(tolerance, 0, MAX_TOLERANCE);
-        rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE);
+        rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
 
         // When: Calling getPositionState().
         Rebalancer.PositionState memory position_ =
@@ -207,7 +207,7 @@ contract GetPositionState_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
             // And: The initiator is initiated.
             vm.prank(initiator);
             tolerance = bound(tolerance, 0, MAX_TOLERANCE);
-            rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE);
+            rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
 
             // When: Calling getPositionState().
             position_ =
@@ -288,7 +288,7 @@ contract GetPositionState_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
             // And: The initiator is initiated.
             vm.prank(initiator);
             tolerance = bound(tolerance, 0, MAX_TOLERANCE);
-            rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE);
+            rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
 
             // When: Calling getPositionState().
             position_ = rebalancer.getPositionState(positionManager, id, tickLower, tickUpper, initiator);

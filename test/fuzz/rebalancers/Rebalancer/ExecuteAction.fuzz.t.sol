@@ -95,7 +95,7 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         // And: The initiator is initiated.
         vm.prank(initiator);
         tolerance = bound(tolerance, 0, MAX_TOLERANCE);
-        rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE);
+        rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
 
         // And: The pool is unbalanced.
         uint256 lowerBoundSqrtPriceX96;
@@ -167,7 +167,7 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         // And: The initiator is initiated.
         vm.prank(initiator);
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
-        rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE);
+        rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
 
         // And: The pool is unbalanced.
         uint256 lowerBoundSqrtPriceX96;
@@ -248,7 +248,7 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
         fee = bound(fee, 0, MAX_INITIATOR_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, fee);
+        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
 
         // And: Caller is the account.
         rebalancer.setAccount(account_);
@@ -318,7 +318,7 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
         fee = bound(fee, 0, MAX_INITIATOR_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, fee);
+        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
 
         // And: Caller is the account.
         rebalancer.setAccount(account_);
@@ -430,7 +430,7 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
         fee = bound(fee, 0, MAX_INITIATOR_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, fee);
+        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
 
         // And: Caller is the account.
         rebalancer.setAccount(account_);
@@ -534,7 +534,7 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
         fee = bound(fee, 0, MAX_INITIATOR_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, fee);
+        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
 
         // And: Caller is the account.
         rebalancer.setAccount(account_);
@@ -653,7 +653,7 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
         fee = bound(fee, 0, MAX_INITIATOR_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, fee);
+        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
 
         // And: Caller is the account.
         rebalancer.setAccount(account_);
@@ -777,7 +777,7 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
         fee = bound(fee, 0, MAX_INITIATOR_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, fee);
+        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
 
         // And: Caller is the account.
         rebalancer.setAccount(account_);
