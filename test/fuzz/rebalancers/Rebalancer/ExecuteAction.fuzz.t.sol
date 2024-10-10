@@ -614,9 +614,9 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         // And: A valid position with multiple tickSpacing.
         // And: Position is in range (has both tokens).
         int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(position.sqrtPriceX96));
-        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, tickCurrent - 11));
+        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, tickCurrent - 100));
         position.tickLower = position.tickLower / TICK_SPACING * TICK_SPACING;
-        position.tickUpper = int24(bound(position.tickUpper, tickCurrent + 10, BOUND_TICK_UPPER));
+        position.tickUpper = int24(bound(position.tickUpper, tickCurrent + 100, BOUND_TICK_UPPER));
         position.tickUpper = position.tickUpper / TICK_SPACING * TICK_SPACING;
         position.liquidity = uint128(bound(position.liquidity, 1e6, 1e10));
         (uint256 id,,) = addLiquidityCL(
@@ -738,9 +738,9 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         // And: A valid position with multiple tickSpacing.
         // And: Position is in range (has both tokens).
         int24 tickCurrent = TickMath.getTickAtSqrtRatio(uint160(position.sqrtPriceX96));
-        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, tickCurrent - 11));
+        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, tickCurrent - 100));
         position.tickLower = position.tickLower / TICK_SPACING * TICK_SPACING;
-        position.tickUpper = int24(bound(position.tickUpper, tickCurrent + 10, BOUND_TICK_UPPER));
+        position.tickUpper = int24(bound(position.tickUpper, tickCurrent + 100, BOUND_TICK_UPPER));
         position.tickUpper = position.tickUpper / TICK_SPACING * TICK_SPACING;
         position.liquidity = uint128(bound(position.liquidity, 1e6, 1e10));
         (uint256 id,,) = addLiquidityCL(
