@@ -377,7 +377,7 @@ contract Rebalancer is IActionBase {
         if (tickLower == tickUpper) {
             // Round current tick down to a tick that is a multiple of the tick spacing (can be initialised).
             // We do not handle the edge cases where the new ticks might exceed MIN_TICK or MAX_TICK.
-            // This will result in a revert during the mint, if ever needed a different rebalancer has to be deployed
+            // This will result in a revert during the mint, if ever needed a different rebalancer has to be deployed.
             tickCurrent = tickCurrent / position.tickSpacing * position.tickSpacing;
             // For tick ranges that are an even multiple of the tick spacing, we use a symmetric spacing around the current tick.
             // For uneven multiples, the smaller part is below the current tick.
