@@ -6,7 +6,7 @@ pragma solidity 0.8.22;
 
 import { Rebalancer_Fuzz_Test } from "./_Rebalancer.fuzz.t.sol";
 
-import { Rebalancer } from "../../../../src/rebalancers/slipstream/Rebalancer.sol";
+import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 
 /**
  * @notice Fuzz tests for the function "receive" of contract "Rebalancer".
