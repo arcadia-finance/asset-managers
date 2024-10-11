@@ -110,6 +110,7 @@ contract Rebalancer is IActionBase {
     error OnlyAccount();
     error OnlyAccountOwner();
     error OnlyPool();
+    error OnlyPositionManager();
     error Reentered();
     error UnbalancedPool();
 
@@ -497,6 +498,7 @@ contract Rebalancer is IActionBase {
      * @notice Receives native ether.
      * @dev Required since the Slipstream Non Fungible Position Manager sends full ether balance to caller
      * on an increaseLiquidity.
+     * @dev Funds received can not be reclaimed, the receive only serves as a protection against griefing attacks.
      */
     receive() external payable {
         if (msg.sender != address(SlipstreamLogic.POSITION_MANAGER)) revert OnlyPositionManager();
