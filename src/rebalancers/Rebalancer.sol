@@ -436,7 +436,7 @@ contract Rebalancer is IActionBase {
      * @notice Sets the information requested for an initiator.
      * @param tolerance The maximum deviation of the actual pool price,
      * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
-     * @param fee The fee paid to to the initiator, with 18 decimals precision.
+     * @param fee The fee paid to the initiator, with 18 decimals precision.
      * @param minLiquidityRatio The ratio of the minimum amount of liquidity that must be minted,
      * relative to the hypothetical amount of liquidity when we rebalance without slippage, with 18 decimals precision.
      * @dev The tolerance for the pool price will be converted to an upper and lower max sqrtPrice deviation,
