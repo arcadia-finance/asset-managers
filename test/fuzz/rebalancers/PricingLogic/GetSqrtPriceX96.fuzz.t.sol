@@ -6,7 +6,7 @@ pragma solidity 0.8.22;
 
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { PricingLogic_Fuzz_Test } from "./_PricingLogic.fuzz.t.sol";
-import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
+import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/TickMath.sol";
 
 /**
  * @notice Fuzz tests for the function "_getSqrtPriceX96" of contract "PricingLogic".
@@ -27,7 +27,7 @@ contract GetSqrtPriceX96_PricingLogic_Fuzz_Test is PricingLogic_Fuzz_Test {
         // Test-case.
         uint256 priceToken1 = 0;
 
-        uint256 expectedSqrtPriceX96 = TickMath.MAX_SQRT_RATIO;
+        uint256 expectedSqrtPriceX96 = TickMath.MAX_SQRT_PRICE;
         uint256 actualSqrtPriceX96 = pricingLogic.getSqrtPriceX96(priceToken0, priceToken1);
 
         assertEq(actualSqrtPriceX96, expectedSqrtPriceX96);

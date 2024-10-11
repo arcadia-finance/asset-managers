@@ -8,7 +8,7 @@ import { BurnLogic_Fuzz_Test } from "./_BurnLogic.fuzz.t.sol";
 import { ERC20, ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { FixedPoint128 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint128.sol";
-import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
+import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/FullMath.sol";
 import { ICLGauge } from "../../../../lib/accounts-v2/src/asset-modules/Slipstream/interfaces/ICLGauge.sol";
 import { ICLPoolExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/extensions/interfaces/ICLPoolExtension.sol";
@@ -21,7 +21,7 @@ import { RegistryMock } from "../../../utils/mocks/RegistryMock.sol";
 import { SlipstreamFixture } from "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/Slipstream.f.sol";
 import { StakedSlipstreamAM } from "../../../../lib/accounts-v2/src/asset-modules/Slipstream/StakedSlipstreamAM.sol";
 import { StdStorage, stdStorage } from "../../../../lib/accounts-v2/lib/forge-std/src/Test.sol";
-import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
+import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/TickMath.sol";
 import { UniswapV3Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";
 import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
 
@@ -57,7 +57,7 @@ contract Burn_BurnLogic_Fuzz_Test is BurnLogic_Fuzz_Test, UniswapV3Fixture, Slip
         position.tickLower = int24(bound(position.tickLower, TickMath.MIN_TICK, TickMath.MAX_TICK - 1));
         position.tickUpper = int24(bound(position.tickUpper, position.tickLower + 1, TickMath.MAX_TICK));
         position.sqrtPriceX96 =
-            uint160(bound(position.sqrtPriceX96, TickMath.MIN_SQRT_RATIO, TickMath.MAX_SQRT_RATIO - 1));
+            uint160(bound(position.sqrtPriceX96, TickMath.MIN_SQRT_PRICE, TickMath.MAX_SQRT_PRICE - 1));
         position.liquidity = uint128(bound(position.liquidity, 1, UniswapHelpers.maxLiquidity(1)));
 
         // And: Position is owned by the contract.
@@ -107,7 +107,7 @@ contract Burn_BurnLogic_Fuzz_Test is BurnLogic_Fuzz_Test, UniswapV3Fixture, Slip
         position.tickLower = int24(bound(position.tickLower, TickMath.MIN_TICK, TickMath.MAX_TICK - 1));
         position.tickUpper = int24(bound(position.tickUpper, position.tickLower + 1, TickMath.MAX_TICK));
         position.sqrtPriceX96 =
-            uint160(bound(position.sqrtPriceX96, TickMath.MIN_SQRT_RATIO, TickMath.MAX_SQRT_RATIO - 1));
+            uint160(bound(position.sqrtPriceX96, TickMath.MIN_SQRT_PRICE, TickMath.MAX_SQRT_PRICE - 1));
         position.liquidity = uint128(bound(position.liquidity, 1, UniswapHelpers.maxLiquidity(1)));
 
         // And: Position is owned by the contract.
@@ -161,7 +161,7 @@ contract Burn_BurnLogic_Fuzz_Test is BurnLogic_Fuzz_Test, UniswapV3Fixture, Slip
         position.tickLower = int24(bound(position.tickLower, TickMath.MIN_TICK, TickMath.MAX_TICK - 1));
         position.tickUpper = int24(bound(position.tickUpper, position.tickLower + 1, TickMath.MAX_TICK));
         position.sqrtPriceX96 =
-            uint160(bound(position.sqrtPriceX96, TickMath.MIN_SQRT_RATIO, TickMath.MAX_SQRT_RATIO - 1));
+            uint160(bound(position.sqrtPriceX96, TickMath.MIN_SQRT_PRICE, TickMath.MAX_SQRT_PRICE - 1));
         position.liquidity = uint128(bound(position.liquidity, 1, UniswapHelpers.maxLiquidity(1)));
 
         // And: Position is owned by the contract.
@@ -238,8 +238,8 @@ contract Burn_BurnLogic_Fuzz_Test is BurnLogic_Fuzz_Test, UniswapV3Fixture, Slip
         assertApproxEqAbs(balance1, uint128(amount1), 1e1);
         uint256 rewardsExpected;
         if (
-            TickMath.getSqrtRatioAtTick(position.tickLower) < position.sqrtPriceX96
-                && position.sqrtPriceX96 < TickMath.getSqrtRatioAtTick(position.tickUpper)
+            TickMath.getSqrtPriceAtTick(position.tickLower) < position.sqrtPriceX96
+                && position.sqrtPriceX96 < TickMath.getSqrtPriceAtTick(position.tickUpper)
         ) {
             uint256 rewardGrowthInsideX128;
             unchecked {
@@ -265,7 +265,7 @@ contract Burn_BurnLogic_Fuzz_Test is BurnLogic_Fuzz_Test, UniswapV3Fixture, Slip
         position.tickLower = int24(bound(position.tickLower, TickMath.MIN_TICK, TickMath.MAX_TICK - 1));
         position.tickUpper = int24(bound(position.tickUpper, position.tickLower + 1, TickMath.MAX_TICK));
         position.sqrtPriceX96 =
-            uint160(bound(position.sqrtPriceX96, TickMath.MIN_SQRT_RATIO, TickMath.MAX_SQRT_RATIO - 1));
+            uint160(bound(position.sqrtPriceX96, TickMath.MIN_SQRT_PRICE, TickMath.MAX_SQRT_PRICE - 1));
         position.liquidity = uint128(bound(position.liquidity, 1, UniswapHelpers.maxLiquidity(1)));
 
         // And: Position is owned by the contract.
@@ -326,8 +326,8 @@ contract Burn_BurnLogic_Fuzz_Test is BurnLogic_Fuzz_Test, UniswapV3Fixture, Slip
         // And: rewards do not overflow balances.
         uint256 rewardsExpected;
         if (
-            TickMath.getSqrtRatioAtTick(position.tickLower) < position.sqrtPriceX96
-                && position.sqrtPriceX96 < TickMath.getSqrtRatioAtTick(position.tickUpper)
+            TickMath.getSqrtPriceAtTick(position.tickLower) < position.sqrtPriceX96
+                && position.sqrtPriceX96 < TickMath.getSqrtPriceAtTick(position.tickUpper)
         ) {
             uint256 rewardGrowthInsideX128;
             unchecked {

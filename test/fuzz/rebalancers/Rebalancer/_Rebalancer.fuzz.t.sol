@@ -9,7 +9,7 @@ import { Base_Test } from "../../../../lib/accounts-v2/test/Base.t.sol";
 import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { FixedPoint128 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint128.sol";
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
+import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/FullMath.sol";
 import { Fuzz_Test } from "../../Fuzz.t.sol";
 import { INonfungiblePositionManagerExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/INonfungiblePositionManagerExtension.sol";
@@ -24,7 +24,7 @@ import { RouterMock } from "../../../utils/mocks/RouterMock.sol";
 import { SwapMath } from "../../../utils/uniswap-v3/SwapMath.sol";
 import { SwapRouter02Fixture } from
     "../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/SwapRouter02Fixture.f.sol";
-import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
+import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/TickMath.sol";
 import { UniswapV3Logic } from "../../../../src/rebalancers/libraries/UniswapV3Logic.sol";
 import { UniswapV3Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";
 import { UniswapV3AMFixture } from
@@ -269,8 +269,8 @@ abstract contract Rebalancer_Fuzz_Test is
             uint256 priceXd28 = priceToken0ScaledForDecimals * 1e28 / priceToken1ScaledForDecimals;
             uint256 sqrtPriceXd14 = FixedPointMathLib.sqrt(priceXd28);
             sqrtPriceX96 = sqrtPriceXd14 * 2 ** 96 / 1e14;
-            vm.assume(sqrtPriceX96 > TickMath.MIN_SQRT_RATIO);
-            vm.assume(sqrtPriceX96 < TickMath.MAX_SQRT_RATIO);
+            vm.assume(sqrtPriceX96 > TickMath.MIN_SQRT_PRICE);
+            vm.assume(sqrtPriceX96 < TickMath.MAX_SQRT_PRICE);
         }
 
         addAssetToArcadia(address(token0), int256(initVars.priceToken0));
@@ -332,8 +332,8 @@ abstract contract Rebalancer_Fuzz_Test is
         (uint160 sqrtPrice,,,,,,) = uniV3Pool.slot0();
         (lpVars.amount0, lpVars.amount1) = LiquidityAmounts.getAmountsForLiquidity(
             sqrtPrice,
-            TickMath.getSqrtRatioAtTick(lpVars.tickLower),
-            TickMath.getSqrtRatioAtTick(lpVars.tickUpper),
+            TickMath.getSqrtPriceAtTick(lpVars.tickLower),
+            TickMath.getSqrtPriceAtTick(lpVars.tickUpper),
             lpVars.liquidity
         );
 

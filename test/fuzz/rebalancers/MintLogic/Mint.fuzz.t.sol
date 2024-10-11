@@ -7,7 +7,7 @@ pragma solidity 0.8.22;
 import { ERC20, ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { FixedPoint128 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint128.sol";
-import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
+import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/FullMath.sol";
 import { ICLGauge } from "../../../../lib/accounts-v2/src/asset-modules/Slipstream/interfaces/ICLGauge.sol";
 import { ICLPoolExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/extensions/interfaces/ICLPoolExtension.sol";
@@ -22,7 +22,7 @@ import { RegistryMock } from "../../../utils/mocks/RegistryMock.sol";
 import { SlipstreamFixture } from "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/Slipstream.f.sol";
 import { StakedSlipstreamAM } from "../../../../lib/accounts-v2/src/asset-modules/Slipstream/StakedSlipstreamAM.sol";
 import { StdStorage, stdStorage } from "../../../../lib/accounts-v2/lib/forge-std/src/Test.sol";
-import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
+import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/TickMath.sol";
 import { UniswapV3Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";
 import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
 
@@ -64,30 +64,30 @@ contract Mint_MintLogic_Fuzz_Test is MintLogic_Fuzz_Test, UniswapV3Fixture, Slip
         position.sqrtPriceX96 = uint160(bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER, BOUND_SQRT_PRICE_UPPER));
 
         // And: Liquidity is not 0, does not overflow and is below max liquidity.
-        if (position.sqrtPriceX96 <= TickMath.getSqrtRatioAtTick(position.tickLower)) {
+        if (position.sqrtPriceX96 <= TickMath.getSqrtPriceAtTick(position.tickLower)) {
             uint256 liquidity0 = LiquidityAmounts.getLiquidityForAmount0(
-                TickMath.getSqrtRatioAtTick(position.tickLower),
-                TickMath.getSqrtRatioAtTick(position.tickUpper),
+                TickMath.getSqrtPriceAtTick(position.tickLower),
+                TickMath.getSqrtPriceAtTick(position.tickUpper),
                 balance0
             );
             vm.assume(liquidity0 > 0);
             vm.assume(liquidity0 < UniswapHelpers.maxLiquidity(1));
-        } else if (position.sqrtPriceX96 <= TickMath.getSqrtRatioAtTick(position.tickUpper)) {
+        } else if (position.sqrtPriceX96 <= TickMath.getSqrtPriceAtTick(position.tickUpper)) {
             uint256 liquidity0 = LiquidityAmounts.getLiquidityForAmount0(
-                uint160(position.sqrtPriceX96), TickMath.getSqrtRatioAtTick(position.tickUpper), balance0
+                uint160(position.sqrtPriceX96), TickMath.getSqrtPriceAtTick(position.tickUpper), balance0
             );
             vm.assume(liquidity0 > 0);
             vm.assume(liquidity0 < type(uint128).max);
             uint256 liquidity1 = LiquidityAmounts.getLiquidityForAmount1(
-                TickMath.getSqrtRatioAtTick(position.tickLower), uint160(position.sqrtPriceX96), balance1
+                TickMath.getSqrtPriceAtTick(position.tickLower), uint160(position.sqrtPriceX96), balance1
             );
             vm.assume(liquidity1 > 0);
             vm.assume(liquidity1 < type(uint128).max);
             vm.assume((liquidity0 < liquidity1 ? liquidity0 : liquidity1) < UniswapHelpers.maxLiquidity(1));
         } else {
             uint256 liquidity1 = LiquidityAmounts.getLiquidityForAmount1(
-                TickMath.getSqrtRatioAtTick(position.tickLower),
-                TickMath.getSqrtRatioAtTick(position.tickUpper),
+                TickMath.getSqrtPriceAtTick(position.tickLower),
+                TickMath.getSqrtPriceAtTick(position.tickUpper),
                 balance1
             );
             vm.assume(liquidity1 > 0);
@@ -139,30 +139,30 @@ contract Mint_MintLogic_Fuzz_Test is MintLogic_Fuzz_Test, UniswapV3Fixture, Slip
         position.sqrtPriceX96 = uint160(bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER, BOUND_SQRT_PRICE_UPPER));
 
         // And: Liquidity is not 0, does not overflow and is below max liquidity.
-        if (position.sqrtPriceX96 <= TickMath.getSqrtRatioAtTick(position.tickLower)) {
+        if (position.sqrtPriceX96 <= TickMath.getSqrtPriceAtTick(position.tickLower)) {
             uint256 liquidity0 = LiquidityAmounts.getLiquidityForAmount0(
-                TickMath.getSqrtRatioAtTick(position.tickLower),
-                TickMath.getSqrtRatioAtTick(position.tickUpper),
+                TickMath.getSqrtPriceAtTick(position.tickLower),
+                TickMath.getSqrtPriceAtTick(position.tickUpper),
                 balance0
             );
             vm.assume(liquidity0 > 0);
             vm.assume(liquidity0 < UniswapHelpers.maxLiquidity(1));
-        } else if (position.sqrtPriceX96 <= TickMath.getSqrtRatioAtTick(position.tickUpper)) {
+        } else if (position.sqrtPriceX96 <= TickMath.getSqrtPriceAtTick(position.tickUpper)) {
             uint256 liquidity0 = LiquidityAmounts.getLiquidityForAmount0(
-                uint160(position.sqrtPriceX96), TickMath.getSqrtRatioAtTick(position.tickUpper), balance0
+                uint160(position.sqrtPriceX96), TickMath.getSqrtPriceAtTick(position.tickUpper), balance0
             );
             vm.assume(liquidity0 > 0);
             vm.assume(liquidity0 < type(uint128).max);
             uint256 liquidity1 = LiquidityAmounts.getLiquidityForAmount1(
-                TickMath.getSqrtRatioAtTick(position.tickLower), uint160(position.sqrtPriceX96), balance1
+                TickMath.getSqrtPriceAtTick(position.tickLower), uint160(position.sqrtPriceX96), balance1
             );
             vm.assume(liquidity1 > 0);
             vm.assume(liquidity1 < type(uint128).max);
             vm.assume((liquidity0 < liquidity1 ? liquidity0 : liquidity1) < UniswapHelpers.maxLiquidity(1));
         } else {
             uint256 liquidity1 = LiquidityAmounts.getLiquidityForAmount1(
-                TickMath.getSqrtRatioAtTick(position.tickLower),
-                TickMath.getSqrtRatioAtTick(position.tickUpper),
+                TickMath.getSqrtPriceAtTick(position.tickLower),
+                TickMath.getSqrtPriceAtTick(position.tickUpper),
                 balance1
             );
             vm.assume(liquidity1 > 0);
@@ -216,30 +216,30 @@ contract Mint_MintLogic_Fuzz_Test is MintLogic_Fuzz_Test, UniswapV3Fixture, Slip
         position.sqrtPriceX96 = uint160(bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER, BOUND_SQRT_PRICE_UPPER));
 
         // And: Liquidity is not 0, does not overflow and is below max liquidity.
-        if (position.sqrtPriceX96 <= TickMath.getSqrtRatioAtTick(position.tickLower)) {
+        if (position.sqrtPriceX96 <= TickMath.getSqrtPriceAtTick(position.tickLower)) {
             uint256 liquidity0 = LiquidityAmounts.getLiquidityForAmount0(
-                TickMath.getSqrtRatioAtTick(position.tickLower),
-                TickMath.getSqrtRatioAtTick(position.tickUpper),
+                TickMath.getSqrtPriceAtTick(position.tickLower),
+                TickMath.getSqrtPriceAtTick(position.tickUpper),
                 balance0
             );
             vm.assume(liquidity0 > 0);
             vm.assume(liquidity0 < UniswapHelpers.maxLiquidity(1));
-        } else if (position.sqrtPriceX96 <= TickMath.getSqrtRatioAtTick(position.tickUpper)) {
+        } else if (position.sqrtPriceX96 <= TickMath.getSqrtPriceAtTick(position.tickUpper)) {
             uint256 liquidity0 = LiquidityAmounts.getLiquidityForAmount0(
-                uint160(position.sqrtPriceX96), TickMath.getSqrtRatioAtTick(position.tickUpper), balance0
+                uint160(position.sqrtPriceX96), TickMath.getSqrtPriceAtTick(position.tickUpper), balance0
             );
             vm.assume(liquidity0 > 0);
             vm.assume(liquidity0 < type(uint128).max);
             uint256 liquidity1 = LiquidityAmounts.getLiquidityForAmount1(
-                TickMath.getSqrtRatioAtTick(position.tickLower), uint160(position.sqrtPriceX96), balance1
+                TickMath.getSqrtPriceAtTick(position.tickLower), uint160(position.sqrtPriceX96), balance1
             );
             vm.assume(liquidity1 > 0);
             vm.assume(liquidity1 < type(uint128).max);
             vm.assume((liquidity0 < liquidity1 ? liquidity0 : liquidity1) < UniswapHelpers.maxLiquidity(1));
         } else {
             uint256 liquidity1 = LiquidityAmounts.getLiquidityForAmount1(
-                TickMath.getSqrtRatioAtTick(position.tickLower),
-                TickMath.getSqrtRatioAtTick(position.tickUpper),
+                TickMath.getSqrtPriceAtTick(position.tickLower),
+                TickMath.getSqrtPriceAtTick(position.tickUpper),
                 balance1
             );
             vm.assume(liquidity1 > 0);

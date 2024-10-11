@@ -16,7 +16,7 @@ import { RebalanceOptimizationMath } from "../../../../src/rebalancers/libraries
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RouterMock } from "../../../utils/mocks/RouterMock.sol";
 import { SwapMath } from "../../../utils/uniswap-v3/SwapMath.sol";
-import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
+import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/TickMath.sol";
 import { Rebalancer_Fuzz_Test } from "./_Rebalancer.fuzz.t.sol";
 
 /**
@@ -94,7 +94,7 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         // Calculate max sqrtPriceX96 to the left to avoid unbalancedPool()
         // No probleme in this case as lower ratio will be 0.
         // But we still want to be within initial lp range for liquidity
-        uint256 sqrtPriceX96Target = TickMath.getSqrtRatioAtTick(initLpLowerTick);
+        uint256 sqrtPriceX96Target = TickMath.getSqrtPriceAtTick(initLpLowerTick);
 
         // Take 5 % above to ensure we are withing the liquidity and enable swapping without being unbalanced
         sqrtPriceX96Target += ((sqrtPriceX96Target * (0.05 * 1e18)) / 1e18);
@@ -155,8 +155,8 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     {
         (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
             uint160(position.sqrtPriceX96),
-            TickMath.getSqrtRatioAtTick(lpLowerTick),
-            TickMath.getSqrtRatioAtTick(lpUpperTick),
+            TickMath.getSqrtPriceAtTick(lpLowerTick),
+            TickMath.getSqrtPriceAtTick(lpUpperTick),
             position.liquidity
         );
 
@@ -259,9 +259,9 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         assertEq(tickUpper, tickUpperActual);
 
         (uint256 amount0_, uint256 amount1_) = LiquidityAmounts.getAmountsForLiquidity(
-            TickMath.getSqrtRatioAtTick(tickCurrent),
-            TickMath.getSqrtRatioAtTick(tickLower),
-            TickMath.getSqrtRatioAtTick(tickUpper),
+            TickMath.getSqrtPriceAtTick(tickCurrent),
+            TickMath.getSqrtPriceAtTick(tickLower),
+            TickMath.getSqrtPriceAtTick(tickUpper),
             uint128(liquidity)
         );
         (uint256 usdValuePosition, uint256 usdValueRemaining) =
@@ -600,14 +600,14 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
             // Exclude edge case where sqrtPrice starts in range, but sqrtPriceNew goes out of range during calculations.
             (sqrtPrice,,,,,,) = uniV3Pool.slot0();
             if (
-                TickMath.getSqrtRatioAtTick(tickLower) < sqrtPrice && sqrtPrice < TickMath.getSqrtRatioAtTick(tickUpper)
+                TickMath.getSqrtPriceAtTick(tickLower) < sqrtPrice && sqrtPrice < TickMath.getSqrtPriceAtTick(tickUpper)
             ) {
                 sqrtPrice = RebalanceOptimizationMath._approximateSqrtPriceNew(
                     zeroToOne, position_.fee, uniV3Pool.liquidity(), sqrtPrice, amountIn, amountOut
                 );
                 vm.assume(
-                    TickMath.getSqrtRatioAtTick(tickLower) < sqrtPrice - 100
-                        && sqrtPrice + 100 < TickMath.getSqrtRatioAtTick(tickUpper)
+                    TickMath.getSqrtPriceAtTick(tickLower) < sqrtPrice - 100
+                        && sqrtPrice + 100 < TickMath.getSqrtPriceAtTick(tickUpper)
                 );
             }
 
@@ -631,8 +631,8 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
 
             uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
                 sqrtPrice,
-                TickMath.getSqrtRatioAtTick(position_.tickLower),
-                TickMath.getSqrtRatioAtTick(position_.tickUpper),
+                TickMath.getSqrtPriceAtTick(position_.tickLower),
+                TickMath.getSqrtPriceAtTick(position_.tickUpper),
                 amount0,
                 amount1
             );
@@ -727,14 +727,14 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
             // Exclude edge case where sqrtPrice starts in range, but sqrtPriceNew goes out of range during calculations.
             (sqrtPrice,,,,,,) = uniV3Pool.slot0();
             if (
-                TickMath.getSqrtRatioAtTick(tickLower) < sqrtPrice && sqrtPrice < TickMath.getSqrtRatioAtTick(tickUpper)
+                TickMath.getSqrtPriceAtTick(tickLower) < sqrtPrice && sqrtPrice < TickMath.getSqrtPriceAtTick(tickUpper)
             ) {
                 sqrtPrice = RebalanceOptimizationMath._approximateSqrtPriceNew(
                     zeroToOne, position_.fee, uniV3Pool.liquidity(), sqrtPrice, amountIn, amountOut
                 );
                 vm.assume(
-                    TickMath.getSqrtRatioAtTick(tickLower) < sqrtPrice - 100
-                        && sqrtPrice + 100 < TickMath.getSqrtRatioAtTick(tickUpper)
+                    TickMath.getSqrtPriceAtTick(tickLower) < sqrtPrice - 100
+                        && sqrtPrice + 100 < TickMath.getSqrtPriceAtTick(tickUpper)
                 );
             }
 
@@ -758,8 +758,8 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
 
             uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
                 sqrtPrice,
-                TickMath.getSqrtRatioAtTick(position_.tickLower),
-                TickMath.getSqrtRatioAtTick(position_.tickUpper),
+                TickMath.getSqrtPriceAtTick(position_.tickLower),
+                TickMath.getSqrtPriceAtTick(position_.tickUpper),
                 amount0,
                 amount1
             );
@@ -863,8 +863,8 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
 
             uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
                 sqrtPriceNew,
-                TickMath.getSqrtRatioAtTick(position_.tickLower),
-                TickMath.getSqrtRatioAtTick(position_.tickUpper),
+                TickMath.getSqrtPriceAtTick(position_.tickLower),
+                TickMath.getSqrtPriceAtTick(position_.tickUpper),
                 amount0,
                 amount1
             );
@@ -985,8 +985,8 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
 
             uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
                 sqrtPriceNew,
-                TickMath.getSqrtRatioAtTick(position_.tickLower),
-                TickMath.getSqrtRatioAtTick(position_.tickUpper),
+                TickMath.getSqrtPriceAtTick(position_.tickLower),
+                TickMath.getSqrtPriceAtTick(position_.tickUpper),
                 amount0,
                 amount1
             );

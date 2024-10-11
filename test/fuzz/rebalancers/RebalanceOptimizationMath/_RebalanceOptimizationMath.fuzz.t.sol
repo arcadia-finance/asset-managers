@@ -4,7 +4,7 @@
  */
 pragma solidity 0.8.22;
 
-import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
+import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/FullMath.sol";
 import { Fuzz_Test } from "../../Fuzz.t.sol";
 import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/uniswap-v3/LiquidityAmounts.sol";
 import { PricingLogic } from "../../../../src/rebalancers/libraries/PricingLogic.sol";

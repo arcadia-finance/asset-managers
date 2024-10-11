@@ -9,7 +9,7 @@ import { ICLPoolExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/extensions/interfaces/ICLPoolExtension.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { SlipstreamLogic_Fuzz_Test } from "./_SlipstreamLogic.fuzz.t.sol";
-import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
+import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/TickMath.sol";
 import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
 
 /**
@@ -42,7 +42,7 @@ contract GetPositionState_SlipstreamLogic_Fuzz_Test is SlipstreamLogic_Fuzz_Test
         position.tickLower = int24(bound(position.tickLower, TickMath.MIN_TICK, TickMath.MAX_TICK - 1));
         position.tickUpper = int24(bound(position.tickUpper, position.tickLower + 1, TickMath.MAX_TICK));
         position.sqrtPriceX96 =
-            uint160(bound(position.sqrtPriceX96, TickMath.MIN_SQRT_RATIO, TickMath.MAX_SQRT_RATIO - 1));
+            uint160(bound(position.sqrtPriceX96, TickMath.MIN_SQRT_PRICE, TickMath.MAX_SQRT_PRICE - 1));
         position.liquidity = uint128(bound(position.liquidity, 1, UniswapHelpers.maxLiquidity(TICK_SPACING)));
 
         // And: Tokens are deployed.
@@ -69,7 +69,7 @@ contract GetPositionState_SlipstreamLogic_Fuzz_Test is SlipstreamLogic_Fuzz_Test
         (tickCurrent, tickRange, positionActual) = slipstreamLogic.getPositionState(positionActual, id);
 
         // Then: It should return the correct values.
-        assertEq(tickCurrent, TickMath.getTickAtSqrtRatio(uint160(position.sqrtPriceX96)));
+        assertEq(tickCurrent, TickMath.getTickAtSqrtPrice(uint160(position.sqrtPriceX96)));
         assertEq(tickRange, position.tickUpper - position.tickLower);
 
         // And: positionActual is updated.

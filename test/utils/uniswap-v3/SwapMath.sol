@@ -3,7 +3,8 @@
 pragma solidity 0.8.22;
 
 import { FullMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
-import { SqrtPriceMath } from "../../../src/rebalancers/libraries/uniswap-v3/SqrtPriceMath.sol";
+import { SqrtPriceMath } from
+    "../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/SqrtPriceMath.sol";
 
 /// @title Computes the result of a swap within ticks
 /// @notice Contains methods for computing the result of a swap within a single tick price range, i.e., a single tick.

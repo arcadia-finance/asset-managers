@@ -8,9 +8,10 @@ import { RebalanceLogicExtension } from "../../../utils/extensions/RebalanceLogi
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RouterMock } from "../../../utils/mocks/RouterMock.sol";
 import { stdError } from "../../../../lib/accounts-v2/lib/forge-std/src/StdError.sol";
-import { SqrtPriceMath } from "../../../../src/rebalancers/libraries/uniswap-v3/SqrtPriceMath.sol";
+import { SqrtPriceMath } from
+    "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/SqrtPriceMath.sol";
 import { SwapLogic_Fuzz_Test } from "./_SwapLogic.fuzz.t.sol";
-import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
+import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/TickMath.sol";
 import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
 
 /**
@@ -92,8 +93,8 @@ contract Swap_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
         // And: A new desired position.
         position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER / 1e2, BOUND_TICK_UPPER / 1e2 - 10));
         position.tickUpper = int24(bound(position.tickUpper, position.tickLower + 10, BOUND_TICK_UPPER / 1e2));
-        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(position.tickLower);
-        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(position.tickUpper);
+        position.sqrtRatioLower = TickMath.getSqrtPriceAtTick(position.tickLower);
+        position.sqrtRatioUpper = TickMath.getSqrtPriceAtTick(position.tickUpper);
 
         // Get: the approximated swap parameters.
         (, bool zeroToOne, uint256 amountInitiatorFee, uint256 amountIn, uint256 amountOut) = rebalanceLogic
