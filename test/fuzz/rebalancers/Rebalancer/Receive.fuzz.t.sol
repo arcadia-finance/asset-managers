@@ -4,9 +4,9 @@
  */
 pragma solidity 0.8.22;
 
-import { Rebalancer_Fuzz_Test } from "./_Rebalancer.fuzz.t.sol";
-
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
+import { Rebalancer_Fuzz_Test } from "./_Rebalancer2.fuzz.t.sol";
+import { SlipstreamFixture } from "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/Slipstream.f.sol";
 
 /**
  * @notice Fuzz tests for the function "receive" of contract "Rebalancer".
@@ -16,8 +16,12 @@ contract Receive_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
-    function setUp() public override {
+    function setUp() public override(Rebalancer_Fuzz_Test) {
         Rebalancer_Fuzz_Test.setUp();
+
+        SlipstreamFixture.setUp();
+        deployAerodromePeriphery();
+        deploySlipstream();
     }
 
     /*//////////////////////////////////////////////////////////////
