@@ -416,7 +416,7 @@ contract Rebalancer is IActionBase {
      * @dev An initiator will be permissioned to rebalance any
      * Liquidity Position held in the specified Arcadia Account.
      * @dev If the hook is set to address(0), the hook will be disabled.
-     * @dev When an account is transferred to a new owner,
+     * @dev When an Account is transferred to a new owner,
      * the asset manager itself (this contract) and hence its initiator and hook will no longer be allowed by the Account.
      */
     function setAccountInfo(address account_, address initiator, address hook) external {
