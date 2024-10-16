@@ -14,9 +14,9 @@ contract SwapLogicExtension {
     using SafeTransferLib for ERC20;
 
     function swap(
+        bytes memory swapData,
         address positionManager,
         Rebalancer.PositionState memory position,
-        bytes memory swapData,
         bool zeroToOne,
         uint256 amountInitiatorFee,
         uint256 amountIn,
@@ -25,7 +25,7 @@ contract SwapLogicExtension {
         uint256 balance1
     ) external returns (uint256 balance0_, uint256 balance1_, Rebalancer.PositionState memory position_) {
         (balance0_, balance1_) = SwapLogic._swap(
-            positionManager, position, swapData, zeroToOne, amountInitiatorFee, amountIn, amountOut, balance0, balance1
+            swapData, positionManager, position, zeroToOne, amountInitiatorFee, amountIn, amountOut, balance0, balance1
         );
 
         position_ = position;
