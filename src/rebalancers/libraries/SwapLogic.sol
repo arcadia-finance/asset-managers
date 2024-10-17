@@ -17,9 +17,9 @@ library SwapLogic {
 
     /**
      * @notice Swaps one token for another to rebalance the Liquidity Position.
+     * @param swapData Arbitrary calldata provided by an initiator for the swap.
      * @param positionManager The contract address of the Position Manager.
      * @param position Struct with the position data.
-     * @param swapData Arbitrary calldata provided by an initiator for the swap.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param amountInitiatorFee The amount of initiator fee, in tokenIn.
      * @param amountIn An approximation of the amount of tokenIn, based on the optimal swap through the pool itself without slippage.
@@ -30,9 +30,9 @@ library SwapLogic {
      * @return balance1_ The balance of token1 after the swap.
      */
     function _swap(
+        bytes memory swapData,
         address positionManager,
         Rebalancer.PositionState memory position,
-        bytes memory swapData,
         bool zeroToOne,
         uint256 amountInitiatorFee,
         uint256 amountIn,

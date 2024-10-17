@@ -46,9 +46,9 @@ contract Swap_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
                               TESTS
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Success_swap_SwapViaRouter_ZeroAmountIn(
+        bytes memory swapData,
         address positionManager,
         Rebalancer.PositionState memory position,
-        bytes memory swapData,
         bool zeroToOne,
         uint256 amountInitiatorFee,
         uint256 amountOut,
@@ -60,7 +60,7 @@ contract Swap_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
 
         // When: Calling swap.
         (uint256 balance0_, uint256 balance1_,) = swapLogic.swap(
-            positionManager, position, swapData, zeroToOne, amountInitiatorFee, amountIn, amountOut, balance0, balance1
+            swapData, positionManager, position, zeroToOne, amountInitiatorFee, amountIn, amountOut, balance0, balance1
         );
 
         // Then: The correct balances are returned.
@@ -115,9 +115,9 @@ contract Swap_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
 
         // When: Calling swapViaPool.
         (,, Rebalancer.PositionState memory position_) = swapLogic.swap(
+            "",
             address(nonfungiblePositionManager),
             position,
-            "",
             zeroToOne,
             amountInitiatorFee,
             amountIn,
@@ -168,9 +168,9 @@ contract Swap_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
             swapData = abi.encode(address(routerMock), uint256(amountIn), data);
         }
         (uint256 balance0_, uint256 balance1_, Rebalancer.PositionState memory position_) = swapLogic.swap(
+            swapData,
             address(nonfungiblePositionManager),
             position,
-            swapData,
             true,
             amountInitiatorFee,
             amountIn,
@@ -225,9 +225,9 @@ contract Swap_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
             swapData = abi.encode(address(routerMock), uint256(amountIn), data);
         }
         (uint256 balance0_, uint256 balance1_, Rebalancer.PositionState memory position_) = swapLogic.swap(
+            swapData,
             address(nonfungiblePositionManager),
             position,
-            swapData,
             false,
             amountInitiatorFee,
             amountIn,

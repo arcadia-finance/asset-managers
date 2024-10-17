@@ -118,7 +118,7 @@ contract Rebalancer is IActionBase {
                                 EVENTS
     ////////////////////////////////////////////////////////////// */
 
-    event Rebalance(address indexed account, address indexed positionManager, uint256 id);
+    event Rebalance(address indexed account, address indexed positionManager, uint256 oldId);
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -146,7 +146,7 @@ contract Rebalancer is IActionBase {
      * @notice Rebalances a UniswapV3 or Slipstream Liquidity Position, owned by an Arcadia Account.
      * @param account_ The Arcadia Account owning the position.
      * @param positionManager The contract address of the Position Manager.
-     * @param id The id of the Liquidity Position to rebalance.
+     * @param oldId The oldId of the Liquidity Position to rebalance.
      * @param tickLower The new lower tick to rebalance to.
      * @param tickUpper The new upper tick to rebalance to.
      * @dev When tickLower and tickUpper are equal, ticks will be updated with same tick-spacing as current position
@@ -155,7 +155,7 @@ contract Rebalancer is IActionBase {
     function rebalance(
         address account_,
         address positionManager,
-        uint256 id,
+        uint256 oldId,
         int24 tickLower,
         int24 tickUpper,
         bytes calldata swapData
@@ -169,7 +169,7 @@ contract Rebalancer is IActionBase {
 
         // Encode data for the flash-action.
         bytes memory actionData =
-            ArcadiaLogic._encodeAction(positionManager, id, msg.sender, tickLower, tickUpper, swapData);
+            ArcadiaLogic._encodeAction(positionManager, oldId, msg.sender, tickLower, tickUpper, swapData);
 
         // Call flashAction() with this contract as actionTarget.
         IAccount(account_).flashAction(address(this), actionData);
@@ -177,7 +177,7 @@ contract Rebalancer is IActionBase {
         // Reset account.
         account = address(0);
 
-        emit Rebalance(account_, positionManager, id);
+        emit Rebalance(account_, positionManager, oldId);
     }
 
     /**
@@ -191,12 +191,16 @@ contract Rebalancer is IActionBase {
         // Caller should be the Account, provided as input in rebalance().
         if (msg.sender != account) revert OnlyAccount();
 
+        // Cache the strategy hook.
+        address hook = strategyHook[msg.sender];
+
         // Decode rebalanceData.
-        address positionManager;
-        uint256 id;
         bytes memory swapData;
-        address initiator;
+        address positionManager;
+        uint256 oldId;
+        uint256 newId;
         PositionState memory position;
+        address initiator;
         {
             ActionData memory assetData;
             int24 tickLower;
@@ -204,20 +208,31 @@ contract Rebalancer is IActionBase {
             (assetData, initiator, tickLower, tickUpper, swapData) =
                 abi.decode(rebalanceData, (ActionData, address, int24, int24, bytes));
             positionManager = assetData.assets[0];
-            id = assetData.assetIds[0];
+            oldId = assetData.assetIds[0];
 
             // Fetch and cache all position related data.
-            position = getPositionState(positionManager, id, tickLower, tickUpper, initiator);
+            position = getPositionState(positionManager, oldId, tickLower, tickUpper, initiator);
+        }
+
+        // If set, call the strategy hook before the rebalance (view function).
+        // This can be used to enforce additional constraints on the rebalance, specific to the Account/Id.
+        // Such as:
+        // - Directional preferences.
+        // - Minimum Cool Down Periods.
+        // - Excluding rebalancing of certain positions.
+        // - ...
+        if (hook != address(0)) {
+            IStrategyHook(hook).beforeRebalance(
+                msg.sender, positionManager, oldId, position.tickLower, position.tickUpper
+            );
         }
 
         // Check that pool is initially balanced.
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
         if (isPoolUnbalanced(position)) revert UnbalancedPool();
 
-        uint256 newId;
-
         // Remove liquidity of the position and claim outstanding fees/rewards.
-        (uint256 balance0, uint256 balance1, uint256 reward) = BurnLogic._burn(positionManager, id, position);
+        (uint256 balance0, uint256 balance1, uint256 reward) = BurnLogic._burn(positionManager, oldId, position);
 
         {
             // Get the rebalance parameters.
@@ -240,9 +255,9 @@ contract Rebalancer is IActionBase {
             // but excess slippage will be subtracted from the initiatorFee.
             // For swaps via a router, tokenOut should be the limiting factor when increasing liquidity.
             (balance0, balance1) = SwapLogic._swap(
+                swapData,
                 positionManager,
                 position,
-                swapData,
                 zeroToOne,
                 amountInitiatorFee,
                 amountIn,
@@ -294,14 +309,9 @@ contract Rebalancer is IActionBase {
                 ArcadiaLogic._encodeDeposit(positionManager, newId, position, count, balance0, balance1, reward);
         }
 
-        // If set, call the strategy hook after the rebalance.
-        // This can be used to enforce additional constraints on the rebalance, such as:
-        // - Directional preferences.
-        // - Minimum Cool Down Periods.
-        // - Excluding rebalancing of certain positions.
-        // - ...
-        address hook = strategyHook[msg.sender];
-        if (hook != address(0)) IStrategyHook(hook).afterRebalance(positionManager, id, newId);
+        // If set, call the strategy hook after the rebalance (non view function).
+        // Can be used to check additional constraints and persist state changes on the hook.
+        if (hook != address(0)) IStrategyHook(hook).afterRebalance(msg.sender, positionManager, oldId, newId);
 
         return depositData;
     }
@@ -356,22 +366,24 @@ contract Rebalancer is IActionBase {
     /**
      * @notice Fetches all required position data from external contracts.
      * @param positionManager The contract address of the Position Manager.
-     * @param id The id of the Liquidity Position.
+     * @param oldId The oldId of the Liquidity Position.
      * @param tickLower The lower tick of the newly minted position.
      * @param tickUpper The upper tick of the newly minted position.
      * @param initiator The address of the initiator.
      * @return position Struct with the position data.
      */
-    function getPositionState(address positionManager, uint256 id, int24 tickLower, int24 tickUpper, address initiator)
-        public
-        view
-        returns (PositionState memory position)
-    {
+    function getPositionState(
+        address positionManager,
+        uint256 oldId,
+        int24 tickLower,
+        int24 tickUpper,
+        address initiator
+    ) public view returns (PositionState memory position) {
         // Get data of the Liquidity Position.
         (int24 tickCurrent, int24 tickRange) = positionManager == address(UniswapV3Logic.POSITION_MANAGER)
-            ? UniswapV3Logic._getPositionState(position, id, tickLower == tickUpper)
+            ? UniswapV3Logic._getPositionState(position, oldId, tickLower == tickUpper)
             // Logic holds for both Slipstream and staked Slipstream positions.
-            : SlipstreamLogic._getPositionState(position, id);
+            : SlipstreamLogic._getPositionState(position, oldId);
 
         // Store the new ticks for the rebalance
         if (tickLower == tickUpper) {

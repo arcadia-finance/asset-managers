@@ -290,29 +290,32 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
 
         // And: A pool with liquidity with tickSpacing 1 (fee = 100).
         deployAndInitUniswapV3(uint160(position.sqrtPriceX96), liquidityPool, POOL_FEE);
-        int24 tickSpacing = poolUniswap.tickSpacing();
+        uint256 id;
+        {
+            int24 tickSpacing = poolUniswap.tickSpacing();
 
-        // And: A valid position with multiple tickSpacing.
-        // And: Position is in range (has both tokens).
-        int24 tickCurrent = TickMath.getTickAtSqrtPrice(uint160(position.sqrtPriceX96));
-        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, tickCurrent - 10));
-        position.tickLower = position.tickLower / tickSpacing * tickSpacing;
-        position.tickUpper = int24(bound(position.tickUpper, tickCurrent + 10, BOUND_TICK_UPPER));
-        position.tickUpper = position.tickUpper / tickSpacing * tickSpacing;
-        position.liquidity = uint128(bound(position.liquidity, 1e6, 1e10));
-        (uint256 id,,) = addLiquidityUniV3(
-            poolUniswap, position.liquidity, users.liquidityProvider, position.tickLower, position.tickUpper, false
-        );
-        (,,,,,,, position.liquidity,,,,) = nonfungiblePositionManager.positions(id);
-        vm.prank(users.liquidityProvider);
-        ERC721(address(nonfungiblePositionManager)).transferFrom(users.liquidityProvider, address(rebalancer), id);
+            // And: A valid position with multiple tickSpacing.
+            // And: Position is in range (has both tokens).
+            int24 tickCurrent = TickMath.getTickAtSqrtPrice(uint160(position.sqrtPriceX96));
+            position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, tickCurrent - 10));
+            position.tickLower = position.tickLower / tickSpacing * tickSpacing;
+            position.tickUpper = int24(bound(position.tickUpper, tickCurrent + 10, BOUND_TICK_UPPER));
+            position.tickUpper = position.tickUpper / tickSpacing * tickSpacing;
+            position.liquidity = uint128(bound(position.liquidity, 1e6, 1e10));
+            (id,,) = addLiquidityUniV3(
+                poolUniswap, position.liquidity, users.liquidityProvider, position.tickLower, position.tickUpper, false
+            );
+            (,,,,,,, position.liquidity,,,,) = nonfungiblePositionManager.positions(id);
+            vm.prank(users.liquidityProvider);
+            ERC721(address(nonfungiblePositionManager)).transferFrom(users.liquidityProvider, address(rebalancer), id);
 
-        // And: A new position with a valid tick range.
-        // And: New Position is below current tick.
-        tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, tickCurrent - 2));
-        tickLower = tickLower / tickSpacing * tickSpacing;
-        tickUpper = int24(bound(tickUpper, tickLower + 1, tickCurrent - 1));
-        tickUpper = tickUpper / tickSpacing * tickSpacing;
+            // And: A new position with a valid tick range.
+            // And: New Position is below current tick.
+            tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, tickCurrent - 2));
+            tickLower = tickLower / tickSpacing * tickSpacing;
+            tickUpper = int24(bound(tickUpper, tickLower + 1, tickCurrent - 1));
+            tickUpper = tickUpper / tickSpacing * tickSpacing;
+        }
 
         // And: The initiator is initiated.
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
@@ -351,7 +354,20 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
             vm.prank(account_);
             vm.expectCall(
                 address(hook),
-                abi.encodeWithSelector(hook.afterRebalance.selector, address(nonfungiblePositionManager), id, id + 1)
+                abi.encodeWithSelector(
+                    hook.beforeRebalance.selector,
+                    account_,
+                    address(nonfungiblePositionManager),
+                    id,
+                    tickLower,
+                    tickUpper
+                )
+            );
+            vm.expectCall(
+                address(hook),
+                abi.encodeWithSelector(
+                    hook.afterRebalance.selector, account_, address(nonfungiblePositionManager), id, id + 1
+                )
             );
             depositData = rebalancer.executeAction(rebalanceData);
         }
