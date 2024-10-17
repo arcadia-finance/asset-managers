@@ -118,7 +118,7 @@ contract Rebalancer is IActionBase {
                                 EVENTS
     ////////////////////////////////////////////////////////////// */
 
-    event Rebalance(address indexed account, address indexed positionManager, uint256 oldId);
+    event Rebalance(address indexed account, address indexed positionManager, uint256 oldId, uint256 newId);
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -176,8 +176,6 @@ contract Rebalancer is IActionBase {
 
         // Reset account.
         account = address(0);
-
-        emit Rebalance(account_, positionManager, oldId);
     }
 
     /**
@@ -312,6 +310,8 @@ contract Rebalancer is IActionBase {
         // If set, call the strategy hook after the rebalance (non view function).
         // Can be used to check additional constraints and persist state changes on the hook.
         if (hook != address(0)) IStrategyHook(hook).afterRebalance(msg.sender, positionManager, oldId, newId);
+
+        emit Rebalance(msg.sender, positionManager, oldId, newId);
 
         return depositData;
     }
