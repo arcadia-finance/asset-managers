@@ -6,15 +6,15 @@ pragma solidity 0.8.22;
 
 import { AerodromeFixture } from "../../../../lib/accounts-v2/test/utils/fixtures/aerodrome/AerodromeFixture.f.sol";
 import { Base_Test } from "../../../../lib/accounts-v2/test/Base.t.sol";
+import { CLQuoterFixture } from "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/CLQuoter.f.sol";
+import { CLSwapRouterFixture } from "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/CLSwapRouter.f.sol";
 import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
-import { ExactInputSingleParams } from "../../../../src/compounders/slipstream/interfaces/ISwapRouter.sol";
+import { ICLSwapRouter } from "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/interfaces/ICLSwapRouter.sol";
 import { Fuzz_Test } from "../../Fuzz.t.sol";
 import { ICLPoolExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/extensions/interfaces/ICLPoolExtension.sol";
 import { ISwapRouter } from "../../../../src/compounders/slipstream/interfaces/ISwapRouter.sol";
-import { QuoterFixture } from "../../../utils/fixtures/slipstream/Quoter.f.sol";
 import { SlipstreamCompounder } from "../../../../src/compounders/slipstream/SlipstreamCompounder.sol";
-import { SwapRouterFixture } from "../../../utils/fixtures/slipstream/SwapRouter.f.sol";
 import { SlipstreamAMExtension } from "../../../../lib/accounts-v2/test/utils/extensions/SlipstreamAMExtension.sol";
 import { SlipstreamFixture } from "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/Slipstream.f.sol";
 import { SlipstreamCompounderExtension } from "../../../utils/extensions/SlipstreamCompounderExtension.sol";
@@ -27,8 +27,8 @@ abstract contract SlipstreamCompounder_Fuzz_Test is
     Fuzz_Test,
     AerodromeFixture,
     SlipstreamFixture,
-    SwapRouterFixture,
-    QuoterFixture
+    CLSwapRouterFixture,
+    CLQuoterFixture
 {
     /*////////////////////////////////////////////////////////////////
                             CONSTANTS
@@ -78,11 +78,17 @@ abstract contract SlipstreamCompounder_Fuzz_Test is
     function setUp() public virtual override(Fuzz_Test, SlipstreamFixture) {
         Fuzz_Test.setUp();
 
+        // Warp to have a timestamp of at least two days old.
+        vm.warp(2 days);
+
+        // Deploy Arcadia  Accounts Contracts.
+        deployArcadiaAccounts();
+
         AerodromeFixture.deployAerodromePeriphery();
         SlipstreamFixture.setUp();
         SlipstreamFixture.deploySlipstream();
-        SwapRouterFixture.deploySwapRouter(address(cLFactory), address(weth9));
-        QuoterFixture.deployQuoter(address(cLFactory), address(weth9));
+        CLSwapRouterFixture.deploySwapRouter(address(cLFactory), address(weth9));
+        CLQuoterFixture.deployQuoter(address(cLFactory), address(weth9));
 
         deploySlipstreamAM();
         deployCompounder(COMPOUND_THRESHOLD, INITIATOR_SHARE, TOLERANCE);
@@ -183,7 +189,7 @@ abstract contract SlipstreamCompounder_Fuzz_Test is
 
     function generateFees(uint256 amount0ToGenerate, uint256 amount1ToGenerate) public {
         vm.startPrank(users.liquidityProvider);
-        ExactInputSingleParams memory exactInputParams;
+        ICLSwapRouter.ExactInputSingleParams memory exactInputParams;
         // Swap token0 for token1
         if (amount0ToGenerate > 0) {
             uint256 amount0ToSwap = ((amount0ToGenerate * (1e6 / usdStablePool.fee())) * 10 ** token0.decimals());
@@ -191,9 +197,9 @@ abstract contract SlipstreamCompounder_Fuzz_Test is
             deal(address(token0), users.liquidityProvider, amount0ToSwap, true);
 
             vm.startPrank(users.liquidityProvider);
-            token0.approve(address(swapRouter), amount0ToSwap);
+            token0.approve(address(clSwapRouter), amount0ToSwap);
 
-            exactInputParams = ExactInputSingleParams({
+            exactInputParams = ICLSwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
                 tickSpacing: usdStablePool.tickSpacing(),
@@ -204,7 +210,7 @@ abstract contract SlipstreamCompounder_Fuzz_Test is
                 sqrtPriceLimitX96: 0
             });
 
-            swapRouter.exactInputSingle(exactInputParams);
+            clSwapRouter.exactInputSingle(exactInputParams);
         }
 
         // Swap token1 for token0
@@ -212,9 +218,9 @@ abstract contract SlipstreamCompounder_Fuzz_Test is
             uint256 amount1ToSwap = ((amount1ToGenerate * (1e6 / usdStablePool.fee())) * 10 ** token1.decimals());
 
             deal(address(token1), users.liquidityProvider, amount1ToSwap, true);
-            token1.approve(address(swapRouter), amount1ToSwap);
+            token1.approve(address(clSwapRouter), amount1ToSwap);
 
-            exactInputParams = ExactInputSingleParams({
+            exactInputParams = ICLSwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
                 tickSpacing: usdStablePool.tickSpacing(),
@@ -225,7 +231,7 @@ abstract contract SlipstreamCompounder_Fuzz_Test is
                 sqrtPriceLimitX96: 0
             });
 
-            swapRouter.exactInputSingle(exactInputParams);
+            clSwapRouter.exactInputSingle(exactInputParams);
         }
 
         vm.stopPrank();

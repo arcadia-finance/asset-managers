@@ -8,22 +8,26 @@ import { ArcadiaAccountsFixture } from
     "../../lib/accounts-v2/test/utils/fixtures/arcadia-accounts/ArcadiaAccountsFixture.f.sol";
 import { Base_AssetManagers_Test } from "../Base.t.sol";
 import { Base_Test } from "../../lib/accounts-v2/test/Base.t.sol";
+import { TickMath } from "../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 
 /**
  * @notice Common logic needed by all fuzz tests.
  */
 abstract contract Fuzz_Test is Base_AssetManagers_Test, ArcadiaAccountsFixture {
+    /*////////////////////////////////////////////////////////////////
+                            CONSTANTS
+    /////////////////////////////////////////////////////////////// */
+
+    uint160 internal BOUND_SQRT_PRICE_UPPER = type(uint120).max;
+    int24 internal BOUND_TICK_UPPER = TickMath.getTickAtSqrtRatio(BOUND_SQRT_PRICE_UPPER);
+    int24 internal BOUND_TICK_LOWER = -BOUND_TICK_UPPER;
+    uint160 internal BOUND_SQRT_PRICE_LOWER = TickMath.getSqrtRatioAtTick(BOUND_TICK_LOWER);
+
     /*//////////////////////////////////////////////////////////////////////////
                                   SET-UP FUNCTION
     //////////////////////////////////////////////////////////////////////////*/
 
     function setUp() public virtual override(Base_AssetManagers_Test, Base_Test) {
         Base_AssetManagers_Test.setUp();
-
-        // Warp to have a timestamp of at least two days old.
-        vm.warp(2 days);
-
-        // Deploy Arcadia  Accounts Contracts.
-        deployArcadiaAccounts();
     }
 }
