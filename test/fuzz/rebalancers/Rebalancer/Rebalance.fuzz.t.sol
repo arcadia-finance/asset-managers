@@ -245,7 +245,7 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         // When : calling rebalance()
         vm.prank(initVars.initiator);
         vm.expectEmit();
-        emit Rebalancer.Rebalance(address(account), address(nonfungiblePositionManager), tokenId);
+        emit Rebalancer.Rebalance(address(account), address(nonfungiblePositionManager), tokenId, tokenId + 1);
         rebalancer.rebalance(address(account), address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, "");
 
         // Then : It should return the correct values

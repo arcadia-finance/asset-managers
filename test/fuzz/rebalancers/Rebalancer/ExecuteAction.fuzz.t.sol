@@ -352,6 +352,8 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
             // When: Calling executeAction().
             // Then: Hook should be called.
             vm.prank(account_);
+            vm.expectEmit();
+            emit Rebalancer.Rebalance(account_, address(nonfungiblePositionManager), id, id + 1);
             vm.expectCall(
                 address(hook),
                 abi.encodeWithSelector(
@@ -467,6 +469,8 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
             bytes memory rebalanceData =
                 encodeRebalanceData(address(nonfungiblePositionManager), id, initiator, tickLower, tickUpper, swapData);
             vm.prank(account_);
+            vm.expectEmit();
+            emit Rebalancer.Rebalance(account_, address(nonfungiblePositionManager), id, id + 1);
             depositData = rebalancer.executeAction(rebalanceData);
         }
 
@@ -576,6 +580,8 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
 
             // When: Calling executeAction().
             vm.prank(account_);
+            vm.expectEmit();
+            emit Rebalancer.Rebalance(account_, address(slipstreamPositionManager), id, id + 1);
             depositData = rebalancer.executeAction(rebalanceData);
         }
 
@@ -694,6 +700,8 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
 
             // When: Calling executeAction().
             vm.prank(account_);
+            vm.expectEmit();
+            emit Rebalancer.Rebalance(account_, address(stakedSlipstreamAM), id, id + 1);
             depositData = rebalancer.executeAction(rebalanceData);
         }
 
@@ -818,6 +826,8 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
 
             // When: Calling executeAction().
             vm.prank(account_);
+            vm.expectEmit();
+            emit Rebalancer.Rebalance(account_, address(stakedSlipstreamAM), id, id + 1);
             depositData = rebalancer.executeAction(rebalanceData);
         }
 
