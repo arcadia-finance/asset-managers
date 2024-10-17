@@ -355,12 +355,19 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
             vm.expectCall(
                 address(hook),
                 abi.encodeWithSelector(
-                    hook.beforeRebalance.selector, address(nonfungiblePositionManager), id, tickLower, tickUpper
+                    hook.beforeRebalance.selector,
+                    account_,
+                    address(nonfungiblePositionManager),
+                    id,
+                    tickLower,
+                    tickUpper
                 )
             );
             vm.expectCall(
                 address(hook),
-                abi.encodeWithSelector(hook.afterRebalance.selector, address(nonfungiblePositionManager), id, id + 1)
+                abi.encodeWithSelector(
+                    hook.afterRebalance.selector, account_, address(nonfungiblePositionManager), id, id + 1
+                )
             );
             depositData = rebalancer.executeAction(rebalanceData);
         }

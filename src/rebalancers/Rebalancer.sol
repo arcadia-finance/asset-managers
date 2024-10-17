@@ -222,7 +222,9 @@ contract Rebalancer is IActionBase {
         // - Excluding rebalancing of certain positions.
         // - ...
         if (hook != address(0)) {
-            IStrategyHook(hook).beforeRebalance(positionManager, oldId, position.tickLower, position.tickUpper);
+            IStrategyHook(hook).beforeRebalance(
+                msg.sender, positionManager, oldId, position.tickLower, position.tickUpper
+            );
         }
 
         // Check that pool is initially balanced.
@@ -309,7 +311,7 @@ contract Rebalancer is IActionBase {
 
         // If set, call the strategy hook after the rebalance (non view function).
         // Can be used to check additional constraints and persist state changes on the hook.
-        if (hook != address(0)) IStrategyHook(hook).afterRebalance(positionManager, oldId, newId);
+        if (hook != address(0)) IStrategyHook(hook).afterRebalance(msg.sender, positionManager, oldId, newId);
 
         return depositData;
     }
