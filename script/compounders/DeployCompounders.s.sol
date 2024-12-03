@@ -13,6 +13,9 @@ import { UniswapV3Compounder } from "../../src/compounders/uniswap-v3/UniswapV3C
 import { UniswapV3CompounderHelper } from "../../src/compounders/uniswap-v3/periphery/UniswapV3CompounderHelper.sol";
 
 contract DeployCompounders is Base_AssetManagers_Script {
+    SlipstreamCompounderHelper internal slipstreamCompounderHelper;
+    UniswapV3CompounderHelper internal uniswapV3CompounderHelper;
+
     constructor() Base_AssetManagers_Script() { }
 
     function run() public {

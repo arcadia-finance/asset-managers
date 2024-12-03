@@ -38,5 +38,7 @@ interface IUniswapV3Compounder {
 
     function isPoolUnbalanced(PositionState memory position) external view returns (bool isPoolUnbalanced_);
 
+    function COMPOUND_THRESHOLD() external view returns (uint256);
+
     function INITIATOR_SHARE() external view returns (uint256);
 }
