@@ -18,7 +18,7 @@ library CompounderHelpers {
     address constant UNISWAP_V3_V2 = address(0x58bc2000e0a3a8094C397B43e8621EF5dbA280e7);
 }
 
-library Parameters {
+library CompounderParameters {
     uint256 constant COMPOUND_THRESHOLD = 5 * 1e18; // 5 USD
     uint256 constant INITIATOR_SHARE = 0.01 * 1e18; // 1%
     uint256 constant TOLERANCE = 0.005 * 1e18; // 0.5%
@@ -28,4 +28,14 @@ library Quoters {
     address constant ALIEN_BASE = address(0x2ba1d35920DB74a1dB97679BC27d2cBa81bB96ea);
     address constant SLIPSTREAM = address(0x254cF9E1E6e233aa1AC962CB9B05b2cfeAaE15b0);
     address constant UNISWAP_V3 = address(0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a);
+}
+
+library Rebalancers {
+    address constant V1 = address(0);
+}
+
+library RebalancerParameters {
+    uint256 constant MAX_TOLERANCE = 0.01 * 1e18; // 1%
+    uint256 constant MAX_INITIATOR_FEE = 0.2 * 1e18; // 20%
+    uint256 constant MIN_LIQUIDITY_RATIO = 0.98 * 1e18; // 98%
 }
