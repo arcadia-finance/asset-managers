@@ -31,7 +31,7 @@ library Quoters {
 }
 
 library Rebalancers {
-    address constant V1 = address(0);
+    address constant V1 = address(0x8ce0aB0fa8dB672e898c51248166C0ac8d55381A);
 }
 
 library RebalancerParameters {
