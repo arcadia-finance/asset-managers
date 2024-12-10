@@ -118,6 +118,7 @@ contract Rebalancer is IActionBase {
                                 EVENTS
     ////////////////////////////////////////////////////////////// */
 
+    event AccountInfoSet(address indexed account, address indexed initiator, address indexed strategyHook);
     event Rebalance(address indexed account, address indexed positionManager, uint256 oldId, uint256 newId);
 
     /* //////////////////////////////////////////////////////////////
@@ -438,6 +439,8 @@ contract Rebalancer is IActionBase {
 
         accountToInitiator[account_] = initiator;
         strategyHook[account_] = hook;
+
+        emit AccountInfoSet(account_, initiator, hook);
     }
 
     /* ///////////////////////////////////////////////////////////////
