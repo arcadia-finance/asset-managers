@@ -19,6 +19,6 @@ import { SwapRouter } from "../lib/accounts-v2/lib/slipstream/contracts/peripher
 import { SwapRouter02 } from "../lib/accounts-v2/lib/swap-router-contracts/contracts/SwapRouter02.sol";
 import { Test } from "../lib/accounts-v2/lib/forge-std/src/Test.sol";
 
-contract CompileDifferentPragmaVersions is Test {
+contract GetPositionState_SlipstreamCompounderSpot_Fuzz_Test is Test {
     function testFuzz_Success_executeAction_ZeroToOne() public { }
 }

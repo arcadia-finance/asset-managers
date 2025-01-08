@@ -379,7 +379,7 @@ contract Rebalancer is IActionBase {
         int24 tickLower,
         int24 tickUpper,
         address initiator
-    ) public view returns (PositionState memory position) {
+    ) public view virtual returns (PositionState memory position) {
         // Get data of the Liquidity Position.
         (int24 tickCurrent, int24 tickRange) = positionManager == address(UniswapV3Logic.POSITION_MANAGER)
             ? UniswapV3Logic._getPositionState(position, oldId, tickLower == tickUpper)
