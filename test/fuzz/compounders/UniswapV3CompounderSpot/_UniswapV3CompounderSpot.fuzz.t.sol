@@ -34,6 +34,9 @@ abstract contract UniswapV3CompounderSpot_Fuzz_Test is UniswapV3Compounder_Fuzz_
         UniswapV3Compounder_Fuzz_Test.setUp();
 
         deployCompounderSpot(COMPOUND_THRESHOLD, INITIATOR_SHARE, TOLERANCE);
+
+        vm.prank(users.accountOwner);
+        account.setAssetManager(address(compounderSpot), true);
     }
 
     /*////////////////////////////////////////////////////////////////

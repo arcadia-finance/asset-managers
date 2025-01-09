@@ -34,6 +34,9 @@ abstract contract SlipstreamCompounderSpot_Fuzz_Test is SlipstreamCompounder_Fuz
         SlipstreamCompounder_Fuzz_Test.setUp();
 
         deployCompounderSpot(COMPOUND_THRESHOLD, INITIATOR_SHARE, TOLERANCE);
+
+        vm.prank(users.accountOwner);
+        account.setAssetManager(address(compounderSpot), true);
     }
 
     /*////////////////////////////////////////////////////////////////
