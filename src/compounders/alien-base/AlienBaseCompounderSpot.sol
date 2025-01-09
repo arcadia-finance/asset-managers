@@ -14,7 +14,7 @@ import { TwapLogic } from "../../libraries/TwapLogic.sol";
 /**
  * @title Permissionless and Stateless Compounder for Alien Base Liquidity Positions.
  * @author Pragma Labs
- * @notice The Compounder will act as an Asset Manager for Arcadia Accounts.
+ * @notice The Compounder will act as an Asset Manager for Arcadia Spot Accounts.
  * It will allow third parties to trigger the compounding functionality for an Alien Base Liquidity Position in the Account.
  * Compounding can only be triggered if certain conditions are met and the initiator will get a small fee for the service provided.
  * The compounding will collect the fees earned by a position and increase the liquidity of the position by those fees.

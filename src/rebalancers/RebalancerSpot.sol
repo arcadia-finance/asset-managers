@@ -13,7 +13,7 @@ import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
 
 /**
  * @title Permissioned rebalancer for Uniswap V3 and Slipstream Liquidity Positions.
- * @notice The Rebalancer will act as an Asset Manager for Arcadia Accounts.
+ * @notice The Rebalancer will act as an Asset Manager for Arcadia Spot Accounts.
  * It will allow third parties to trigger the rebalancing functionality for a Liquidity Position in the Account.
  * The owner of an Arcadia Account should set an initiator via setAccountInfo() that will be permisionned to rebalance
  * all Liquidity Positions held in that Account.
