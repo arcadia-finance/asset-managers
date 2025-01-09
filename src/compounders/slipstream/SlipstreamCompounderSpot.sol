@@ -19,11 +19,7 @@ import { TwapLogic } from "../../libraries/TwapLogic.sol";
  * Compounding can only be triggered if certain conditions are met and the initiator will get a small fee for the service provided.
  * The compounding will collect the fees earned by a position and increase the liquidity of the position by those fees.
  * Depending on current tick of the pool and the position range, fees will be deposited in appropriate ratio.
- * @dev The contract prevents frontrunning/sandwiching by comparing the actual pool price with a pool price calculated from trusted
- * price feeds (oracles).
- * Some oracles can however deviate from the actual price by a few percent points, this could potentially open attack vectors by manipulating
- * pools and sandwiching the swap and/or increase liquidity. This asset manager should not be used for Arcadia Account that have/will have
- * Slipstream Liquidity Positions where one of the underlying assets is priced with such low precision oracles.
+ * @dev The contract prevents frontrunning/sandwiching by comparing the actual pool price with a pool price calculated from a TWAP.
  */
 contract SlipstreamCompounderSpot is SlipstreamCompounder {
     using FixedPointMathLib for uint256;
@@ -33,18 +29,16 @@ contract SlipstreamCompounderSpot is SlipstreamCompounder {
     ////////////////////////////////////////////////////////////// */
 
     /**
-     * @param compoundThreshold The minimum USD value that the compounded fees should have
-     * before a compoundFees() can be called, with 18 decimals precision.
      * @param initiatorShare The share of the fees paid to the initiator as reward, with 18 decimals precision.
      * @param tolerance The maximum deviation of the actual pool price,
-     * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
+     * relative to the price calculated with the TWAP, with 18 decimals precision.
      * @dev The tolerance for the pool price will be converted to an upper and lower max sqrtPrice deviation,
      * using the square root of the basis (one with 18 decimals precision) +- tolerance (18 decimals precision).
      * The tolerance boundaries are symmetric around the price, but taking the square root will result in a different
      * allowed deviation of the sqrtPriceX96 for the lower and upper boundaries.
      */
     constructor(uint256 compoundThreshold, uint256 initiatorShare, uint256 tolerance)
-        SlipstreamCompounder(compoundThreshold, initiatorShare, tolerance)
+        SlipstreamCompounder(0, initiatorShare, tolerance)
     { }
 
     /* ///////////////////////////////////////////////////////////////
@@ -82,15 +76,10 @@ contract SlipstreamCompounderSpot is SlipstreamCompounder {
     }
 
     /**
-     * @notice Returns if the total fee value in USD is below the threshold.
-     * @return isBelowThreshold_ Bool indicating if the total fee value in USD is below the threshold.
+     * @notice We don't make use of a minimum threshold for Spot Accounts,
+     * as we don't rely on third party oracles for USD prices but on a TWAP.
      */
-    function isBelowThreshold(PositionState memory, Fees memory)
-        public
-        view
-        override
-        returns (bool isBelowThreshold_)
-    {
+    function isBelowThreshold(PositionState memory, Fees memory) public view override returns (bool) {
         return false;
     }
 }

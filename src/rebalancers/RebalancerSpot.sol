@@ -17,8 +17,8 @@ import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
  * It will allow third parties to trigger the rebalancing functionality for a Liquidity Position in the Account.
  * The owner of an Arcadia Account should set an initiator via setAccountInfo() that will be permisionned to rebalance
  * all Liquidity Positions held in that Account.
- * @dev The contract prevents frontrunning/sandwiching by comparing the actual pool price with a pool price calculated from trusted
- * price feeds (oracles). The tolerance in terms of price deviation is specific to the initiator but limited by a global MAX_TOLERANCE.
+ * @dev The contract prevents frontrunning/sandwiching by comparing the actual pool price with a pool price calculated from a TWAP.
+ * The tolerance in terms of price deviation is specific to the initiator but limited by a global MAX_TOLERANCE.
  * @dev The contract guarantees a limited slippage with each rebalance by enforcing a minimum amount of liquidity that must be added,
  * based on a hypothetical optimal swap through the pool itself without slippage.
  * This protects the Account owners from incompetent or malicious initiators who route swaps poorly, or try to skim off liquidity from the position.
