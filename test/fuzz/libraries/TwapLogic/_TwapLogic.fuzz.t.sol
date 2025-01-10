@@ -50,13 +50,14 @@ abstract contract TwapLogic_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, SwapRouter
         vm.warp(2 days);
 
         UniswapV3Fixture.setUp();
+        if (address(nonfungiblePositionManager) == address(0)) revert();
         SwapRouter02Fixture.deploySwapRouter02(
             address(0), address(uniswapV3Factory), address(nonfungiblePositionManager), address(weth9)
         );
 
-        // Add two stable tokens with 6 and 18 decimals.
-        token0 = new ERC20Mock("Token 6d", "TOK6", 18);
-        token1 = new ERC20Mock("Token 18d", "TOK18", 18);
+        // Add two tokens.
+        token0 = new ERC20Mock("Token", "TOKEN", 18);
+        token1 = new ERC20Mock("Token", "TOKEN", 18);
         (token0, token1) = token0 < token1 ? (token0, token1) : (token1, token0);
 
         twapLogic = new TwapLogicExtension();

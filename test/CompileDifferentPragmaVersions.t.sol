@@ -20,5 +20,5 @@ import { SwapRouter02 } from "../lib/accounts-v2/lib/swap-router-contracts/contr
 import { Test } from "../lib/accounts-v2/lib/forge-std/src/Test.sol";
 
 contract CompoundFees_UniswapV3CompounderSpot_Fuzz_Test is Test {
-    function testFuzz_Success_getPositionState_Slipstream() public { }
+    function test() public { }
 }

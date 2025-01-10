@@ -7,7 +7,7 @@ pragma solidity 0.8.22;
 import { TwapLogic } from "../../../src/libraries/TwapLogic.sol";
 
 contract TwapLogicExtension {
-    function getTwat(address pool) external returns (int24) {
+    function getTwat(address pool) external view returns (int24) {
         return TwapLogic._getTwat(pool);
     }
 }

@@ -36,9 +36,9 @@ contract GetTwat_TwapLogic_Fuzz_Test is TwapLogic_Fuzz_Test {
         uint256 timePassed,
         int24 tickLower,
         int24 tickUpper,
-        uint128 amount0Initial,
-        uint128 amountOut0,
-        uint128 amountOut1
+        uint96 amount0Initial,
+        uint96 amountOut0,
+        uint96 amountOut1
     ) public {
         // Limit timePassed between the two swaps to 300s (the TWAT duration).
         timePassed = bound(timePassed, 0, 300);
@@ -49,15 +49,16 @@ contract GetTwat_TwapLogic_Fuzz_Test is TwapLogic_Fuzz_Test {
         vm.assume(isWithinAllowedRange(tickUpper));
 
         // Check that amounts are within allowed ranges.
-        vm.assume(amountOut0 > 0);
-        vm.assume(amountOut1 > 10); // Avoid error "SPL" when amountOut1is very small and amountOut0~amount0Initial.
-        vm.assume(uint256(amountOut0) + amountOut1 < amount0Initial);
+        // Avoid error "SPL" when amountOut1 is very small and amountOut0~amount0Initial.
+        amount0Initial = uint96(bound(amount0Initial, 200, type(uint96).max));
+        amountOut1 = uint96(bound(amountOut1, 10, amount0Initial - 110));
+        amountOut0 = uint96(bound(amountOut0, 10, amount0Initial - amountOut1 - 100));
 
         // Create a pool with the minimum initial price (4_295_128_739) and cardinality 300.
         pool = createPoolUniV3(address(token0), address(token1), POOL_FEE, 4_295_128_739, 300);
-        vm.assume(isBelowMaxLiquidityPerTick(tickLower, tickUpper, amount0Initial, 0, pool));
 
         // Provide liquidity only in token0.
+        vm.assume(isBelowMaxLiquidityPerTick(tickLower, tickUpper, amount0Initial, 0, pool));
         addLiquidityUniV3(pool, amount0Initial, 0, users.liquidityProvider, tickLower, tickUpper, false);
 
         // Do a first swap.
@@ -70,7 +71,6 @@ contract GetTwat_TwapLogic_Fuzz_Test is TwapLogic_Fuzz_Test {
                 tokenOut: address(token0),
                 fee: POOL_FEE,
                 recipient: users.swapper,
-                deadline: type(uint160).max,
                 amountOut: amountOut0,
                 amountInMaximum: type(uint160).max,
                 sqrtPriceLimitX96: 1_461_446_703_485_210_103_287_273_052_203_988_822_378_723_970_341
@@ -92,7 +92,6 @@ contract GetTwat_TwapLogic_Fuzz_Test is TwapLogic_Fuzz_Test {
                 tokenOut: address(token0),
                 fee: POOL_FEE,
                 recipient: users.swapper,
-                deadline: type(uint160).max,
                 amountOut: amountOut1,
                 amountInMaximum: type(uint160).max,
                 sqrtPriceLimitX96: 1_461_446_703_485_210_103_287_273_052_203_988_822_378_723_970_341
