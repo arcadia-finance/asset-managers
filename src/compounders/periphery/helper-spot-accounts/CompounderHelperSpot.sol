@@ -5,9 +5,9 @@
 pragma solidity 0.8.22;
 
 import { AlienBaseLogic } from "../../alien-base/libraries/AlienBaseLogic.sol";
-import { SlipstreamCompounderHelperLogic } from "../libraries/SlipstreamCompounderHelperLogic.sol";
+import { SlipstreamCompounderHelperLogic } from "./libraries/SlipstreamCompounderHelperLogic.sol";
 import { SlipstreamLogic } from "../../slipstream/libraries/SlipstreamLogic.sol";
-import { UniswapV3CompounderHelperLogic } from "../libraries/UniswapV3CompounderHelperLogic.sol";
+import { UniswapV3CompounderHelperLogic } from "./libraries/UniswapV3CompounderHelperLogic.sol";
 import { UniswapV3Logic } from "../../uniswap-v3/libraries/UniswapV3Logic.sol";
 
 /**
