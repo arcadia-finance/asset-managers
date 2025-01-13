@@ -344,7 +344,7 @@ contract UniswapV3Compounder is IActionBase {
      * @param id The id of the Liquidity Position.
      * @return position Struct with the position data.
      */
-    function getPositionState(uint256 id) public view returns (PositionState memory position) {
+    function getPositionState(uint256 id) public view virtual returns (PositionState memory position) {
         // Get data of the Liquidity Position.
         int24 tickLower;
         int24 tickUpper;
@@ -378,6 +378,7 @@ contract UniswapV3Compounder is IActionBase {
     function isBelowThreshold(PositionState memory position, Fees memory fees)
         public
         view
+        virtual
         returns (bool isBelowThreshold_)
     {
         uint256 totalValueFees = position.usdPriceToken0.mulDivDown(fees.amount0, 1e18)
