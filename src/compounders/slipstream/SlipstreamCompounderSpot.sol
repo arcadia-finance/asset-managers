@@ -64,8 +64,7 @@ contract SlipstreamCompounderSpot is SlipstreamCompounder {
         (position.sqrtPriceX96,,,,,) = ICLPool(position.pool).slot0();
 
         // Calculate the time weighted average tick over 300s.
-        // It is used only to ensure that the deposited Liquidity range and thus
-        // the risk of exposure manipulation is acceptable.
+        // This is to prevent sandwiching attacks when swapping and/or adding liquidity.
         int24 twat = TwapLogic._getTwat(position.pool);
         // Get the time weighted average sqrtPriceX96 over 300s.
         uint256 twaSqrtRatioX96 = TickMath.getSqrtRatioAtTick(twat);
