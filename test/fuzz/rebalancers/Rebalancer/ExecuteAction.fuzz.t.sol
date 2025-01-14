@@ -64,7 +64,10 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         address initiator,
         uint256 tolerance
     ) public {
-        // Given: Reasonable current price.
+        // Given: rebalancer is not the account.
+        vm.assume(account_ != address(rebalancer));
+
+        // And: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
 
         // And: Pool has reasonable liquidity.
@@ -131,7 +134,10 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         address initiator,
         uint256 tolerance
     ) public {
-        // Given: Reasonable current price.
+        // Given: rebalancer is not the account.
+        vm.assume(account_ != address(rebalancer));
+
+        // And: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
 
         // And: Pool has reasonable liquidity.
@@ -212,7 +218,10 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         uint256 tolerance,
         uint256 fee
     ) public {
-        // Given: Reasonable current price.
+        // Given: rebalancer is not the account.
+        vm.assume(account_ != address(rebalancer));
+
+        // And: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
 
         // And: Pool has reasonable liquidity.
@@ -281,7 +290,10 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         uint256 tolerance,
         uint256 fee
     ) public {
-        // Given: Reasonable current price.
+        // Given: rebalancer is not the account.
+        vm.assume(account_ != address(rebalancer));
+
+        // And: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
 
         // And: Pool has reasonable liquidity.
@@ -411,7 +423,10 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         uint256 tolerance,
         uint256 fee
     ) public {
-        // Given: Reasonable current price.
+        // Given: rebalancer is not the account.
+        vm.assume(account_ != address(rebalancer));
+
+        // And: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
 
         // And: Pool has reasonable liquidity.
@@ -518,7 +533,10 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         uint256 tolerance,
         uint256 fee
     ) public {
-        // Given: Reasonable current price.
+        // Given: rebalancer is not the account.
+        vm.assume(account_ != address(rebalancer));
+
+        // And: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
 
         // And: Pool has reasonable liquidity.
@@ -623,7 +641,10 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         uint256 fee,
         uint256 rewards
     ) public {
-        // Given: Reasonable current price.
+        // Given: rebalancer is not the account.
+        vm.assume(account_ != address(rebalancer));
+
+        // And: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
 
         // And: Pool has reasonable liquidity.
@@ -749,7 +770,10 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         uint256 fee,
         uint256 rewards
     ) public {
-        // Given: Reasonable current price.
+        // Given: rebalancer is not the account.
+        vm.assume(account_ != address(rebalancer));
+
+        // And: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
 
         // And: Pool has reasonable liquidity.
