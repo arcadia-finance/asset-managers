@@ -76,11 +76,9 @@ contract CompounderHelper {
             if (positionManager == address(SlipstreamLogic.POSITION_MANAGER)) {
                 (isCompoundable_, accountInfo, compounder) = SlipstreamSpotHelperLogic.isCompoundable(id);
             } else if (positionManager == address(UniswapV3Logic.POSITION_MANAGER)) {
-                // isCompoundable takes a protocol id as second input, 0 = UniswapV3, 1 = AlienBase.
                 (isCompoundable_, accountInfo, compounder) =
                     UniswapV3SpotHelperLogic.isCompoundable(id, positionManager);
             } else if (positionManager == address(AlienBaseLogic.POSITION_MANAGER)) {
-                // isCompoundable takes a protocol id as second input, 0 = UniswapV3, 1 = AlienBase.
                 (isCompoundable_, accountInfo, compounder) =
                     UniswapV3SpotHelperLogic.isCompoundable(id, positionManager);
             }
@@ -88,11 +86,9 @@ contract CompounderHelper {
             if (positionManager == address(SlipstreamLogic.POSITION_MANAGER)) {
                 (isCompoundable_, usdValueFees, compounder) = SlipstreamMarginHelperLogic.isCompoundable(id);
             } else if (positionManager == address(UniswapV3Logic.POSITION_MANAGER)) {
-                // isCompoundable takes a protocol id as second input, 0 = UniswapV3, 1 = AlienBase.
                 (isCompoundable_, usdValueFees, compounder) =
                     UniswapV3MarginHelperLogic.isCompoundable(id, positionManager);
             } else if (positionManager == address(AlienBaseLogic.POSITION_MANAGER)) {
-                // isCompoundable takes a protocol id as second input, 0 = UniswapV3, 1 = AlienBase.
                 (isCompoundable_, usdValueFees, compounder) =
                     UniswapV3MarginHelperLogic.isCompoundable(id, positionManager);
             }
