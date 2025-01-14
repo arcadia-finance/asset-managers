@@ -8,9 +8,11 @@ import { Base_AssetManagers_Script } from "../Base.s.sol";
 
 import { CompounderParameters } from "../utils/Constants.sol";
 import { SlipstreamCompounder } from "../../src/compounders/slipstream/SlipstreamCompounder.sol";
-import { SlipstreamCompounderHelper } from "../../src/compounders/slipstream/periphery/SlipstreamCompounderHelper.sol";
+import { SlipstreamCompounderHelper } from
+    "../../src/compounders/periphery/libraries/margin-accounts/slipstream/SlipstreamCompounderHelper.sol";
 import { UniswapV3Compounder } from "../../src/compounders/uniswap-v3/UniswapV3Compounder.sol";
-import { UniswapV3CompounderHelper } from "../../src/compounders/uniswap-v3/periphery/UniswapV3CompounderHelper.sol";
+import { UniswapV3CompounderHelper } from
+    "../../src/compounders/periphery/libraries/margin-accounts/uniswap-v3/UniswapV3CompounderHelper.sol";
 
 contract DeployCompounders is Base_AssetManagers_Script {
     SlipstreamCompounderHelper internal slipstreamCompounderHelper;

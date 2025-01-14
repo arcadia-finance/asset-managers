@@ -6,7 +6,8 @@ pragma solidity 0.8.22;
 
 import { IUniswapV3Compounder } from "../../../src/compounders/uniswap-v3/interfaces/IUniswapV3Compounder.sol";
 import { PositionState } from "../../../src/compounders/uniswap-v3/interfaces/IUniswapV3Compounder.sol";
-import { UniswapV3CompounderHelper } from "../../../src/compounders/uniswap-v3/periphery/UniswapV3CompounderHelper.sol";
+import { UniswapV3CompounderHelper } from
+    "../../../src/compounders/periphery/libraries/margin-accounts/uniswap-v3/UniswapV3CompounderHelper.sol";
 import { UniswapV3Logic } from "../../../src/compounders/uniswap-v3/libraries/UniswapV3Logic.sol";
 
 contract UniswapV3CompounderHelperExtension is UniswapV3CompounderHelper {

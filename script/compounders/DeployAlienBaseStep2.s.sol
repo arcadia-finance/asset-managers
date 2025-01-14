@@ -9,8 +9,9 @@ import { Base_AssetManagers_Script } from "../Base.s.sol";
 import { AlienBaseCompounder } from "../../src/compounders/alien-base/AlienBaseCompounder.sol";
 import { CompounderParameters, Quoters } from "../utils/Constants.sol";
 import { SlipstreamCompounderHelperV2 } from
-    "../../src/compounders/slipstream/periphery/SlipstreamCompounderHelperV2.sol";
-import { UniswapV3CompounderHelperV2 } from "../../src/compounders/uniswap-v3/periphery/UniswapV3CompounderHelperV2.sol";
+    "../../src/compounders/periphery/libraries/margin-accounts/slipstream/SlipstreamCompounderHelperV2.sol";
+import { UniswapV3CompounderHelperV2 } from
+    "../../src/compounders/periphery/libraries/margin-accounts/uniswap-v3/UniswapV3CompounderHelperV2.sol";
 
 contract DeployAlienBaseStep2 is Base_AssetManagers_Script {
     UniswapV3CompounderHelperV2 internal alienBaseCompounderHelper;

@@ -7,7 +7,7 @@ pragma solidity 0.8.22;
 import { ISlipstreamCompounder } from "../../../src/compounders/slipstream/interfaces/ISlipstreamCompounder.sol";
 import { PositionState } from "../../../src/compounders/slipstream/interfaces/ISlipstreamCompounder.sol";
 import { SlipstreamCompounderHelper } from
-    "../../../src/compounders/slipstream/periphery/SlipstreamCompounderHelper.sol";
+    "../../../src/compounders/periphery/libraries/margin-accounts/slipstream/SlipstreamCompounderHelper.sol";
 import { SlipstreamLogic } from "../../../src/compounders/slipstream/libraries/SlipstreamLogic.sol";
 
 contract SlipstreamCompounderHelperExtension is SlipstreamCompounderHelper {

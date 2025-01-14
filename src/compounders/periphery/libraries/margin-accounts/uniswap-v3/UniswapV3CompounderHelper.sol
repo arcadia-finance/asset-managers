@@ -4,22 +4,23 @@
  */
 pragma solidity 0.8.22;
 
-import { Fees, IUniswapV3Compounder, PositionState } from "../interfaces/IUniswapV3Compounder.sol";
-import { FixedPoint128 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint128.sol";
-import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
-import { IQuoter, QuoteExactOutputSingleParams } from "../interfaces/IQuoter.sol";
-import { IUniswapV3Pool } from "../interfaces/IUniswapV3Pool.sol";
-import { LiquidityAmounts } from "../../libraries/LiquidityAmounts.sol";
-import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
-import { UniswapV3Logic } from "../libraries/UniswapV3Logic.sol";
+import { Fees, IUniswapV3Compounder, PositionState } from "../../../../uniswap-v3/interfaces/IUniswapV3Compounder.sol";
+import { FixedPoint128 } from
+    "../../../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint128.sol";
+import { FixedPointMathLib } from "../../../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { FullMath } from "../../../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
+import { IQuoter, QuoteExactOutputSingleParams } from "../../../../uniswap-v3/interfaces/IQuoter.sol";
+import { IUniswapV3Pool } from "../../../../uniswap-v3/interfaces/IUniswapV3Pool.sol";
+import { LiquidityAmounts } from "../../../../libraries/LiquidityAmounts.sol";
+import { TickMath } from "../../../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
+import { UniswapV3Logic } from "../../../../uniswap-v3/libraries/UniswapV3Logic.sol";
 
 /**
  * @title Off-chain view functions for UniswapV3 Compounder Asset-Manager.
  * @author Pragma Labs
  * @notice This contract holds view functions accessible for initiators to check if the fees of a certain Liquidity Position can be compounded.
  */
-contract UniswapV3CompounderHelperV2 {
+contract UniswapV3CompounderHelper {
     using FixedPointMathLib for uint256;
     /* //////////////////////////////////////////////////////////////
                             CONSTANTS
@@ -29,7 +30,7 @@ contract UniswapV3CompounderHelperV2 {
     IUniswapV3Compounder public immutable COMPOUNDER;
 
     // The Uniswap V3 Quoter contract.
-    IQuoter internal immutable QUOTER;
+    IQuoter internal constant QUOTER = IQuoter(0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a);
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -37,11 +38,9 @@ contract UniswapV3CompounderHelperV2 {
 
     /**
      * @param compounder The contract address of the Asset-Manager for compounding UniswapV3 fees of a certain Liquidity Position.
-     * @param quoter The contract address of the Uniswap V3 Quoter.
      */
-    constructor(address compounder, address quoter) {
+    constructor(address compounder) {
         COMPOUNDER = IUniswapV3Compounder(compounder);
-        QUOTER = IQuoter(quoter);
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -52,28 +51,25 @@ contract UniswapV3CompounderHelperV2 {
      * @notice Off-chain view function to check if the fees of a certain Liquidity Position can be compounded.
      * @param id The id of the Liquidity Position.
      * @return isCompoundable_ Bool indicating if the fees can be compounded.
-     * @return usdValueFees The total value of the fees in USD, with 18 decimals precision.
      * @dev While this function does not persist state changes, it cannot be declared as view function.
      * Since quoteExactOutputSingle() of Uniswap's Quoter02.sol uses a try - except pattern where it first
      * does the swap (with state changes), next it reverts (state changes are not persisted) and information about
      * the final state is passed via the error message in the expect.
      */
-    function isCompoundable(uint256 id) external returns (bool isCompoundable_, uint256 usdValueFees) {
+    function isCompoundable(uint256 id) external returns (bool isCompoundable_) {
         // Fetch and cache all position related data.
         PositionState memory position = COMPOUNDER.getPositionState(id);
 
         // Check that pool is initially balanced.
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
-        if (COMPOUNDER.isPoolUnbalanced(position)) return (false, 0);
+        if (COMPOUNDER.isPoolUnbalanced(position)) return false;
 
         // Get fee amounts
         Fees memory balances;
         (balances.amount0, balances.amount1) = _getFeeAmounts(id);
 
         // Total value of the fees must be greater than the threshold.
-        usdValueFees = position.usdPriceToken0.mulDivDown(balances.amount0, 1e18)
-            + position.usdPriceToken1.mulDivDown(balances.amount1, 1e18);
-        if (usdValueFees < COMPOUNDER.COMPOUND_THRESHOLD()) return (false, 0);
+        if (COMPOUNDER.isBelowThreshold(position, balances)) return false;
 
         // Remove initiator reward from fees, these will be send to the initiator.
         Fees memory desiredAmounts;
@@ -86,7 +82,7 @@ contract UniswapV3CompounderHelperV2 {
         (bool isPoolUnbalanced, uint256 amountIn) = _quote(position, zeroToOne, amountOut);
 
         // Pool should still be balanced after the swap.
-        if (isPoolUnbalanced) return (false, 0);
+        if (isPoolUnbalanced) return false;
 
         // Calculate balances after swap.
         // Note that for the desiredAmounts only tokenOut is updated in UniswapV3Compounder,
@@ -104,7 +100,7 @@ contract UniswapV3CompounderHelperV2 {
         // The balances of the fees after swapping must be bigger than the actual input amount when increasing liquidity.
         // Due to slippage, or for pools with high swapping fees this might not always hold.
         (uint256 amount0, uint256 amount1) = _getLiquidityAmounts(position, desiredAmounts);
-        return (balances.amount0 > amount0 && balances.amount1 > amount1, usdValueFees);
+        return (balances.amount0 > amount0 && balances.amount1 > amount1);
     }
 
     /**

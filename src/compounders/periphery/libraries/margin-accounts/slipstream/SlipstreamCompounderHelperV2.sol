@@ -1,49 +1,80 @@
 /**
  * Created by Pragma Labs
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: BUSL-1.1
  */
 pragma solidity 0.8.22;
 
-import { Fees, PositionState } from "../../../slipstream/interfaces/ISlipstreamCompounder.sol";
-import { FixedPoint128 } from "../../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint128.sol";
-import { FixedPointMathLib } from "../../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { FullMath } from "../../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
-import { LiquidityAmounts } from "../../../libraries/LiquidityAmounts.sol";
-import { ICLPool } from "../../../slipstream/interfaces/ICLPool.sol";
-import { IQuoter, QuoteExactOutputSingleParams } from "../../../slipstream/interfaces/IQuoter.sol";
-import { ISlipstreamCompounder } from "../../../slipstream/interfaces/ISlipstreamCompounder.sol";
-import { SlipstreamLogic } from "../../../slipstream/libraries/SlipstreamLogic.sol";
+import { Fees, ISlipstreamCompounder, PositionState } from "../../../../slipstream/interfaces/ISlipstreamCompounder.sol";
+import { FixedPoint128 } from
+    "../../../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint128.sol";
+import { FixedPointMathLib } from "../../../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { FullMath } from "../../../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
+import { ICLPool } from "../../../../slipstream/interfaces/ICLPool.sol";
+import { IQuoter, QuoteExactOutputSingleParams } from "../../../../slipstream/interfaces/IQuoter.sol";
+import { LiquidityAmounts } from "../../../../libraries/LiquidityAmounts.sol";
+import { TickMath } from "../../../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
+import { SlipstreamLogic } from "../../../../slipstream/libraries/SlipstreamLogic.sol";
 
-library SlipstreamCompounderHelperLogic {
+/**
+ * @title Off-chain view functions for Slipstream Compounder Asset-Manager.
+ * @author Pragma Labs
+ * @notice This contract holds view functions accessible for initiators to check if the fees of a certain Liquidity Position can be compounded.
+ */
+contract SlipstreamCompounderHelperV2 {
     using FixedPointMathLib for uint256;
+    /* //////////////////////////////////////////////////////////////
+                            CONSTANTS
+    ////////////////////////////////////////////////////////////// */
+
+    // The contract address of the Asset Manager.
+    ISlipstreamCompounder public immutable COMPOUNDER;
 
     // The Slipstream Quoter contract.
-    IQuoter internal constant QUOTER = IQuoter(0x254cF9E1E6e233aa1AC962CB9B05b2cfeAaE15b0);
+    IQuoter internal immutable QUOTER;
 
-    // The Slipstream Compounder for Spot Accounts.
-    // TODO : add deployed address.
-    ISlipstreamCompounder internal constant COMPOUNDER = ISlipstreamCompounder(address(0x00));
+    /* //////////////////////////////////////////////////////////////
+                            CONSTRUCTOR
+    ////////////////////////////////////////////////////////////// */
+
+    /**
+     * @param compounder The contract address of the Asset-Manager for compounding Slipstream fees of a certain Liquidity Position.
+     * @param quoter The contract address of the Slipstream Quoter.
+     */
+    constructor(address compounder, address quoter) {
+        COMPOUNDER = ISlipstreamCompounder(compounder);
+        QUOTER = IQuoter(quoter);
+    }
+
+    /* ///////////////////////////////////////////////////////////////
+                      OFF-CHAIN VIEW FUNCTIONS
+    /////////////////////////////////////////////////////////////// */
 
     /**
      * @notice Off-chain view function to check if the fees of a certain Liquidity Position can be compounded.
      * @param id The id of the Liquidity Position.
      * @return isCompoundable_ Bool indicating if the fees can be compounded.
+     * @return usdValueFees The total value of the fees in USD, with 18 decimals precision.
      * @dev While this function does not persist state changes, it cannot be declared as view function.
      * Since quoteExactOutputSingle() of Uniswap's Quoter02.sol uses a try - except pattern where it first
      * does the swap (with state changes), next it reverts (state changes are not persisted) and information about
      * the final state is passed via the error message in the expect.
      */
-    function _isCompoundable(uint256 id) external returns (bool isCompoundable_) {
+    function isCompoundable(uint256 id) external returns (bool isCompoundable_, uint256 usdValueFees) {
         // Fetch and cache all position related data.
         PositionState memory position = COMPOUNDER.getPositionState(id);
 
         // Check that pool is initially balanced.
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
-        if (COMPOUNDER.isPoolUnbalanced(position)) return false;
+        if (COMPOUNDER.isPoolUnbalanced(position)) return (false, 0);
 
         // Get fee amounts
         Fees memory balances;
         (balances.amount0, balances.amount1) = _getFeeAmounts(id);
+
+        // Total value of the fees must be greater than the threshold.
+        usdValueFees = position.usdPriceToken0.mulDivDown(balances.amount0, 1e18)
+            + position.usdPriceToken1.mulDivDown(balances.amount1, 1e18);
+        if (usdValueFees < COMPOUNDER.COMPOUND_THRESHOLD()) return (false, 0);
 
         // Remove initiator reward from fees, these will be send to the initiator.
         Fees memory desiredAmounts;
@@ -56,7 +87,7 @@ library SlipstreamCompounderHelperLogic {
         (bool isPoolUnbalanced, uint256 amountIn) = _quote(position, zeroToOne, amountOut);
 
         // Pool should still be balanced after the swap.
-        if (isPoolUnbalanced) return false;
+        if (isPoolUnbalanced) return (false, 0);
 
         // Calculate balances after swap.
         // Note that for the desiredAmounts only tokenOut is updated in SlipstreamCompounder,
@@ -74,7 +105,7 @@ library SlipstreamCompounderHelperLogic {
         // The balances of the fees after swapping must be bigger than the actual input amount when increasing liquidity.
         // Due to slippage, or for pools with high swapping fees this might not always hold.
         (uint256 amount0, uint256 amount1) = _getLiquidityAmounts(position, desiredAmounts);
-        return (balances.amount0 > amount0 && balances.amount1 > amount1);
+        return (balances.amount0 > amount0 && balances.amount1 > amount1, usdValueFees);
     }
 
     /**

@@ -6,7 +6,7 @@ pragma solidity 0.8.22;
 
 import { SlipstreamCompounder_Fuzz_Test } from "../../compounders/SlipstreamCompounder/_SlipstreamCompounder.fuzz.t.sol";
 import { SlipstreamCompounderHelper } from
-    "../../../../src/compounders/slipstream/periphery/SlipstreamCompounderHelper.sol";
+    "../../../../src/compounders/periphery/libraries/margin-accounts/slipstream/SlipstreamCompounderHelper.sol";
 import { SlipstreamCompounderHelperExtension } from "../../../utils/extensions/SlipstreamCompounderHelperExtension.sol";
 import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
 
