@@ -6,7 +6,7 @@ pragma solidity 0.8.22;
 
 import { Fees, ISlipstreamCompounder, PositionState } from "../../../../slipstream/interfaces/ISlipstreamCompounder.sol";
 import { FixedPoint128 } from
-    "../../../../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint128.sol";
+    "../../../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint128.sol";
 import { FixedPointMathLib } from "../../../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { FullMath } from "../../../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
 import { ICLPool } from "../../../../slipstream/interfaces/ICLPool.sol";
