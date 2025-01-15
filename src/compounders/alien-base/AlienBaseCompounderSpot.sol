@@ -78,7 +78,7 @@ contract AlienBaseCompounderSpot is AlienBaseCompounder {
      * @notice We don't make use of a minimum threshold for Spot Accounts,
      * as we don't rely on third party oracles for USD prices but on a TWAP.
      */
-    function isBelowThreshold(PositionState memory, Fees memory) public view override returns (bool) {
+    function isBelowThreshold(PositionState memory, Fees memory) public pure override returns (bool) {
         return false;
     }
 }

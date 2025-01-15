@@ -6,7 +6,7 @@ pragma solidity 0.8.22;
 
 import { UniswapV3Compounder_Fuzz_Test } from "../../compounders/UniswapV3Compounder/_UniswapV3Compounder.fuzz.t.sol";
 import { UniswapV3CompounderHelper } from
-    "../../../../src/compounders/uniswap-v3/periphery/UniswapV3CompounderHelper.sol";
+    "../../../../src/compounders/periphery/libraries/margin-accounts/uniswap-v3/UniswapV3CompounderHelper.sol";
 import { UniswapV3CompounderHelperExtension } from "../../../utils/extensions/UniswapV3CompounderHelperExtension.sol";
 import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
 

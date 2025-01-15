@@ -278,6 +278,9 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         // Given: Initiator is not the liquidity provider.
         vm.assume(initVars.initiator != users.liquidityProvider);
 
+        // And: Initiator is not the account.
+        vm.assume(initVars.initiator != address(account));
+
         // And : Initialize a uniswapV3 pool and a lp position with valid test variables. Also generate fees for that position.
         uint256 tokenId;
         (initVars, lpVars, tokenId) = initPoolAndCreatePositionWithFees(initVars, lpVars);
@@ -337,6 +340,9 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     ) public {
         // Given: Initiator is not the liquidity provider.
         vm.assume(initVars.initiator != users.liquidityProvider);
+
+        // And: Initiator is not the account.
+        vm.assume(initVars.initiator != address(account));
 
         // And : Initialize a uniswapV3 pool and a lp position with valid test variables. Also generate fees for that position.
         uint256 tokenId;

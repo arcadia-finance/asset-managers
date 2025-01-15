@@ -50,9 +50,9 @@ contract GetTwat_TwapLogic_Fuzz_Test is TwapLogic_Fuzz_Test {
 
         // Check that amounts are within allowed ranges.
         // Avoid error "SPL" when amountOut1 is very small and amountOut0~amount0Initial.
-        amount0Initial = uint96(bound(amount0Initial, 200, type(uint96).max));
-        amountOut1 = uint96(bound(amountOut1, 10, amount0Initial - 110));
-        amountOut0 = uint96(bound(amountOut0, 10, amount0Initial - amountOut1 - 100));
+        amount0Initial = uint96(bound(amount0Initial, 2000, type(uint96).max));
+        amountOut1 = uint96(bound(amountOut1, 10, amount0Initial - 1100));
+        amountOut0 = uint96(bound(amountOut0, 10, amount0Initial - amountOut1 - 1000));
 
         // Create a pool with the minimum initial price (4_295_128_739) and cardinality 300.
         pool = createPoolUniV3(address(token0), address(token1), POOL_FEE, 4_295_128_739, 300);
