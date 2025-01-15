@@ -15,8 +15,8 @@ library RebalanceOptimizationMath {
     // The minimal relative difference between liquidity0 and liquidity1, with 18 decimals precision.
     uint256 internal constant CONVERGENCE_THRESHOLD = 1e6;
 
-    // The maximal number of iterations to find the optimal swap parameters (15 iterations equals roughly 90k gas).
-    uint256 internal constant MAX_ITERATIONS = 15;
+    // The maximal number of iterations to find the optimal swap parameters.
+    uint256 internal constant MAX_ITERATIONS = 100;
 
     /**
      * @notice Iteratively calculates the amountOut for a swap through the pool itself, that maximizes the amount of liquidity that is added.
