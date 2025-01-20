@@ -10,6 +10,12 @@ library Compounders {
     address constant UNISWAP_V3 = address(0x351a4CE4C45029D847F396132953673BcdEAF324);
 }
 
+library CompoundersSpot {
+    address constant ALIEN_BASE = address(0x45c1661EF92CF0310A62cEc0cFb7BA690E9C6837);
+    address payable constant SLIPSTREAM = payable(address(0x5593957003f1C40287D23A76EcBD6c503B413a64));
+    address constant UNISWAP_V3 = address(0x2b0bb37203b850Ee73f19b735C92c18631291210);
+}
+
 library CompounderHelpers {
     address constant ALIEN_BASE = address(0x8363503aD282d4D0B3742Befdce5b425c60F77E7);
     address constant SLIPSTREAM = address(0xAAAAA15c3E04E7a827aD60Ae0544588BfdaeBa61);

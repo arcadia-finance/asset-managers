@@ -33,7 +33,7 @@ abstract contract SlipstreamCompounderSpot_Fuzz_Test is SlipstreamCompounder_Fuz
     function setUp() public virtual override(SlipstreamCompounder_Fuzz_Test) {
         SlipstreamCompounder_Fuzz_Test.setUp();
 
-        deployCompounderSpot(COMPOUND_THRESHOLD, INITIATOR_SHARE, TOLERANCE);
+        deployCompounderSpot(INITIATOR_SHARE, TOLERANCE);
 
         vm.prank(users.accountOwner);
         account.setAssetManager(address(compounderSpot), true);
@@ -43,9 +43,9 @@ abstract contract SlipstreamCompounderSpot_Fuzz_Test is SlipstreamCompounder_Fuz
                         HELPER FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
-    function deployCompounderSpot(uint256 compoundThreshold, uint256 initiatorShare, uint256 tolerance) public {
+    function deployCompounderSpot(uint256 initiatorShare, uint256 tolerance) public {
         vm.prank(users.owner);
-        compounderSpot = new SlipstreamCompounderSpot(compoundThreshold, initiatorShare, tolerance);
+        compounderSpot = new SlipstreamCompounderSpot(initiatorShare, tolerance);
 
         // Overwrite code hash of the CLPool.
         bytes memory bytecode = address(compounderSpot).code;
