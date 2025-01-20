@@ -33,7 +33,7 @@ abstract contract UniswapV3CompounderSpot_Fuzz_Test is UniswapV3Compounder_Fuzz_
     function setUp() public virtual override(UniswapV3Compounder_Fuzz_Test) {
         UniswapV3Compounder_Fuzz_Test.setUp();
 
-        deployCompounderSpot(COMPOUND_THRESHOLD, INITIATOR_SHARE, TOLERANCE);
+        deployCompounderSpot(INITIATOR_SHARE, TOLERANCE);
 
         vm.prank(users.accountOwner);
         account.setAssetManager(address(compounderSpot), true);
@@ -43,9 +43,9 @@ abstract contract UniswapV3CompounderSpot_Fuzz_Test is UniswapV3Compounder_Fuzz_
                         HELPER FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
-    function deployCompounderSpot(uint256 compoundThreshold, uint256 initiatorShare, uint256 tolerance) public {
+    function deployCompounderSpot(uint256 initiatorShare, uint256 tolerance) public {
         vm.prank(users.owner);
-        compounderSpot = new UniswapV3CompounderSpot(compoundThreshold, initiatorShare, tolerance);
+        compounderSpot = new UniswapV3CompounderSpot(initiatorShare, tolerance);
 
         // Get the bytecode of the UniswapV3PoolExtension.
         bytes memory args = abi.encode();

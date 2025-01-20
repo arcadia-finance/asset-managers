@@ -37,9 +37,7 @@ contract AlienBaseCompounderSpot is AlienBaseCompounder {
      * The tolerance boundaries are symmetric around the price, but taking the square root will result in a different
      * allowed deviation of the sqrtPriceX96 for the lower and upper boundaries.
      */
-    constructor(uint256 compoundThreshold, uint256 initiatorShare, uint256 tolerance)
-        AlienBaseCompounder(0, initiatorShare, tolerance)
-    { }
+    constructor(uint256 initiatorShare, uint256 tolerance) AlienBaseCompounder(0, initiatorShare, tolerance) { }
 
     /* ///////////////////////////////////////////////////////////////
                     POSITION AND POOL VIEW FUNCTIONS
