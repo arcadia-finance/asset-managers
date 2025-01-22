@@ -7,7 +7,7 @@ pragma solidity 0.8.22;
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { Rebalancer } from "./Rebalancer.sol";
 import { SlipstreamLogic } from "./libraries/SlipstreamLogic.sol";
-import { TickMath } from "../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/TickMath.sol";
+import { TickMath } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 import { TwapLogic } from "../libraries/TwapLogic.sol";
 import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
 

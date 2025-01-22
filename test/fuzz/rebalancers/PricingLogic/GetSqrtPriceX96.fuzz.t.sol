@@ -6,7 +6,7 @@ pragma solidity 0.8.22;
 
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { PricingLogic_Fuzz_Test } from "./_PricingLogic.fuzz.t.sol";
-import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/TickMath.sol";
+import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
 /**
  * @notice Fuzz tests for the function "_getSqrtPriceX96" of contract "PricingLogic".

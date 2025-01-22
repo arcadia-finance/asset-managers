@@ -8,7 +8,7 @@ import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/E
 import { IUniswapV3PoolExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/IUniswapV3PoolExtension.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
-import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/TickMath.sol";
+import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
 import { UniswapV3Logic_Fuzz_Test } from "./_UniswapV3Logic.fuzz.t.sol";
 

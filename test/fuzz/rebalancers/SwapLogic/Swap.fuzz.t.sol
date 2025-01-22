@@ -8,10 +8,9 @@ import { RebalanceLogicExtension } from "../../../utils/extensions/RebalanceLogi
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RouterMock } from "../../../utils/mocks/RouterMock.sol";
 import { stdError } from "../../../../lib/accounts-v2/lib/forge-std/src/StdError.sol";
-import { SqrtPriceMath } from
-    "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/SqrtPriceMath.sol";
+import { SqrtPriceMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/SqrtPriceMath.sol";
 import { SwapLogic_Fuzz_Test } from "./_SwapLogic.fuzz.t.sol";
-import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/TickMath.sol";
+import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
 
 /**

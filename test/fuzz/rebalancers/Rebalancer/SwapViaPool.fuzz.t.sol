@@ -7,7 +7,7 @@ pragma solidity 0.8.22;
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/uniswap-v3/LiquidityAmounts.sol";
 import { SwapMath } from "../../../utils/uniswap-v3/SwapMath.sol";
-import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/TickMath.sol";
+import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { Rebalancer_Fuzz_Test } from "./_Rebalancer.fuzz.t.sol";
 import { UniswapV3Logic } from "../../../../src/rebalancers/libraries/UniswapV3Logic.sol";
