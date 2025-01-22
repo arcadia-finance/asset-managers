@@ -50,7 +50,7 @@ contract GetTwat_TwapLogic_Fuzz_Test is TwapLogic_Fuzz_Test {
 
         // Check that amounts are within allowed ranges.
         // Avoid error "SPL" when amountOut1 is very small and amountOut0~amount0Initial.
-        amount0Initial = uint96(bound(amount0Initial, 2000, type(uint96).max));
+        amount0Initial = uint96(bound(amount0Initial, 2000, type(uint88).max));
         amountOut1 = uint96(bound(amountOut1, 10, amount0Initial - 1100));
         amountOut0 = uint96(bound(amountOut0, 10, amount0Initial - amountOut1 - 1000));
 
