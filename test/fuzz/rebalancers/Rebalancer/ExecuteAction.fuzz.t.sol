@@ -11,7 +11,7 @@ import { ERC20 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC20.
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { FixedPoint128 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint128.sol";
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/FullMath.sol";
+import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { HookMock } from "../../../utils/mocks/HookMock.sol";
 import { PricingLogic } from "../../../../src/rebalancers/libraries/PricingLogic.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
@@ -19,7 +19,7 @@ import { Rebalancer_Fuzz_Test } from "./_Rebalancer2.fuzz.t.sol";
 import { RouterMock } from "../../../utils/mocks/RouterMock.sol";
 import { RouterSetPoolPriceMock } from "../../../utils/mocks/RouterSetPoolPriceMock.sol";
 import { StdStorage, stdStorage } from "../../../../lib/accounts-v2/lib/forge-std/src/Test.sol";
-import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/TickMath.sol";
+import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
 import { UniswapV3Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";
 import { UniswapV3Logic } from "../../../../src/rebalancers/libraries/UniswapV3Logic.sol";

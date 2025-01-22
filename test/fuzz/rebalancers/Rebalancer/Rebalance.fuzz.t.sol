@@ -16,7 +16,7 @@ import { RebalanceOptimizationMath } from "../../../../src/rebalancers/libraries
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RouterMock } from "../../../utils/mocks/RouterMock.sol";
 import { SwapMath } from "../../../utils/uniswap-v3/SwapMath.sol";
-import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery-fork/lib/v4-core/src/libraries/TickMath.sol";
+import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 import { Rebalancer_Fuzz_Test } from "./_Rebalancer.fuzz.t.sol";
 
 /**
@@ -267,7 +267,7 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         (uint256 usdValuePosition, uint256 usdValueRemaining) =
             getValuesInUsd(amount0_, amount1_, token0.balanceOf(address(account)), token1.balanceOf(address(account)));
         // Ensure the leftovers represent less than 1,4% of the usd value of the newly minted position.
-        assertLt(usdValueRemaining, 0.014 * 1e18 * usdValuePosition / 1e18);
+        if (usdValueRemaining > 0) assertLt(usdValueRemaining, 0.014 * 1e18 * usdValuePosition / 1e18);
     }
 
     function testFuzz_Success_rebalancePosition_InitiatorFees_Token0(

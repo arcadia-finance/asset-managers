@@ -6,7 +6,15 @@ libs = ['lib']
 optimizer = true
 optimizer_runs = 200
 fuzz = { runs = 50, max_test_rejects = 100_000_000}
+remappings = [
+    "lib/accounts-v2/lib/slipstream:@openzeppelin/=lib/accounts-v2/lib/slipstream/lib/openzeppelin-contracts/",
+    "lib/accounts-v2/lib/v3-periphery:@openzeppelin/=lib/accounts-v2/lib/openzeppelin-contracts/",
+    "lib/accounts-v2/lib/swap-router-contracts:@openzeppelin/=lib/accounts-v2/lib/openzeppelin-contracts/",
+    "lib/accounts-v2/lib/v4-periphery:@openzeppelin/=lib/accounts-v2/lib/v4-periphery/lib/v4-core/lib/openzeppelin-contracts/",
+    "lib/accounts-v2/lib/v4-periphery/lib/v4-core:@openzeppelin/=lib/accounts-v2/lib/v4-periphery/lib/v4-core/lib/openzeppelin-contracts/",
+]
 evm_version = 'cancun'
+unchecked_cheatcode_artifacts = true
 
 [profile.lite]
 src = 'src'
