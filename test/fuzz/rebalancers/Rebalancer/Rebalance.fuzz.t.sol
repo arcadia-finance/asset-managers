@@ -539,7 +539,7 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     ) public {
         // Given : deploy new rebalancer with a high maxTolerance to avoid unbalancedPool due to external usd prices not aligned
         {
-            uint256 maxTolerance = 0.9 * 1e18;
+            uint256 maxTolerance = 0.8 * 1e18;
             deployRebalancer(maxTolerance, MAX_INITIATOR_FEE);
         }
 
