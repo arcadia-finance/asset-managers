@@ -12,5 +12,5 @@ library StakedSlipstreamLogic {
     address internal constant POSITION_MANAGER = 0x1Dc7A0f5336F52724B650E39174cfcbbEdD67bF1;
 
     // The Wrapped Staked Slipstream Asset Module contract.
-    address internal constant POSITION_MANAGER_WRAPPED = address(0x00);
+    address internal constant POSITION_MANAGER_WRAPPED = 0xD74339e0F10fcE96894916B93E5Cc7dE89C98272;
 }
