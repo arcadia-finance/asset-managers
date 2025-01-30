@@ -34,16 +34,14 @@ library MintLogic {
         uint256 balance1
     ) internal returns (uint256 newTokenId, uint256 liquidity, uint256 balance0_, uint256 balance1_) {
         // Before position can be staked, we have to create a slipstream position.
-        bool staked;
         address stakedPositionManager;
         if (
-            positionManager == StakedSlipstreamLogic.POSITION_MANAGER
-                || positionManager == StakedSlipstreamLogic.POSITION_MANAGER_WRAPPED
+            positionManager == StakedSlipstreamLogic.STAKED_SLIPSTREAM_AM
+                || positionManager == StakedSlipstreamLogic.STAKED_SLIPSTREAM_WRAPPER
         ) {
-            staked = true;
             stakedPositionManager = positionManager;
         }
-        if (staked) positionManager = address(SlipstreamLogic.POSITION_MANAGER);
+        if (stakedPositionManager != address(0)) positionManager = address(SlipstreamLogic.POSITION_MANAGER);
         ERC20(position.token0).safeApproveWithRetry(positionManager, balance0);
         ERC20(position.token1).safeApproveWithRetry(positionManager, balance1);
 
@@ -87,7 +85,7 @@ library MintLogic {
         balance1_ = balance1 - amount1;
 
         // If position is a staked slipstream position, stake the position.
-        if (staked) {
+        if (stakedPositionManager != address(0)) {
             SlipstreamLogic.POSITION_MANAGER.approve(stakedPositionManager, newTokenId);
             IStakedSlipstreamAM(stakedPositionManager).mint(newTokenId);
         }

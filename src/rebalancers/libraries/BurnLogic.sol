@@ -27,8 +27,8 @@ library BurnLogic {
         // If position is a staked slipstream position, first unstake the position.
         bool staked;
         if (
-            positionManager == address(StakedSlipstreamLogic.POSITION_MANAGER)
-                || positionManager == address(StakedSlipstreamLogic.POSITION_MANAGER_WRAPPED)
+            positionManager == address(StakedSlipstreamLogic.STAKED_SLIPSTREAM_AM)
+                || positionManager == address(StakedSlipstreamLogic.STAKED_SLIPSTREAM_WRAPPER)
         ) {
             // Staking rewards are deposited back into the account at the end of the transaction.
             // Or, if rewardToken is an underlying token of the position, added to the balances
