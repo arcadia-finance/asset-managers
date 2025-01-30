@@ -33,6 +33,7 @@ contract CompoundFees_SlipstreamCompounderSpot_Fuzz_Test is SlipstreamCompounder
     function testFuzz_Success_compoundFees(TestVariables memory testVars, address initiator) public {
         // Given : initiator is not the liquidity provider.
         vm.assume(initiator != users.liquidityProvider);
+        vm.assume(initiator != address(usdStablePool));
 
         // And : Valid state
         (testVars,) = givenValidBalancedState(testVars);
@@ -92,6 +93,7 @@ contract CompoundFees_SlipstreamCompounderSpot_Fuzz_Test is SlipstreamCompounder
     function testFuzz_Success_compoundFees_MoveTickRight(TestVariables memory testVars, address initiator) public {
         // Given : initiator is not the liquidity provider.
         vm.assume(initiator != users.liquidityProvider);
+        vm.assume(initiator != address(usdStablePool));
 
         // And : Valid state
         (testVars,) = givenValidBalancedState(testVars);
@@ -190,6 +192,7 @@ contract CompoundFees_SlipstreamCompounderSpot_Fuzz_Test is SlipstreamCompounder
     function testFuzz_Success_compoundFees_MoveTickLeft(TestVariables memory testVars, address initiator) public {
         // Given : initiator is not the liquidity provider.
         vm.assume(initiator != users.liquidityProvider);
+        vm.assume(initiator != address(usdStablePool));
 
         // And : Valid state
         (testVars,) = givenValidBalancedState(testVars);
