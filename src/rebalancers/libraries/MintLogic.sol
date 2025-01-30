@@ -40,8 +40,9 @@ library MintLogic {
                 || positionManager == StakedSlipstreamLogic.STAKED_SLIPSTREAM_WRAPPER
         ) {
             stakedPositionManager = positionManager;
+            positionManager = address(SlipstreamLogic.POSITION_MANAGER);
         }
-        if (stakedPositionManager != address(0)) positionManager = address(SlipstreamLogic.POSITION_MANAGER);
+
         ERC20(position.token0).safeApproveWithRetry(positionManager, balance0);
         ERC20(position.token1).safeApproveWithRetry(positionManager, balance1);
 
