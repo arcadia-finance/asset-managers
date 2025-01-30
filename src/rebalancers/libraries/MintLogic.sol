@@ -6,6 +6,7 @@ pragma solidity 0.8.22;
 
 import { ERC20, SafeApprove } from "./SafeApprove.sol";
 import { ICLPositionManager } from "../interfaces/ICLPositionManager.sol";
+import { IStakedSlipstreamAM } from "../interfaces/IStakedSlipstreamAM.sol";
 import { IUniswapV3PositionManager } from "../interfaces/IUniswapV3PositionManager.sol";
 import { Rebalancer } from "../Rebalancer.sol";
 import { SlipstreamLogic } from "./SlipstreamLogic.sol";
@@ -33,8 +34,15 @@ library MintLogic {
         uint256 balance1
     ) internal returns (uint256 newTokenId, uint256 liquidity, uint256 balance0_, uint256 balance1_) {
         // Before position can be staked, we have to create a slipstream position.
-        bool staked = positionManager == address(StakedSlipstreamLogic.POSITION_MANAGER);
-        if (staked) positionManager = address(SlipstreamLogic.POSITION_MANAGER);
+        address stakedPositionManager;
+        if (
+            positionManager == StakedSlipstreamLogic.STAKED_SLIPSTREAM_AM
+                || positionManager == StakedSlipstreamLogic.STAKED_SLIPSTREAM_WRAPPER
+        ) {
+            stakedPositionManager = positionManager;
+            positionManager = address(SlipstreamLogic.POSITION_MANAGER);
+        }
+
         ERC20(position.token0).safeApproveWithRetry(positionManager, balance0);
         ERC20(position.token1).safeApproveWithRetry(positionManager, balance1);
 
@@ -78,9 +86,9 @@ library MintLogic {
         balance1_ = balance1 - amount1;
 
         // If position is a staked slipstream position, stake the position.
-        if (staked) {
-            SlipstreamLogic.POSITION_MANAGER.approve(address(StakedSlipstreamLogic.POSITION_MANAGER), newTokenId);
-            StakedSlipstreamLogic.POSITION_MANAGER.mint(newTokenId);
+        if (stakedPositionManager != address(0)) {
+            SlipstreamLogic.POSITION_MANAGER.approve(stakedPositionManager, newTokenId);
+            IStakedSlipstreamAM(stakedPositionManager).mint(newTokenId);
         }
     }
 }

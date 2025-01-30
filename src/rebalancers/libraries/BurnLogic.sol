@@ -5,6 +5,7 @@
 pragma solidity 0.8.22;
 
 import { CollectParams, DecreaseLiquidityParams, IPositionManager } from "../interfaces/IPositionManager.sol";
+import { IStakedSlipstreamAM } from "../interfaces/IStakedSlipstreamAM.sol";
 import { Rebalancer } from "../Rebalancer.sol";
 import { SlipstreamLogic } from "./SlipstreamLogic.sol";
 import { StakedSlipstreamLogic } from "./StakedSlipstreamLogic.sol";
@@ -24,14 +25,17 @@ library BurnLogic {
         returns (uint256 balance0, uint256 balance1, uint256 rewards)
     {
         // If position is a staked slipstream position, first unstake the position.
-        bool staked = positionManager == address(StakedSlipstreamLogic.POSITION_MANAGER);
-        if (staked) {
+        bool staked;
+        if (
+            positionManager == address(StakedSlipstreamLogic.STAKED_SLIPSTREAM_AM)
+                || positionManager == address(StakedSlipstreamLogic.STAKED_SLIPSTREAM_WRAPPER)
+        ) {
             // Staking rewards are deposited back into the account at the end of the transaction.
             // Or, if rewardToken is an underlying token of the position, added to the balances
-            rewards = StakedSlipstreamLogic.POSITION_MANAGER.burn(id);
-
+            rewards = IStakedSlipstreamAM(positionManager).burn(id);
             // After the position is unstaked, it becomes a slipstream position.
             positionManager = address(SlipstreamLogic.POSITION_MANAGER);
+            staked = true;
         }
 
         // Remove liquidity of the position and claim outstanding fees to get full amounts of token0 and token1

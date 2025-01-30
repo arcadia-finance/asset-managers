@@ -24,11 +24,18 @@ import { StdStorage, stdStorage } from "../../../../lib/accounts-v2/lib/forge-st
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 import { UniswapV3Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";
 import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
+import { WrappedStakedSlipstreamFixture } from
+    "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/WrappedStakedSlipstream.f.sol";
 
 /**
  * @notice Fuzz tests for the function "_burn" of contract "BurnLogic".
  */
-contract Burn_BurnLogic_Fuzz_Test is BurnLogic_Fuzz_Test, UniswapV3Fixture, SlipstreamFixture {
+contract Burn_BurnLogic_Fuzz_Test is
+    BurnLogic_Fuzz_Test,
+    UniswapV3Fixture,
+    SlipstreamFixture,
+    WrappedStakedSlipstreamFixture
+{
     using stdStorage for StdStorage;
     /*////////////////////////////////////////////////////////////////
                             CONSTANTS
@@ -45,7 +52,10 @@ contract Burn_BurnLogic_Fuzz_Test is BurnLogic_Fuzz_Test, UniswapV3Fixture, Slip
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
-    function setUp() public override(BurnLogic_Fuzz_Test, UniswapV3Fixture, SlipstreamFixture) {
+    function setUp()
+        public
+        override(BurnLogic_Fuzz_Test, UniswapV3Fixture, SlipstreamFixture, WrappedStakedSlipstreamFixture)
+    {
         BurnLogic_Fuzz_Test.setUp();
     }
 
@@ -348,6 +358,203 @@ contract Burn_BurnLogic_Fuzz_Test is BurnLogic_Fuzz_Test, UniswapV3Fixture, Slip
         // When: Calling _burn().
         (uint256 balance0, uint256 balance1, uint256 rewards) =
             burnLogic.burn(address(stakedSlipstreamAM), id, position);
+
+        // Then: Correct balances should be returned.
+        // Note: position manager does unsafe cast from uint256 to uint128.
+        assertApproxEqAbs(balance0, uint256(uint128(amount0)) + (position.token0 == AERO ? rewardsExpected : 0), 1e1);
+        assertApproxEqAbs(balance1, uint256(uint128(amount1)) + (position.token1 == AERO ? rewardsExpected : 0), 1e1);
+        assertEq(rewards, 0);
+
+        // And: Correct balances are transferred.
+        assertEq(ERC20(position.token0).balanceOf(address(burnLogic)), balance0);
+        assertEq(ERC20(position.token1).balanceOf(address(burnLogic)), balance1);
+    }
+
+    function testFuzz_Success_burn_WrappedStakedSlipstream_RewardTokenNotToken0Or1(
+        uint256 rewardGrowthGlobalX128Last,
+        uint256 rewardGrowthGlobalX128Current,
+        Rebalancer.PositionState memory position
+    ) public {
+        // Given : Deploy WrappedStakedSlipstream fixture.
+        WrappedStakedSlipstreamFixture.setUp();
+
+        // And: A valid position.
+        position.tickLower = int24(bound(position.tickLower, TickMath.MIN_TICK, TickMath.MAX_TICK - 1));
+        position.tickUpper = int24(bound(position.tickUpper, position.tickLower + 1, TickMath.MAX_TICK));
+        position.sqrtPriceX96 =
+            uint160(bound(position.sqrtPriceX96, TickMath.MIN_SQRT_PRICE, TickMath.MAX_SQRT_PRICE - 1));
+        position.liquidity = uint128(bound(position.liquidity, 1, UniswapHelpers.maxLiquidity(1)));
+
+        // And: Position is owned by the contract.
+        // Create tokens.
+        {
+            ERC20Mock token0 = new ERC20Mock("TokenA", "TOKA", 0);
+            ERC20Mock token1 = new ERC20Mock("TokenB", "TOKB", 0);
+            (token0, token1) = (token0 < token1) ? (token0, token1) : (token1, token0);
+            position.token0 = address(token0);
+            position.token1 = address(token1);
+        }
+
+        // Deploy fixtures for Staked Slipstream.
+        SlipstreamFixture.setUp();
+        deployAerodromePeriphery();
+        deploySlipstream();
+        deployCLGaugeFactory();
+
+        // Create pool.
+        ICLPoolExtension pool =
+            createPoolCL(position.token0, position.token1, TICK_SPACING, uint160(position.sqrtPriceX96), 300);
+
+        // Create gauge.
+        vm.prank(address(voter));
+        ICLGauge gauge = ICLGauge(cLGaugeFactory.createGauge(address(0), address(pool), address(0), AERO, true));
+        voter.setGauge(address(gauge));
+        voter.setAlive(address(gauge), true);
+
+        // And : An initial rewardGrowthGlobalX128.
+        stdstore.target(address(pool)).sig(pool.rewardGrowthGlobalX128.selector).checked_write(
+            rewardGrowthGlobalX128Last
+        );
+
+        // Create staked position.
+        (uint256 id, uint256 amount0, uint256 amount1) = addLiquidityCL(
+            pool, position.liquidity, users.liquidityProvider, position.tickLower, position.tickUpper, false
+        );
+
+        vm.startPrank(users.liquidityProvider);
+        slipstreamPositionManager.approve(address(wrappedStakedSlipstream), id);
+        wrappedStakedSlipstream.mint(id);
+        vm.stopPrank();
+
+        // Actual liquidity is always a bit less than the specified liquidity.
+        (,,,,,,, position.liquidity,,,,) = slipstreamPositionManager.positions(id);
+
+        // Transfer position to contract.
+        vm.prank(users.liquidityProvider);
+        ERC721(address(wrappedStakedSlipstream)).transferFrom(users.liquidityProvider, address(burnLogic), id);
+
+        // And: Position earned rewards.
+        vm.warp(block.timestamp + 1);
+        deal(AERO, address(gauge), type(uint256).max, true);
+        stdstore.target(address(pool)).sig(pool.rewardReserve.selector).checked_write(type(uint256).max);
+        stdstore.target(address(pool)).sig(pool.rewardGrowthGlobalX128.selector).checked_write(
+            rewardGrowthGlobalX128Current
+        );
+
+        // When: Calling _burn().
+        (uint256 balance0, uint256 balance1, uint256 rewards) =
+            burnLogic.burn(address(wrappedStakedSlipstream), id, position);
+
+        // Then: Correct balances should be returned.
+        // Note: position manager does unsafe cast from uint256 to uint128.
+        assertApproxEqAbs(balance0, uint128(amount0), 1e1);
+        assertApproxEqAbs(balance1, uint128(amount1), 1e1);
+        uint256 rewardsExpected;
+        if (
+            TickMath.getSqrtPriceAtTick(position.tickLower) < position.sqrtPriceX96
+                && position.sqrtPriceX96 < TickMath.getSqrtPriceAtTick(position.tickUpper)
+        ) {
+            uint256 rewardGrowthInsideX128;
+            unchecked {
+                rewardGrowthInsideX128 = rewardGrowthGlobalX128Current - rewardGrowthGlobalX128Last;
+            }
+            rewardsExpected = FullMath.mulDiv(rewardGrowthInsideX128, position.liquidity, FixedPoint128.Q128);
+        }
+        assertEq(rewards, rewardsExpected);
+
+        // And: Correct balances are transferred.
+        assertEq(ERC20(position.token0).balanceOf(address(burnLogic)), balance0);
+        assertEq(ERC20(position.token1).balanceOf(address(burnLogic)), balance1);
+        assertEq(ERC20(AERO).balanceOf(address(burnLogic)), rewards);
+    }
+
+    function testFuzz_Success_burn_WrappedStakedSlipstream_RewardTokenIsToken0Or1(
+        bytes32 salt,
+        uint256 rewardGrowthGlobalX128Last,
+        uint256 rewardGrowthGlobalX128Current,
+        Rebalancer.PositionState memory position
+    ) public {
+        // Given : Deploy WrappedStakedSlipstream fixture.
+        WrappedStakedSlipstreamFixture.setUp();
+
+        // And: A valid position.
+        position.tickLower = int24(bound(position.tickLower, TickMath.MIN_TICK, TickMath.MAX_TICK - 1));
+        position.tickUpper = int24(bound(position.tickUpper, position.tickLower + 1, TickMath.MAX_TICK));
+        position.sqrtPriceX96 =
+            uint160(bound(position.sqrtPriceX96, TickMath.MIN_SQRT_PRICE, TickMath.MAX_SQRT_PRICE - 1));
+        position.liquidity = uint128(bound(position.liquidity, 1, UniswapHelpers.maxLiquidity(1)));
+
+        // And: Position is owned by the contract.
+        // Create tokens.
+        {
+            ERC20Mock token0 = new ERC20Mock{ salt: salt }("TokenA", "TOKA", 0);
+            ERC20Mock token1 = ERC20Mock(AERO);
+            (token0, token1) = (token0 < token1) ? (token0, token1) : (token1, token0);
+            position.token0 = address(token0);
+            position.token1 = address(token1);
+        }
+
+        // Deploy fixtures for Staked Slipstream.
+        SlipstreamFixture.setUp();
+        deployAerodromePeriphery();
+        deploySlipstream();
+        deployCLGaugeFactory();
+
+        // Create pool.
+        ICLPoolExtension pool =
+            createPoolCL(position.token0, position.token1, TICK_SPACING, uint160(position.sqrtPriceX96), 300);
+
+        // Create gauge.
+        vm.prank(address(voter));
+        ICLGauge gauge = ICLGauge(cLGaugeFactory.createGauge(address(0), address(pool), address(0), AERO, true));
+        voter.setGauge(address(gauge));
+        voter.setAlive(address(gauge), true);
+
+        // And : An initial rewardGrowthGlobalX128.
+        stdstore.target(address(pool)).sig(pool.rewardGrowthGlobalX128.selector).checked_write(
+            rewardGrowthGlobalX128Last
+        );
+
+        // Create staked position.
+        (uint256 id, uint256 amount0, uint256 amount1) = addLiquidityCL(
+            pool, position.liquidity, users.liquidityProvider, position.tickLower, position.tickUpper, false
+        );
+        vm.startPrank(users.liquidityProvider);
+        slipstreamPositionManager.approve(address(wrappedStakedSlipstream), id);
+        wrappedStakedSlipstream.mint(id);
+        vm.stopPrank();
+        // Actual liquidity is always a bit less than the specified liquidity.
+        (,,,,,,, position.liquidity,,,,) = slipstreamPositionManager.positions(id);
+
+        // Transfer position to contract.
+        vm.prank(users.liquidityProvider);
+        ERC721(address(wrappedStakedSlipstream)).transferFrom(users.liquidityProvider, address(burnLogic), id);
+
+        // And: rewards do not overflow balances.
+        uint256 rewardsExpected;
+        if (
+            TickMath.getSqrtPriceAtTick(position.tickLower) < position.sqrtPriceX96
+                && position.sqrtPriceX96 < TickMath.getSqrtPriceAtTick(position.tickUpper)
+        ) {
+            uint256 rewardGrowthInsideX128;
+            unchecked {
+                rewardGrowthInsideX128 = rewardGrowthGlobalX128Current - rewardGrowthGlobalX128Last;
+            }
+            rewardsExpected = FullMath.mulDiv(rewardGrowthInsideX128, position.liquidity, FixedPoint128.Q128);
+        }
+        vm.assume(rewardsExpected < type(uint256).max - (position.token0 == AERO ? amount0 : amount1));
+
+        // And: Position earned rewards.
+        vm.warp(block.timestamp + 1);
+        deal(AERO, address(gauge), rewardsExpected, true);
+        stdstore.target(address(pool)).sig(pool.rewardReserve.selector).checked_write(type(uint256).max);
+        stdstore.target(address(pool)).sig(pool.rewardGrowthGlobalX128.selector).checked_write(
+            rewardGrowthGlobalX128Current
+        );
+
+        // When: Calling _burn().
+        (uint256 balance0, uint256 balance1, uint256 rewards) =
+            burnLogic.burn(address(wrappedStakedSlipstream), id, position);
 
         // Then: Correct balances should be returned.
         // Note: position manager does unsafe cast from uint256 to uint128.
