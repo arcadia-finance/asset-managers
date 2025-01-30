@@ -220,6 +220,7 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
     ) public {
         // Given: rebalancer is not the account.
         vm.assume(account_ != address(rebalancer));
+        vm.assume(account_ != address(this));
 
         // And: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
