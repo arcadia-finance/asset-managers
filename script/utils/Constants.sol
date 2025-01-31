@@ -40,6 +40,7 @@ library Rebalancers {
     address constant Margin_V1 = address(0x8ce0aB0fa8dB672e898c51248166C0ac8d55381A);
     address constant Margin_V2 = address(0x9Ba13B512004A5d5Dc9DdA232215797cC1672597);
     address constant Spot_V1 = address(0x5E45a9dAb20aA51b8B6c3cb39a934c3e845f29E6);
+    address constant Spot_V2 = address(0xC729213B9b72694F202FeB9cf40FE8ba5F5A4509);
 }
 
 library RebalancerParameters {
