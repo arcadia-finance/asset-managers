@@ -2,6 +2,7 @@
 pragma solidity ^0.8.22;
 
 import { BalanceDelta } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/BalanceDelta.sol";
+import { Currency } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
 import { PoolKey } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 
 struct ModifyLiquidityParams {
@@ -53,4 +54,16 @@ interface IPoolManager {
     function swap(PoolKey memory key, SwapParams memory params, bytes calldata hookData)
         external
         returns (BalanceDelta swapDelta);
+
+    /// @notice Called by the user to net out some value owed to the user
+    /// @dev Will revert if the requested amount is not available, consider using `mint` instead
+    /// @dev Can also be used as a mechanism for free flash loans
+    /// @param currency The currency to withdraw from the pool manager
+    /// @param to The address to withdraw to
+    /// @param amount The amount of currency to withdraw
+    function take(Currency currency, address to, uint256 amount) external;
+
+    /// @notice Called by the user to pay what is owed
+    /// @return paid The amount of currency settled
+    function settle() external payable returns (uint256 paid);
 }

@@ -13,6 +13,7 @@ import { FixedPoint96 } from "../../../../lib/accounts-v2/src/asset-modules/Unis
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
 import { IPoolManager } from "../interfaces/IPoolManager.sol";
+import { IPositionManager } from "../interfaces/IPositionManager.sol";
 import { StateLibrary } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/StateLibrary.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 
@@ -25,7 +26,9 @@ library UniswapV4Logic {
     uint256 internal constant Q192 = FixedPoint96.Q96 ** 2;
 
     // Actions used by the Uniswap V4 PositionManager.
+    uint256 internal constant INCREASE_LIQUIDITY = 0x00;
     uint256 internal constant DECREASE_LIQUIDITY = 0x01;
+    uint256 internal constant SETTLE_PAIR = 0x0d;
     uint256 internal constant TAKE_PAIR = 0x11;
 
     // The Uniswap V4 PoolManager contract.
@@ -126,23 +129,18 @@ library UniswapV4Logic {
      * @param currency1 The address of currency1.
      */
     function _processBalanceDeltas(BalanceDelta delta, Currency currency0, Currency currency1) internal {
-        // Will be set to true if at least one currency to transfer to the PoolManager
-        bool settle;
-
         if (delta.amount0() < 0) {
-            POOL_MANAGER.take(currency0, address(this), uint256(-delta.amount0()));
+            POOL_MANAGER.take(currency0, address(this), uint128(-delta.amount0()));
         } else if (delta.amount0() > 0) {
-            currency0.transfer(address(POOL_MANAGER), uint256(delta.amount0()));
-            settle = true;
+            currency0.transfer(address(POOL_MANAGER), uint128(delta.amount0()));
+            POOL_MANAGER.settle();
         }
 
         if (delta.amount1() < 0) {
-            POOL_MANAGER.take(currency1, address(this), uint256(-delta.amount1()));
+            POOL_MANAGER.take(currency1, address(this), uint128(-delta.amount1()));
         } else if (delta.amount1() > 0) {
-            currency0.transfer(address(POOL_MANAGER), uint256(delta.amount1()));
-            settle = true;
+            currency0.transfer(address(POOL_MANAGER), uint128(delta.amount1()));
+            POOL_MANAGER.settle();
         }
-
-        if (settle) POOL_MANAGER.settle();
     }
 }

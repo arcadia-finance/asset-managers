@@ -15,6 +15,7 @@ import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IAccount } from "../interfaces/IAccount.sol";
 import { IPoolManager, ModifyLiquidityParams, SwapParams } from "./interfaces/IPoolManager.sol";
+import { LiquidityAmounts } from "../../../lib/accounts-v2/lib/v4-periphery/src/libraries/LiquidityAmounts.sol";
 import { PoolKey } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 import {
     PositionInfoLibrary,
@@ -65,9 +66,6 @@ contract UniswapV4Compounder is IActionBase {
 
     // A struct with the state of a specific position, only used in memory.
     struct PositionState {
-        address token0;
-        address token1;
-        uint24 fee;
         uint256 sqrtPriceX96;
         uint256 sqrtRatioLower;
         uint256 sqrtRatioUpper;
@@ -223,29 +221,54 @@ contract UniswapV4Compounder is IActionBase {
         // The approval for at least one token after increasing liquidity will remain non-zero.
         // We have to set approval first to 0 for ERC20 tokens that require the approval to be set to zero
         // before setting it to a non-zero value.
-        ERC20(position.token0).safeApprove(address(UniswapV4Logic.POSITION_MANAGER), 0);
-        ERC20(position.token0).safeApprove(address(UniswapV4Logic.POSITION_MANAGER), fees.amount0);
-        ERC20(position.token1).safeApprove(address(UniswapV4Logic.POSITION_MANAGER), 0);
-        ERC20(position.token1).safeApprove(address(UniswapV4Logic.POSITION_MANAGER), fees.amount1);
-        UniswapV4Logic.POSITION_MANAGER.increaseLiquidity(
-            IncreaseLiquidityParams({
-                tokenId: id,
-                amount0Desired: fees.amount0,
-                amount1Desired: fees.amount1,
-                amount0Min: 0,
-                amount1Min: 0,
-                deadline: block.timestamp
-            })
+        // Handle approvals based on whether tokens are ETH or ERC20.
+
+        bool token0IsNative = Currency.unwrap(poolKey.currency0) == address(0);
+        bool token1IsNative = Currency.unwrap(poolKey.currency1) == address(0);
+
+        uint256 ethValue;
+        if (token0IsNative) {
+            ethValue = fees.amount0;
+        } else {
+            ERC20(Currency.unwrap(poolKey.currency0)).safeApprove(address(UniswapV4Logic.POSITION_MANAGER), 0);
+            ERC20(Currency.unwrap(poolKey.currency0)).safeApprove(
+                address(UniswapV4Logic.POSITION_MANAGER), fees.amount0
+            );
+        }
+
+        if (token1IsNative) {
+            ethValue = fees.amount1;
+        } else {
+            ERC20(Currency.unwrap(poolKey.currency1)).safeApprove(address(UniswapV4Logic.POSITION_MANAGER), 0);
+            ERC20(Currency.unwrap(poolKey.currency1)).safeApprove(
+                address(UniswapV4Logic.POSITION_MANAGER), fees.amount1
+            );
+        }
+
+        uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
+            position.sqrtPriceX96, position.sqrtRatioLower, position.sqrtRatioUpper, fees.amount0, fees.amount1
         );
 
+        // Generate calldata to increase liquidity.
+        bytes memory actions = new bytes(2);
+        actions[0] = bytes1(uint8(UniswapV4Logic.INCREASE_LIQUIDITY));
+        actions[1] = bytes1(uint8(UniswapV4Logic.SETTLE_PAIR));
+        bytes[] memory params = new bytes[](2);
+        params[0] = abi.encode(id, liquidity, type(uint128).max, type(uint128).max, "");
+        params[1] = abi.encode(poolKey.currency0, poolKey.currency1);
+
+        bytes memory increaseLiquidityData = abi.encode(actions, params);
+        UniswapV4Logic.POSITION_MANAGER.modifyLiquidities{ value: ethValue }(increaseLiquidityData);
+
         // Initiator rewards are transferred to the initiator.
-        uint256 balance0 = ERC20(position.token0).balanceOf(address(this));
-        uint256 balance1 = ERC20(position.token1).balanceOf(address(this));
-        if (balance0 > 0) ERC20(position.token0).safeTransfer(initiator, balance0);
-        if (balance1 > 0) ERC20(position.token1).safeTransfer(initiator, balance1);
+        uint256 balance0 = poolKey.currency0.balanceOfSelf();
+        uint256 balance1 = poolKey.currency1.balanceOfSelf();
+
+        if (balance0 > 0) poolKey.currency0.transfer(initiator, balance0);
+        if (balance1 > 0) poolKey.currency1.transfer(initiator, balance1);
 
         // Approve Account to deposit Liquidity Position back into the Account.
-        UniswapV3Logic.POSITION_MANAGER.approve(msg.sender, id);
+        UniswapV4Logic.POSITION_MANAGER.approve(msg.sender, id);
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -298,19 +321,20 @@ contract UniswapV4Compounder is IActionBase {
                 // Swap token1 partially to token0.
                 zeroToOne = false;
                 uint256 amountIn = (currentRatio - targetRatio).mulDivDown(totalFeeValueInToken1, 1e18);
-                amountOut = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, false, amountIn);
+                amountOut = UniswapV4Logic._getAmountOut(position.sqrtPriceX96, false, amountIn);
             }
         }
     }
 
     /**
      * @notice Swaps one token to the other token in the Uniswap V4 Pool of the Liquidity Position.
+     * @param poolKey The key containing pool parameters.
      * @param position Struct with the position data.
-     * @param zeroForOne Bool indicating if token0 has to be swapped to token1 or opposite.
+     * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param amountOut The amount that of tokenOut that must be swapped to.
      * @return isPoolUnbalanced_ Bool indicating if the pool is unbalanced due to slippage of the swap.
      */
-    function _swap(PoolKey memory poolKey, PositionState memory position, bool zeroForOne, uint256 amountOut)
+    function _swap(PoolKey memory poolKey, PositionState memory position, bool zeroToOne, uint256 amountOut)
         internal
         returns (bool isPoolUnbalanced_)
     {
@@ -322,7 +346,7 @@ contract UniswapV4Compounder is IActionBase {
             uint160(zeroToOne ? position.lowerBoundSqrtPriceX96 : position.upperBoundSqrtPriceX96);
 
         SwapParams memory params = SwapParams({
-            zeroForOne: zeroForOne,
+            zeroForOne: zeroToOne,
             amountSpecified: int256(amountOut),
             sqrtPriceLimitX96: sqrtPriceLimitX96
         });
@@ -333,25 +357,24 @@ contract UniswapV4Compounder is IActionBase {
         BalanceDelta swapDelta = abi.decode(results, (BalanceDelta));
 
         // Check if pool is still balanced (sqrtPriceLimitX96 is reached before an amountOut of tokenOut is received).
-        isPoolUnbalanced_ = (amountOut > (zeroForOne ? uint256(-swapDelta.amount1()) : uint256(-swapDelta.amount0())));
+        isPoolUnbalanced_ = (amountOut > (zeroToOne ? uint256(-swapDelta.amount1()) : uint256(-swapDelta.amount0())));
     }
 
     /**
      * @notice Collects fees for a specific liquidity position in a Uniswap V4 pool.
      * @param tokenId The id of the liquidity position in UniswapV4 PositionManager.
-     * @param poolKey The key containing pool parameters including tokens and fee tier.
-     * @param info The position information containing tick ranges.
+     * @param poolKey The key containing pool parameters.
      * @return feeAmount0 The amount of fees collected in terms of token0.
      * @return feeAmount1 The amount of fees collected in terms of token1.
      */
-    function _collectFees(uint256 tokenId, PoolKey memory poolKey, PositionInfo calldata info)
+    function _collectFees(uint256 tokenId, PoolKey memory poolKey)
         internal
         returns (uint256 feeAmount0, uint256 feeAmount1)
     {
         // Generate calldata to collect fees (decrease liquidity with liquidityDelta = 0).
         bytes memory actions = new bytes(2);
         actions[0] = bytes1(uint8(UniswapV4Logic.DECREASE_LIQUIDITY));
-        actions[1] = bytes1(uint8(UniswapV4Logice.TAKE_PAIR));
+        actions[1] = bytes1(uint8(UniswapV4Logic.TAKE_PAIR));
         bytes[] memory params = new bytes[](2);
         params[0] = abi.encode(tokenId, 0, 0, 0, "");
         params[1] = abi.encode(poolKey.currency0, poolKey.currency1, address(this));
@@ -363,29 +386,20 @@ contract UniswapV4Compounder is IActionBase {
         bytes memory decreaseLiquidityParams = abi.encode(actions, params);
         UniswapV4Logic.POSITION_MANAGER.modifyLiquidities(decreaseLiquidityParams, block.timestamp);
 
-        feeAmount0 = poolKey.currency0.balanceOfSelf() - initBalance0;
-        feeAmount1 = poolKey.currency1.balanceOfSelf() - initBalance0;
+        feeAmount0 = poolKey.currency0.balanceOfSelf() - initBalanceCurrency0;
+        feeAmount1 = poolKey.currency1.balanceOfSelf() - initBalanceCurrency1;
     }
 
     /**
-     * @notice Callback function called by the Pool Manager during unlock operations to handle fee claims and swaps.
-     * @dev Supports two types of operations identified by id:
-     *      - id = 1: Claims fees by calling modifyLiquidity with zero liquidity.
-     *      - id = 2: Executes currency swaps.
-     *      After either operation, processes the resulting balance deltas.
-     * @param data Encoded calldata containing:
-     *        - actionData: Encoded ModifyLiquidityParams/SwapParams and PoolKey.
-     *        - id: Operation identifier (1 for fee claims, 2 for swaps)
-     * @return results Encoded BalanceDelta representing the changes in token amounts.
+     * @notice Callback function executed during the unlock phase of a Uniswap V4 pool operation
+     * @dev This function can only be called by the Pool Manager. It processes a swap and handles the resulting balance deltas.
+     * @param data The encoded swap parameters and pool key.
+     * @return results The encoded BalanceDelta result from the swap operation.
      */
     function unlockCallBack(bytes calldata data) external onlyPoolManager returns (bytes memory results) {
         (SwapParams memory params, PoolKey memory poolKey) = abi.decode(data, (SwapParams, PoolKey));
 
         BalanceDelta delta = UniswapV4Logic.POOL_MANAGER.swap(poolKey, params, "");
-
-        if (delta.amount0() < 0) {
-            UniswapV4Logic.POOL_MANAGER.take(currency0, address(this), uint256(-delta.amount0()));
-        }
 
         UniswapV4Logic._processBalanceDeltas(delta, poolKey.currency0, poolKey.currency1);
         results = abi.encode(delta);
@@ -404,24 +418,19 @@ contract UniswapV4Compounder is IActionBase {
         public
         view
         virtual
-        returns (PositionState memory position, PoolKey memory poolKey, PositionInfo memory info)
+        returns (PositionState memory position, PoolKey memory poolKey)
     {
+        PositionInfo info;
         (poolKey, info) = UniswapV4Logic.POSITION_MANAGER.getPoolAndPositionInfo(id);
-        bytes32 positionId = keccak256(
-            abi.encodePacked(address(UniswapV4Logic.POSITION_MANAGER), info.tickLower(), info.tickUpper(), bytes32(id))
-        );
 
         // Get data of the Liquidity Position.
         position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(info.tickLower());
         position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(info.tickUpper());
-        position.token0 = Currency.unwrap(poolKey.currency0);
-        position.token1 = Currency.unwrap(poolKey.currency1);
-        position.fee = poolKey.fee;
         (position.sqrtPriceX96,,,) = UniswapV4Logic.POOL_MANAGER.getSlot0(poolKey.toId());
 
         // Get trusted USD prices for 1e18 gwei of token0 and token1.
         (position.usdPriceToken0, position.usdPriceToken1) =
-            ArcadiaLogic._getValuesInUsd(position.token0, position.token1);
+            ArcadiaLogic._getValuesInUsd(Currency.unwrap(poolKey.currency0), Currency.unwrap(poolKey.currency1));
 
         // Calculate the square root of the relative rate sqrt(token1/token0) from the trusted USD price of both tokens.
         uint256 trustedSqrtPriceX96 = UniswapV4Logic._getSqrtPriceX96(position.usdPriceToken0, position.usdPriceToken1);
