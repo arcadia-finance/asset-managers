@@ -4,36 +4,34 @@
  */
 pragma solidity ^0.8.22;
 
+import {
+    BalanceDelta,
+    BalanceDeltaLibrary
+} from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/BalanceDelta.sol";
+import { Currency } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
 import { FixedPoint96 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
-import { INonfungiblePositionManager } from "../interfaces/INonfungiblePositionManager.sol";
-import { PoolAddress } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/PoolAddress.sol";
+import { IPoolManager } from "../interfaces/IPoolManager.sol";
+import { StateLibrary } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/StateLibrary.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 
-library UniswapV3Logic {
+library UniswapV4Logic {
+    using BalanceDeltaLibrary for BalanceDelta;
     using FixedPointMathLib for uint256;
+    using StateLibrary for IPoolManager;
 
     // The binary precision of sqrtPriceX96 squared.
     uint256 internal constant Q192 = FixedPoint96.Q96 ** 2;
 
-    // The Uniswap V3 Factory contract.
-    address internal constant UNISWAP_V3_FACTORY = 0x33128a8fC17869897dcE68Ed026d694621f6FDfD;
+    // Actions used by the Uniswap V4 PositionManager.
+    uint256 internal constant DECREASE_LIQUIDITY = 0x01;
+    uint256 internal constant TAKE_PAIR = 0x11;
 
-    // The Uniswap V3 NonfungiblePositionManager contract.
-    INonfungiblePositionManager internal constant POSITION_MANAGER =
-        INonfungiblePositionManager(0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1);
-
-    /**
-     * @notice Computes the contract address of a Uniswap V3 Pool.
-     * @param token0 The contract address of token0.
-     * @param token1 The contract address of token1.
-     * @param fee The fee of the Pool.
-     * @return pool The contract address of the Uniswap V3 Pool.
-     */
-    function _computePoolAddress(address token0, address token1, uint24 fee) internal pure returns (address pool) {
-        pool = PoolAddress.computeAddress(UNISWAP_V3_FACTORY, token0, token1, fee);
-    }
+    // The Uniswap V4 PoolManager contract.
+    IPoolManager internal constant POOL_MANAGER = IPoolManager(0x498581fF718922c3f8e6A244956aF099B2652b2b);
+    // The Uniswap V4 PositionManager contract.
+    IPositionManager internal constant POSITION_MANAGER = IPositionManager(0x7C5f5A4bBd8fD63184577525326123B519429bDc);
 
     /**
      * @notice Calculates the amountOut for a given amountIn and sqrtPriceX96 for a hypothetical
@@ -62,11 +60,11 @@ library UniswapV3Logic {
      * @param priceToken0 The price of 1e18 tokens of token0 in USD, with 18 decimals precision.
      * @param priceToken1 The price of 1e18 tokens of token1 in USD, with 18 decimals precision.
      * @return sqrtPriceX96 The square root of the price (token1/token0), with 96 binary precision.
-     * @dev The price in Uniswap V3 is defined as:
+     * @dev The price in Uniswap V3 and V4 is defined as:
      * price = amountToken1/amountToken0.
      * The usdPriceToken is defined as: usdPriceToken = amountUsd/amountToken.
      * => amountToken = amountUsd/usdPriceToken.
-     * Hence we can derive the Uniswap V3 price as:
+     * Hence we can derive the Uniswap V3 and V4 price as:
      * price = (amountUsd/usdPriceToken1)/(amountUsd/usdPriceToken0) = usdPriceToken0/usdPriceToken1.
      */
     function _getSqrtPriceX96(uint256 priceToken0, uint256 priceToken1) internal pure returns (uint160 sqrtPriceX96) {
@@ -100,9 +98,9 @@ library UniswapV3Logic {
      *    R = valueToken1 / (valueToken0 + valueToken1)
      *    If we express all values in token1 en use the current pool price to denominate token0 in token1:
      *    R = amount1 / (amount0 * sqrtPrice² + amount1)
-     * 2) Amount0 for a given liquidity position of a Uniswap V3 pool is given as:
+     * 2) Amount0 for a given liquidity position of a Uniswap V3 and V4 pool is given as:
      *    Amount0 = liquidity * (sqrtRatioUpper - sqrtPrice) / (sqrtRatioUpper * sqrtPrice)
-     * 3) Amount1 for a given liquidity position of a Uniswap V3 pool is given as:
+     * 3) Amount1 for a given liquidity position of a Uniswap V3 and V4 pool is given as:
      *    Amount1 = liquidity * (sqrtPrice - sqrtRatioLower)
      * 4) Combining 1), 2) and 3) and simplifying we get:
      *    R = [sqrtPrice - sqrtRatioLower] / [2 * sqrtPrice - sqrtRatioLower - sqrtPrice² / sqrtRatioUpper]
@@ -116,5 +114,35 @@ library UniswapV3Logic {
         uint256 denominator = 2 * sqrtPriceX96 - sqrtRatioLower - sqrtPriceX96 ** 2 / sqrtRatioUpper;
 
         targetRatio = numerator.mulDivDown(1e18, denominator);
+    }
+
+    /**
+     * @notice Processes both positive and negative balance deltas in a single function.
+     * @dev Combines both take and settle logic:
+     *      - For negative deltas: takes tokens from the Pool Manager.
+     *      - For positive deltas: transfers tokens to the Pool Manager and calls settle.
+     * @param delta The BalanceDelta type containing the changes in token amounts.
+     * @param currency0 The address of currency0.
+     * @param currency1 The address of currency1.
+     */
+    function _processBalanceDeltas(BalanceDelta delta, Currency currency0, Currency currency1) internal {
+        // Will be set to true if at least one currency to transfer to the PoolManager
+        bool settle;
+
+        if (delta.amount0() < 0) {
+            POOL_MANAGER.take(currency0, address(this), uint256(-delta.amount0()));
+        } else if (delta.amount0() > 0) {
+            currency0.transfer(address(POOL_MANAGER), uint256(delta.amount0()));
+            settle = true;
+        }
+
+        if (delta.amount1() < 0) {
+            POOL_MANAGER.take(currency1, address(this), uint256(-delta.amount1()));
+        } else if (delta.amount1() > 0) {
+            currency0.transfer(address(POOL_MANAGER), uint256(delta.amount1()));
+            settle = true;
+        }
+
+        if (settle) POOL_MANAGER.settle();
     }
 }

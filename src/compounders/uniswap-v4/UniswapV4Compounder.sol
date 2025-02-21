@@ -6,19 +6,28 @@ pragma solidity ^0.8.22;
 
 import { ActionData, IActionBase } from "../../../lib/accounts-v2/src/interfaces/IActionBase.sol";
 import { ArcadiaLogic } from "../libraries/ArcadiaLogic.sol";
-import { CollectParams, IncreaseLiquidityParams } from "./interfaces/ISlipstreamPositionManager.sol";
+import {
+    BalanceDelta,
+    BalanceDeltaLibrary
+} from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/BalanceDelta.sol";
+import { Currency } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
 import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IAccount } from "../interfaces/IAccount.sol";
-import { ICLPool } from "./interfaces/ICLPool.sol";
-import { SlipstreamLogic } from "./libraries/SlipstreamLogic.sol";
+import { IPoolManager, ModifyLiquidityParams, SwapParams } from "./interfaces/IPoolManager.sol";
+import { PoolKey } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
+import {
+    PositionInfoLibrary,
+    PositionInfo
+} from "../../../lib/accounts-v2/lib/v4-periphery/src/libraries/PositionInfoLibrary.sol";
 import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
+import { UniswapV4Logic } from "./libraries/UniswapV4Logic.sol";
 
 /**
- * @title Permissionless and Stateless Compounder for Slipstream Liquidity Positions.
+ * @title Permissionless and Stateless Compounder for UniswapV4 Liquidity Positions.
  * @author Pragma Labs
- * @notice The Compounder will act as an Asset Manager for Slipstream Liquidity Positions.
- * It will allow third parties to trigger the compounding functionality for a Slipstream Liquidity Position in the Account.
+ * @notice The Compounder will act as an Asset Manager for Arcadia Accounts.
+ * It will allow third parties to trigger the compounding functionality for a Uniswap V4 Liquidity Position in the Account.
  * Compounding can only be triggered if certain conditions are met and the initiator will get a small fee for the service provided.
  * The compounding will collect the fees earned by a position and increase the liquidity of the position by those fees.
  * Depending on current tick of the pool and the position range, fees will be deposited in appropriate ratio.
@@ -26,9 +35,10 @@ import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/l
  * price feeds (oracles).
  * Some oracles can however deviate from the actual price by a few percent points, this could potentially open attack vectors by manipulating
  * pools and sandwiching the swap and/or increase liquidity. This asset manager should not be used for Arcadia Account that have/will have
- * Slipstream Liquidity Positions where one of the underlying assets is priced with such low precision oracles.
+ * Uniswap V4 Liquidity Positions where one of the underlying assets is priced with such low precision oracles.
  */
-contract SlipstreamCompounder is IActionBase {
+contract UniswapV4Compounder is IActionBase {
+    using BalanceDeltaLibrary for BalanceDelta;
     using FixedPointMathLib for uint256;
     using SafeTransferLib for ERC20;
     /* //////////////////////////////////////////////////////////////
@@ -55,10 +65,9 @@ contract SlipstreamCompounder is IActionBase {
 
     // A struct with the state of a specific position, only used in memory.
     struct PositionState {
-        address pool;
         address token0;
         address token1;
-        int24 tickSpacing;
+        uint24 fee;
         uint256 sqrtPriceX96;
         uint256 sqrtRatioLower;
         uint256 sqrtRatioUpper;
@@ -82,7 +91,7 @@ contract SlipstreamCompounder is IActionBase {
     error NotAnAccount();
     error OnlyAccount();
     error OnlyPool();
-    error OnlyPositionManager();
+    error PoolManagerOnly();
     error Reentered();
     error UnbalancedPool();
 
@@ -91,6 +100,18 @@ contract SlipstreamCompounder is IActionBase {
     ////////////////////////////////////////////////////////////// */
 
     event Compound(address indexed account, uint256 id);
+
+    /* //////////////////////////////////////////////////////////////
+                                MODIFIERS
+    ////////////////////////////////////////////////////////////// */
+
+    /**
+     * @dev Only the UniswapV4 PoolManager can call functions with this modifier.
+     */
+    modifier onlyPoolManager() {
+        if (msg.sender != address(UniswapV4Logic.POOL_MANAGER)) revert PoolManagerOnly();
+        _;
+    }
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -122,7 +143,7 @@ contract SlipstreamCompounder is IActionBase {
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Compounds the fees earned by a Slipstream Liquidity Position owned by an Arcadia Account.
+     * @notice Compounds the fees earned by a UniswapV4 Liquidity Position owned by an Arcadia Account.
      * @param account_ The Arcadia Account owning the position.
      * @param id The id of the Liquidity Position.
      */
@@ -134,7 +155,7 @@ contract SlipstreamCompounder is IActionBase {
 
         // Encode data for the flash-action.
         bytes memory actionData =
-            ArcadiaLogic._encodeActionData(msg.sender, address(SlipstreamLogic.POSITION_MANAGER), id);
+            ArcadiaLogic._encodeActionData(msg.sender, address(UniswapV4Logic.POSITION_MANAGER), id);
 
         // Call flashAction() with this contract as actionTarget.
         IAccount(account_).flashAction(address(this), actionData);
@@ -169,7 +190,7 @@ contract SlipstreamCompounder is IActionBase {
         uint256 id = assetData.assetIds[0];
 
         // Fetch and cache all position related data.
-        PositionState memory position = getPositionState(id);
+        (PositionState memory position, PoolKey memory poolKey) = getPositionState(id);
 
         // Check that pool is initially balanced.
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
@@ -177,14 +198,7 @@ contract SlipstreamCompounder is IActionBase {
 
         // Collect fees.
         Fees memory fees;
-        (fees.amount0, fees.amount1) = SlipstreamLogic.POSITION_MANAGER.collect(
-            CollectParams({
-                tokenId: id,
-                recipient: address(this),
-                amount0Max: type(uint128).max,
-                amount1Max: type(uint128).max
-            })
-        );
+        (fees.amount0, fees.amount1) = _collectFees(id, poolKey);
 
         // Total value of the fees must be greater than the threshold.
         if (isBelowThreshold(position, fees)) revert BelowThreshold();
@@ -196,7 +210,7 @@ contract SlipstreamCompounder is IActionBase {
         // Rebalance the fee amounts so that the maximum amount of liquidity can be added.
         // The Pool must still be balanced after the swap.
         (bool zeroToOne, uint256 amountOut) = getSwapParameters(position, fees);
-        if (_swap(position, zeroToOne, amountOut)) revert UnbalancedPool();
+        if (_swap(poolKey, position, zeroToOne, amountOut)) revert UnbalancedPool();
 
         // We increase the fee amount of tokenOut, but we do not decrease the fee amount of tokenIn.
         // This guarantees that tokenOut is the limiting factor when increasing liquidity and not tokenIn.
@@ -209,11 +223,11 @@ contract SlipstreamCompounder is IActionBase {
         // The approval for at least one token after increasing liquidity will remain non-zero.
         // We have to set approval first to 0 for ERC20 tokens that require the approval to be set to zero
         // before setting it to a non-zero value.
-        ERC20(position.token0).safeApprove(address(SlipstreamLogic.POSITION_MANAGER), 0);
-        ERC20(position.token0).safeApprove(address(SlipstreamLogic.POSITION_MANAGER), fees.amount0);
-        ERC20(position.token1).safeApprove(address(SlipstreamLogic.POSITION_MANAGER), 0);
-        ERC20(position.token1).safeApprove(address(SlipstreamLogic.POSITION_MANAGER), fees.amount1);
-        SlipstreamLogic.POSITION_MANAGER.increaseLiquidity(
+        ERC20(position.token0).safeApprove(address(UniswapV4Logic.POSITION_MANAGER), 0);
+        ERC20(position.token0).safeApprove(address(UniswapV4Logic.POSITION_MANAGER), fees.amount0);
+        ERC20(position.token1).safeApprove(address(UniswapV4Logic.POSITION_MANAGER), 0);
+        ERC20(position.token1).safeApprove(address(UniswapV4Logic.POSITION_MANAGER), fees.amount1);
+        UniswapV4Logic.POSITION_MANAGER.increaseLiquidity(
             IncreaseLiquidityParams({
                 tokenId: id,
                 amount0Desired: fees.amount0,
@@ -231,7 +245,7 @@ contract SlipstreamCompounder is IActionBase {
         if (balance1 > 0) ERC20(position.token1).safeTransfer(initiator, balance1);
 
         // Approve Account to deposit Liquidity Position back into the Account.
-        SlipstreamLogic.POSITION_MANAGER.approve(msg.sender, id);
+        UniswapV3Logic.POSITION_MANAGER.approve(msg.sender, id);
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -247,7 +261,8 @@ contract SlipstreamCompounder is IActionBase {
      * @dev We assume the fees amount are small compared to the liquidity of the pool,
      * hence we neglect slippage when optimizing the swap amounts.
      * Slippage must be limited, the contract enforces that the pool is still balanced after the swap and
-     * since we use swaps with amountOut, slippage will result in less reward of tokenIn for the initiator.
+     * since we use swaps with amountOut, slippage will result in less reward of tokenIn for the initiator,
+     * not less liquidity increased.
      */
     function getSwapParameters(PositionState memory position, Fees memory fees)
         public
@@ -258,20 +273,20 @@ contract SlipstreamCompounder is IActionBase {
             // Position is out of range and fully in token 1.
             // Swap full amount of token0 to token1.
             zeroToOne = true;
-            amountOut = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
+            amountOut = UniswapV4Logic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
         } else if (position.sqrtPriceX96 <= position.sqrtRatioLower) {
             // Position is out of range and fully in token 0.
             // Swap full amount of token1 to token0.
             zeroToOne = false;
-            amountOut = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, false, fees.amount1);
+            amountOut = UniswapV4Logic._getAmountOut(position.sqrtPriceX96, false, fees.amount1);
         } else {
             // Position is in range.
             // Rebalance fees so that the ratio of the fee values matches with ratio of the position.
             uint256 targetRatio =
-                SlipstreamLogic._getTargetRatio(position.sqrtPriceX96, position.sqrtRatioLower, position.sqrtRatioUpper);
+                UniswapV4Logic._getTargetRatio(position.sqrtPriceX96, position.sqrtRatioLower, position.sqrtRatioUpper);
 
             // Calculate the total fee value in token1 equivalent:
-            uint256 fee0ValueInToken1 = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
+            uint256 fee0ValueInToken1 = UniswapV4Logic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
             uint256 totalFeeValueInToken1 = fees.amount1 + fee0ValueInToken1;
             uint256 currentRatio = fees.amount1.mulDivDown(1e18, totalFeeValueInToken1);
 
@@ -283,19 +298,19 @@ contract SlipstreamCompounder is IActionBase {
                 // Swap token1 partially to token0.
                 zeroToOne = false;
                 uint256 amountIn = (currentRatio - targetRatio).mulDivDown(totalFeeValueInToken1, 1e18);
-                amountOut = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, false, amountIn);
+                amountOut = UniswapV3Logic._getAmountOut(position.sqrtPriceX96, false, amountIn);
             }
         }
     }
 
     /**
-     * @notice Swaps one token to the other token in the Slipstream Pool of the Liquidity Position.
+     * @notice Swaps one token to the other token in the Uniswap V4 Pool of the Liquidity Position.
      * @param position Struct with the position data.
-     * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
+     * @param zeroForOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param amountOut The amount that of tokenOut that must be swapped to.
      * @return isPoolUnbalanced_ Bool indicating if the pool is unbalanced due to slippage of the swap.
      */
-    function _swap(PositionState memory position, bool zeroToOne, uint256 amountOut)
+    function _swap(PoolKey memory poolKey, PositionState memory position, bool zeroForOne, uint256 amountOut)
         internal
         returns (bool isPoolUnbalanced_)
     {
@@ -306,33 +321,74 @@ contract SlipstreamCompounder is IActionBase {
         uint160 sqrtPriceLimitX96 =
             uint160(zeroToOne ? position.lowerBoundSqrtPriceX96 : position.upperBoundSqrtPriceX96);
 
+        SwapParams memory params = SwapParams({
+            zeroForOne: zeroForOne,
+            amountSpecified: int256(amountOut),
+            sqrtPriceLimitX96: sqrtPriceLimitX96
+        });
+
+        bytes memory swapData = abi.encode(params, poolKey);
         // Do the swap.
-        bytes memory data = abi.encode(position.token0, position.token1, position.tickSpacing);
-        (int256 deltaAmount0, int256 deltaAmount1) =
-            ICLPool(position.pool).swap(address(this), zeroToOne, -int256(amountOut), sqrtPriceLimitX96, data);
+        bytes memory results = UniswapV4Logic.POOL_MANAGER.unlock(swapData);
+        BalanceDelta swapDelta = abi.decode(results, (BalanceDelta));
 
         // Check if pool is still balanced (sqrtPriceLimitX96 is reached before an amountOut of tokenOut is received).
-        isPoolUnbalanced_ = (amountOut > (zeroToOne ? uint256(-deltaAmount1) : uint256(-deltaAmount0)));
+        isPoolUnbalanced_ = (amountOut > (zeroForOne ? uint256(-swapDelta.amount1()) : uint256(-swapDelta.amount0())));
     }
 
     /**
-     * @notice Callback after executing a swap via ICLPool.swap.
-     * @param amount0Delta The amount of token0 that was sent (negative) or must be received (positive) by the pool by
-     * the end of the swap. If positive, the callback must send that amount of token0 to the pool.
-     * @param amount1Delta The amount of token1 that was sent (negative) or must be received (positive) by the pool by
-     * the end of the swap. If positive, the callback must send that amount of token1 to the pool.
-     * @param data Any data passed by this contract via the ICLPool.swap() call.
+     * @notice Collects fees for a specific liquidity position in a Uniswap V4 pool.
+     * @param tokenId The id of the liquidity position in UniswapV4 PositionManager.
+     * @param poolKey The key containing pool parameters including tokens and fee tier.
+     * @param info The position information containing tick ranges.
+     * @return feeAmount0 The amount of fees collected in terms of token0.
+     * @return feeAmount1 The amount of fees collected in terms of token1.
      */
-    function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external {
-        // Check that callback came from an actual Slipstream pool.
-        (address token0, address token1, int24 tickSpacing) = abi.decode(data, (address, address, int24));
-        if (SlipstreamLogic._computePoolAddress(token0, token1, tickSpacing) != msg.sender) revert OnlyPool();
+    function _collectFees(uint256 tokenId, PoolKey memory poolKey, PositionInfo calldata info)
+        internal
+        returns (uint256 feeAmount0, uint256 feeAmount1)
+    {
+        // Generate calldata to collect fees (decrease liquidity with liquidityDelta = 0).
+        bytes memory actions = new bytes(2);
+        actions[0] = bytes1(uint8(UniswapV4Logic.DECREASE_LIQUIDITY));
+        actions[1] = bytes1(uint8(UniswapV4Logice.TAKE_PAIR));
+        bytes[] memory params = new bytes[](2);
+        params[0] = abi.encode(tokenId, 0, 0, 0, "");
+        params[1] = abi.encode(poolKey.currency0, poolKey.currency1, address(this));
 
-        if (amount0Delta > 0) {
-            ERC20(token0).safeTransfer(msg.sender, uint256(amount0Delta));
-        } else if (amount1Delta > 0) {
-            ERC20(token1).safeTransfer(msg.sender, uint256(amount1Delta));
+        // Cache init balance of token0 and token1.
+        uint256 initBalanceCurrency0 = poolKey.currency0.balanceOfSelf();
+        uint256 initBalanceCurrency1 = poolKey.currency1.balanceOfSelf();
+
+        bytes memory decreaseLiquidityParams = abi.encode(actions, params);
+        UniswapV4Logic.POSITION_MANAGER.modifyLiquidities(decreaseLiquidityParams, block.timestamp);
+
+        feeAmount0 = poolKey.currency0.balanceOfSelf() - initBalance0;
+        feeAmount1 = poolKey.currency1.balanceOfSelf() - initBalance0;
+    }
+
+    /**
+     * @notice Callback function called by the Pool Manager during unlock operations to handle fee claims and swaps.
+     * @dev Supports two types of operations identified by id:
+     *      - id = 1: Claims fees by calling modifyLiquidity with zero liquidity.
+     *      - id = 2: Executes currency swaps.
+     *      After either operation, processes the resulting balance deltas.
+     * @param data Encoded calldata containing:
+     *        - actionData: Encoded ModifyLiquidityParams/SwapParams and PoolKey.
+     *        - id: Operation identifier (1 for fee claims, 2 for swaps)
+     * @return results Encoded BalanceDelta representing the changes in token amounts.
+     */
+    function unlockCallBack(bytes calldata data) external onlyPoolManager returns (bytes memory results) {
+        (SwapParams memory params, PoolKey memory poolKey) = abi.decode(data, (SwapParams, PoolKey));
+
+        BalanceDelta delta = UniswapV4Logic.POOL_MANAGER.swap(poolKey, params, "");
+
+        if (delta.amount0() < 0) {
+            UniswapV4Logic.POOL_MANAGER.take(currency0, address(this), uint256(-delta.amount0()));
         }
+
+        UniswapV4Logic._processBalanceDeltas(delta, poolKey.currency0, poolKey.currency1);
+        results = abi.encode(delta);
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -340,29 +396,35 @@ contract SlipstreamCompounder is IActionBase {
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Fetches all required position data from third part contracts.
+     * @notice Fetches all required position data from external contracts.
      * @param id The id of the Liquidity Position.
      * @return position Struct with the position data.
      */
-    function getPositionState(uint256 id) public view virtual returns (PositionState memory position) {
+    function getPositionState(uint256 id)
+        public
+        view
+        virtual
+        returns (PositionState memory position, PoolKey memory poolKey, PositionInfo memory info)
+    {
+        (poolKey, info) = UniswapV4Logic.POSITION_MANAGER.getPoolAndPositionInfo(id);
+        bytes32 positionId = keccak256(
+            abi.encodePacked(address(UniswapV4Logic.POSITION_MANAGER), info.tickLower(), info.tickUpper(), bytes32(id))
+        );
+
         // Get data of the Liquidity Position.
-        int24 tickLower;
-        int24 tickUpper;
-        (,, position.token0, position.token1, position.tickSpacing, tickLower, tickUpper,,,,,) =
-            SlipstreamLogic.POSITION_MANAGER.positions(id);
-        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(tickLower);
-        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(tickUpper);
+        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(info.tickLower());
+        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(info.tickUpper());
+        position.token0 = Currency.unwrap(poolKey.currency0);
+        position.token1 = Currency.unwrap(poolKey.currency1);
+        position.fee = poolKey.fee;
+        (position.sqrtPriceX96,,,) = UniswapV4Logic.POOL_MANAGER.getSlot0(poolKey.toId());
 
         // Get trusted USD prices for 1e18 gwei of token0 and token1.
         (position.usdPriceToken0, position.usdPriceToken1) =
             ArcadiaLogic._getValuesInUsd(position.token0, position.token1);
 
-        // Get data of the Liquidity Pool.
-        position.pool = SlipstreamLogic._computePoolAddress(position.token0, position.token1, position.tickSpacing);
-        (position.sqrtPriceX96,,,,,) = ICLPool(position.pool).slot0();
-
         // Calculate the square root of the relative rate sqrt(token1/token0) from the trusted USD price of both tokens.
-        uint256 trustedSqrtPriceX96 = SlipstreamLogic._getSqrtPriceX96(position.usdPriceToken0, position.usdPriceToken1);
+        uint256 trustedSqrtPriceX96 = UniswapV4Logic._getSqrtPriceX96(position.usdPriceToken0, position.usdPriceToken1);
 
         // Calculate the upper and lower bounds of sqrtPriceX96 for the Pool to be balanced.
         position.lowerBoundSqrtPriceX96 = trustedSqrtPriceX96.mulDivDown(LOWER_SQRT_PRICE_DEVIATION, 1e18);
@@ -370,7 +432,7 @@ contract SlipstreamCompounder is IActionBase {
     }
 
     /**
-     * @notice Returns if the total fee value in USD is below the threshold.
+     * @notice Returns if the total fee value in USD is below the rebalancing threshold.
      * @param position Struct with the position data.
      * @param fees Struct with the fees accumulated by a position.
      * @return isBelowThreshold_ Bool indicating if the total fee value in USD is below the threshold.
@@ -408,18 +470,5 @@ contract SlipstreamCompounder is IActionBase {
      */
     function onERC721Received(address, address, uint256, bytes calldata) public pure returns (bytes4) {
         return this.onERC721Received.selector;
-    }
-
-    /* ///////////////////////////////////////////////////////////////
-                      NATIVE ETH HANDLER
-    /////////////////////////////////////////////////////////////// */
-
-    /**
-     * @notice Receives native ether.
-     * @dev Required since the Slipstream Non Fungible Position Manager sends full ether balance to caller
-     * on an increaseLiquidity.
-     */
-    receive() external payable {
-        if (msg.sender != address(SlipstreamLogic.POSITION_MANAGER)) revert OnlyPositionManager();
     }
 }
