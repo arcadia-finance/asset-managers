@@ -222,43 +222,49 @@ contract UniswapV4Compounder is IActionBase {
         // We have to set approval first to 0 for ERC20 tokens that require the approval to be set to zero
         // before setting it to a non-zero value.
         // Handle approvals based on whether tokens are ETH or ERC20.
-
         bool token0IsNative = Currency.unwrap(poolKey.currency0) == address(0);
         bool token1IsNative = Currency.unwrap(poolKey.currency1) == address(0);
 
-        uint256 ethValue;
-        if (token0IsNative) {
-            ethValue = fees.amount0;
-        } else {
+        // Calculate ETH value to send, if any.
+        uint256 ethValue = (token0IsNative ? fees.amount0 : 0) + (token1IsNative ? fees.amount1 : 0);
+
+        // Handle approvals for non-native tokens
+        if (!token0IsNative && fees.amount0 > 0) {
             ERC20(Currency.unwrap(poolKey.currency0)).safeApprove(address(UniswapV4Logic.POSITION_MANAGER), 0);
             ERC20(Currency.unwrap(poolKey.currency0)).safeApprove(
                 address(UniswapV4Logic.POSITION_MANAGER), fees.amount0
             );
         }
 
-        if (token1IsNative) {
-            ethValue = fees.amount1;
-        } else {
+        if (!token1IsNative && fees.amount1 > 0) {
             ERC20(Currency.unwrap(poolKey.currency1)).safeApprove(address(UniswapV4Logic.POSITION_MANAGER), 0);
             ERC20(Currency.unwrap(poolKey.currency1)).safeApprove(
                 address(UniswapV4Logic.POSITION_MANAGER), fees.amount1
             );
         }
 
-        uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
-            position.sqrtPriceX96, position.sqrtRatioLower, position.sqrtRatioUpper, fees.amount0, fees.amount1
-        );
+        {
+            uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
+                uint160(position.sqrtPriceX96),
+                uint160(position.sqrtRatioLower),
+                uint160(position.sqrtRatioUpper),
+                fees.amount0,
+                fees.amount1
+            );
 
-        // Generate calldata to increase liquidity.
-        bytes memory actions = new bytes(2);
-        actions[0] = bytes1(uint8(UniswapV4Logic.INCREASE_LIQUIDITY));
-        actions[1] = bytes1(uint8(UniswapV4Logic.SETTLE_PAIR));
-        bytes[] memory params = new bytes[](2);
-        params[0] = abi.encode(id, liquidity, type(uint128).max, type(uint128).max, "");
-        params[1] = abi.encode(poolKey.currency0, poolKey.currency1);
+            // Generate calldata to increase liquidity.
+            bytes memory actions = new bytes(2);
+            actions[0] = bytes1(uint8(UniswapV4Logic.INCREASE_LIQUIDITY));
+            actions[1] = bytes1(uint8(UniswapV4Logic.SETTLE_PAIR));
+            bytes[] memory params = new bytes[](2);
+            params[0] = abi.encode(id, liquidity, type(uint128).max, type(uint128).max, "");
+            params[1] = abi.encode(poolKey.currency0, poolKey.currency1);
 
-        bytes memory increaseLiquidityData = abi.encode(actions, params);
-        UniswapV4Logic.POSITION_MANAGER.modifyLiquidities{ value: ethValue }(increaseLiquidityData);
+            bytes memory increaseLiquidityParams = abi.encode(actions, params);
+            UniswapV4Logic.POSITION_MANAGER.modifyLiquidities{ value: ethValue }(
+                increaseLiquidityParams, block.timestamp
+            );
+        }
 
         // Initiator rewards are transferred to the initiator.
         uint256 balance0 = poolKey.currency0.balanceOfSelf();
@@ -357,7 +363,7 @@ contract UniswapV4Compounder is IActionBase {
         BalanceDelta swapDelta = abi.decode(results, (BalanceDelta));
 
         // Check if pool is still balanced (sqrtPriceLimitX96 is reached before an amountOut of tokenOut is received).
-        isPoolUnbalanced_ = (amountOut > (zeroToOne ? uint256(-swapDelta.amount1()) : uint256(-swapDelta.amount0())));
+        isPoolUnbalanced_ = (amountOut > (zeroToOne ? uint128(-swapDelta.amount1()) : uint128(-swapDelta.amount0())));
     }
 
     /**

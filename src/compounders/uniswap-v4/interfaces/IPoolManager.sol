@@ -3,6 +3,7 @@ pragma solidity ^0.8.22;
 
 import { BalanceDelta } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/BalanceDelta.sol";
 import { Currency } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
+import { PoolId } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolId.sol";
 import { PoolKey } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 
 struct ModifyLiquidityParams {
@@ -66,4 +67,9 @@ interface IPoolManager {
     /// @notice Called by the user to pay what is owed
     /// @return paid The amount of currency settled
     function settle() external payable returns (uint256 paid);
+
+    function getSlot0(PoolId poolId)
+        external
+        view
+        returns (uint160 sqrtPriceX96, int24 tick, uint24 protocolFee, uint24 lpFee);
 }
