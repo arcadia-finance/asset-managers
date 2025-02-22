@@ -139,7 +139,7 @@ library UniswapV4Logic {
         if (delta.amount1() < 0) {
             POOL_MANAGER.take(currency1, address(this), uint128(-delta.amount1()));
         } else if (delta.amount1() > 0) {
-            currency0.transfer(address(POOL_MANAGER), uint128(delta.amount1()));
+            currency1.transfer(address(POOL_MANAGER), uint128(delta.amount1()));
             POOL_MANAGER.settle();
         }
     }
