@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity 0.8.22;
+pragma solidity ^0.8.22;
 
 import { AlienBaseLogic } from "../../../../alien-base/libraries/AlienBaseLogic.sol";
 import { Fees, IUniswapV3Compounder, PositionState } from "../../../../uniswap-v3/interfaces/IUniswapV3Compounder.sol";

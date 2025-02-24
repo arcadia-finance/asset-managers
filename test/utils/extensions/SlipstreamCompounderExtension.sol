@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity 0.8.22;
+pragma solidity ^0.8.22;
 
 import { SlipstreamCompounder } from "../../../src/compounders/slipstream/SlipstreamCompounder.sol";
 import { SlipstreamLogic } from "../../../src/compounders/slipstream/libraries/SlipstreamLogic.sol";
