@@ -26,5 +26,8 @@ contract UniswapV4CompounderExtension is UniswapV4Compounder {
 
     function collectFees(uint256 tokenId, PoolKey memory poolKey)
         internal
-        returns (uint256 feeAmount0, uint256 feeAmount1);
+        returns (uint256 feeAmount0, uint256 feeAmount1)
+    {
+        return _collectFees(tokenId, poolKey);
+    }
 }
