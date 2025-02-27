@@ -9,7 +9,7 @@ import { FullMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/l
 /// @notice Provides functions for computing liquidity amounts from token amounts and prices
 library LiquidityAmounts {
     /// @notice Downcasts uint256 to uint128
-    /// @param x The uint258 to be downcasted
+    /// @param x The uint256 to be downcasted
     /// @return y The passed value, downcasted to uint128
     function toUint128(uint256 x) private pure returns (uint128 y) {
         require((y = uint128(x)) == x);
