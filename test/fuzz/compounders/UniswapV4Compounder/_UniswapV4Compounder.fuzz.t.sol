@@ -8,8 +8,13 @@ import { BalanceDelta } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v
 import { Currency } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
 import { DefaultUniswapV4AM } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV4/DefaultUniswapV4AM.sol";
 import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
+import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { FixedPoint128 } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
 import { Fuzz_Test } from "../../Fuzz.t.sol";
-import { LiquidityAmounts } from "../../../../lib/accounts-v2/lib/v4-periphery/src/libraries/LiquidityAmounts.sol";
+import { LiquidityAmounts } from
+    "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/LiquidityAmounts.sol";
+import { LiquidityAmountsExtension } from
+    "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/libraries/LiquidityAmountsExtension.sol";
 import { PoolKey } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 import { IPoolManager } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/interfaces/IPoolManager.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
@@ -24,6 +29,7 @@ import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
  * @notice Common logic needed by all "UniswapV4Compounder" fuzz tests.
  */
 abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
+    using FixedPointMathLib for uint256;
     /*////////////////////////////////////////////////////////////////
                             CONSTANTS
     /////////////////////////////////////////////////////////////// */
@@ -51,9 +57,13 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         int24 tickLower;
         int24 tickUpper;
         uint128 liquidity;
-        // Fee amounts in usd
-        uint256 feeAmount0;
-        uint256 feeAmount1;
+    }
+
+    struct FeeGrowth {
+        uint256 desiredFee0;
+        uint256 desiredFee1;
+        uint256 feeGrowthGlobal0X128;
+        uint256 feeGrowthGlobal1X128;
     }
 
     /*////////////////////////////////////////////////////////////////
@@ -102,6 +112,9 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         token1 = new ERC20Mock("Token 18d", "TOK18", 18);
         (token0, token1) = token0 < token1 ? (token0, token1) : (token1, token0);
 
+        vm.label({ account: address(token0), newLabel: "TOKEN0" });
+        vm.label({ account: address(token1), newLabel: "TOKEN1" });
+
         addAssetToArcadia(address(token0), int256(10 ** MOCK_ORACLE_DECIMALS));
         addAssetToArcadia(address(token1), int256(10 ** MOCK_ORACLE_DECIMALS));
 
@@ -142,6 +155,12 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         // Overwrite contract addresses stored as constants in Compounder.
         bytes memory bytecode = address(compounder).code;
         bytecode = Utils.veryBadBytesReplacer(
+            bytecode, abi.encodePacked(0xDa14Fdd72345c4d2511357214c5B89A919768e59), abi.encodePacked(factory), false
+        );
+        bytecode = Utils.veryBadBytesReplacer(
+            bytecode, abi.encodePacked(0xd0690557600eb8Be8391D1d97346e2aab5300d5f), abi.encodePacked(registry), false
+        );
+        bytecode = Utils.veryBadBytesReplacer(
             bytecode, abi.encodePacked(0x498581fF718922c3f8e6A244956aF099B2652b2b), abi.encodePacked(poolManager), false
         );
         bytecode = Utils.veryBadBytesReplacer(
@@ -149,6 +168,10 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
             abi.encodePacked(0x7C5f5A4bBd8fD63184577525326123B519429bDc),
             abi.encodePacked(positionManagerV4),
             false
+        );
+
+        bytecode = Utils.veryBadBytesReplacer(
+            bytecode, abi.encodePacked(0xA3c0c9b65baD0b08107Aa264b0f3dB444b867A71), abi.encodePacked(stateView), false
         );
         vm.etch(address(compounder), bytecode);
     }
@@ -159,7 +182,7 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         returns (TestVariables memory testVars_, bool token0HasLowestDecimals)
     {
         // Given : ticks should be in range
-        (, int24 currentTick,,) = stateView.getSlot0(stablePoolKey.toId());
+        (uint160 sqrtPriceX96, int24 currentTick,,) = stateView.getSlot0(stablePoolKey.toId());
 
         // And : tickRange is minimum 20
         testVars.tickUpper = int24(bound(testVars.tickUpper, currentTick + 10, currentTick + type(int16).max));
@@ -169,13 +192,35 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         token0HasLowestDecimals = token0.decimals() < token1.decimals() ? true : false;
 
         // And : provide liquidity in balanced way.
-        testVars.liquidity = uint128(bound(testVars.liquidity, 1e6, type(uint112).max));
-
-        // And : Position has accumulated fees (amount in USD).
-        testVars.feeAmount0 = bound(testVars.feeAmount0, 100, type(uint16).max);
-        testVars.feeAmount1 = bound(testVars.feeAmount1, 100, type(uint16).max);
+        uint256 maxLiquidity = getLiquidityDeltaFromAmounts(testVars.tickLower, testVars.tickUpper, sqrtPriceX96);
+        testVars.liquidity = uint128(bound(testVars.liquidity, 1, maxLiquidity));
+        vm.assume(testVars.liquidity <= poolManager.getTickSpacingToMaxLiquidityPerTick(1));
 
         testVars_ = testVars;
+    }
+
+    function setValidFeeState(FeeGrowth memory feeData, PoolKey memory poolKey, uint128 liquidity)
+        public
+        returns (FeeGrowth memory feeData_)
+    {
+        // And : Positive fee
+        feeData.desiredFee0 = bound(feeData.desiredFee0, 1, type(uint128).max);
+        feeData.desiredFee1 = bound(feeData.desiredFee1, 1, type(uint128).max);
+
+        // And : Calculate expected feeGrowth difference in order to obtain desired fee
+        // (fee * Q128) / liquidity = diff in Q128.
+        // As fee amount is calculated based on deducting feeGrowthOutside from feeGrowthGlobal,
+        // no need to test with fuzzed feeGrowthOutside values as no risk of potential rounding errors (we're not testing UniV4 contracts).
+        uint256 feeGrowthDiff0X128 = feeData.desiredFee0.mulDivDown(FixedPoint128.Q128, liquidity);
+        feeData.feeGrowthGlobal0X128 = feeGrowthDiff0X128;
+
+        uint256 feeGrowthDiff1X128 = feeData.desiredFee1.mulDivDown(FixedPoint128.Q128, liquidity);
+        feeData.feeGrowthGlobal1X128 = feeGrowthDiff1X128;
+
+        // And : Set state
+        poolManager.setFeeGrowthGlobal(poolKey.toId(), feeData.feeGrowthGlobal0X128, feeData.feeGrowthGlobal1X128);
+
+        feeData_ = feeData;
     }
 
     function setState(TestVariables memory testVars, PoolKey memory poolKey) public returns (uint256 tokenId) {
@@ -189,58 +234,67 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
             type(uint128).max,
             users.liquidityProvider
         );
-
-        // And : Generate fees for the position
-        generateFees(testVars.feeAmount0, testVars.feeAmount1, poolKey);
     }
 
-    function generateFees(uint256 amount0ToGenerate, uint256 amount1ToGenerate, PoolKey memory poolKey) public {
-        // Swap token0 for token1
-        if (amount0ToGenerate > 0) {
-            uint256 amount0ToSwap = ((amount0ToGenerate * (1e6 / uint24(poolKey.fee))) * 10 ** token0.decimals());
-
-            deal(address(token0), address(this), amount0ToSwap, true);
-            token0.approve(address(poolManager), amount0ToSwap);
-
-            IPoolManager.SwapParams memory params = IPoolManager.SwapParams({
-                zeroForOne: true,
-                amountSpecified: int256(amount0ToSwap),
-                sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE
-            });
-
-            bytes memory swapData = abi.encode(params, poolKey);
-            // Do the swap.
-            poolManager.unlock(swapData);
-        }
-
-        // Swap token1 for token0
-        if (amount1ToGenerate > 0) {
-            uint256 amount1ToSwap = ((amount1ToGenerate * (1e6 / uint24(poolKey.fee))) * 10 ** token1.decimals());
-
-            deal(address(token1), address(this), amount1ToSwap, true);
-            token1.approve(address(poolManager), amount1ToSwap);
-
-            IPoolManager.SwapParams memory params = IPoolManager.SwapParams({
-                zeroForOne: false,
-                amountSpecified: int256(amount1ToSwap),
-                sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE
-            });
-
-            bytes memory swapData = abi.encode(params, poolKey);
-            // Do the swap.
-            poolManager.unlock(swapData);
-        }
-
-        vm.stopPrank();
-    }
-
-    function unlockCallBack(bytes calldata data) external onlyPoolManager returns (bytes memory results) {
+    function unlockCallback(bytes memory data) external onlyPoolManager returns (bytes memory results) {
         (IPoolManager.SwapParams memory params, PoolKey memory poolKey) =
             abi.decode(data, (IPoolManager.SwapParams, PoolKey));
 
         BalanceDelta delta = poolManager.swap(poolKey, params, "");
 
-        UniswapV4Logic._processBalanceDeltas(delta, poolKey.currency0, poolKey.currency1);
+        _processSwapDelta(delta, poolKey.currency0, poolKey.currency1);
         results = abi.encode(delta);
+    }
+
+    function _processSwapDelta(BalanceDelta delta, Currency currency0, Currency currency1) internal {
+        if (delta.amount0() < 0) {
+            poolManager.sync(currency0);
+            currency0.transfer(address(poolManager), uint128(-delta.amount0()));
+            poolManager.settle();
+        }
+        if (delta.amount1() < 0) {
+            poolManager.sync(currency1);
+            currency1.transfer(address(poolManager), uint128(-delta.amount1()));
+            poolManager.settle();
+        }
+
+        if (delta.amount0() > 0) {
+            poolManager.take(currency0, (address(this)), uint128(delta.amount0()));
+        }
+        if (delta.amount1() > 0) {
+            poolManager.take(currency1, address(this), uint128(delta.amount1()));
+        }
+    }
+
+    // From UniV4-core tests
+    function getLiquidityDeltaFromAmounts(int24 tickLower, int24 tickUpper, uint160 sqrtPriceX96)
+        public
+        pure
+        returns (uint256 liquidityMaxByAmount)
+    {
+        // First get the maximum amount0 and maximum amount1 that can be deposited at this range.
+        (uint256 maxAmount0, uint256 maxAmount1) = LiquidityAmounts.getAmountsForLiquidity(
+            sqrtPriceX96,
+            TickMath.getSqrtPriceAtTick(tickLower),
+            TickMath.getSqrtPriceAtTick(tickUpper),
+            uint128(type(int128).max)
+        );
+
+        // Compare the max amounts (defined by the range of the position) to the max amount constrained by the type container.
+        // The true maximum should be the minimum of the two.
+        // (ie If the position range allows a deposit of more then int128.max in any token, then here we cap it at int128.max.)
+        uint256 amount0 = uint256(type(uint128).max / 2);
+        uint256 amount1 = uint256(type(uint128).max / 2);
+
+        maxAmount0 = maxAmount0 > amount0 ? amount0 : maxAmount0;
+        maxAmount1 = maxAmount1 > amount1 ? amount1 : maxAmount1;
+
+        liquidityMaxByAmount = LiquidityAmountsExtension.getLiquidityForAmounts(
+            sqrtPriceX96,
+            TickMath.getSqrtPriceAtTick(tickLower),
+            TickMath.getSqrtPriceAtTick(tickUpper),
+            maxAmount0,
+            maxAmount1
+        );
     }
 }

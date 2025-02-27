@@ -208,7 +208,9 @@ contract UniswapV4Compounder is IActionBase {
         // Rebalance the fee amounts so that the maximum amount of liquidity can be added.
         // The Pool must still be balanced after the swap.
         (bool zeroToOne, uint256 amountOut) = getSwapParameters(position, fees);
-        if (_swap(poolKey, position, zeroToOne, amountOut)) revert UnbalancedPool();
+        if (_swap(poolKey, position.lowerBoundSqrtPriceX96, position.upperBoundSqrtPriceX96, zeroToOne, amountOut)) {
+            revert UnbalancedPool();
+        }
 
         // We increase the fee amount of tokenOut, but we do not decrease the fee amount of tokenIn.
         // This guarantees that tokenOut is the limiting factor when increasing liquidity and not tokenIn.
@@ -335,21 +337,24 @@ contract UniswapV4Compounder is IActionBase {
     /**
      * @notice Swaps one token to the other token in the Uniswap V4 Pool of the Liquidity Position.
      * @param poolKey The key containing pool parameters.
-     * @param position Struct with the position data.
+     * @param lowerBoundSqrtPriceX96 The minimum acceptable sqrt price after swap (used when swapping token0 for token1).
+     * @param upperBoundSqrtPriceX96 The maximum acceptable sqrt price after swap (used when swapping token1 for token0).
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param amountOut The amount that of tokenOut that must be swapped to.
      * @return isPoolUnbalanced_ Bool indicating if the pool is unbalanced due to slippage of the swap.
      */
-    function _swap(PoolKey memory poolKey, PositionState memory position, bool zeroToOne, uint256 amountOut)
-        internal
-        returns (bool isPoolUnbalanced_)
-    {
+    function _swap(
+        PoolKey memory poolKey,
+        uint256 lowerBoundSqrtPriceX96,
+        uint256 upperBoundSqrtPriceX96,
+        bool zeroToOne,
+        uint256 amountOut
+    ) internal returns (bool isPoolUnbalanced_) {
         // Don't do swaps with zero amount.
         if (amountOut == 0) return false;
 
         // Pool should still be balanced (within tolerance boundaries) after the swap.
-        uint160 sqrtPriceLimitX96 =
-            uint160(zeroToOne ? position.lowerBoundSqrtPriceX96 : position.upperBoundSqrtPriceX96);
+        uint160 sqrtPriceLimitX96 = uint160(zeroToOne ? lowerBoundSqrtPriceX96 : upperBoundSqrtPriceX96);
 
         SwapParams memory params = SwapParams({
             zeroForOne: zeroToOne,
@@ -363,7 +368,7 @@ contract UniswapV4Compounder is IActionBase {
         BalanceDelta swapDelta = abi.decode(results, (BalanceDelta));
 
         // Check if pool is still balanced (sqrtPriceLimitX96 is reached before an amountOut of tokenOut is received).
-        isPoolUnbalanced_ = (amountOut > (zeroToOne ? uint128(-swapDelta.amount1()) : uint128(-swapDelta.amount0())));
+        isPoolUnbalanced_ = (amountOut > (zeroToOne ? uint128(swapDelta.amount1()) : uint128(swapDelta.amount0())));
     }
 
     /**
@@ -402,12 +407,10 @@ contract UniswapV4Compounder is IActionBase {
      * @param data The encoded swap parameters and pool key.
      * @return results The encoded BalanceDelta result from the swap operation.
      */
-    function unlockCallBack(bytes calldata data) external onlyPoolManager returns (bytes memory results) {
+    function unlockCallback(bytes calldata data) external onlyPoolManager returns (bytes memory results) {
         (SwapParams memory params, PoolKey memory poolKey) = abi.decode(data, (SwapParams, PoolKey));
-
         BalanceDelta delta = UniswapV4Logic.POOL_MANAGER.swap(poolKey, params, "");
-
-        UniswapV4Logic._processBalanceDeltas(delta, poolKey.currency0, poolKey.currency1);
+        UniswapV4Logic._processSwapDelta(delta, poolKey.currency0, poolKey.currency1);
         results = abi.encode(delta);
     }
 
@@ -432,8 +435,7 @@ contract UniswapV4Compounder is IActionBase {
         // Get data of the Liquidity Position.
         position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(info.tickLower());
         position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(info.tickUpper());
-        (position.sqrtPriceX96,,,) = UniswapV4Logic.POOL_MANAGER.getSlot0(poolKey.toId());
-
+        (position.sqrtPriceX96,,,) = UniswapV4Logic.STATE_VIEW.getSlot0(poolKey.toId());
         // Get trusted USD prices for 1e18 gwei of token0 and token1.
         (position.usdPriceToken0, position.usdPriceToken1) =
             ArcadiaLogic._getValuesInUsd(Currency.unwrap(poolKey.currency0), Currency.unwrap(poolKey.currency1));

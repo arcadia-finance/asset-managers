@@ -17,11 +17,14 @@ contract UniswapV4CompounderExtension is UniswapV4Compounder {
         return UniswapV4Logic._getSqrtPriceX96(priceToken0, priceToken1);
     }
 
-    function swap(PoolKey memory poolKey, PositionState memory position, bool zeroToOne, uint256 amountOut)
-        public
-        returns (bool)
-    {
-        return _swap(poolKey, position, zeroToOne, amountOut);
+    function swap(
+        PoolKey memory poolKey,
+        uint256 lowerBoundSqrtPriceX96,
+        uint256 upperBoundSqrtPriceX96,
+        bool zeroToOne,
+        uint256 amountOut
+    ) public returns (bool) {
+        return _swap(poolKey, lowerBoundSqrtPriceX96, upperBoundSqrtPriceX96, zeroToOne, amountOut);
     }
 
     function collectFees(uint256 tokenId, PoolKey memory poolKey)

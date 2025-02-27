@@ -14,13 +14,12 @@ import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/u
 import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
 import { IPoolManager } from "../interfaces/IPoolManager.sol";
 import { IPositionManager } from "../interfaces/IPositionManager.sol";
-import { StateLibrary } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/StateLibrary.sol";
+import { IStateView } from "../interfaces/IStateView.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 
 library UniswapV4Logic {
     using BalanceDeltaLibrary for BalanceDelta;
     using FixedPointMathLib for uint256;
-    using StateLibrary for IPoolManager;
 
     // The binary precision of sqrtPriceX96 squared.
     uint256 internal constant Q192 = FixedPoint96.Q96 ** 2;
@@ -35,6 +34,9 @@ library UniswapV4Logic {
     IPoolManager internal constant POOL_MANAGER = IPoolManager(0x498581fF718922c3f8e6A244956aF099B2652b2b);
     // The Uniswap V4 PositionManager contract.
     IPositionManager internal constant POSITION_MANAGER = IPositionManager(0x7C5f5A4bBd8fD63184577525326123B519429bDc);
+    // The Uniswap V4 StateView contract.
+    // TODO: Check why getSlot0 fails (StateLibrary not implemented on PoolManager).
+    IStateView internal constant STATE_VIEW = IStateView(0xA3c0c9b65baD0b08107Aa264b0f3dB444b867A71);
 
     /**
      * @notice Calculates the amountOut for a given amountIn and sqrtPriceX96 for a hypothetical
@@ -120,27 +122,31 @@ library UniswapV4Logic {
     }
 
     /**
-     * @notice Processes both positive and negative balance deltas in a single function.
-     * @dev Combines both take and settle logic:
-     *      - For negative deltas: takes tokens from the Pool Manager.
-     *      - For positive deltas: transfers tokens to the Pool Manager and calls settle.
-     * @param delta The BalanceDelta type containing the changes in token amounts.
-     * @param currency0 The address of currency0.
-     * @param currency1 The address of currency1.
+     * @notice Processes token balance changes resulting from a swap operation
+     * @dev Handles token transfers between the contract and the Pool Manager based on delta values:
+     *      - For tokens owed to the Pool Manager: transfers tokens and calls settle()
+     *      - For tokens owed from the Pool Manager: calls take() to receive tokens
+     * @param delta The BalanceDelta containing the positive/negative changes in token amounts
+     * @param currency0 The address of the first token in the pair
+     * @param currency1 The address of the second token in the pair
      */
-    function _processBalanceDeltas(BalanceDelta delta, Currency currency0, Currency currency1) internal {
+    function _processSwapDelta(BalanceDelta delta, Currency currency0, Currency currency1) internal {
         if (delta.amount0() < 0) {
-            POOL_MANAGER.take(currency0, address(this), uint128(-delta.amount0()));
-        } else if (delta.amount0() > 0) {
-            currency0.transfer(address(POOL_MANAGER), uint128(delta.amount0()));
+            POOL_MANAGER.sync(currency0);
+            currency0.transfer(address(POOL_MANAGER), uint128(-delta.amount0()));
+            POOL_MANAGER.settle();
+        }
+        if (delta.amount1() < 0) {
+            POOL_MANAGER.sync(currency1);
+            currency1.transfer(address(POOL_MANAGER), uint128(-delta.amount1()));
             POOL_MANAGER.settle();
         }
 
-        if (delta.amount1() < 0) {
-            POOL_MANAGER.take(currency1, address(this), uint128(-delta.amount1()));
-        } else if (delta.amount1() > 0) {
-            currency1.transfer(address(POOL_MANAGER), uint128(delta.amount1()));
-            POOL_MANAGER.settle();
+        if (delta.amount0() > 0) {
+            POOL_MANAGER.take(currency0, (address(this)), uint128(delta.amount0()));
+        }
+        if (delta.amount1() > 0) {
+            POOL_MANAGER.take(currency1, address(this), uint128(delta.amount1()));
         }
     }
 }
