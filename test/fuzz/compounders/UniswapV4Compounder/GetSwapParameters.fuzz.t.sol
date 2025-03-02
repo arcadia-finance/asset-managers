@@ -32,7 +32,7 @@ contract GetSwapParameters_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_
         FeeGrowth memory feeData
     ) public {
         // Given : Valid State.
-        (testVars,) = givenValidBalancedState(testVars);
+        (testVars,) = givenValidBalancedState(testVars, stablePoolKey);
 
         // And : State is persisted.
         setState(testVars, stablePoolKey);
@@ -71,7 +71,7 @@ contract GetSwapParameters_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_
         FeeGrowth memory feeData
     ) public {
         // Given : Valid State
-        (testVars,) = givenValidBalancedState(testVars);
+        (testVars,) = givenValidBalancedState(testVars, stablePoolKey);
 
         // And : State is persisted
         setState(testVars, stablePoolKey);
@@ -110,7 +110,7 @@ contract GetSwapParameters_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_
         FeeGrowth memory feeData
     ) public {
         // Given : Valid State
-        (testVars,) = givenValidBalancedState(testVars);
+        (testVars,) = givenValidBalancedState(testVars, stablePoolKey);
         // And : State is persisted
         setState(testVars, stablePoolKey);
 
@@ -165,7 +165,7 @@ contract GetSwapParameters_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_
         FeeGrowth memory feeData
     ) public {
         // Given : Valid State
-        (testVars,) = givenValidBalancedState(testVars);
+        (testVars,) = givenValidBalancedState(testVars, stablePoolKey);
 
         // And : State is persisted
         setState(testVars, stablePoolKey);

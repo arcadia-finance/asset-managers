@@ -4,7 +4,9 @@
  */
 pragma solidity ^0.8.22;
 
+import { ArcadiaOracle } from "../../../../lib/accounts-v2/test/utils/mocks/oracles/ArcadiaOracle.sol";
 import { BalanceDelta } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/BalanceDelta.sol";
+import { BitPackingLib } from "../../../../lib/accounts-v2/src/libraries/BitPackingLib.sol";
 import { Currency } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
 import { DefaultUniswapV4AM } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV4/DefaultUniswapV4AM.sol";
 import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
@@ -15,6 +17,8 @@ import { LiquidityAmounts } from
     "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/LiquidityAmounts.sol";
 import { LiquidityAmountsExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/libraries/LiquidityAmountsExtension.sol";
+import { NativeTokenAMMock } from "../../../utils/mocks/NativeTokenAMMock.sol";
+import { PoolId } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolId.sol";
 import { PoolKey } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 import { IPoolManager } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/interfaces/IPoolManager.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
@@ -52,6 +56,7 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
     ERC20Mock internal token0;
     ERC20Mock internal token1;
     PoolKey internal stablePoolKey;
+    PoolKey internal nativeEthPoolKey;
 
     struct TestVariables {
         int24 tickLower;
@@ -70,7 +75,9 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
                             TEST CONTRACTS
     /////////////////////////////////////////////////////////////// */
 
+    ArcadiaOracle internal ethOracle;
     DefaultUniswapV4AM internal defaultUniswapV4AM;
+    NativeTokenAMMock internal nativeTokenAM;
     UniswapV4HooksRegistry internal uniswapV4HooksRegistry;
     UniswapV4CompounderExtension internal compounder;
 
@@ -147,6 +154,35 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         vm.stopPrank();
     }
 
+    function deployNativeAM() public {
+        // Deploy AM
+        vm.startPrank(users.owner);
+        nativeTokenAM = new NativeTokenAMMock(address(registry));
+
+        // Add AM to registry
+        registry.addAssetModule(address(nativeTokenAM));
+
+        // Init and add ETH oracle
+        ethOracle = initMockedOracle(18, "ETH / USD", uint256(1e8));
+        vm.startPrank(chainlinkOM.owner());
+        chainlinkOM.addOracle(address(ethOracle), "ETH", "USD", 2 days);
+
+        uint80[] memory oracleEthToUsdArr = new uint80[](1);
+        oracleEthToUsdArr[0] = uint80(chainlinkOM.oracleToOracleId(address(ethOracle)));
+
+        vm.startPrank(registry.owner());
+        nativeTokenAM.addAsset(address(0), BitPackingLib.pack(BA_TO_QA_SINGLE, oracleEthToUsdArr));
+
+        vm.stopPrank();
+    }
+
+    function deployNativeEthPool() public {
+        // Create UniswapV4 pool, native ETH has 18 decimals
+        uint256 sqrtPriceX96 = compounder.getSqrtPriceX96(10 ** token1.decimals(), 1e18);
+        nativeEthPoolKey =
+            initializePoolV4(address(0), address(token1), uint160(sqrtPriceX96), address(0), POOL_FEE, TICK_SPACING);
+    }
+
     function deployCompounder(uint256 compoundThreshold, uint256 initiatorShare, uint256 tolerance) public {
         vm.prank(users.owner);
         compounder = new UniswapV4CompounderExtension(compoundThreshold, initiatorShare, tolerance);
@@ -174,20 +210,25 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         vm.etch(address(compounder), bytecode);
     }
 
-    function givenValidBalancedState(TestVariables memory testVars)
+    function givenValidBalancedState(TestVariables memory testVars, PoolKey memory poolKey)
         public
         view
         returns (TestVariables memory testVars_, bool token0HasLowestDecimals)
     {
         // Given : ticks should be in range
-        (uint160 sqrtPriceX96, int24 currentTick,,) = stateView.getSlot0(stablePoolKey.toId());
+        (uint160 sqrtPriceX96, int24 currentTick,,) = stateView.getSlot0(poolKey.toId());
 
         // And : tickRange is minimum 20
         testVars.tickUpper = int24(bound(testVars.tickUpper, currentTick + 10, currentTick + type(int16).max));
         // And : Liquidity is added in 50/50
         testVars.tickLower = currentTick - (testVars.tickUpper - currentTick);
 
-        token0HasLowestDecimals = token0.decimals() < token1.decimals() ? true : false;
+        if (PoolId.unwrap(poolKey.toId()) == PoolId.unwrap(stablePoolKey.toId())) {
+            token0HasLowestDecimals = token0.decimals() < token1.decimals() ? true : false;
+        } else {
+            // Doesn't matter in this case, we test for full native ETH flow only.
+            token0HasLowestDecimals = false;
+        }
 
         // And : provide liquidity in balanced way.
         uint256 maxLiquidity = getLiquidityDeltaFromAmounts(testVars.tickLower, testVars.tickUpper, sqrtPriceX96);
@@ -203,7 +244,9 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         returns (FeeGrowth memory feeData_)
     {
         // And : Amount in $ to wei.
-        feeData.desiredFee0 = feeData.desiredFee0 * 10 ** token0.decimals();
+        feeData.desiredFee0 = PoolId.unwrap(poolKey.toId()) == PoolId.unwrap(nativeEthPoolKey.toId())
+            ? feeData.desiredFee0 * 1e18
+            : feeData.desiredFee0 = feeData.desiredFee0 * 10 ** token0.decimals();
         feeData.desiredFee1 = feeData.desiredFee1 * 10 ** token1.decimals();
 
         // And : Calculate expected feeGrowth difference in order to obtain desired fee
@@ -220,7 +263,9 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         poolManager.setFeeGrowthGlobal(poolKey.toId(), feeData.feeGrowthGlobal0X128, feeData.feeGrowthGlobal1X128);
 
         // And : Mint fee to the pool
-        token0.mint(address(poolManager), feeData.desiredFee0);
+        PoolId.unwrap(poolKey.toId()) == PoolId.unwrap(nativeEthPoolKey.toId())
+            ? vm.deal(address(poolManager), feeData.desiredFee0)
+            : token0.mint(address(poolManager), feeData.desiredFee0);
         token1.mint(address(poolManager), feeData.desiredFee1);
 
         feeData_ = feeData;

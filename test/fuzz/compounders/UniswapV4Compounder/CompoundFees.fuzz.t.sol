@@ -23,6 +23,9 @@ contract CompoundFees_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_
 
     function setUp() public virtual override {
         UniswapV4Compounder_Fuzz_Test.setUp();
+
+        deployNativeAM();
+        deployNativeEthPool();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -34,7 +37,7 @@ contract CompoundFees_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_
         address initiator
     ) public {
         // Given : Valid state
-        (testVars,) = givenValidBalancedState(testVars);
+        (testVars,) = givenValidBalancedState(testVars, stablePoolKey);
 
         // And : State is persisted
         uint256 tokenId = setState(testVars, stablePoolKey);
@@ -77,7 +80,7 @@ contract CompoundFees_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_
         vm.assume(initiator != users.liquidityProvider);
 
         // And : Valid state
-        (testVars,) = givenValidBalancedState(testVars);
+        (testVars,) = givenValidBalancedState(testVars, stablePoolKey);
 
         // And : State is persisted
         uint256 tokenId = setState(testVars, stablePoolKey);
@@ -137,7 +140,7 @@ contract CompoundFees_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_
         vm.assume(initiator != users.liquidityProvider);
 
         // And : Valid state
-        (testVars,) = givenValidBalancedState(testVars);
+        (testVars,) = givenValidBalancedState(testVars, stablePoolKey);
 
         // And : State is persisted
         uint256 tokenId = setState(testVars, stablePoolKey);
@@ -306,4 +309,64 @@ contract CompoundFees_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_
         // Ensure USD value of initiator fees is max INITIATOR_SHARE from total fees.
         assertLe(initiatorFeeUsdValue, totalFeeInUsdValue * INITIATOR_SHARE / 1e18);
     } */
+
+    function testFuzz_Success_compoundFees_NativeEth(
+        TestVariables memory testVars,
+        FeeGrowth memory feeData,
+        address initiator
+    ) public {
+        // Given : initiator is not the liquidity provider.
+        vm.assume(initiator != users.liquidityProvider);
+
+        // And : Valid state
+        (testVars,) = givenValidBalancedState(testVars, nativeEthPoolKey);
+
+        // And : State is persisted
+        uint256 tokenId = setState(testVars, nativeEthPoolKey);
+
+        // And : Fee amounts above minimum treshold.
+        feeData.desiredFee0 = bound(feeData.desiredFee0, ((COMPOUND_THRESHOLD / 1e18) / 2), type(uint16).max);
+        feeData.desiredFee1 = bound(feeData.desiredFee1, ((COMPOUND_THRESHOLD / 1e18) / 2), type(uint16).max);
+        feeData = setFeeState(feeData, nativeEthPoolKey, testVars.liquidity);
+
+        // And : Transfer position to account owner
+        vm.prank(users.liquidityProvider);
+        ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, users.accountOwner, tokenId);
+
+        {
+            address[] memory assets_ = new address[](1);
+            assets_[0] = address(positionManagerV4);
+            uint256[] memory assetIds_ = new uint256[](1);
+            assetIds_[0] = tokenId;
+            uint256[] memory assetAmounts_ = new uint256[](1);
+            assetAmounts_[0] = 1;
+
+            // And : Deposit position in Account
+            vm.startPrank(users.accountOwner);
+            ERC721(address(positionManagerV4)).approve(address(account), tokenId);
+            account.deposit(assets_, assetIds_, assetAmounts_);
+            vm.stopPrank();
+        }
+
+        // When : Calling compoundFees()
+        vm.prank(initiator);
+        compounder.compoundFees(address(account), tokenId);
+
+        // Then : Liquidity of position should have increased
+        bytes32 positionId = keccak256(
+            abi.encodePacked(address(positionManagerV4), testVars.tickLower, testVars.tickUpper, bytes32(tokenId))
+        );
+        uint256 newLiquidity = stateView.getPositionLiquidity(nativeEthPoolKey.toId(), positionId);
+        assertGt(newLiquidity, testVars.liquidity);
+
+        // And : initiatorFees should never be bigger than the calculated share plus a small bonus due to rounding errors in.
+        uint256 initiatorFeesToken0 = token0.balanceOf(initiator);
+        uint256 initiatorFeesToken1 = token1.balanceOf(initiator);
+
+        uint256 initiatorFeeToken0Calculated = feeData.desiredFee0 * (INITIATOR_SHARE + TOLERANCE) / 1e18;
+        uint256 initiatorFeeToken1Calculated = feeData.desiredFee1 * (INITIATOR_SHARE + TOLERANCE) / 1e18;
+
+        assertLe(initiatorFeesToken0, initiatorFeeToken0Calculated);
+        assertLe(initiatorFeesToken1, initiatorFeeToken1Calculated);
+    }
 }

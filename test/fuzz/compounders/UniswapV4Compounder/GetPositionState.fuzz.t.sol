@@ -31,7 +31,7 @@ contract GetPositionState_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_F
     function testFuzz_Success_getPositionState(TestVariables memory testVars) public {
         // Given : Valid State
         bool token0HasLowestDecimals;
-        (testVars, token0HasLowestDecimals) = givenValidBalancedState(testVars);
+        (testVars, token0HasLowestDecimals) = givenValidBalancedState(testVars, stablePoolKey);
 
         // And : State is persisted
         uint256 tokenId = setState(testVars, stablePoolKey);
