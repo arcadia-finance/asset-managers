@@ -14,6 +14,7 @@ import { Currency } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/
 import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IAccount } from "../interfaces/IAccount.sol";
+import { IPermit2 } from "../interfaces/IPermit2.sol";
 import { IPoolManager, ModifyLiquidityParams, SwapParams } from "./interfaces/IPoolManager.sol";
 import { LiquidityAmounts } from "../../../lib/accounts-v2/lib/v4-periphery/src/libraries/LiquidityAmounts.sol";
 import { PoolKey } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
@@ -45,6 +46,9 @@ contract UniswapV4Compounder is IActionBase {
     /* //////////////////////////////////////////////////////////////
                                 CONSTANTS
     ////////////////////////////////////////////////////////////// */
+
+    // The Permit2 contract.
+    IPermit2 internal constant PERMIT_2 = IPermit2(0x000000000022D473030F116dDEE9F6B43aC78BA3);
 
     // Minimum fees value in USD to trigger the compounding of a position, with 18 decimals precision.
     uint256 public immutable COMPOUND_THRESHOLD;
@@ -220,9 +224,6 @@ contract UniswapV4Compounder is IActionBase {
         else fees.amount0 += amountOut;
 
         // Increase liquidity of the position.
-        // The approval for at least one token after increasing liquidity will remain non-zero.
-        // We have to set approval first to 0 for ERC20 tokens that require the approval to be set to zero
-        // before setting it to a non-zero value.
         // Handle approvals based on whether tokens are ETH or ERC20.
         bool token0IsNative = Currency.unwrap(poolKey.currency0) == address(0);
         bool token1IsNative = Currency.unwrap(poolKey.currency1) == address(0);
@@ -231,23 +232,28 @@ contract UniswapV4Compounder is IActionBase {
         uint256 ethValue = (token0IsNative ? fees.amount0 : 0) + (token1IsNative ? fees.amount1 : 0);
 
         // Handle approvals for non-native tokens
+        uint160 currentPermit2Allowance;
         if (!token0IsNative && fees.amount0 > 0) {
-            ERC20(Currency.unwrap(poolKey.currency0)).safeApprove(address(UniswapV4Logic.POSITION_MANAGER), 0);
-            ERC20(Currency.unwrap(poolKey.currency0)).safeApprove(
-                address(UniswapV4Logic.POSITION_MANAGER), fees.amount0
-            );
+            currentPermit2Allowance = PERMIT_2.allowance(
+                address(this), Currency.unwrap(poolKey.currency0), address(UniswapV4Logic.POSITION_MANAGER)
+            ).amount;
+
+            if (currentPermit2Allowance < fees.amount0) _approvePermit2(Currency.unwrap(poolKey.currency0));
         }
 
         if (!token1IsNative && fees.amount1 > 0) {
-            ERC20(Currency.unwrap(poolKey.currency1)).safeApprove(address(UniswapV4Logic.POSITION_MANAGER), 0);
-            ERC20(Currency.unwrap(poolKey.currency1)).safeApprove(
-                address(UniswapV4Logic.POSITION_MANAGER), fees.amount1
-            );
+            currentPermit2Allowance = PERMIT_2.allowance(
+                address(this), Currency.unwrap(poolKey.currency1), address(UniswapV4Logic.POSITION_MANAGER)
+            ).amount;
+
+            if (currentPermit2Allowance < fees.amount1) _approvePermit2(Currency.unwrap(poolKey.currency1));
         }
 
         {
+            // Calculate liquidity to be added based on fee amounts and updated sqrtPriceX96 after swap.
+            (uint160 newSqrtPriceX96,,,) = UniswapV4Logic.STATE_VIEW.getSlot0(poolKey.toId());
             uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
-                uint160(position.sqrtPriceX96),
+                newSqrtPriceX96,
                 uint160(position.sqrtRatioLower),
                 uint160(position.sqrtRatioUpper),
                 fees.amount0,
@@ -435,6 +441,7 @@ contract UniswapV4Compounder is IActionBase {
         // Get data of the Liquidity Position.
         position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(info.tickLower());
         position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(info.tickUpper());
+        // TODO: try to access via PoolManager instead of StateView, but fails.
         (position.sqrtPriceX96,,,) = UniswapV4Logic.STATE_VIEW.getSlot0(poolKey.toId());
         // Get trusted USD prices for 1e18 gwei of token0 and token1.
         (position.usdPriceToken0, position.usdPriceToken1) =
@@ -475,6 +482,25 @@ contract UniswapV4Compounder is IActionBase {
         // Check if current priceX96 of the Pool is within accepted tolerance of the calculated trusted priceX96.
         isPoolUnbalanced_ = position.sqrtPriceX96 < position.lowerBoundSqrtPriceX96
             || position.sqrtPriceX96 > position.upperBoundSqrtPriceX96;
+    }
+
+    /* ///////////////////////////////////////////////////////////////
+                        PERMIT2 APPROVALS
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Approves the Permit2 contract to spend a token and then approves the PositionManager through Permit2.
+     * @dev This function sets unlimited approvals for both steps:
+     *      1. Approves Permit2 to spend the token.
+     *      2. Approves PositionManager via Permit2.
+     * @dev For tokens that require approvals to be reset to 0 before setting a new value,
+     *      this function first sets the approval to 0 before setting it to the maximum value.
+     * @param token The address of the ERC20 token to approve.
+     */
+    function _approvePermit2(address token) internal {
+        ERC20(token).safeApprove(address(PERMIT_2), 0);
+        ERC20(token).safeApprove(address(PERMIT_2), type(uint256).max);
+        PERMIT_2.approve(token, address(UniswapV4Logic.POSITION_MANAGER), type(uint160).max, type(uint48).max);
     }
 
     /* ///////////////////////////////////////////////////////////////

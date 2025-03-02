@@ -144,7 +144,6 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         // Set protocol
         uniswapV4HooksRegistry.setProtocol();
 
-        // Todo : set risk params
         vm.stopPrank();
     }
 
@@ -169,7 +168,6 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
             abi.encodePacked(positionManagerV4),
             false
         );
-
         bytecode = Utils.veryBadBytesReplacer(
             bytecode, abi.encodePacked(0xA3c0c9b65baD0b08107Aa264b0f3dB444b867A71), abi.encodePacked(stateView), false
         );
@@ -193,19 +191,20 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
 
         // And : provide liquidity in balanced way.
         uint256 maxLiquidity = getLiquidityDeltaFromAmounts(testVars.tickLower, testVars.tickUpper, sqrtPriceX96);
-        testVars.liquidity = uint128(bound(testVars.liquidity, 1, maxLiquidity));
+        // Here we set a minimum liquidity of 1e20 to avoid having unbalanced pool to quickly after fee swap.
+        testVars.liquidity = uint128(bound(testVars.liquidity, 1e20, maxLiquidity));
         vm.assume(testVars.liquidity <= poolManager.getTickSpacingToMaxLiquidityPerTick(1));
 
         testVars_ = testVars;
     }
 
-    function setValidFeeState(FeeGrowth memory feeData, PoolKey memory poolKey, uint128 liquidity)
+    function setFeeState(FeeGrowth memory feeData, PoolKey memory poolKey, uint128 liquidity)
         public
         returns (FeeGrowth memory feeData_)
     {
-        // And : Positive fee
-        feeData.desiredFee0 = bound(feeData.desiredFee0, 1, type(uint128).max);
-        feeData.desiredFee1 = bound(feeData.desiredFee1, 1, type(uint128).max);
+        // And : Amount in $ to wei.
+        feeData.desiredFee0 = feeData.desiredFee0 * 10 ** token0.decimals();
+        feeData.desiredFee1 = feeData.desiredFee1 * 10 ** token1.decimals();
 
         // And : Calculate expected feeGrowth difference in order to obtain desired fee
         // (fee * Q128) / liquidity = diff in Q128.
@@ -219,6 +218,10 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
 
         // And : Set state
         poolManager.setFeeGrowthGlobal(poolKey.toId(), feeData.feeGrowthGlobal0X128, feeData.feeGrowthGlobal1X128);
+
+        // And : Mint fee to the pool
+        token0.mint(address(poolManager), feeData.desiredFee0);
+        token1.mint(address(poolManager), feeData.desiredFee1);
 
         feeData_ = feeData;
     }
