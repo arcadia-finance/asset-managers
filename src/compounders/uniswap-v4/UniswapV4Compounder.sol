@@ -408,12 +408,12 @@ contract UniswapV4Compounder is IActionBase {
     }
 
     /**
-     * @notice Callback function executed during the unlock phase of a Uniswap V4 pool operation
+     * @notice Callback function executed during the unlock phase of a Uniswap V4 pool operation.
      * @dev This function can only be called by the Pool Manager. It processes a swap and handles the resulting balance deltas.
      * @param data The encoded swap parameters and pool key.
      * @return results The encoded BalanceDelta result from the swap operation.
      */
-    function unlockCallback(bytes calldata data) external onlyPoolManager returns (bytes memory results) {
+    function unlockCallback(bytes calldata data) external payable onlyPoolManager returns (bytes memory results) {
         (SwapParams memory params, PoolKey memory poolKey) = abi.decode(data, (SwapParams, PoolKey));
         BalanceDelta delta = UniswapV4Logic.POOL_MANAGER.swap(poolKey, params, "");
         UniswapV4Logic._processSwapDelta(delta, poolKey.currency0, poolKey.currency1);
@@ -514,4 +514,11 @@ contract UniswapV4Compounder is IActionBase {
     function onERC721Received(address, address, uint256, bytes calldata) public pure returns (bytes4) {
         return this.onERC721Received.selector;
     }
+
+    /* ///////////////////////////////////////////////////////////////
+                      NATIVE ETH FUNCTION
+    /////////////////////////////////////////////////////////////// */
+
+    // Function to receive native ETH.
+    receive() external payable { }
 }

@@ -163,7 +163,7 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         registry.addAssetModule(address(nativeTokenAM));
 
         // Init and add ETH oracle
-        ethOracle = initMockedOracle(18, "ETH / USD", uint256(1e8));
+        ethOracle = initMockedOracle(8, "ETH / USD", uint256(1e8));
         vm.startPrank(chainlinkOM.owner());
         chainlinkOM.addOracle(address(ethOracle), "ETH", "USD", 2 days);
 
@@ -264,8 +264,9 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
 
         // And : Mint fee to the pool
         PoolId.unwrap(poolKey.toId()) == PoolId.unwrap(nativeEthPoolKey.toId())
-            ? vm.deal(address(poolManager), feeData.desiredFee0)
+            ? vm.deal(address(poolManager), address(poolManager).balance + feeData.desiredFee0)
             : token0.mint(address(poolManager), feeData.desiredFee0);
+
         token1.mint(address(poolManager), feeData.desiredFee1);
 
         feeData_ = feeData;
