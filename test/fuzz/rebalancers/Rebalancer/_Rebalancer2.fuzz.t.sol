@@ -183,7 +183,7 @@ abstract contract Rebalancer_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, Slipstrea
         // Create gauge.
         vm.prank(address(voter));
         gauge = ICLGauge(cLGaugeFactory.createGauge(address(0), address(poolCl), address(0), AERO, true));
-        voter.setGauge(address(gauge));
+        voter.setGauge(address(poolCl), address(gauge));
         voter.setAlive(address(gauge), true);
         vm.prank(users.owner);
         stakedSlipstreamAM.addGauge(address(gauge));

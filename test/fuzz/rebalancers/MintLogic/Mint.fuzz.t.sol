@@ -289,7 +289,7 @@ contract Mint_MintLogic_Fuzz_Test is
         // Create gauge.
         vm.prank(address(voter));
         ICLGauge gauge = ICLGauge(cLGaugeFactory.createGauge(address(0), address(pool), address(0), AERO, true));
-        voter.setGauge(address(gauge));
+        voter.setGauge(address(pool), address(gauge));
         voter.setAlive(address(gauge), true);
         vm.prank(users.owner);
         stakedSlipstreamAM.addGauge(address(gauge));
@@ -384,7 +384,7 @@ contract Mint_MintLogic_Fuzz_Test is
         // Create gauge.
         vm.prank(address(voter));
         ICLGauge gauge = ICLGauge(cLGaugeFactory.createGauge(address(0), address(pool), address(0), AERO, true));
-        voter.setGauge(address(gauge));
+        voter.setGauge(address(pool), address(gauge));
         voter.setAlive(address(gauge), true);
 
         // When: Calling _mint().
