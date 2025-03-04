@@ -17,7 +17,7 @@ import { LiquidityAmounts } from
     "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/LiquidityAmounts.sol";
 import { LiquidityAmountsExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/libraries/LiquidityAmountsExtension.sol";
-import { NativeTokenAMMock } from "../../../utils/mocks/NativeTokenAMMock.sol";
+import { NativeTokenAM } from "../../../../lib/accounts-v2/src/asset-modules/native-token/NativeTokenAM.sol";
 import { PoolId } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolId.sol";
 import { PoolKey } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 import { IPoolManager } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/interfaces/IPoolManager.sol";
@@ -77,7 +77,7 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
 
     ArcadiaOracle internal ethOracle;
     DefaultUniswapV4AM internal defaultUniswapV4AM;
-    NativeTokenAMMock internal nativeTokenAM;
+    NativeTokenAM internal nativeTokenAM;
     UniswapV4HooksRegistry internal uniswapV4HooksRegistry;
     UniswapV4CompounderExtension internal compounder;
 
@@ -157,7 +157,7 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
     function deployNativeAM() public {
         // Deploy AM
         vm.startPrank(users.owner);
-        nativeTokenAM = new NativeTokenAMMock(address(registry));
+        nativeTokenAM = new NativeTokenAM(address(registry));
 
         // Add AM to registry
         registry.addAssetModule(address(nativeTokenAM));
