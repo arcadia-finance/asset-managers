@@ -232,21 +232,11 @@ contract UniswapV4Compounder is IActionBase {
         uint256 ethValue = (token0IsNative ? fees.amount0 : 0) + (token1IsNative ? fees.amount1 : 0);
 
         // Handle approvals for non-native tokens
-        uint160 currentPermit2Allowance;
         if (!token0IsNative && fees.amount0 > 0) {
-            currentPermit2Allowance = PERMIT_2.allowance(
-                address(this), Currency.unwrap(poolKey.currency0), address(UniswapV4Logic.POSITION_MANAGER)
-            ).amount;
-
-            if (currentPermit2Allowance < fees.amount0) _approvePermit2(Currency.unwrap(poolKey.currency0));
+            _checkAndApprovePermit2(Currency.unwrap(poolKey.currency0), fees.amount0);
         }
-
         if (!token1IsNative && fees.amount1 > 0) {
-            currentPermit2Allowance = PERMIT_2.allowance(
-                address(this), Currency.unwrap(poolKey.currency1), address(UniswapV4Logic.POSITION_MANAGER)
-            ).amount;
-
-            if (currentPermit2Allowance < fees.amount1) _approvePermit2(Currency.unwrap(poolKey.currency1));
+            _checkAndApprovePermit2(Currency.unwrap(poolKey.currency1), fees.amount1);
         }
 
         {
@@ -489,18 +479,25 @@ contract UniswapV4Compounder is IActionBase {
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Approves the Permit2 contract to spend a token and then approves the PositionManager through Permit2.
-     * @dev This function sets unlimited approvals for both steps:
-     *      1. Approves Permit2 to spend the token.
-     *      2. Approves PositionManager via Permit2.
-     * @dev For tokens that require approvals to be reset to 0 before setting a new value,
-     *      this function first sets the approval to 0 before setting it to the maximum value.
+     * @notice Ensures that the Permit2 contract has sufficient approval to spend a given token
+     *         and grants unlimited approval to the PositionManager via Permit2.
+     * @dev This function performs two key approval steps:
+     *      1. Approves Permit2 to spend the specified token.
+     *      2. Approves the PositionManager to spend the token through Permit2.
+     * @dev If the token requires resetting the approval to zero before setting a new value,
+     *      this function first resets the approval to `0` before setting it to `type(uint256).max`.
      * @param token The address of the ERC20 token to approve.
+     * @param amount The minimum amount required to be approved.
      */
-    function _approvePermit2(address token) internal {
-        ERC20(token).safeApprove(address(PERMIT_2), 0);
-        ERC20(token).safeApprove(address(PERMIT_2), type(uint256).max);
-        PERMIT_2.approve(token, address(UniswapV4Logic.POSITION_MANAGER), type(uint160).max, type(uint48).max);
+    function _checkAndApprovePermit2(address token, uint256 amount) internal {
+        uint256 currentAllowance =
+            PERMIT_2.allowance(address(this), token, address(UniswapV4Logic.POSITION_MANAGER)).amount;
+
+        if (currentAllowance < amount) {
+            ERC20(token).safeApprove(address(PERMIT_2), 0);
+            ERC20(token).safeApprove(address(PERMIT_2), type(uint256).max);
+            PERMIT_2.approve(token, address(UniswapV4Logic.POSITION_MANAGER), type(uint160).max, type(uint48).max);
+        }
     }
 
     /* ///////////////////////////////////////////////////////////////
