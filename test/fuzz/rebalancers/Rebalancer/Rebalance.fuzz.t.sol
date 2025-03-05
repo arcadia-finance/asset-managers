@@ -189,7 +189,7 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         // When : calling rebalance
         // Then : it should revert
         vm.expectRevert(Rebalancer.Reentered.selector);
-        rebalancer.rebalance(account_, positionManager, tokenId, tickLower, tickUpper, "");
+        rebalancer.rebalance(account_, positionManager, tokenId, 0, tickLower, tickUpper, "");
     }
 
     function testFuzz_Revert_rebalancePosition_InitiatorNotValid(
@@ -202,7 +202,7 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         // When : calling rebalance
         // Then : it should revert
         vm.expectRevert(Rebalancer.InitiatorNotValid.selector);
-        rebalancer.rebalance(address(account), positionManager, tokenId, tickLower, tickUpper, "");
+        rebalancer.rebalance(address(account), positionManager, tokenId, 0, tickLower, tickUpper, "");
     }
 
     function testFuzz_Success_rebalancePosition_SamePriceNewTicks(
@@ -242,11 +242,21 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
             vm.stopPrank();
         }
 
+        (uint160 currentSqrtPriceX96,,,,,,) = uniV3Pool.slot0();
+
         // When : calling rebalance()
         vm.prank(initVars.initiator);
         vm.expectEmit();
         emit Rebalancer.Rebalance(address(account), address(nonfungiblePositionManager), tokenId, tokenId + 1);
-        rebalancer.rebalance(address(account), address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, "");
+        rebalancer.rebalance(
+            address(account),
+            address(nonfungiblePositionManager),
+            tokenId,
+            uint256(currentSqrtPriceX96),
+            tickLower,
+            tickUpper,
+            ""
+        );
 
         // Then : It should return the correct values
         (,,,,, int24 tickLowerActual, int24 tickUpperActual, uint256 liquidity,,,,) =
@@ -324,9 +334,18 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
             vm.assume(zeroToOne == false);
         }
 
+        (uint160 currentSqrtPriceX96,,,,,,) = uniV3Pool.slot0();
         // When : calling rebalance()
         vm.prank(initVars.initiator);
-        rebalancer.rebalance(address(account), address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, "");
+        rebalancer.rebalance(
+            address(account),
+            address(nonfungiblePositionManager),
+            tokenId,
+            currentSqrtPriceX96,
+            tickLower,
+            tickUpper,
+            ""
+        );
 
         // Then : It should return the correct values
         assertGt(token1.balanceOf(initVars.initiator), 0);
@@ -387,9 +406,19 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
             vm.assume(zeroToOne == true);
         }
 
+        (uint160 currentSqrtPriceX96,,,,,,) = uniV3Pool.slot0();
+
         // When : calling rebalance()
         vm.prank(initVars.initiator);
-        rebalancer.rebalance(address(account), address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, "");
+        rebalancer.rebalance(
+            address(account),
+            address(nonfungiblePositionManager),
+            tokenId,
+            uint256(currentSqrtPriceX96),
+            tickLower,
+            tickUpper,
+            ""
+        );
 
         // Then : It should return the correct values
         assertGt(token0.balanceOf(initVars.initiator), 0);
@@ -445,8 +474,11 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         (, int24 tickBeforeRebalance,,,,,) = uniV3Pool.slot0();
 
         // When : calling rebalance() with 0 value for lower and upper ticks
+        (uint160 sqrtPriceAtRebalanceX96,,,,,,) = uniV3Pool.slot0();
         vm.prank(initVars.initiator);
-        rebalancer.rebalance(address(account), address(nonfungiblePositionManager), tokenId, 0, 0, "");
+        rebalancer.rebalance(
+            address(account), address(nonfungiblePositionManager), tokenId, uint256(sqrtPriceAtRebalanceX96), 0, 0, ""
+        );
 
         // Then : It should return correct values
         int24 tickLowerExpected;
@@ -512,8 +544,11 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         (, int24 tickBeforeRebalance,,,,,) = uniV3Pool.slot0();
 
         // When : calling rebalance() with 0 value for lower and upper ticks
+        (uint160 sqrtPriceAtRebalanceX96,,,,,,) = uniV3Pool.slot0();
         vm.prank(initVars.initiator);
-        rebalancer.rebalance(address(account), address(nonfungiblePositionManager), tokenId, 0, 0, "");
+        rebalancer.rebalance(
+            address(account), address(nonfungiblePositionManager), tokenId, uint256(sqrtPriceAtRebalanceX96), 0, 0, ""
+        );
 
         // Then : It should return correct values
         int24 tickLowerExpected;
@@ -647,8 +682,17 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         }
 
         // When : calling rebalance()
+        (uint160 sqrtPriceAtRebalanceX96,,,,,,) = uniV3Pool.slot0();
         vm.prank(initVars.initiator);
-        rebalancer.rebalance(address(account), address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, "");
+        rebalancer.rebalance(
+            address(account),
+            address(nonfungiblePositionManager),
+            tokenId,
+            uint256(sqrtPriceAtRebalanceX96),
+            tickLower,
+            tickUpper,
+            ""
+        );
 
         // Then : It should return the correct values
         (,,,,, int24 tickLowerActual, int24 tickUpperActual,,,,,) = nonfungiblePositionManager.positions(tokenId + 1);
@@ -774,8 +818,17 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         }
 
         // When : calling rebalance()
+        (uint160 sqrtPriceAtRebalanceX96,,,,,,) = uniV3Pool.slot0();
         vm.prank(initVars.initiator);
-        rebalancer.rebalance(address(account), address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, "");
+        rebalancer.rebalance(
+            address(account),
+            address(nonfungiblePositionManager),
+            tokenId,
+            uint256(sqrtPriceAtRebalanceX96),
+            tickLower,
+            tickUpper,
+            ""
+        );
 
         // Then : It should return the correct values
         (,,,,, int24 tickLowerActual, int24 tickUpperActual,,,,,) = nonfungiblePositionManager.positions(tokenId + 1);
@@ -891,6 +944,7 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
 
         // When : Calling rebalance()
         // Then : It should process an Arbitrary swap.
+        (uint160 sqrtPriceAtRebalanceX96,,,,,,) = uniV3Pool.slot0();
         vm.prank(initVars.initiator);
         vm.expectEmit();
         emit RouterMock.ArbitrarySwap(true);
@@ -898,6 +952,7 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
             address(account),
             address(nonfungiblePositionManager),
             tokenId,
+            uint256(sqrtPriceAtRebalanceX96),
             lpVarsStack.tickLower,
             lpVarsStack.tickUpper,
             swapData
@@ -1013,11 +1068,18 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
 
         // When : calling rebalance()
         // Then : It should process to an arbitrary swap
+        (uint160 sqrtPriceAtRebalanceX96,,,,,,) = uniV3Pool.slot0();
         vm.prank(initVars.initiator);
         vm.expectEmit();
         emit RouterMock.ArbitrarySwap(true);
         rebalancer.rebalance(
-            address(account), address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, swapData
+            address(account),
+            address(nonfungiblePositionManager),
+            tokenId,
+            uint256(sqrtPriceAtRebalanceX96),
+            tickLower,
+            tickUpper,
+            swapData
         );
     }
 }

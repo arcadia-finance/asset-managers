@@ -37,7 +37,7 @@ contract Receive_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         (bool success, bytes memory data) = address(rebalancer).call{ value: value }(new bytes(0));
 
         assertFalse(success);
-        assertEq(bytes4(data), Rebalancer.OnlyPositionManager.selector);
+        assertEq(bytes4(data), Rebalancer.OnlyPositionOrPoolManager.selector);
     }
 
     function testFuzz_Success_receive(uint256 value) public {

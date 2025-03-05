@@ -12,5 +12,6 @@ interface IStateView {
         view
         returns (uint160 sqrtPriceX96, int24 tick, uint24 protocolFee, uint24 lpFee);
 
-    function getPositionLiquidity(PoolId poolId, bytes32 positionId) external returns (uint128 liquidity);
+    function getPositionLiquidity(PoolId poolId, bytes32 positionId) external view returns (uint128 liquidity);
+    function getLiquidity(PoolId poolId) external view returns (uint128 liquidity);
 }

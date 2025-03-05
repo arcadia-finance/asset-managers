@@ -19,12 +19,14 @@ import { IPositionManager } from "./interfaces/IPositionManager.sol";
 import { IStrategyHook } from "./interfaces/IStrategyHook.sol";
 import { MintLogic } from "./libraries/MintLogic.sol";
 import { PoolId } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolId.sol";
+import { PoolKey } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 import { PricingLogic } from "./libraries/PricingLogic.sol";
 import { RebalanceLogic } from "./libraries/RebalanceLogic.sol";
 import { SafeApprove } from "./libraries/SafeApprove.sol";
 import { SlipstreamLogic } from "./libraries/SlipstreamLogic.sol";
 import { StakedSlipstreamLogic } from "./libraries/StakedSlipstreamLogic.sol";
 import { SwapLogic } from "./libraries/SwapLogic.sol";
+import { SwapParams } from "./interfaces/IPoolManager.sol";
 import { TickMath } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
 import { UniswapV4Logic } from "./libraries/UniswapV4Logic.sol";
@@ -119,6 +121,7 @@ contract Rebalancer is IActionBase {
     error OnlyAccountOwner();
     error OnlyPool();
     error OnlyPositionOrPoolManager();
+    error PoolManagerOnly();
     error Reentered();
     error UnbalancedPool();
 
@@ -128,6 +131,18 @@ contract Rebalancer is IActionBase {
 
     event AccountInfoSet(address indexed account, address indexed initiator, address indexed strategyHook);
     event Rebalance(address indexed account, address indexed positionManager, uint256 oldId, uint256 newId);
+
+    /* //////////////////////////////////////////////////////////////
+                                MODIFIERS
+    ////////////////////////////////////////////////////////////// */
+
+    /**
+     * @dev Only the UniswapV4 PoolManager can call functions with this modifier.
+     */
+    modifier onlyPoolManager() {
+        if (msg.sender != address(UniswapV4Logic.POOL_MANAGER)) revert PoolManagerOnly();
+        _;
+    }
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR

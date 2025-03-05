@@ -6,5 +6,6 @@ import { PositionInfo } from "../../../../lib/accounts-v2/lib/v4-periphery/src/l
 
 interface IPositionManagerV4 {
     function getPoolAndPositionInfo(uint256 tokenId) external view returns (PoolKey memory, PositionInfo);
-    function modifyLiquidities(bytes calldata unlockData, uint256 deadline) external;
+    function modifyLiquidities(bytes calldata unlockData, uint256 deadline) external payable;
+    function nextTokenId() external returns (uint256);
 }

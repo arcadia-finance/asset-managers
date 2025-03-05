@@ -4,7 +4,10 @@
  */
 pragma solidity ^0.8.22;
 
+import { BalanceDelta } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/BalanceDelta.sol";
 import { Currency } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
+import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
+import { IPermit2 } from "../interfaces/IPermit2.sol";
 import { IPoolManager } from "../interfaces/IPoolManager.sol";
 import { IPositionManagerV4 } from "../interfaces/IPositionManagerV4.sol";
 import { IStateView } from "../interfaces/IStateView.sol";
@@ -14,6 +17,8 @@ import { Rebalancer } from "../Rebalancer.sol";
 import { TickMath } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
 library UniswapV4Logic {
+    using SafeTransferLib for ERC20;
+
     // The Uniswap V4 PoolManager contract.
     IPoolManager internal constant POOL_MANAGER = IPoolManager(0x498581fF718922c3f8e6A244956aF099B2652b2b);
     // The Uniswap V4 PositionManager contract.
@@ -22,9 +27,11 @@ library UniswapV4Logic {
     // The Uniswap V4 StateView contract.
     // TODO: Check why getSlot0 fails (StateLibrary not implemented on PoolManager).
     IStateView internal constant STATE_VIEW = IStateView(0xA3c0c9b65baD0b08107Aa264b0f3dB444b867A71);
+    // The Permit2 contract.
+    IPermit2 internal constant PERMIT_2 = IPermit2(0x000000000022D473030F116dDEE9F6B43aC78BA3);
 
     // Actions used by the Uniswap V4 PositionManager.
-    uint256 internal constant INCREASE_LIQUIDITY = 0x00;
+    uint256 internal constant MINT_POSITION = 0x02;
     uint256 internal constant BURN_POSITION = 0x03;
     uint256 internal constant SETTLE_PAIR = 0x0d;
     uint256 internal constant TAKE_PAIR = 0x11;
@@ -84,6 +91,28 @@ library UniswapV4Logic {
         }
         if (delta.amount1() > 0) {
             POOL_MANAGER.take(currency1, address(this), uint128(delta.amount1()));
+        }
+    }
+
+    /**
+     * @notice Ensures that the Permit2 contract has sufficient approval to spend a given token
+     *         and grants unlimited approval to the PositionManager via Permit2.
+     * @dev This function performs two key approval steps:
+     *      1. Approves Permit2 to spend the specified token.
+     *      2. Approves the PositionManager to spend the token through Permit2.
+     * @dev If the token requires resetting the approval to zero before setting a new value,
+     *      this function first resets the approval to `0` before setting it to `type(uint256).max`.
+     * @param token The address of the ERC20 token to approve.
+     * @param amount The minimum amount required to be approved.
+     */
+    function _checkAndApprovePermit2(address token, uint256 amount) internal {
+        uint256 currentAllowance =
+            PERMIT_2.allowance(address(this), token, address(UniswapV4Logic.POSITION_MANAGER)).amount;
+
+        if (currentAllowance < amount) {
+            ERC20(token).safeApprove(address(PERMIT_2), 0);
+            ERC20(token).safeApprove(address(PERMIT_2), type(uint256).max);
+            PERMIT_2.approve(token, address(UniswapV4Logic.POSITION_MANAGER), type(uint160).max, type(uint48).max);
         }
     }
 }

@@ -4,13 +4,19 @@
  */
 pragma solidity ^0.8.22;
 
+import { BalanceDelta } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/BalanceDelta.sol";
+import { Currency } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
 import { ERC20, SafeApprove } from "./SafeApprove.sol";
 import { ICLPool } from "../interfaces/ICLPool.sol";
+import { IHooks } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/interfaces/IHooks.sol";
 import { IPool } from "../interfaces/IPool.sol";
 import { IUniswapV3Pool } from "../interfaces/IUniswapV3Pool.sol";
+import { PoolKey } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 import { Rebalancer } from "../Rebalancer.sol";
 import { RebalanceOptimizationMath } from "./RebalanceOptimizationMath.sol";
+import { SwapParams } from "../interfaces/IPoolManager.sol";
 import { UniswapV3Logic } from "./UniswapV3Logic.sol";
+import { UniswapV4Logic } from "./UniswapV4Logic.sol";
 
 library SwapLogic {
     using SafeApprove for ERC20;
@@ -46,15 +52,14 @@ library SwapLogic {
         // Do the actual swap to rebalance the position.
         // This can be done either directly through the pool, or via a router with custom swap data.
         if (swapData.length == 0) {
-            uint128 liquidity = positionManager == address(UniswapV4Logic.POSITION_MANAGER)
-                ? UniswapV4Logic.STATE_VIEW.getPositionLiquidity(position.poolId)
-                : IPool(position.pool).liquidity();
-
             // Calculate a more accurate amountOut, with slippage.
             amountOut = RebalanceOptimizationMath._getAmountOutWithSlippage(
                 zeroToOne,
                 position.fee,
-                liquidity,
+                // We avoid stack too deep error by accessing the liquidity directly here.
+                positionManager == address(UniswapV4Logic.POSITION_MANAGER)
+                    ? UniswapV4Logic.STATE_VIEW.getLiquidity(position.poolId)
+                    : IPool(position.pool).liquidity(),
                 uint160(position.sqrtPriceX96),
                 position.sqrtRatioLower,
                 position.sqrtRatioUpper,
@@ -108,7 +113,7 @@ library SwapLogic {
                 currency1: Currency.wrap(position.token1),
                 fee: position.fee,
                 tickSpacing: position.tickSpacing,
-                hooks: IHooks(position.poolOrHook)
+                hooks: IHooks(position.pool)
             });
 
             bytes memory swapData = abi.encode(params, poolKey);
@@ -165,9 +170,13 @@ library SwapLogic {
         (address router, uint256 amountIn, bytes memory data) = abi.decode(swapData, (address, uint256, bytes));
 
         // Approve token to swap.
-        uint256 ethValue;
         address tokenToSwap = zeroToOne ? position.token0 : position.token1;
-        tokenToSwap == address(0) ? ethValue = amountIn : ERC20(tokenToSwap).safeApproveWithRetry(router, amountIn);
+        uint256 ethValue;
+        if (tokenToSwap == address(0)) {
+            ethValue = amountIn;
+        } else {
+            ERC20(tokenToSwap).safeApproveWithRetry(router, amountIn);
+        }
 
         // Execute arbitrary swap.
         (bool success, bytes memory result) = router.call{ value: ethValue }(data);
