@@ -6,7 +6,9 @@ pragma solidity ^0.8.22;
 
 import { ActionData, IActionBase } from "../../lib/accounts-v2/src/interfaces/IActionBase.sol";
 import { ArcadiaLogic } from "./libraries/ArcadiaLogic.sol";
+import { BalanceDelta } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/BalanceDelta.sol";
 import { BurnLogic } from "./libraries/BurnLogic.sol";
+import { Currency } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { FeeLogic } from "./libraries/FeeLogic.sol";
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
@@ -16,6 +18,7 @@ import { IPool } from "./interfaces/IPool.sol";
 import { IPositionManager } from "./interfaces/IPositionManager.sol";
 import { IStrategyHook } from "./interfaces/IStrategyHook.sol";
 import { MintLogic } from "./libraries/MintLogic.sol";
+import { PoolId } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolId.sol";
 import { PricingLogic } from "./libraries/PricingLogic.sol";
 import { RebalanceLogic } from "./libraries/RebalanceLogic.sol";
 import { SafeApprove } from "./libraries/SafeApprove.sol";
@@ -24,6 +27,7 @@ import { StakedSlipstreamLogic } from "./libraries/StakedSlipstreamLogic.sol";
 import { SwapLogic } from "./libraries/SwapLogic.sol";
 import { TickMath } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
+import { UniswapV4Logic } from "./libraries/UniswapV4Logic.sol";
 
 /**
  * @title Permissioned rebalancer for Uniswap V3 and Slipstream Liquidity Positions.
@@ -65,6 +69,9 @@ contract Rebalancer is IActionBase {
     // The Account to compound the fees for, used as transient storage.
     address internal account;
 
+    // TODO : add to ArcadiaLogic.encodeAction or use transient storage.
+    uint256 internal sqrtPriceAtRebalanceX96;
+
     // A mapping from initiator to rebalancing fee.
     mapping(address initiator => InitiatorInfo) public initiatorInfo;
 
@@ -89,6 +96,7 @@ contract Rebalancer is IActionBase {
         uint256 sqrtPriceX96;
         uint256 lowerBoundSqrtPriceX96;
         uint256 upperBoundSqrtPriceX96;
+        PoolId poolId;
     }
 
     // A struct with information for each specific initiator
@@ -110,7 +118,7 @@ contract Rebalancer is IActionBase {
     error OnlyAccount();
     error OnlyAccountOwner();
     error OnlyPool();
-    error OnlyPositionManager();
+    error OnlyPositionOrPoolManager();
     error Reentered();
     error UnbalancedPool();
 
@@ -148,6 +156,7 @@ contract Rebalancer is IActionBase {
      * @param account_ The Arcadia Account owning the position.
      * @param positionManager The contract address of the Position Manager.
      * @param oldId The oldId of the Liquidity Position to rebalance.
+     * @param sqrtPriceAtRebalanceX96_ The sqrtPriceX96 at the time of triggering the rebalancing.
      * @param tickLower The new lower tick to rebalance to.
      * @param tickUpper The new upper tick to rebalance to.
      * @dev When tickLower and tickUpper are equal, ticks will be updated with same tick-spacing as current position
@@ -157,6 +166,7 @@ contract Rebalancer is IActionBase {
         address account_,
         address positionManager,
         uint256 oldId,
+        uint256 sqrtPriceAtRebalanceX96_,
         int24 tickLower,
         int24 tickUpper,
         bytes calldata swapData
@@ -168,6 +178,9 @@ contract Rebalancer is IActionBase {
         // Store Account address, used to validate the caller of the executeAction() callback and serves as a reentrancy guard.
         account = account_;
 
+        // TODO: remove
+        sqrtPriceAtRebalanceX96 = sqrtPriceAtRebalanceX96_;
+
         // Encode data for the flash-action.
         bytes memory actionData =
             ArcadiaLogic._encodeAction(positionManager, oldId, msg.sender, tickLower, tickUpper, swapData);
@@ -177,6 +190,7 @@ contract Rebalancer is IActionBase {
 
         // Reset account.
         account = address(0);
+        sqrtPriceAtRebalanceX96 = 0;
     }
 
     /**
@@ -349,6 +363,19 @@ contract Rebalancer is IActionBase {
         }
     }
 
+    /**
+     * @notice Callback function executed during the unlock phase of a Uniswap V4 pool operation.
+     * @dev This function can only be called by the Pool Manager. It processes a swap and handles the resulting balance deltas.
+     * @param data The encoded swap parameters and pool key.
+     * @return results The encoded BalanceDelta result from the swap operation.
+     */
+    function unlockCallback(bytes calldata data) external payable onlyPoolManager returns (bytes memory results) {
+        (SwapParams memory params, PoolKey memory poolKey) = abi.decode(data, (SwapParams, PoolKey));
+        BalanceDelta delta = UniswapV4Logic.POOL_MANAGER.swap(poolKey, params, "");
+        UniswapV4Logic._processSwapDelta(delta, poolKey.currency0, poolKey.currency1);
+        results = abi.encode(delta);
+    }
+
     /* ///////////////////////////////////////////////////////////////
                     PUBLIC POSITION VIEW FUNCTIONS
     /////////////////////////////////////////////////////////////// */
@@ -381,10 +408,16 @@ contract Rebalancer is IActionBase {
         address initiator
     ) public view virtual returns (PositionState memory position) {
         // Get data of the Liquidity Position.
-        (int24 tickCurrent, int24 tickRange) = positionManager == address(UniswapV3Logic.POSITION_MANAGER)
-            ? UniswapV3Logic._getPositionState(position, oldId, tickLower == tickUpper)
+        int24 tickCurrent;
+        int24 tickRange;
+        if (positionManager == address(UniswapV3Logic.POSITION_MANAGER)) {
+            (tickCurrent, tickRange) = UniswapV3Logic._getPositionState(position, oldId, tickLower == tickUpper);
+        } else if (positionManager == address(UniswapV4Logic.POSITION_MANAGER)) {
+            (tickCurrent, tickRange) = UniswapV4Logic._getPositionState(position, oldId);
+        } else {
             // Logic holds for both Slipstream and staked Slipstream positions.
-            : SlipstreamLogic._getPositionState(position, oldId);
+            (tickCurrent, tickRange) = SlipstreamLogic._getPositionState(position, oldId);
+        }
 
         // Store the new ticks for the rebalance
         if (tickLower == tickUpper) {
@@ -402,20 +435,13 @@ contract Rebalancer is IActionBase {
         position.sqrtRatioLower = TickMath.getSqrtPriceAtTick(position.tickLower);
         position.sqrtRatioUpper = TickMath.getSqrtPriceAtTick(position.tickUpper);
 
-        // Get trusted USD prices for 1e18 gwei of token0 and token1.
-        (uint256 usdPriceToken0, uint256 usdPriceToken1) =
-            ArcadiaLogic._getValuesInUsd(position.token0, position.token1);
-
-        // Calculate the square root of the relative rate sqrt(token1/token0) from the trusted USD price of both tokens.
-        uint256 trustedSqrtPriceX96 = PricingLogic._getSqrtPriceX96(usdPriceToken0, usdPriceToken1);
-
         // Calculate the upper and lower bounds of sqrtPriceX96 for the Pool to be balanced.
         // We do not handle the edge cases where exceed MIN_SQRT_RATIO or MAX_SQRT_RATIO.
         // This will result in a revert during swapViaPool, if ever needed a different rebalancer has to be deployed.
         position.lowerBoundSqrtPriceX96 =
-            trustedSqrtPriceX96.mulDivDown(initiatorInfo[initiator].lowerSqrtPriceDeviation, 1e18);
+            sqrtPriceAtRebalanceX96.mulDivDown(initiatorInfo[initiator].lowerSqrtPriceDeviation, 1e18);
         position.upperBoundSqrtPriceX96 =
-            trustedSqrtPriceX96.mulDivDown(initiatorInfo[initiator].upperSqrtPriceDeviation, 1e18);
+            sqrtPriceAtRebalanceX96.mulDivDown(initiatorInfo[initiator].upperSqrtPriceDeviation, 1e18);
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -512,10 +538,13 @@ contract Rebalancer is IActionBase {
     /**
      * @notice Receives native ether.
      * @dev Required since the Slipstream Non Fungible Position Manager sends full ether balance to caller
-     * on an increaseLiquidity.
+     * on an increaseLiquidity. Uniswap V4 also works with native ETH.
      * @dev Funds received can not be reclaimed, the receive only serves as a protection against griefing attacks.
      */
     receive() external payable {
-        if (msg.sender != address(SlipstreamLogic.POSITION_MANAGER)) revert OnlyPositionManager();
+        if (
+            msg.sender != address(SlipstreamLogic.POSITION_MANAGER)
+                && msg.sender != address(UniswapV4Logic.POOL_MANAGER)
+        ) revert OnlyPositionOrPoolManager();
     }
 }

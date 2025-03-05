@@ -46,11 +46,15 @@ library SwapLogic {
         // Do the actual swap to rebalance the position.
         // This can be done either directly through the pool, or via a router with custom swap data.
         if (swapData.length == 0) {
+            uint128 liquidity = positionManager == address(UniswapV4Logic.POSITION_MANAGER)
+                ? UniswapV4Logic.STATE_VIEW.getPositionLiquidity(position.poolId)
+                : IPool(position.pool).liquidity();
+
             // Calculate a more accurate amountOut, with slippage.
             amountOut = RebalanceOptimizationMath._getAmountOutWithSlippage(
                 zeroToOne,
                 position.fee,
-                IPool(position.pool).liquidity(),
+                liquidity,
                 uint160(position.sqrtPriceX96),
                 position.sqrtRatioLower,
                 position.sqrtRatioUpper,
@@ -89,15 +93,43 @@ library SwapLogic {
             uint160(zeroToOne ? position.lowerBoundSqrtPriceX96 : position.upperBoundSqrtPriceX96);
 
         // Encode the swap data.
-        bytes memory data = (positionManager == address(UniswapV3Logic.POSITION_MANAGER))
-            ? abi.encode(positionManager, position.token0, position.token1, position.fee)
-            // Logic holds for both Slipstream and staked Slipstream positions.
-            : abi.encode(positionManager, position.token0, position.token1, position.tickSpacing);
+        int256 deltaAmount0;
+        int256 deltaAmount1;
+        // Uniswap V4 Swap Logic.
+        if (positionManager == address(UniswapV4Logic.POSITION_MANAGER)) {
+            SwapParams memory params = SwapParams({
+                zeroForOne: zeroToOne,
+                amountSpecified: int256(amountOut),
+                sqrtPriceLimitX96: sqrtPriceLimitX96
+            });
 
-        // Do the swap.
-        // Callback (external function) must be implemented in the main contract.
-        (int256 deltaAmount0, int256 deltaAmount1) =
-            IPool(position.pool).swap(address(this), zeroToOne, -int256(amountOut), sqrtPriceLimitX96, data);
+            PoolKey memory poolKey = PoolKey({
+                currency0: Currency.wrap(position.token0),
+                currency1: Currency.wrap(position.token1),
+                fee: position.fee,
+                tickSpacing: position.tickSpacing,
+                hooks: IHooks(position.poolOrHook)
+            });
+
+            bytes memory swapData = abi.encode(params, poolKey);
+            // Do the swap.
+            bytes memory results = UniswapV4Logic.POOL_MANAGER.unlock(swapData);
+            BalanceDelta swapDelta = abi.decode(results, (BalanceDelta));
+            // Uniswap V4 returns the deltas in the view of the PoolManager which is the the opposite of Uniswap V3.
+            deltaAmount0 = -swapDelta.amount0();
+            deltaAmount1 = -swapDelta.amount1();
+        } else {
+            // Uniswap V3 Swap Logic.
+            bytes memory data = (positionManager == address(UniswapV3Logic.POSITION_MANAGER))
+                ? abi.encode(positionManager, position.token0, position.token1, position.fee)
+                // Logic holds for both Slipstream and staked Slipstream positions.
+                : abi.encode(positionManager, position.token0, position.token1, position.tickSpacing);
+
+            // Do the swap.
+            // Callback (external function) must be implemented in the main contract.
+            (deltaAmount0, deltaAmount1) =
+                IPool(position.pool).swap(address(this), zeroToOne, -int256(amountOut), sqrtPriceLimitX96, data);
+        }
 
         // Check that pool is still balanced.
         // If sqrtPriceLimitX96 is reached before an amountOut of tokenOut is received, the pool is not balanced anymore.
@@ -133,18 +165,21 @@ library SwapLogic {
         (address router, uint256 amountIn, bytes memory data) = abi.decode(swapData, (address, uint256, bytes));
 
         // Approve token to swap.
+        uint256 ethValue;
         address tokenToSwap = zeroToOne ? position.token0 : position.token1;
-        ERC20(tokenToSwap).safeApproveWithRetry(router, amountIn);
+        tokenToSwap == address(0) ? ethValue = amountIn : ERC20(tokenToSwap).safeApproveWithRetry(router, amountIn);
 
         // Execute arbitrary swap.
-        (bool success, bytes memory result) = router.call(data);
+        (bool success, bytes memory result) = router.call{ value: ethValue }(data);
         require(success, string(result));
 
         // Pool should still be balanced (within tolerance boundaries) after the swap.
         // Since the swap went potentially through the pool itself (but does not have to),
         // the sqrtPriceX96 might have moved and brought the pool out of balance.
         // By fetching the sqrtPriceX96, the transaction will revert in that case on the balance check.
-        if (positionManager == address(UniswapV3Logic.POSITION_MANAGER)) {
+        if (positionManager == address(UniswapV4Logic.POSITION_MANAGER)) {
+            (position.sqrtPriceX96,,,) = UniswapV4Logic.STATE_VIEW.getSlot0(position.poolId);
+        } else if (positionManager == address(UniswapV3Logic.POSITION_MANAGER)) {
             (position.sqrtPriceX96,,,,,,) = IUniswapV3Pool(position.pool).slot0();
         } else {
             // Logic holds for both Slipstream and staked Slipstream positions.
@@ -152,7 +187,9 @@ library SwapLogic {
         }
 
         // Update the balances.
-        balance0 = ERC20(position.token0).balanceOf(address(this));
-        balance1 = ERC20(position.token1).balanceOf(address(this));
+        balance0 =
+            position.token0 == address(0) ? address(this).balance : ERC20(position.token0).balanceOf(address(this));
+        balance1 =
+            position.token1 == address(0) ? address(this).balance : ERC20(position.token1).balanceOf(address(this));
     }
 }
