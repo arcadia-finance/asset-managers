@@ -85,7 +85,7 @@ contract Rebalancer is IActionBase {
 
     // A struct with the state of a specific position, only used in memory.
     struct PositionState {
-        address pool;
+        address poolOrHook;
         address token0;
         address token1;
         uint24 fee;

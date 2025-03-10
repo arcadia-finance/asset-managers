@@ -54,7 +54,7 @@ library UniswapV4Logic {
         position.token1 = Currency.unwrap(poolKey.currency1);
         position.tickSpacing = poolKey.tickSpacing;
         position.fee = poolKey.fee;
-        position.pool = address(poolKey.hooks);
+        position.poolOrHook = address(poolKey.hooks);
         position.poolId = poolKey.toId();
         bytes32 positionId =
             keccak256(abi.encodePacked(address(POSITION_MANAGER), info.tickLower(), info.tickUpper(), bytes32(id)));

@@ -52,7 +52,7 @@ contract SwapViaRouter_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
             position.token1 = address(token1);
             position.upperBoundSqrtPriceX96 = uint256(sqrtPriceX96).mulDivDown(upperSqrtPriceDeviation, 1e18);
             position.lowerBoundSqrtPriceX96 = uint256(sqrtPriceX96).mulDivDown(lowerSqrtPriceDeviation, 1e18);
-            position.pool = address(uniV3Pool);
+            position.poolOrHook = address(uniV3Pool);
         }
 
         {
@@ -126,7 +126,7 @@ contract SwapViaRouter_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
             position.token1 = address(token1);
             position.upperBoundSqrtPriceX96 = uint256(sqrtPriceX96).mulDivDown(upperSqrtPriceDeviation, 1e18);
             position.lowerBoundSqrtPriceX96 = uint256(sqrtPriceX96).mulDivDown(lowerSqrtPriceDeviation, 1e18);
-            position.pool = address(uniV3Pool);
+            position.poolOrHook = address(uniV3Pool);
         }
 
         {
@@ -198,7 +198,7 @@ contract SwapViaRouter_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
             position.token1 = address(token1);
             position.upperBoundSqrtPriceX96 = uint256(sqrtPriceX96).mulDivDown(upperSqrtPriceDeviation, 1e18);
             position.lowerBoundSqrtPriceX96 = uint256(sqrtPriceX96).mulDivDown(lowerSqrtPriceDeviation, 1e18);
-            position.pool = address(uniV3Pool);
+            position.poolOrHook = address(uniV3Pool);
         }
 
         // Send token1 (amountIn) to rebalancer for swapViaRouter
@@ -240,7 +240,7 @@ contract SwapViaRouter_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
             position.token1 = address(token1);
             position.upperBoundSqrtPriceX96 = uint256(sqrtPriceX96).mulDivDown(upperSqrtPriceDeviation, 1e18);
             position.lowerBoundSqrtPriceX96 = uint256(sqrtPriceX96).mulDivDown(lowerSqrtPriceDeviation, 1e18);
-            position.pool = address(uniV3Pool);
+            position.poolOrHook = address(uniV3Pool);
         }
 
         // Send token0 (amountIn) to rebalancer for swapViaRouter

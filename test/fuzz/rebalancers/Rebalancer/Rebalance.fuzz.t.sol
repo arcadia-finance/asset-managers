@@ -981,10 +981,6 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         uint256 tokenId;
         (initVars, lpVars, tokenId) = initPoolAndCreatePositionWithFees(initVars, lpVars);
 
-        // Given : new ticks are within boundaries (otherwise swap too big => unbalanced pool)
-        tickLower = int24(bound(tickLower, initVars.tickLower + 1, initVars.tickUpper - (2 * MIN_TICK_SPACING)));
-        tickUpper = int24(bound(tickUpper, tickLower + MIN_TICK_SPACING, initVars.tickUpper - 1));
-
         // And : Set initiator for account
         vm.prank(account.owner());
         rebalancer.setAccountInfo(address(account), initVars.initiator, address(0));
@@ -1015,9 +1011,14 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         uint256 amount1;
         uint256 amountIn;
         uint256 amountOut;
+        // And : new ticks are within boundaries (otherwise swap too big => unbalanced pool)
+        tickLower = int24(bound(tickLower, initVars.tickLower + 1, initVars.tickUpper - (2 * MIN_TICK_SPACING)));
+        tickUpper = int24(bound(tickUpper, tickLower + MIN_TICK_SPACING, initVars.tickUpper - 1));
+        // Avoid stack too deep
+        address initiatorStack = initVars.initiator;
         {
             // Avoid stack too deep
-            address initiatorStack = initVars.initiator;
+            //address initiatorStack = initVars.initiator;
             // Assume that liquidity will be bigger than 0
             Rebalancer.PositionState memory position_ = rebalancer.getPositionState(
                 address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, initiatorStack
@@ -1056,6 +1057,8 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
             vm.assume(liquidity > 0);
         }
 
+        int24 tickLowerStack = tickLower;
+        int24 tickUpperStack = tickUpper;
         bytes memory swapData;
         {
             // Send token0 (amountOut) to router for swap
@@ -1069,7 +1072,7 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         // When : calling rebalance()
         // Then : It should process to an arbitrary swap
         (uint160 sqrtPriceAtRebalanceX96,,,,,,) = uniV3Pool.slot0();
-        vm.prank(initVars.initiator);
+        vm.prank(initiatorStack);
         vm.expectEmit();
         emit RouterMock.ArbitrarySwap(true);
         rebalancer.rebalance(
@@ -1077,8 +1080,8 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
             address(nonfungiblePositionManager),
             tokenId,
             uint256(sqrtPriceAtRebalanceX96),
-            tickLower,
-            tickUpper,
+            tickLowerStack,
+            tickUpperStack,
             swapData
         );
     }

@@ -69,7 +69,7 @@ contract GetPositionState_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
             rebalancer.getPositionState(address(nonfungiblePositionManager), id, tick, tick, initiator);
 
         // Then : It should return the correct values
-        assertEq(position_.pool, address(poolUniswap));
+        assertEq(position_.poolOrHook, address(poolUniswap));
         assertEq(position_.token0, address(token0));
         assertEq(position_.token1, address(token1));
         assertEq(position_.fee, POOL_FEE_);
@@ -130,7 +130,7 @@ contract GetPositionState_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
             rebalancer.getPositionState(address(nonfungiblePositionManager), id, tick, tick, initiator);
 
         // Then : It should return the correct values
-        assertEq(position_.pool, address(poolUniswap));
+        assertEq(position_.poolOrHook, address(poolUniswap));
         assertEq(position_.token0, address(token0));
         assertEq(position_.token1, address(token1));
         assertEq(position_.fee, POOL_FEE_);
@@ -212,7 +212,7 @@ contract GetPositionState_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         }
 
         // Then : It should return the correct values
-        assertEq(position_.pool, address(poolUniswap));
+        assertEq(position_.poolOrHook, address(poolUniswap));
         assertEq(position_.token0, address(token0));
         assertEq(position_.token1, address(token1));
         assertEq(position_.fee, POOL_FEE_);
@@ -292,7 +292,7 @@ contract GetPositionState_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         }
 
         // Then : It should return the correct values
-        assertEq(position_.pool, address(poolCl));
+        assertEq(position_.poolOrHook, address(poolCl));
         assertEq(position_.token0, address(token0));
         assertEq(position_.token1, address(token1));
         assertEq(position_.fee, poolFee);

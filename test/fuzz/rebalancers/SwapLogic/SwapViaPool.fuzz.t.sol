@@ -47,7 +47,7 @@ contract SwapViaPool_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
         position.token0 = address(token0);
         position.token1 = address(token1);
         position.fee = POOL_FEE;
-        position.pool = address(poolUniswap);
+        position.poolOrHook = address(poolUniswap);
 
         // And: Pool has sufficient tokenOut liquidity.
         vm.assume(token1.balanceOf(address(poolUniswap)) > 1e6);
@@ -98,7 +98,7 @@ contract SwapViaPool_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
         position.token0 = address(token0);
         position.token1 = address(token1);
         position.fee = POOL_FEE;
-        position.pool = address(poolUniswap);
+        position.poolOrHook = address(poolUniswap);
 
         // And: Pool has sufficient tokenOut liquidity.
         vm.assume(token0.balanceOf(address(poolUniswap)) > 1e6);
@@ -153,7 +153,7 @@ contract SwapViaPool_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
         position.token0 = address(token0);
         position.token1 = address(token1);
         position.tickSpacing = TICK_SPACING;
-        position.pool = address(poolCl);
+        position.poolOrHook = address(poolCl);
 
         // And: Pool has sufficient tokenOut liquidity.
         vm.assume(token1.balanceOf(address(poolCl)) > 1e6);
@@ -208,7 +208,7 @@ contract SwapViaPool_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
         position.token0 = address(token0);
         position.token1 = address(token1);
         position.tickSpacing = TICK_SPACING;
-        position.pool = address(poolCl);
+        position.poolOrHook = address(poolCl);
 
         // And: Pool has sufficient tokenOut liquidity.
         vm.assume(token0.balanceOf(address(poolCl)) > 1e6);
@@ -259,7 +259,7 @@ contract SwapViaPool_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
         position.token0 = address(token0);
         position.token1 = address(token1);
         position.fee = POOL_FEE;
-        position.pool = address(poolUniswap);
+        position.poolOrHook = address(poolUniswap);
 
         // And: Pool has sufficient tokenOut liquidity.
         vm.assume(token1.balanceOf(address(poolUniswap)) > 1e6);
@@ -307,7 +307,7 @@ contract SwapViaPool_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
         position.token0 = address(token0);
         position.token1 = address(token1);
         position.fee = POOL_FEE;
-        position.pool = address(poolUniswap);
+        position.poolOrHook = address(poolUniswap);
 
         // And: Pool has sufficient tokenOut liquidity.
         vm.assume(token0.balanceOf(address(poolUniswap)) > 1e6);

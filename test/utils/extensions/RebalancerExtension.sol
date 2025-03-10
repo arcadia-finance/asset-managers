@@ -57,7 +57,7 @@ contract RebalancerExtension is Rebalancer {
         bytes memory data =
             abi.encode(address(UniswapV3Logic.POSITION_MANAGER), position.token0, position.token1, position.fee);
         (int256 deltaAmount0, int256 deltaAmount1) =
-            IPool(position.pool).swap(address(this), zeroToOne, -int256(amountOut), sqrtPriceLimitX96, data);
+            IPool(position.poolOrHook).swap(address(this), zeroToOne, -int256(amountOut), sqrtPriceLimitX96, data);
 
         // Check if pool is still balanced (sqrtPriceLimitX96 is reached before an amountOut of tokenOut is received).
         isPoolUnbalanced_ = (amountOut > (zeroToOne ? uint256(-deltaAmount1) : uint256(-deltaAmount0)));
@@ -77,7 +77,7 @@ contract RebalancerExtension is Rebalancer {
         (bool success, bytes memory result) = to.call(data);
         require(success, string(result));
 
-        (uint160 sqrtPriceX96,,,,,,) = IUniswapV3Pool(position.pool).slot0();
+        (uint160 sqrtPriceX96,,,,,,) = IUniswapV3Pool(position.poolOrHook).slot0();
         // Uniswap V3 pool should still be balanced.
         if (sqrtPriceX96 < position.lowerBoundSqrtPriceX96 || sqrtPriceX96 > position.upperBoundSqrtPriceX96) {
             revert Rebalancer.UnbalancedPool();

@@ -59,7 +59,7 @@ library SwapLogic {
                 // We avoid stack too deep error by accessing the liquidity directly here.
                 positionManager == address(UniswapV4Logic.POSITION_MANAGER)
                     ? UniswapV4Logic.STATE_VIEW.getLiquidity(position.poolId)
-                    : IPool(position.pool).liquidity(),
+                    : IPool(position.poolOrHook).liquidity(),
                 uint160(position.sqrtPriceX96),
                 position.sqrtRatioLower,
                 position.sqrtRatioUpper,
@@ -113,7 +113,7 @@ library SwapLogic {
                 currency1: Currency.wrap(position.token1),
                 fee: position.fee,
                 tickSpacing: position.tickSpacing,
-                hooks: IHooks(position.pool)
+                hooks: IHooks(position.poolOrHook)
             });
 
             bytes memory swapData = abi.encode(params, poolKey);
@@ -133,7 +133,7 @@ library SwapLogic {
             // Do the swap.
             // Callback (external function) must be implemented in the main contract.
             (deltaAmount0, deltaAmount1) =
-                IPool(position.pool).swap(address(this), zeroToOne, -int256(amountOut), sqrtPriceLimitX96, data);
+                IPool(position.poolOrHook).swap(address(this), zeroToOne, -int256(amountOut), sqrtPriceLimitX96, data);
         }
 
         // Check that pool is still balanced.
@@ -189,10 +189,10 @@ library SwapLogic {
         if (positionManager == address(UniswapV4Logic.POSITION_MANAGER)) {
             (position.sqrtPriceX96,,,) = UniswapV4Logic.STATE_VIEW.getSlot0(position.poolId);
         } else if (positionManager == address(UniswapV3Logic.POSITION_MANAGER)) {
-            (position.sqrtPriceX96,,,,,,) = IUniswapV3Pool(position.pool).slot0();
+            (position.sqrtPriceX96,,,,,,) = IUniswapV3Pool(position.poolOrHook).slot0();
         } else {
             // Logic holds for both Slipstream and staked Slipstream positions.
-            (position.sqrtPriceX96,,,,,) = ICLPool(position.pool).slot0();
+            (position.sqrtPriceX96,,,,,) = ICLPool(position.poolOrHook).slot0();
         }
 
         // Update the balances.

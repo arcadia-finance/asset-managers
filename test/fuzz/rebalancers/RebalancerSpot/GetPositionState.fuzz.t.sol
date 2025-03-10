@@ -72,7 +72,7 @@ contract GetPositionState_RebalancerSpot_Fuzz_Test is RebalancerSpot_Fuzz_Test {
             rebalancerSpot.getPositionState(address(nonfungiblePositionManager), id, tick, tick, initiator);
 
         // Then : It should return the correct values
-        assertEq(position_.pool, address(poolUniswap));
+        assertEq(position_.poolOrHook, address(poolUniswap));
         assertEq(position_.token0, address(token0));
         assertEq(position_.token1, address(token1));
         assertEq(position_.fee, POOL_FEE_);
@@ -85,7 +85,7 @@ contract GetPositionState_RebalancerSpot_Fuzz_Test is RebalancerSpot_Fuzz_Test {
         assertEq(position_.sqrtRatioUpper, TickMath.getSqrtPriceAtTick(position_.tickUpper));
         assertEq(position_.sqrtPriceX96, position.sqrtPriceX96);
 
-        int24 twat = TwapLogic._getTwat(position_.pool);
+        int24 twat = TwapLogic._getTwat(position_.poolOrHook);
         uint256 twaSqrtPriceX96 = TickMath.getSqrtPriceAtTick(twat);
         (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,,) = rebalancerSpot.initiatorInfo(initiator);
         assertEq(position_.lowerBoundSqrtPriceX96, twaSqrtPriceX96 * lowerSqrtPriceDeviation / 1e18);
@@ -136,7 +136,7 @@ contract GetPositionState_RebalancerSpot_Fuzz_Test is RebalancerSpot_Fuzz_Test {
             rebalancerSpot.getPositionState(address(nonfungiblePositionManager), id, tick, tick, initiator);
 
         // Then : It should return the correct values
-        assertEq(position_.pool, address(poolUniswap));
+        assertEq(position_.poolOrHook, address(poolUniswap));
         assertEq(position_.token0, address(token0));
         assertEq(position_.token1, address(token1));
         assertEq(position_.fee, POOL_FEE_);
@@ -155,7 +155,7 @@ contract GetPositionState_RebalancerSpot_Fuzz_Test is RebalancerSpot_Fuzz_Test {
         assertEq(position_.sqrtPriceX96, position.sqrtPriceX96);
         uint256 twaSqrtPriceX96;
         {
-            int24 twat = TwapLogic._getTwat(position_.pool);
+            int24 twat = TwapLogic._getTwat(position_.poolOrHook);
             twaSqrtPriceX96 = TickMath.getSqrtPriceAtTick(twat);
         }
         (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,,) = rebalancerSpot.initiatorInfo(initiator);
@@ -221,7 +221,7 @@ contract GetPositionState_RebalancerSpot_Fuzz_Test is RebalancerSpot_Fuzz_Test {
         }
 
         // Then : It should return the correct values
-        assertEq(position_.pool, address(poolUniswap));
+        assertEq(position_.poolOrHook, address(poolUniswap));
         assertEq(position_.token0, address(token0));
         assertEq(position_.token1, address(token1));
         assertEq(position_.fee, POOL_FEE_);
@@ -234,7 +234,7 @@ contract GetPositionState_RebalancerSpot_Fuzz_Test is RebalancerSpot_Fuzz_Test {
         assertEq(position_.sqrtPriceX96, position.sqrtPriceX96);
         uint256 twaSqrtPriceX96;
         {
-            int24 twat = TwapLogic._getTwat(position_.pool);
+            int24 twat = TwapLogic._getTwat(position_.poolOrHook);
             twaSqrtPriceX96 = TickMath.getSqrtPriceAtTick(twat);
         }
         (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,,) = rebalancerSpot.initiatorInfo(initiator);
@@ -304,7 +304,7 @@ contract GetPositionState_RebalancerSpot_Fuzz_Test is RebalancerSpot_Fuzz_Test {
         }
 
         // Then : It should return the correct values
-        assertEq(position_.pool, address(poolCl));
+        assertEq(position_.poolOrHook, address(poolCl));
         assertEq(position_.token0, address(token0));
         assertEq(position_.token1, address(token1));
         assertEq(position_.fee, poolFee);
@@ -317,7 +317,7 @@ contract GetPositionState_RebalancerSpot_Fuzz_Test is RebalancerSpot_Fuzz_Test {
         assertEq(position_.sqrtPriceX96, position.sqrtPriceX96);
         uint256 twaSqrtPriceX96;
         {
-            int24 twat = TwapLogic._getTwat(position_.pool);
+            int24 twat = TwapLogic._getTwat(position_.poolOrHook);
             twaSqrtPriceX96 = TickMath.getSqrtPriceAtTick(twat);
         }
         (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,,) = rebalancerSpot.initiatorInfo(initiator);

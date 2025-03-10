@@ -51,48 +51,53 @@ library MintLogic {
         uint256 amount0;
         uint256 amount1;
         if (positionManager == address(UniswapV4Logic.POSITION_MANAGER)) {
-            uint256 ethValue =
-                (position.token0 == address(0) ? balance0 : 0) + (position.token1 == address(0) ? balance1 : 0);
             // Manage token approvals and check if native ETH has to be added to the position.
             if (position.token0 != address(0)) UniswapV4Logic._checkAndApprovePermit2(position.token0, balance0);
             if (position.token1 != address(0)) UniswapV4Logic._checkAndApprovePermit2(position.token1, balance1);
 
             // Generate calldata to mint new position.
+            bytes[] memory params = new bytes[](2);
+            {
+                PoolKey memory poolKey = PoolKey(
+                    Currency.wrap(position.token0),
+                    Currency.wrap(position.token1),
+                    position.fee,
+                    position.tickSpacing,
+                    IHooks(position.poolOrHook)
+                );
+
+                (uint160 newSqrtPriceX96,,,) = UniswapV4Logic.STATE_VIEW.getSlot0(poolKey.toId());
+                liquidity = LiquidityAmounts.getLiquidityForAmounts(
+                    newSqrtPriceX96, position.sqrtRatioLower, position.sqrtRatioUpper, balance0, balance1
+                );
+
+                params[0] = abi.encode(
+                    poolKey,
+                    position.tickLower,
+                    position.tickUpper,
+                    liquidity,
+                    type(uint128).max,
+                    type(uint128).max,
+                    address(this),
+                    ""
+                );
+                params[1] = abi.encode(poolKey.currency0, poolKey.currency1);
+            }
+
             bytes memory actions = new bytes(2);
             actions[0] = bytes1(uint8(UniswapV4Logic.MINT_POSITION));
             actions[1] = bytes1(uint8(UniswapV4Logic.SETTLE_PAIR));
 
-            PoolKey memory poolKey = PoolKey(
-                Currency.wrap(position.token0),
-                Currency.wrap(position.token1),
-                position.fee,
-                position.tickSpacing,
-                IHooks(position.pool)
-            );
-
-            (uint160 newSqrtPriceX96,,,) = UniswapV4Logic.STATE_VIEW.getSlot0(poolKey.toId());
-            liquidity = LiquidityAmounts.getLiquidityForAmounts(
-                newSqrtPriceX96, position.sqrtRatioLower, position.sqrtRatioUpper, balance0, balance1
-            );
-
-            bytes[] memory params = new bytes[](2);
-            params[0] = abi.encode(
-                poolKey,
-                position.tickLower,
-                position.tickUpper,
-                liquidity,
-                type(uint128).max,
-                type(uint128).max,
-                address(this),
-                ""
-            );
-            params[1] = abi.encode(poolKey.currency0, poolKey.currency1);
-
             // Get new token id.
             newTokenId = UniswapV4Logic.POSITION_MANAGER.nextTokenId();
 
+            uint256 ethValue =
+                (position.token0 == address(0) ? balance0 : 0) + (position.token1 == address(0) ? balance1 : 0);
             bytes memory mintParams = abi.encode(actions, params);
             UniswapV4Logic.POSITION_MANAGER.modifyLiquidities{ value: ethValue }(mintParams, block.timestamp);
+
+            // As UniswapV4 works with specific liquidity, there should be no leftovers.
+            // Note : To Confirm.
         } else {
             // Manage token approvals.
             ERC20(position.token0).safeApproveWithRetry(positionManager, balance0);

@@ -86,7 +86,7 @@ contract RebalancerSpot is Rebalancer {
 
         // Calculate the time weighted average tick over 300s.
         // This is to prevent sandwiching attacks when swapping and/or adding liquidity.
-        int24 twat = TwapLogic._getTwat(position.pool);
+        int24 twat = TwapLogic._getTwat(position.poolOrHook);
         // Get the time weighted average sqrtPriceX96 over 300s.
         uint256 twaSqrtPriceX96 = TickMath.getSqrtPriceAtTick(twat);
 

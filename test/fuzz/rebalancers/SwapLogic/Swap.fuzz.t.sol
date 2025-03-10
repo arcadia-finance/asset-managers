@@ -81,7 +81,7 @@ contract Swap_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
         position.token0 = address(token0);
         position.token1 = address(token1);
         position.fee = POOL_FEE;
-        position.pool = address(poolUniswap);
+        position.poolOrHook = address(poolUniswap);
 
         // And: An initial position.
         balance0 = uint64(bound(balance0, 1e6, type(uint64).max));
@@ -145,7 +145,7 @@ contract Swap_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
         deployAndInitUniswapV3(uint160(position.sqrtPriceX96), liquidityPool);
         position.token0 = address(token0);
         position.token1 = address(token1);
-        position.pool = address(poolUniswap);
+        position.poolOrHook = address(poolUniswap);
 
         // And: Contract has sufficient balance.
         balance0 = uint64(bound(balance0, 1, type(uint64).max));
@@ -202,7 +202,7 @@ contract Swap_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
         deployAndInitUniswapV3(uint160(position.sqrtPriceX96), liquidityPool);
         position.token0 = address(token0);
         position.token1 = address(token1);
-        position.pool = address(poolUniswap);
+        position.poolOrHook = address(poolUniswap);
 
         // And: Contract has sufficient balance.
         balance1 = uint64(bound(balance1, 1, type(uint64).max));

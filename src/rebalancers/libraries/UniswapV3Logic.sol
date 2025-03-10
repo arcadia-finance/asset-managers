@@ -49,9 +49,9 @@ library UniswapV3Logic {
         tickRange = tickUpper - tickLower;
 
         // Get data of the Liquidity Pool.
-        position.pool = _computePoolAddress(position.token0, position.token1, position.fee);
-        (position.sqrtPriceX96, tickCurrent,,,,,) = IUniswapV3Pool(position.pool).slot0();
+        position.poolOrHook = _computePoolAddress(position.token0, position.token1, position.fee);
+        (position.sqrtPriceX96, tickCurrent,,,,,) = IUniswapV3Pool(position.poolOrHook).slot0();
 
-        if (getTickSpacing) position.tickSpacing = IUniswapV3Pool(position.pool).tickSpacing();
+        if (getTickSpacing) position.tickSpacing = IUniswapV3Pool(position.poolOrHook).tickSpacing();
     }
 }

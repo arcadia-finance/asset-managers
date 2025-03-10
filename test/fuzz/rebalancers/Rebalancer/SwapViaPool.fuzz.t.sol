@@ -59,7 +59,7 @@ contract SwapViaPool_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
             position.token1 = address(token1);
             position.fee = POOL_FEE;
             position.upperBoundSqrtPriceX96 = uint256(sqrtPriceX96).mulDivDown(upperSqrtPriceDeviation, 1e18);
-            position.pool = address(uniV3Pool);
+            position.poolOrHook = address(uniV3Pool);
         }
 
         // Take 0,1% sqrtPrice above upperBound target to be sure we exceed it
@@ -102,7 +102,7 @@ contract SwapViaPool_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
             position.token1 = address(token1);
             position.fee = POOL_FEE;
             position.upperBoundSqrtPriceX96 = uint256(sqrtPriceX96).mulDivDown(upperSqrtPriceDeviation, 1e18);
-            position.pool = address(uniV3Pool);
+            position.poolOrHook = address(uniV3Pool);
         }
 
         // Take 0,1% sqrtPrice below upperBound target to be sure we are just below
@@ -145,7 +145,7 @@ contract SwapViaPool_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
             position.token1 = address(token1);
             position.fee = POOL_FEE;
             position.lowerBoundSqrtPriceX96 = uint256(sqrtPriceX96).mulDivDown(lowerSqrtPriceDeviation, 1e18);
-            position.pool = address(uniV3Pool);
+            position.poolOrHook = address(uniV3Pool);
         }
 
         // Take 0,1% sqrtPrice below lowerBound target to be sure we exceed it
@@ -188,7 +188,7 @@ contract SwapViaPool_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
             position.token1 = address(token1);
             position.fee = POOL_FEE;
             position.lowerBoundSqrtPriceX96 = uint256(sqrtPriceX96).mulDivDown(lowerSqrtPriceDeviation, 1e18);
-            position.pool = address(uniV3Pool);
+            position.poolOrHook = address(uniV3Pool);
         }
 
         // Take 0,1% sqrtPrice above lowerBound target to be sure we are still in range

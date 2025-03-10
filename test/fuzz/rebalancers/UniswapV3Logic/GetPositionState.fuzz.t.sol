@@ -77,7 +77,7 @@ contract GetPositionState_UniswapV3Logic_Fuzz_Test is UniswapV3Logic_Fuzz_Test {
         assertEq(positionActual.token1, address(token1));
         assertEq(positionActual.fee, POOL_FEE);
         assertEq(positionActual.liquidity, position.liquidity);
-        assertEq(positionActual.pool, address(pool));
+        assertEq(positionActual.poolOrHook, address(pool));
         assertEq(positionActual.sqrtPriceX96, position.sqrtPriceX96);
         assertEq(positionActual.tickSpacing, 0);
     }
@@ -122,7 +122,7 @@ contract GetPositionState_UniswapV3Logic_Fuzz_Test is UniswapV3Logic_Fuzz_Test {
         assertEq(positionActual.token1, address(token1));
         assertEq(positionActual.fee, POOL_FEE);
         assertEq(positionActual.liquidity, position.liquidity);
-        assertEq(positionActual.pool, address(pool));
+        assertEq(positionActual.poolOrHook, address(pool));
         assertEq(positionActual.sqrtPriceX96, position.sqrtPriceX96);
         assertEq(positionActual.tickSpacing, 1);
     }
