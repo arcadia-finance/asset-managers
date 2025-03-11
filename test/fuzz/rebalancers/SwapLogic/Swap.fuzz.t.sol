@@ -166,7 +166,8 @@ contract Swap_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
             );
             swapData = abi.encode(address(routerMock), uint256(amountIn), data);
         }
-        (uint256 balance0_, uint256 balance1_, RebalancerUniV3Slipstream.PositionState memory position_) = swapLogic.swap(
+        (uint256 balance0_, uint256 balance1_, RebalancerUniV3Slipstream.PositionState memory position_) = swapLogic
+            .swap(
             swapData,
             address(nonfungiblePositionManager),
             position,
