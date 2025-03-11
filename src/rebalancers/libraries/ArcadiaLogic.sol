@@ -9,8 +9,8 @@ import { AssetValueAndRiskFactors } from "../../../lib/accounts-v2/src/libraries
 import { IFactory } from "../interfaces/IFactory.sol";
 import { IPermit2 } from "../../../lib/accounts-v2/src/interfaces/IPermit2.sol";
 import { IRegistry } from "../interfaces/IRegistry.sol";
-import { Rebalancer } from "../Rebalancer.sol";
-import { StakedSlipstreamLogic } from "./StakedSlipstreamLogic.sol";
+import { RebalancerUniV3Slipstream } from "../RebalancerUniV3Slipstream.sol";
+import { StakedSlipstreamLogic } from "./slipstream/StakedSlipstreamLogic.sol";
 
 library ArcadiaLogic {
     // The contract address of the Arcadia Factory.
@@ -100,7 +100,7 @@ library ArcadiaLogic {
     function _encodeDeposit(
         address positionManager,
         uint256 id,
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         uint256 count,
         uint256 balance0,
         uint256 balance1,

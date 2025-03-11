@@ -15,9 +15,9 @@ import { INonfungiblePositionManagerExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/INonfungiblePositionManagerExtension.sol";
 import { IUniswapV3PoolExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/IUniswapV3PoolExtension.sol";
-import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/uniswap-v3/LiquidityAmounts.sol";
+import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/cl-math/LiquidityAmounts.sol";
 import { MintLogic_Fuzz_Test } from "./_MintLogic.fuzz.t.sol";
-import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
+import { RebalancerUniV3Slipstream } from "../../../../src/rebalancers/RebalancerUniV3Slipstream.sol";
 import { RegistryMock } from "../../../utils/mocks/RegistryMock.sol";
 import { SlipstreamFixture } from "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/Slipstream.f.sol";
 import { StakedSlipstreamAM } from "../../../../lib/accounts-v2/src/asset-modules/Slipstream/StakedSlipstreamAM.sol";
@@ -64,7 +64,7 @@ contract Mint_MintLogic_Fuzz_Test is
                               TESTS
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Success_mint_UniswapV3(
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         uint112 balance0,
         uint112 balance1
     ) public {
@@ -139,7 +139,7 @@ contract Mint_MintLogic_Fuzz_Test is
     }
 
     function testFuzz_Success_mint_Slipstream(
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         uint112 balance0,
         uint112 balance1
     ) public {
@@ -216,7 +216,7 @@ contract Mint_MintLogic_Fuzz_Test is
     }
 
     function testFuzz_Success_mint_StakedSlipstream(
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         uint112 balance0,
         uint112 balance1
     ) public {
@@ -316,7 +316,7 @@ contract Mint_MintLogic_Fuzz_Test is
     }
 
     function testFuzz_Success_mint_WrappedStakedSlipstream(
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         uint112 balance0,
         uint112 balance1
     ) public {

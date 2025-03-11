@@ -4,11 +4,11 @@
  */
 pragma solidity ^0.8.22;
 
-import { CollectParams, DecreaseLiquidityParams, IPositionManager } from "../interfaces/IPositionManager.sol";
-import { IStakedSlipstreamAM } from "../interfaces/IStakedSlipstreamAM.sol";
-import { Rebalancer } from "../Rebalancer.sol";
-import { SlipstreamLogic } from "./SlipstreamLogic.sol";
-import { StakedSlipstreamLogic } from "./StakedSlipstreamLogic.sol";
+import { CollectParams, DecreaseLiquidityParams, IPositionManager } from "../../interfaces/IPositionManager.sol";
+import { IStakedSlipstreamAM } from "../../interfaces/IStakedSlipstreamAM.sol";
+import { RebalancerUniV3Slipstream } from "../../RebalancerUniV3Slipstream.sol";
+import { SlipstreamLogic } from "../slipstream/SlipstreamLogic.sol";
+import { StakedSlipstreamLogic } from "../slipstream/StakedSlipstreamLogic.sol";
 
 library BurnLogic {
     /**
@@ -20,7 +20,7 @@ library BurnLogic {
      * @return balance1 The amount of token1 claimed.
      * @return rewards The amount of reward token claimed.
      */
-    function _burn(address positionManager, uint256 id, Rebalancer.PositionState memory position)
+    function _burn(address positionManager, uint256 id, RebalancerUniV3Slipstream.PositionState memory position)
         internal
         returns (uint256 balance0, uint256 balance1, uint256 rewards)
     {

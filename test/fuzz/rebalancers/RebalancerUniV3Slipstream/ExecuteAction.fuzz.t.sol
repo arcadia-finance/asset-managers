@@ -13,21 +13,21 @@ import { FixedPoint128 } from "../../../../lib/accounts-v2/src/asset-modules/Uni
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { HookMock } from "../../../utils/mocks/HookMock.sol";
-import { PricingLogic } from "../../../../src/rebalancers/libraries/PricingLogic.sol";
-import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
-import { Rebalancer_Fuzz_Test } from "./_Rebalancer2.fuzz.t.sol";
+import { PricingLogic } from "../../../../src/rebalancers/libraries/cl-math/PricingLogic.sol";
+import { RebalancerUniV3Slipstream } from "../../../../src/rebalancers/RebalancerUniV3Slipstream.sol";
+import { RebalancerUniV3Slipstream_Fuzz_Test } from "./_Rebalancer2UniV3Slipstream.fuzz.t.sol";
 import { RouterMock } from "../../../utils/mocks/RouterMock.sol";
 import { RouterSetPoolPriceMock } from "../../../utils/mocks/RouterSetPoolPriceMock.sol";
 import { StdStorage, stdStorage } from "../../../../lib/accounts-v2/lib/forge-std/src/Test.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
 import { UniswapV3Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";
-import { UniswapV3Logic } from "../../../../src/rebalancers/libraries/UniswapV3Logic.sol";
+import { UniswapV3Logic } from "../../../../src/rebalancers/libraries/uniswap-v3/UniswapV3Logic.sol";
 
 /**
- * @notice Fuzz tests for the function "_executeAction" of contract "Rebalancer".
+ * @notice Fuzz tests for the function "_executeAction" of contract "RebalancerUniV3Slipstream".
  */
-contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
+contract ExecuteAction_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstream_Fuzz_Test {
     using FixedPointMathLib for uint256;
     using stdStorage for StdStorage;
     /* ///////////////////////////////////////////////////////////////
@@ -35,7 +35,7 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public override {
-        Rebalancer_Fuzz_Test.setUp();
+        RebalancerUniV3Slipstream_Fuzz_Test.setUp();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -51,13 +51,13 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         rebalancer.setAccount(account_);
         // When: Calling executeAction().
         // Then: it should revert.
-        vm.expectRevert(Rebalancer.OnlyAccount.selector);
+        vm.expectRevert(RebalancerUniV3Slipstream.OnlyAccount.selector);
         rebalancer.executeAction(rebalanceData);
     }
 
     function testFuzz_Revert_executeAction_UnbalancedPoolBeforeSwap(
         address account_,
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         uint128 liquidityPool,
         int24 tickLower,
         int24 tickUpper,
@@ -121,13 +121,13 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         bytes memory rebalanceData =
             encodeRebalanceData(address(nonfungiblePositionManager), id, initiator, tickLower, tickUpper, swapData);
         vm.prank(account_);
-        vm.expectRevert(Rebalancer.UnbalancedPool.selector);
+        vm.expectRevert(RebalancerUniV3Slipstream.UnbalancedPool.selector);
         rebalancer.executeAction(rebalanceData);
     }
 
     function testFuzz_Revert_executeAction_UnbalancedPoolAfterSwap(
         address account_,
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         uint128 liquidityPool,
         int24 tickLower,
         int24 tickUpper,
@@ -204,13 +204,13 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         bytes memory rebalanceData =
             encodeRebalanceData(address(nonfungiblePositionManager), id, initiator, tickLower, tickUpper, swapData);
         vm.prank(account_);
-        vm.expectRevert(Rebalancer.UnbalancedPool.selector);
+        vm.expectRevert(RebalancerUniV3Slipstream.UnbalancedPool.selector);
         rebalancer.executeAction(rebalanceData);
     }
 
     function testFuzz_Revert_executeAction_InsufficientLiquidity(
         address account_,
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         uint128 liquidityPool,
         int24 tickLower,
         int24 tickUpper,
@@ -277,13 +277,13 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
         bytes memory rebalanceData =
             encodeRebalanceData(address(nonfungiblePositionManager), id, initiator, tickLower, tickUpper, swapData);
         vm.prank(account_);
-        vm.expectRevert(Rebalancer.InsufficientLiquidity.selector);
+        vm.expectRevert(RebalancerUniV3Slipstream.InsufficientLiquidity.selector);
         rebalancer.executeAction(rebalanceData);
     }
 
     function testFuzz_Success_executeAction_ZeroToOne(
         address account_,
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         uint128 liquidityPool,
         int24 tickLower,
         int24 tickUpper,
@@ -366,7 +366,7 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
             // Then: Hook should be called.
             vm.prank(account_);
             vm.expectEmit();
-            emit Rebalancer.Rebalance(account_, address(nonfungiblePositionManager), id, id + 1);
+            emit RebalancerUniV3Slipstream.Rebalance(account_, address(nonfungiblePositionManager), id, id + 1);
             vm.expectCall(
                 address(hook),
                 abi.encodeWithSelector(
@@ -416,7 +416,7 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
 
     function testFuzz_Success_executeAction_OneToZero(
         address account_,
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         uint128 liquidityPool,
         int24 tickLower,
         int24 tickUpper,
@@ -486,7 +486,7 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
                 encodeRebalanceData(address(nonfungiblePositionManager), id, initiator, tickLower, tickUpper, swapData);
             vm.prank(account_);
             vm.expectEmit();
-            emit Rebalancer.Rebalance(account_, address(nonfungiblePositionManager), id, id + 1);
+            emit RebalancerUniV3Slipstream.Rebalance(account_, address(nonfungiblePositionManager), id, id + 1);
             depositData = rebalancer.executeAction(rebalanceData);
         }
 
@@ -526,7 +526,7 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
 
     function testFuzz_Success_executeAction_Slipstream(
         address account_,
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         uint128 liquidityPool,
         int24 tickLower,
         int24 tickUpper,
@@ -600,7 +600,7 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
             // When: Calling executeAction().
             vm.prank(account_);
             vm.expectEmit();
-            emit Rebalancer.Rebalance(account_, address(slipstreamPositionManager), id, id + 1);
+            emit RebalancerUniV3Slipstream.Rebalance(account_, address(slipstreamPositionManager), id, id + 1);
             depositData = rebalancer.executeAction(rebalanceData);
         }
 
@@ -632,7 +632,7 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
     }
 
     function testFuzz_Success_executeAction_StakedSlipstream_RewardTokenNotToken0Or1(
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         address account_,
         uint128 liquidityPool,
         int24 tickLower,
@@ -723,7 +723,7 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
             // When: Calling executeAction().
             vm.prank(account_);
             vm.expectEmit();
-            emit Rebalancer.Rebalance(account_, address(stakedSlipstreamAM), id, id + 1);
+            emit RebalancerUniV3Slipstream.Rebalance(account_, address(stakedSlipstreamAM), id, id + 1);
             depositData = rebalancer.executeAction(rebalanceData);
         }
 
@@ -761,7 +761,7 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
     }
 
     function testFuzz_Success_executeAction_StakedSlipstream_RewardTokenIsToken0Or1(
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         address account_,
         uint128 liquidityPool,
         int24 tickLower,
@@ -852,7 +852,7 @@ contract ExecuteAction_SwapLogic_Fuzz_Test is Rebalancer_Fuzz_Test {
             // When: Calling executeAction().
             vm.prank(account_);
             vm.expectEmit();
-            emit Rebalancer.Rebalance(account_, address(stakedSlipstreamAM), id, id + 1);
+            emit RebalancerUniV3Slipstream.Rebalance(account_, address(stakedSlipstreamAM), id, id + 1);
             depositData = rebalancer.executeAction(rebalanceData);
         }
 

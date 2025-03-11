@@ -7,7 +7,7 @@ pragma solidity ^0.8.22;
 import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { IUniswapV3PoolExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/IUniswapV3PoolExtension.sol";
-import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
+import { RebalancerUniV3Slipstream } from "../../../../src/rebalancers/RebalancerUniV3Slipstream.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
 import { UniswapV3Logic_Fuzz_Test } from "./_UniswapV3Logic.fuzz.t.sol";
@@ -37,7 +37,9 @@ contract GetPositionState_UniswapV3Logic_Fuzz_Test is UniswapV3Logic_Fuzz_Test {
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_getPositionState_NoTickSpacing(Rebalancer.PositionState memory position) public {
+    function testFuzz_Success_getPositionState_NoTickSpacing(RebalancerUniV3Slipstream.PositionState memory position)
+        public
+    {
         // Given: A valid position.
         position.tickLower = int24(bound(position.tickLower, TickMath.MIN_TICK, TickMath.MAX_TICK - 1));
         position.tickUpper = int24(bound(position.tickUpper, position.tickLower + 1, TickMath.MAX_TICK));
@@ -65,7 +67,7 @@ contract GetPositionState_UniswapV3Logic_Fuzz_Test is UniswapV3Logic_Fuzz_Test {
         // When: Calling _getPositionState().
         int24 tickCurrent;
         int24 tickRange;
-        Rebalancer.PositionState memory positionActual;
+        RebalancerUniV3Slipstream.PositionState memory positionActual;
         (tickCurrent, tickRange, positionActual) = uniswapV3Logic.getPositionState(positionActual, id, false);
 
         // Then: It should return the correct values.
@@ -82,7 +84,9 @@ contract GetPositionState_UniswapV3Logic_Fuzz_Test is UniswapV3Logic_Fuzz_Test {
         assertEq(positionActual.tickSpacing, 0);
     }
 
-    function testFuzz_Success_getPositionState_WithTickSpacing(Rebalancer.PositionState memory position) public {
+    function testFuzz_Success_getPositionState_WithTickSpacing(RebalancerUniV3Slipstream.PositionState memory position)
+        public
+    {
         // Given: A valid position.
         position.tickLower = int24(bound(position.tickLower, TickMath.MIN_TICK, TickMath.MAX_TICK - 1));
         position.tickUpper = int24(bound(position.tickUpper, position.tickLower + 1, TickMath.MAX_TICK));
@@ -110,7 +114,7 @@ contract GetPositionState_UniswapV3Logic_Fuzz_Test is UniswapV3Logic_Fuzz_Test {
         // When: Calling _getPositionState().
         int24 tickCurrent;
         int24 tickRange;
-        Rebalancer.PositionState memory positionActual;
+        RebalancerUniV3Slipstream.PositionState memory positionActual;
         (tickCurrent, tickRange, positionActual) = uniswapV3Logic.getPositionState(positionActual, id, true);
 
         // Then: It should return the correct values.

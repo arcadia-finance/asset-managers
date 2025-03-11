@@ -5,19 +5,19 @@
 pragma solidity ^0.8.22;
 
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
-import { Rebalancer_Fuzz_Test } from "./_Rebalancer.fuzz.t.sol";
+import { RebalancerUniV3Slipstream } from "../../../../src/rebalancers/RebalancerUniV3Slipstream.sol";
+import { RebalancerUniV3Slipstream_Fuzz_Test } from "./_RebalancerUniV3Slipstream.fuzz.t.sol";
 
 /**
- * @notice Fuzz tests for the function "setInitiatorInfo" of contract "Rebalancer".
+ * @notice Fuzz tests for the function "setInitiatorInfo" of contract "RebalancerUniV3Slipstream".
  */
-contract SetInitiatorInfo_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
+contract SetInitiatorInfo_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstream_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public override {
-        Rebalancer_Fuzz_Test.setUp();
+        RebalancerUniV3Slipstream_Fuzz_Test.setUp();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -37,7 +37,7 @@ contract SetInitiatorInfo_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         // When: calling rebalance
         // Then: it should revert
         vm.prank(initiator);
-        vm.expectRevert(Rebalancer.Reentered.selector);
+        vm.expectRevert(RebalancerUniV3Slipstream.Reentered.selector);
         rebalancer.setInitiatorInfo(tolerance, fee, minLiquidityRatio);
     }
 
@@ -60,7 +60,7 @@ contract SetInitiatorInfo_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         // When: calling rebalance
         // Then: it should revert
         vm.prank(initiator);
-        vm.expectRevert(Rebalancer.InvalidValue.selector);
+        vm.expectRevert(RebalancerUniV3Slipstream.InvalidValue.selector);
         rebalancer.setInitiatorInfo(tolerance, fee, minLiquidityRatio);
     }
 
@@ -83,7 +83,7 @@ contract SetInitiatorInfo_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         // When: calling rebalance
         // Then: it should revert
         vm.prank(initiator);
-        vm.expectRevert(Rebalancer.InvalidValue.selector);
+        vm.expectRevert(RebalancerUniV3Slipstream.InvalidValue.selector);
         rebalancer.setInitiatorInfo(tolerance, fee, minLiquidityRatio);
     }
 
@@ -109,7 +109,7 @@ contract SetInitiatorInfo_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         // When: calling rebalance
         // Then: it should revert
         vm.prank(initiator);
-        vm.expectRevert(Rebalancer.InvalidValue.selector);
+        vm.expectRevert(RebalancerUniV3Slipstream.InvalidValue.selector);
         rebalancer.setInitiatorInfo(tolerance, fee, minLiquidityRatio);
     }
 
@@ -135,7 +135,7 @@ contract SetInitiatorInfo_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         // When: calling rebalance
         // Then: it should revert
         vm.prank(initiator);
-        vm.expectRevert(Rebalancer.InvalidValue.selector);
+        vm.expectRevert(RebalancerUniV3Slipstream.InvalidValue.selector);
         rebalancer.setInitiatorInfo(tolerance, fee, minLiquidityRatio);
     }
 
@@ -163,7 +163,7 @@ contract SetInitiatorInfo_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
 
         // When: Initiator updates the fee to a higher value.
         // Then: It should revert.
-        vm.expectRevert(Rebalancer.InvalidValue.selector);
+        vm.expectRevert(RebalancerUniV3Slipstream.InvalidValue.selector);
         vm.prank(initiator);
         rebalancer.setInitiatorInfo(newTolerance, newFee, newMinLiquidityRatio);
     }
@@ -195,7 +195,7 @@ contract SetInitiatorInfo_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
 
         // When : Initiator updates the fee to a higher value
         // Then : It should revert
-        vm.expectRevert(Rebalancer.InvalidValue.selector);
+        vm.expectRevert(RebalancerUniV3Slipstream.InvalidValue.selector);
         vm.prank(initiator);
         rebalancer.setInitiatorInfo(newTolerance, newFee, newMinLiquidityRatio);
     }
@@ -227,7 +227,7 @@ contract SetInitiatorInfo_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
 
         // When : Initiator updates the fee to a higher value
         // Then : It should revert
-        vm.expectRevert(Rebalancer.InvalidValue.selector);
+        vm.expectRevert(RebalancerUniV3Slipstream.InvalidValue.selector);
         vm.prank(initiator);
         rebalancer.setInitiatorInfo(newTolerance, newFee, newMinLiquidityRatio);
     }
@@ -259,7 +259,7 @@ contract SetInitiatorInfo_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
 
         // When : Initiator updates the fee to a higher value
         // Then : It should revert
-        vm.expectRevert(Rebalancer.InvalidValue.selector);
+        vm.expectRevert(RebalancerUniV3Slipstream.InvalidValue.selector);
         vm.prank(initiator);
         rebalancer.setInitiatorInfo(newTolerance, newFee, newMinLiquidityRatio);
     }

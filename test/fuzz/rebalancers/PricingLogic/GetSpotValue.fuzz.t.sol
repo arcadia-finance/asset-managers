@@ -6,7 +6,7 @@ pragma solidity ^0.8.22;
 
 import { FixedPoint96 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
 import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
-import { PricingLogic } from "../../../../src/rebalancers/libraries/PricingLogic.sol";
+import { PricingLogic } from "../../../../src/rebalancers/libraries/cl-math/PricingLogic.sol";
 import { PricingLogic_Fuzz_Test } from "./_PricingLogic.fuzz.t.sol";
 import { stdError } from "../../../../lib/accounts-v2/lib/forge-std/src/StdError.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";

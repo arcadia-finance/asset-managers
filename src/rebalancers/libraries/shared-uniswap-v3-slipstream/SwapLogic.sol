@@ -4,13 +4,13 @@
  */
 pragma solidity ^0.8.22;
 
-import { ERC20, SafeApprove } from "./SafeApprove.sol";
-import { ICLPool } from "../interfaces/ICLPool.sol";
-import { IPool } from "../interfaces/IPool.sol";
-import { IUniswapV3Pool } from "../interfaces/IUniswapV3Pool.sol";
-import { Rebalancer } from "../Rebalancer.sol";
-import { RebalanceOptimizationMath } from "./RebalanceOptimizationMath.sol";
-import { UniswapV3Logic } from "./UniswapV3Logic.sol";
+import { ERC20, SafeApprove } from "../SafeApprove.sol";
+import { ICLPool } from "../../interfaces/ICLPool.sol";
+import { IPool } from "../../interfaces/IPool.sol";
+import { IUniswapV3Pool } from "../../interfaces/IUniswapV3Pool.sol";
+import { RebalancerUniV3Slipstream } from "../../RebalancerUniV3Slipstream.sol";
+import { RebalanceOptimizationMath } from "../RebalanceOptimizationMath.sol";
+import { UniswapV3Logic } from "../uniswap-v3/UniswapV3Logic.sol";
 
 library SwapLogic {
     using SafeApprove for ERC20;
@@ -32,7 +32,7 @@ library SwapLogic {
     function _swap(
         bytes memory swapData,
         address positionManager,
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         bool zeroToOne,
         uint256 amountInitiatorFee,
         uint256 amountIn,
@@ -78,7 +78,7 @@ library SwapLogic {
      */
     function _swapViaPool(
         address positionManager,
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         bool zeroToOne,
         uint256 amountOut,
         uint256 balance0,
@@ -125,7 +125,7 @@ library SwapLogic {
      */
     function _swapViaRouter(
         address positionManager,
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         bool zeroToOne,
         bytes memory swapData
     ) internal returns (uint256 balance0, uint256 balance1) {

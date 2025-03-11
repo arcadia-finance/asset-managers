@@ -16,7 +16,7 @@ import { INonfungiblePositionManagerExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/INonfungiblePositionManagerExtension.sol";
 import { IUniswapV3PoolExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/IUniswapV3PoolExtension.sol";
-import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
+import { RebalancerUniV3Slipstream } from "../../../../src/rebalancers/RebalancerUniV3Slipstream.sol";
 import { RegistryMock } from "../../../utils/mocks/RegistryMock.sol";
 import { SlipstreamFixture } from "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/Slipstream.f.sol";
 import { StakedSlipstreamAM } from "../../../../lib/accounts-v2/src/asset-modules/Slipstream/StakedSlipstreamAM.sol";
@@ -62,7 +62,7 @@ contract Burn_BurnLogic_Fuzz_Test is
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_burn_UniswapV3(Rebalancer.PositionState memory position) public {
+    function testFuzz_Success_burn_UniswapV3(RebalancerUniV3Slipstream.PositionState memory position) public {
         // Given: A valid position.
         position.tickLower = int24(bound(position.tickLower, TickMath.MIN_TICK, TickMath.MAX_TICK - 1));
         position.tickUpper = int24(bound(position.tickUpper, position.tickLower + 1, TickMath.MAX_TICK));
@@ -112,7 +112,7 @@ contract Burn_BurnLogic_Fuzz_Test is
         assertEq(token1.balanceOf(address(burnLogic)), balance1);
     }
 
-    function testFuzz_Success_burn_Slipstream(Rebalancer.PositionState memory position) public {
+    function testFuzz_Success_burn_Slipstream(RebalancerUniV3Slipstream.PositionState memory position) public {
         // Given: A valid position.
         position.tickLower = int24(bound(position.tickLower, TickMath.MIN_TICK, TickMath.MAX_TICK - 1));
         position.tickUpper = int24(bound(position.tickUpper, position.tickLower + 1, TickMath.MAX_TICK));
@@ -165,7 +165,7 @@ contract Burn_BurnLogic_Fuzz_Test is
     function testFuzz_Success_burn_StakedSlipstream_RewardTokenNotToken0Or1(
         uint256 rewardGrowthGlobalX128Last,
         uint256 rewardGrowthGlobalX128Current,
-        Rebalancer.PositionState memory position
+        RebalancerUniV3Slipstream.PositionState memory position
     ) public {
         // Given: A valid position.
         position.tickLower = int24(bound(position.tickLower, TickMath.MIN_TICK, TickMath.MAX_TICK - 1));
@@ -269,7 +269,7 @@ contract Burn_BurnLogic_Fuzz_Test is
         bytes32 salt,
         uint256 rewardGrowthGlobalX128Last,
         uint256 rewardGrowthGlobalX128Current,
-        Rebalancer.PositionState memory position
+        RebalancerUniV3Slipstream.PositionState memory position
     ) public {
         // Given: A valid position.
         position.tickLower = int24(bound(position.tickLower, TickMath.MIN_TICK, TickMath.MAX_TICK - 1));
@@ -373,7 +373,7 @@ contract Burn_BurnLogic_Fuzz_Test is
     function testFuzz_Success_burn_WrappedStakedSlipstream_RewardTokenNotToken0Or1(
         uint256 rewardGrowthGlobalX128Last,
         uint256 rewardGrowthGlobalX128Current,
-        Rebalancer.PositionState memory position
+        RebalancerUniV3Slipstream.PositionState memory position
     ) public {
         // Given : Deploy WrappedStakedSlipstream fixture.
         WrappedStakedSlipstreamFixture.setUp();
@@ -472,7 +472,7 @@ contract Burn_BurnLogic_Fuzz_Test is
         bytes32 salt,
         uint256 rewardGrowthGlobalX128Last,
         uint256 rewardGrowthGlobalX128Current,
-        Rebalancer.PositionState memory position
+        RebalancerUniV3Slipstream.PositionState memory position
     ) public {
         // Given : Deploy WrappedStakedSlipstream fixture.
         WrappedStakedSlipstreamFixture.setUp();

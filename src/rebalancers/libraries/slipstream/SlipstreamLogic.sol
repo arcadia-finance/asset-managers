@@ -4,10 +4,10 @@
  */
 pragma solidity ^0.8.22;
 
-import { ICLPool } from "../interfaces/ICLPool.sol";
-import { ICLPositionManager } from "../interfaces/ICLPositionManager.sol";
-import { PoolAddress } from "./slipstream/PoolAddress.sol";
-import { Rebalancer } from "../Rebalancer.sol";
+import { ICLPool } from "../../interfaces/ICLPool.sol";
+import { ICLPositionManager } from "../../interfaces/ICLPositionManager.sol";
+import { PoolAddress } from "./PoolAddress.sol";
+import { RebalancerUniV3Slipstream } from "../../RebalancerUniV3Slipstream.sol";
 
 library SlipstreamLogic {
     // The Slipstream Factory contract.
@@ -42,7 +42,7 @@ library SlipstreamLogic {
      * @return tickCurrent The current tick of the pool.
      * @return tickRange The tick range of the position.
      */
-    function _getPositionState(Rebalancer.PositionState memory position, uint256 id)
+    function _getPositionState(RebalancerUniV3Slipstream.PositionState memory position, uint256 id)
         internal
         view
         returns (int24 tickCurrent, int24 tickRange)

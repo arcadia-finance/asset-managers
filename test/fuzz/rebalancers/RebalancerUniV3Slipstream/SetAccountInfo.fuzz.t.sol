@@ -4,19 +4,19 @@
  */
 pragma solidity ^0.8.22;
 
-import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
-import { Rebalancer_Fuzz_Test } from "./_Rebalancer.fuzz.t.sol";
+import { RebalancerUniV3Slipstream } from "../../../../src/rebalancers/RebalancerUniV3Slipstream.sol";
+import { RebalancerUniV3Slipstream_Fuzz_Test } from "./_RebalancerUniV3Slipstream.fuzz.t.sol";
 
 /**
- * @notice Fuzz tests for the function "setAccountInfo" of contract "Rebalancer".
+ * @notice Fuzz tests for the function "setAccountInfo" of contract "RebalancerUniV3Slipstream".
  */
-contract SetAccountInfo_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
+contract SetAccountInfo_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstream_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public override {
-        Rebalancer_Fuzz_Test.setUp();
+        RebalancerUniV3Slipstream_Fuzz_Test.setUp();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -36,7 +36,7 @@ contract SetAccountInfo_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         // When: calling rebalance
         // Then: it should revert
         vm.prank(caller);
-        vm.expectRevert(Rebalancer.Reentered.selector);
+        vm.expectRevert(RebalancerUniV3Slipstream.Reentered.selector);
         rebalancer.setAccountInfo(account__, initiator, hook);
     }
 
@@ -52,7 +52,7 @@ contract SetAccountInfo_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         // When: calling rebalance
         // Then: it should revert
         vm.prank(caller);
-        vm.expectRevert(Rebalancer.NotAnAccount.selector);
+        vm.expectRevert(RebalancerUniV3Slipstream.NotAnAccount.selector);
         rebalancer.setAccountInfo(account_, initiator, hook);
     }
 
@@ -63,7 +63,7 @@ contract SetAccountInfo_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         // When: A random address calls setInitiator on the rebalancer
         // Then: it should revert
         vm.prank(caller);
-        vm.expectRevert(Rebalancer.OnlyAccountOwner.selector);
+        vm.expectRevert(RebalancerUniV3Slipstream.OnlyAccountOwner.selector);
         rebalancer.setAccountInfo(address(account), initiator, hook);
     }
 

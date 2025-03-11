@@ -7,7 +7,7 @@ pragma solidity ^0.8.22;
 import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { ICLPoolExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/extensions/interfaces/ICLPoolExtension.sol";
-import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
+import { RebalancerUniV3Slipstream } from "../../../../src/rebalancers/RebalancerUniV3Slipstream.sol";
 import { SlipstreamLogic_Fuzz_Test } from "./_SlipstreamLogic.fuzz.t.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
@@ -37,7 +37,7 @@ contract GetPositionState_SlipstreamLogic_Fuzz_Test is SlipstreamLogic_Fuzz_Test
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_getPositionState(Rebalancer.PositionState memory position) public {
+    function testFuzz_Success_getPositionState(RebalancerUniV3Slipstream.PositionState memory position) public {
         // Given: A valid position.
         position.tickLower = int24(bound(position.tickLower, TickMath.MIN_TICK, TickMath.MAX_TICK - 1));
         position.tickUpper = int24(bound(position.tickUpper, position.tickLower + 1, TickMath.MAX_TICK));
@@ -65,7 +65,7 @@ contract GetPositionState_SlipstreamLogic_Fuzz_Test is SlipstreamLogic_Fuzz_Test
         // When: Calling _getPositionState().
         int24 tickCurrent;
         int24 tickRange;
-        Rebalancer.PositionState memory positionActual;
+        RebalancerUniV3Slipstream.PositionState memory positionActual;
         (tickCurrent, tickRange, positionActual) = slipstreamLogic.getPositionState(positionActual, id);
 
         // Then: It should return the correct values.

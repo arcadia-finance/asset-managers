@@ -6,7 +6,7 @@ pragma solidity ^0.8.22;
 
 import { ActionData, IActionBase } from "../../lib/accounts-v2/src/interfaces/IActionBase.sol";
 import { ArcadiaLogic } from "./libraries/ArcadiaLogic.sol";
-import { BurnLogic } from "./libraries/BurnLogic.sol";
+import { BurnLogic } from "./libraries/shared-uniswap-v3-slipstream/BurnLogic.sol";
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { FeeLogic } from "./libraries/FeeLogic.sol";
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
@@ -15,15 +15,15 @@ import { IAccount } from "./interfaces/IAccount.sol";
 import { IPool } from "./interfaces/IPool.sol";
 import { IPositionManager } from "./interfaces/IPositionManager.sol";
 import { IStrategyHook } from "./interfaces/IStrategyHook.sol";
-import { MintLogic } from "./libraries/MintLogic.sol";
-import { PricingLogic } from "./libraries/PricingLogic.sol";
+import { MintLogic } from "./libraries/shared-uniswap-v3-slipstream/MintLogic.sol";
+import { PricingLogic } from "./libraries/cl-math/PricingLogic.sol";
 import { RebalanceLogic } from "./libraries/RebalanceLogic.sol";
 import { SafeApprove } from "./libraries/SafeApprove.sol";
-import { SlipstreamLogic } from "./libraries/SlipstreamLogic.sol";
-import { StakedSlipstreamLogic } from "./libraries/StakedSlipstreamLogic.sol";
-import { SwapLogic } from "./libraries/SwapLogic.sol";
+import { SlipstreamLogic } from "./libraries/slipstream/SlipstreamLogic.sol";
+import { StakedSlipstreamLogic } from "./libraries/slipstream/StakedSlipstreamLogic.sol";
+import { SwapLogic } from "./libraries/shared-uniswap-v3-slipstream/SwapLogic.sol";
 import { TickMath } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
-import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
+import { UniswapV3Logic } from "./libraries/uniswap-v3/UniswapV3Logic.sol";
 
 /**
  * @title Permissioned rebalancer for Uniswap V3 and Slipstream Liquidity Positions.
@@ -37,7 +37,7 @@ import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
  * based on a hypothetical optimal swap through the pool itself without slippage.
  * This protects the Account owners from incompetent or malicious initiators who route swaps poorly, or try to skim off liquidity from the position.
  */
-contract Rebalancer is IActionBase {
+contract RebalancerUniV3Slipstream is IActionBase {
     using FixedPointMathLib for uint256;
     using SafeApprove for ERC20;
     using SafeTransferLib for ERC20;

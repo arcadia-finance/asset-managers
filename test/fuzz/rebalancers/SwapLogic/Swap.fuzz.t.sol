@@ -5,7 +5,7 @@
 pragma solidity ^0.8.22;
 
 import { RebalanceLogicExtension } from "../../../utils/extensions/RebalanceLogicExtension.sol";
-import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
+import { RebalancerUniV3Slipstream } from "../../../../src/rebalancers/RebalancerUniV3Slipstream.sol";
 import { RouterMock } from "../../../utils/mocks/RouterMock.sol";
 import { stdError } from "../../../../lib/accounts-v2/lib/forge-std/src/StdError.sol";
 import { SqrtPriceMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/SqrtPriceMath.sol";
@@ -47,7 +47,7 @@ contract Swap_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
     function testFuzz_Success_swap_SwapViaRouter_ZeroAmountIn(
         bytes memory swapData,
         address positionManager,
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         bool zeroToOne,
         uint256 amountInitiatorFee,
         uint256 amountOut,
@@ -69,7 +69,7 @@ contract Swap_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
 
     function testFuzz_Success_swap_SwapViaPool(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         uint64 balance0,
         uint64 balance1
     ) public {
@@ -113,7 +113,7 @@ contract Swap_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
         position.upperBoundSqrtPriceX96 = BOUND_SQRT_PRICE_UPPER;
 
         // When: Calling swapViaPool.
-        (,, Rebalancer.PositionState memory position_) = swapLogic.swap(
+        (,, RebalancerUniV3Slipstream.PositionState memory position_) = swapLogic.swap(
             "",
             address(nonfungiblePositionManager),
             position,
@@ -131,7 +131,7 @@ contract Swap_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
 
     function testFuzz_Success_swap_SwapViaRouter_oneToZero(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         uint256 amountInitiatorFee,
         uint64 amountIn,
         uint64 amountOut,
@@ -166,7 +166,7 @@ contract Swap_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
             );
             swapData = abi.encode(address(routerMock), uint256(amountIn), data);
         }
-        (uint256 balance0_, uint256 balance1_, Rebalancer.PositionState memory position_) = swapLogic.swap(
+        (uint256 balance0_, uint256 balance1_, RebalancerUniV3Slipstream.PositionState memory position_) = swapLogic.swap(
             swapData,
             address(nonfungiblePositionManager),
             position,
@@ -188,7 +188,7 @@ contract Swap_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
 
     function testFuzz_Success_swap_SwapViaRouter_ZeroToOne(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         uint256 amountInitiatorFee,
         uint64 amountIn,
         uint64 amountOut,
@@ -223,7 +223,8 @@ contract Swap_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
             );
             swapData = abi.encode(address(routerMock), uint256(amountIn), data);
         }
-        (uint256 balance0_, uint256 balance1_, Rebalancer.PositionState memory position_) = swapLogic.swap(
+        (uint256 balance0_, uint256 balance1_, RebalancerUniV3Slipstream.PositionState memory position_) = swapLogic
+            .swap(
             swapData,
             address(nonfungiblePositionManager),
             position,

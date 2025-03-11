@@ -13,7 +13,7 @@ import { ICLPoolExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/extensions/interfaces/ICLPoolExtension.sol";
 import { IUniswapV3PoolExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/IUniswapV3PoolExtension.sol";
-import { RebalancerExtension } from "../../../utils/extensions/RebalancerExtension.sol";
+import { RebalancerUniV3SlipstreamExtension } from "../../../utils/extensions/RebalancerUniV3SlipstreamExtension.sol";
 import { RegistryMock } from "../../../utils/mocks/RegistryMock.sol";
 import { SlipstreamFixture } from "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/Slipstream.f.sol";
 import { StakedSlipstreamAM } from "../../../../lib/accounts-v2/src/asset-modules/Slipstream/StakedSlipstreamAM.sol";
@@ -22,9 +22,9 @@ import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
 import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
 
 /**
- * @notice Common logic needed by all "Rebalancer" fuzz tests.
+ * @notice Common logic needed by all "RebalancerUniV3Slipstream" fuzz tests.
  */
-abstract contract Rebalancer_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, SlipstreamFixture {
+abstract contract RebalancerUniV3Slipstream_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, SlipstreamFixture {
     /*////////////////////////////////////////////////////////////////
                             CONSTANTS
     /////////////////////////////////////////////////////////////// */
@@ -53,7 +53,7 @@ abstract contract Rebalancer_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, Slipstrea
                             TEST CONTRACTS
     /////////////////////////////////////////////////////////////// */
 
-    RebalancerExtension internal rebalancer;
+    RebalancerUniV3SlipstreamExtension internal rebalancer;
 
     /* ///////////////////////////////////////////////////////////////
                               SETUP
@@ -68,7 +68,7 @@ abstract contract Rebalancer_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, Slipstrea
         // Deploy Arcadia  Accounts Contracts.
         deployArcadiaAccounts();
 
-        rebalancer = new RebalancerExtension(MAX_TOLERANCE, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
+        rebalancer = new RebalancerUniV3SlipstreamExtension(MAX_TOLERANCE, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
 
         // Overwrite code hash of the UniswapV3Pool.
         bytes memory args = abi.encode();

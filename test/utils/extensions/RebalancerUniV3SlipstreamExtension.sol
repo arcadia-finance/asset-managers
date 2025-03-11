@@ -8,20 +8,20 @@ import { ArcadiaLogic } from "../../../src/rebalancers/libraries/ArcadiaLogic.so
 import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { IPool } from "../../../src/rebalancers/interfaces/IPool.sol";
 import { IUniswapV3Pool } from "../../../src/rebalancers/interfaces/IUniswapV3Pool.sol";
-import { PricingLogic } from "../../../src/rebalancers/libraries/PricingLogic.sol";
+import { PricingLogic } from "../../../src/rebalancers/libraries/cl-math/PricingLogic.sol";
 import { RebalanceLogic } from "../../../src/rebalancers/libraries/RebalanceLogic.sol";
-import { UniswapV3Logic } from "../../../src/rebalancers/libraries/UniswapV3Logic.sol";
-import { Rebalancer } from "../../../src/rebalancers/Rebalancer.sol";
+import { UniswapV3Logic } from "../../../src/rebalancers/libraries/uniswap-v3/UniswapV3Logic.sol";
+import { RebalancerUniV3Slipstream } from "../../../src/rebalancers/RebalancerUniV3Slipstream.sol";
 
-contract RebalancerExtension is Rebalancer {
+contract RebalancerUniV3SlipstreamExtension is RebalancerUniV3Slipstream {
     using SafeTransferLib for ERC20;
 
     constructor(uint256 maxTolerance, uint256 maxInitiatorFee, uint256 minLiquidityRatio)
-        Rebalancer(maxTolerance, maxInitiatorFee, minLiquidityRatio)
+        RebalancerUniV3Slipstream(maxTolerance, maxInitiatorFee, minLiquidityRatio)
     { }
 
     function getRebalanceParams(
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         uint256 amount0,
         uint256 amount1,
         uint256 initiatorFee
@@ -31,7 +31,7 @@ contract RebalancerExtension is Rebalancer {
         returns (uint256 minLiquidity, bool zeroToOne, uint256 amountInitiatorFee, uint256 amountIn, uint256 amountOut)
     {
         return RebalanceLogic._getRebalanceParams(
-            Rebalancer.MIN_LIQUIDITY_RATIO,
+            RebalancerUniV3Slipstream.MIN_LIQUIDITY_RATIO,
             position.fee,
             initiatorFee,
             position.sqrtPriceX96,
@@ -80,7 +80,7 @@ contract RebalancerExtension is Rebalancer {
         (uint160 sqrtPriceX96,,,,,,) = IUniswapV3Pool(position.pool).slot0();
         // Uniswap V3 pool should still be balanced.
         if (sqrtPriceX96 < position.lowerBoundSqrtPriceX96 || sqrtPriceX96 > position.upperBoundSqrtPriceX96) {
-            revert Rebalancer.UnbalancedPool();
+            revert RebalancerUniV3Slipstream.UnbalancedPool();
         }
     }
 

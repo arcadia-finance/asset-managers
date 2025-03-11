@@ -4,14 +4,14 @@
  */
 pragma solidity ^0.8.22;
 
-import { ERC20, SafeApprove } from "./SafeApprove.sol";
-import { ICLPositionManager } from "../interfaces/ICLPositionManager.sol";
-import { IStakedSlipstreamAM } from "../interfaces/IStakedSlipstreamAM.sol";
-import { IUniswapV3PositionManager } from "../interfaces/IUniswapV3PositionManager.sol";
-import { Rebalancer } from "../Rebalancer.sol";
-import { SlipstreamLogic } from "./SlipstreamLogic.sol";
-import { StakedSlipstreamLogic } from "./StakedSlipstreamLogic.sol";
-import { UniswapV3Logic } from "./UniswapV3Logic.sol";
+import { ERC20, SafeApprove } from "../SafeApprove.sol";
+import { ICLPositionManager } from "../../interfaces/ICLPositionManager.sol";
+import { IStakedSlipstreamAM } from "../../interfaces/IStakedSlipstreamAM.sol";
+import { IUniswapV3PositionManager } from "../../interfaces/IUniswapV3PositionManager.sol";
+import { RebalancerUniV3Slipstream } from "../../RebalancerUniV3Slipstream.sol";
+import { SlipstreamLogic } from "../slipstream/SlipstreamLogic.sol";
+import { StakedSlipstreamLogic } from "../slipstream/StakedSlipstreamLogic.sol";
+import { UniswapV3Logic } from "../uniswap-v3/UniswapV3Logic.sol";
 
 library MintLogic {
     using SafeApprove for ERC20;
@@ -29,7 +29,7 @@ library MintLogic {
      */
     function _mint(
         address positionManager,
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         uint256 balance0,
         uint256 balance1
     ) internal returns (uint256 newTokenId, uint256 liquidity, uint256 balance0_, uint256 balance1_) {

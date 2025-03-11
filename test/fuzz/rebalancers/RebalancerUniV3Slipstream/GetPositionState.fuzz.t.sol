@@ -6,31 +6,31 @@ pragma solidity ^0.8.22;
 
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
-import { RebalancerSpot } from "../../../../src/rebalancers/RebalancerSpot.sol";
-import { RebalancerSpot_Fuzz_Test } from "./_RebalancerSpot.fuzz.t.sol";
+import { PricingLogic } from "../../../../src/rebalancers/libraries/cl-math/PricingLogic.sol";
+import { RebalancerUniV3Slipstream } from "../../../../src/rebalancers/RebalancerUniV3Slipstream.sol";
+import { RebalancerUniV3Slipstream_Fuzz_Test } from "./_Rebalancer2UniV3Slipstream.fuzz.t.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
-import { TwapLogic } from "../../../../src/libraries/TwapLogic.sol";
 import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
-import { UniswapV3Logic } from "../../../../src/rebalancers/libraries/UniswapV3Logic.sol";
+import { UniswapV3Logic } from "../../../../src/rebalancers/libraries/uniswap-v3/UniswapV3Logic.sol";
 
 /**
- * @notice Fuzz tests for the function "_getPositionState" of contract "RebalancerSpot".
+ * @notice Fuzz tests for the function "_getPositionState" of contract "RebalancerUniV3Slipstream".
  */
-contract GetPositionState_RebalancerSpot_Fuzz_Test is RebalancerSpot_Fuzz_Test {
+contract GetPositionState_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstream_Fuzz_Test {
     using FixedPointMathLib for uint256;
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public override {
-        RebalancerSpot_Fuzz_Test.setUp();
+        RebalancerUniV3Slipstream_Fuzz_Test.setUp();
     }
 
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Success_getPositionState_UniswapV3_SameTickRange_OneTickSpacing(
-        RebalancerSpot.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         uint128 liquidityPool,
         int24 tick,
         address initiator,
@@ -62,14 +62,11 @@ contract GetPositionState_RebalancerSpot_Fuzz_Test is RebalancerSpot_Fuzz_Test {
         // And: The initiator is initiated.
         vm.prank(initiator);
         tolerance = bound(tolerance, 0, MAX_TOLERANCE);
-        rebalancerSpot.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
-
-        // And: The minimum time interval to calculate TWAT should have passed.
-        vm.warp(block.timestamp + TwapLogic.TWAT_INTERVAL);
+        rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
 
         // When: Calling getPositionState().
-        RebalancerSpot.PositionState memory position_ =
-            rebalancerSpot.getPositionState(address(nonfungiblePositionManager), id, tick, tick, initiator);
+        RebalancerUniV3Slipstream.PositionState memory position_ =
+            rebalancer.getPositionState(address(nonfungiblePositionManager), id, tick, tick, initiator);
 
         // Then : It should return the correct values
         assertEq(position_.pool, address(poolUniswap));
@@ -84,16 +81,16 @@ contract GetPositionState_RebalancerSpot_Fuzz_Test is RebalancerSpot_Fuzz_Test {
         assertEq(position_.sqrtRatioLower, TickMath.getSqrtPriceAtTick(position_.tickLower));
         assertEq(position_.sqrtRatioUpper, TickMath.getSqrtPriceAtTick(position_.tickUpper));
         assertEq(position_.sqrtPriceX96, position.sqrtPriceX96);
-
-        int24 twat = TwapLogic._getTwat(position_.pool);
-        uint256 twaSqrtPriceX96 = TickMath.getSqrtPriceAtTick(twat);
-        (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,,) = rebalancerSpot.initiatorInfo(initiator);
-        assertEq(position_.lowerBoundSqrtPriceX96, twaSqrtPriceX96 * lowerSqrtPriceDeviation / 1e18);
-        assertEq(position_.upperBoundSqrtPriceX96, twaSqrtPriceX96 * upperSqrtPriceDeviation / 1e18);
+        uint256 price0 = FullMath.mulDiv(1e18, position.sqrtPriceX96 ** 2, PricingLogic.Q192);
+        uint256 price1 = 1e18;
+        uint256 trustedSqrtPriceX96 = PricingLogic._getSqrtPriceX96(price0, price1);
+        (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,,) = rebalancer.initiatorInfo(initiator);
+        assertEq(position_.lowerBoundSqrtPriceX96, trustedSqrtPriceX96 * lowerSqrtPriceDeviation / 1e18);
+        assertEq(position_.upperBoundSqrtPriceX96, trustedSqrtPriceX96 * upperSqrtPriceDeviation / 1e18);
     }
 
     function testFuzz_Success_getPositionState_UniswapV3_SameTickRange_MultipleTickSpacings(
-        RebalancerSpot.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         uint128 liquidityPool,
         int24 tick,
         address initiator,
@@ -126,14 +123,11 @@ contract GetPositionState_RebalancerSpot_Fuzz_Test is RebalancerSpot_Fuzz_Test {
         // And: The initiator is initiated.
         vm.prank(initiator);
         tolerance = bound(tolerance, 0, MAX_TOLERANCE);
-        rebalancerSpot.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
-
-        // And: The minimum time interval to calculate TWAT should have passed.
-        vm.warp(block.timestamp + TwapLogic.TWAT_INTERVAL);
+        rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
 
         // When: Calling getPositionState().
-        RebalancerSpot.PositionState memory position_ =
-            rebalancerSpot.getPositionState(address(nonfungiblePositionManager), id, tick, tick, initiator);
+        RebalancerUniV3Slipstream.PositionState memory position_ =
+            rebalancer.getPositionState(address(nonfungiblePositionManager), id, tick, tick, initiator);
 
         // Then : It should return the correct values
         assertEq(position_.pool, address(poolUniswap));
@@ -153,18 +147,19 @@ contract GetPositionState_RebalancerSpot_Fuzz_Test is RebalancerSpot_Fuzz_Test {
         assertEq(position_.sqrtRatioLower, TickMath.getSqrtPriceAtTick(position_.tickLower));
         assertEq(position_.sqrtRatioUpper, TickMath.getSqrtPriceAtTick(position_.tickUpper));
         assertEq(position_.sqrtPriceX96, position.sqrtPriceX96);
-        uint256 twaSqrtPriceX96;
+        uint256 trustedSqrtPriceX96;
         {
-            int24 twat = TwapLogic._getTwat(position_.pool);
-            twaSqrtPriceX96 = TickMath.getSqrtPriceAtTick(twat);
+            uint256 price0 = FullMath.mulDiv(1e18, position.sqrtPriceX96 ** 2, PricingLogic.Q192);
+            uint256 price1 = 1e18;
+            trustedSqrtPriceX96 = PricingLogic._getSqrtPriceX96(price0, price1);
         }
-        (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,,) = rebalancerSpot.initiatorInfo(initiator);
-        assertEq(position_.lowerBoundSqrtPriceX96, twaSqrtPriceX96 * lowerSqrtPriceDeviation / 1e18);
-        assertEq(position_.upperBoundSqrtPriceX96, twaSqrtPriceX96 * upperSqrtPriceDeviation / 1e18);
+        (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,,) = rebalancer.initiatorInfo(initiator);
+        assertEq(position_.lowerBoundSqrtPriceX96, trustedSqrtPriceX96 * lowerSqrtPriceDeviation / 1e18);
+        assertEq(position_.upperBoundSqrtPriceX96, trustedSqrtPriceX96 * upperSqrtPriceDeviation / 1e18);
     }
 
     function testFuzz_Success_getPositionState_UniswapV3_NewTickRange(
-        RebalancerSpot.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         uint128 liquidityPool,
         int24 tickLower,
         int24 tickUpper,
@@ -179,7 +174,7 @@ contract GetPositionState_RebalancerSpot_Fuzz_Test is RebalancerSpot_Fuzz_Test {
             uint128(bound(liquidityPool, UniswapHelpers.maxLiquidity(10) / 1000, UniswapHelpers.maxLiquidity(1) / 10));
 
         // Declare for stack to deep.
-        RebalancerSpot.PositionState memory position_;
+        RebalancerUniV3Slipstream.PositionState memory position_;
 
         // And: A pool with liquidity with tickSpacing 1 (fee = 100).
         uint24 POOL_FEE_ = 100;
@@ -209,15 +204,11 @@ contract GetPositionState_RebalancerSpot_Fuzz_Test is RebalancerSpot_Fuzz_Test {
             // And: The initiator is initiated.
             vm.prank(initiator);
             tolerance = bound(tolerance, 0, MAX_TOLERANCE);
-            rebalancerSpot.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
-
-            // And: The minimum time interval to calculate TWAT should have passed.
-            vm.warp(block.timestamp + TwapLogic.TWAT_INTERVAL);
+            rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
 
             // When: Calling getPositionState().
-            position_ = rebalancerSpot.getPositionState(
-                address(nonfungiblePositionManager), id, tickLower, tickUpper, initiator
-            );
+            position_ =
+                rebalancer.getPositionState(address(nonfungiblePositionManager), id, tickLower, tickUpper, initiator);
         }
 
         // Then : It should return the correct values
@@ -232,19 +223,20 @@ contract GetPositionState_RebalancerSpot_Fuzz_Test is RebalancerSpot_Fuzz_Test {
         assertEq(position_.sqrtRatioLower, TickMath.getSqrtPriceAtTick(position_.tickLower));
         assertEq(position_.sqrtRatioUpper, TickMath.getSqrtPriceAtTick(position_.tickUpper));
         assertEq(position_.sqrtPriceX96, position.sqrtPriceX96);
-        uint256 twaSqrtPriceX96;
+        uint256 trustedSqrtPriceX96;
         {
-            int24 twat = TwapLogic._getTwat(position_.pool);
-            twaSqrtPriceX96 = TickMath.getSqrtPriceAtTick(twat);
+            uint256 price0 = FullMath.mulDiv(1e18, position.sqrtPriceX96 ** 2, PricingLogic.Q192);
+            uint256 price1 = 1e18;
+            trustedSqrtPriceX96 = PricingLogic._getSqrtPriceX96(price0, price1);
         }
-        (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,,) = rebalancerSpot.initiatorInfo(initiator);
-        assertEq(position_.lowerBoundSqrtPriceX96, twaSqrtPriceX96 * lowerSqrtPriceDeviation / 1e18);
-        assertEq(position_.upperBoundSqrtPriceX96, twaSqrtPriceX96 * upperSqrtPriceDeviation / 1e18);
+        (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,,) = rebalancer.initiatorInfo(initiator);
+        assertEq(position_.lowerBoundSqrtPriceX96, trustedSqrtPriceX96 * lowerSqrtPriceDeviation / 1e18);
+        assertEq(position_.upperBoundSqrtPriceX96, trustedSqrtPriceX96 * upperSqrtPriceDeviation / 1e18);
     }
 
     function testFuzz_Success_getPositionState_Slipstream(
         address positionManager,
-        RebalancerSpot.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         uint128 liquidityPool,
         int24 tickLower,
         int24 tickUpper,
@@ -262,13 +254,12 @@ contract GetPositionState_RebalancerSpot_Fuzz_Test is RebalancerSpot_Fuzz_Test {
             uint128(bound(liquidityPool, UniswapHelpers.maxLiquidity(10) / 1000, UniswapHelpers.maxLiquidity(1) / 10));
 
         // Declare for stack to deep.
-        RebalancerSpot.PositionState memory position_;
+        RebalancerUniV3Slipstream.PositionState memory position_;
 
         // And: A pool with liquidity with tickSpacing 1 (fee = 100).
         int24 TICK_SPACING_ = 1;
         deployAndInitSlipstream(uint160(position.sqrtPriceX96), liquidityPool, TICK_SPACING_);
         uint24 poolFee = poolCl.fee();
-
         {
             require(poolFee == 100);
 
@@ -294,13 +285,10 @@ contract GetPositionState_RebalancerSpot_Fuzz_Test is RebalancerSpot_Fuzz_Test {
             // And: The initiator is initiated.
             vm.prank(initiator);
             tolerance = bound(tolerance, 0, MAX_TOLERANCE);
-            rebalancerSpot.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
-
-            // And: The minimum time interval to calculate TWAT should have passed.
-            vm.warp(block.timestamp + TwapLogic.TWAT_INTERVAL);
+            rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
 
             // When: Calling getPositionState().
-            position_ = rebalancerSpot.getPositionState(positionManager, id, tickLower, tickUpper, initiator);
+            position_ = rebalancer.getPositionState(positionManager, id, tickLower, tickUpper, initiator);
         }
 
         // Then : It should return the correct values
@@ -315,13 +303,14 @@ contract GetPositionState_RebalancerSpot_Fuzz_Test is RebalancerSpot_Fuzz_Test {
         assertEq(position_.sqrtRatioLower, TickMath.getSqrtPriceAtTick(position_.tickLower));
         assertEq(position_.sqrtRatioUpper, TickMath.getSqrtPriceAtTick(position_.tickUpper));
         assertEq(position_.sqrtPriceX96, position.sqrtPriceX96);
-        uint256 twaSqrtPriceX96;
+        uint256 trustedSqrtPriceX96;
         {
-            int24 twat = TwapLogic._getTwat(position_.pool);
-            twaSqrtPriceX96 = TickMath.getSqrtPriceAtTick(twat);
+            uint256 price0 = FullMath.mulDiv(1e18, position.sqrtPriceX96 ** 2, PricingLogic.Q192);
+            uint256 price1 = 1e18;
+            trustedSqrtPriceX96 = PricingLogic._getSqrtPriceX96(price0, price1);
         }
-        (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,,) = rebalancerSpot.initiatorInfo(initiator);
-        assertEq(position_.lowerBoundSqrtPriceX96, twaSqrtPriceX96 * lowerSqrtPriceDeviation / 1e18);
-        assertEq(position_.upperBoundSqrtPriceX96, twaSqrtPriceX96 * upperSqrtPriceDeviation / 1e18);
+        (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,,) = rebalancer.initiatorInfo(initiator);
+        assertEq(position_.lowerBoundSqrtPriceX96, trustedSqrtPriceX96 * lowerSqrtPriceDeviation / 1e18);
+        assertEq(position_.upperBoundSqrtPriceX96, trustedSqrtPriceX96 * upperSqrtPriceDeviation / 1e18);
     }
 }

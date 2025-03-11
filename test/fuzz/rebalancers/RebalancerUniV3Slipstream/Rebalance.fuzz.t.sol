@@ -10,19 +10,19 @@ import { IQuoterV2 } from
     "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/IQuoterV2.sol";
 import { ISwapRouter02 } from
     "../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/interfaces/ISwapRouter02.sol";
-import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/uniswap-v3/LiquidityAmounts.sol";
-import { PricingLogic } from "../../../../src/rebalancers/libraries/PricingLogic.sol";
+import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/cl-math/LiquidityAmounts.sol";
+import { PricingLogic } from "../../../../src/rebalancers/libraries/cl-math/PricingLogic.sol";
 import { RebalanceOptimizationMath } from "../../../../src/rebalancers/libraries/RebalanceOptimizationMath.sol";
-import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
+import { RebalancerUniV3Slipstream } from "../../../../src/rebalancers/RebalancerUniV3Slipstream.sol";
 import { RouterMock } from "../../../utils/mocks/RouterMock.sol";
 import { SwapMath } from "../../../utils/uniswap-v3/SwapMath.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
-import { Rebalancer_Fuzz_Test } from "./_Rebalancer.fuzz.t.sol";
+import { RebalancerUniV3Slipstream_Fuzz_Test } from "./_RebalancerUniV3Slipstream.fuzz.t.sol";
 
 /**
- * @notice Fuzz tests for the function "rebalance" of contract "Rebalancer".
+ * @notice Fuzz tests for the function "rebalance" of contract "RebalancerUniV3Slipstream".
  */
-contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
+contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstream_Fuzz_Test {
     using FixedPointMathLib for uint256;
 
     /* ///////////////////////////////////////////////////////////////
@@ -30,7 +30,7 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public override {
-        Rebalancer_Fuzz_Test.setUp();
+        RebalancerUniV3Slipstream_Fuzz_Test.setUp();
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -139,7 +139,7 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         uint256 tokenId,
         int24 lpLowerTick,
         int24 lpUpperTick,
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         address initiator
     )
         public
@@ -188,7 +188,7 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
 
         // When : calling rebalance
         // Then : it should revert
-        vm.expectRevert(Rebalancer.Reentered.selector);
+        vm.expectRevert(RebalancerUniV3Slipstream.Reentered.selector);
         rebalancer.rebalance(account_, positionManager, tokenId, tickLower, tickUpper, "");
     }
 
@@ -201,7 +201,7 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         // Given : Owner of the account has not set an initiator yet
         // When : calling rebalance
         // Then : it should revert
-        vm.expectRevert(Rebalancer.InitiatorNotValid.selector);
+        vm.expectRevert(RebalancerUniV3Slipstream.InitiatorNotValid.selector);
         rebalancer.rebalance(address(account), positionManager, tokenId, tickLower, tickUpper, "");
     }
 
@@ -245,7 +245,9 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         // When : calling rebalance()
         vm.prank(initVars.initiator);
         vm.expectEmit();
-        emit Rebalancer.Rebalance(address(account), address(nonfungiblePositionManager), tokenId, tokenId + 1);
+        emit RebalancerUniV3Slipstream.Rebalance(
+            address(account), address(nonfungiblePositionManager), tokenId, tokenId + 1
+        );
         rebalancer.rebalance(address(account), address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, "");
 
         // Then : It should return the correct values
@@ -314,7 +316,7 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
 
         uint256 expectedFee;
         {
-            Rebalancer.PositionState memory position_ = rebalancer.getPositionState(
+            RebalancerUniV3Slipstream.PositionState memory position_ = rebalancer.getPositionState(
                 address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, initVars.initiator
             );
             bool zeroToOne;
@@ -377,7 +379,7 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
 
         uint256 expectedFee;
         {
-            Rebalancer.PositionState memory position_ = rebalancer.getPositionState(
+            RebalancerUniV3Slipstream.PositionState memory position_ = rebalancer.getPositionState(
                 address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, initVars.initiator
             );
             bool zeroToOne;
@@ -588,7 +590,7 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         uint256 amount1;
         uint160 sqrtPrice;
         {
-            Rebalancer.PositionState memory position_ = rebalancer.getPositionState(
+            RebalancerUniV3Slipstream.PositionState memory position_ = rebalancer.getPositionState(
                 address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, initVars.initiator
             );
 
@@ -715,7 +717,7 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         uint160 sqrtPrice;
         {
             // Assume that liquidity will be bigger than 0
-            Rebalancer.PositionState memory position_ = rebalancer.getPositionState(
+            RebalancerUniV3Slipstream.PositionState memory position_ = rebalancer.getPositionState(
                 address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, initVars.initiator
             );
 
@@ -836,7 +838,7 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         uint256 amountIn;
         uint256 amountOut;
         {
-            Rebalancer.PositionState memory position_ = rebalancer.getPositionState(
+            RebalancerUniV3Slipstream.PositionState memory position_ = rebalancer.getPositionState(
                 address(nonfungiblePositionManager),
                 tokenId,
                 lpVarsStack.tickLower,
@@ -964,7 +966,7 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
             // Avoid stack too deep
             address initiatorStack = initVars.initiator;
             // Assume that liquidity will be bigger than 0
-            Rebalancer.PositionState memory position_ = rebalancer.getPositionState(
+            RebalancerUniV3Slipstream.PositionState memory position_ = rebalancer.getPositionState(
                 address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, initiatorStack
             );
 

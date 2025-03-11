@@ -4,7 +4,7 @@
  */
 pragma solidity ^0.8.22;
 
-import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
+import { RebalancerUniV3Slipstream } from "../../../../src/rebalancers/RebalancerUniV3Slipstream.sol";
 import { SwapLogic_Fuzz_Test } from "./_SwapLogic.fuzz.t.sol";
 import { SqrtPriceMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/SqrtPriceMath.sol";
 import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
@@ -34,7 +34,7 @@ contract SwapViaPool_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Success_swapViaPool_oneToZero_UniswapV3(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         uint128 balance0,
         uint128 balance1,
         uint64 amountOut
@@ -72,7 +72,7 @@ contract SwapViaPool_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
             uint160(bound(position.lowerBoundSqrtPriceX96, BOUND_SQRT_PRICE_LOWER, sqrtPriceNew - 10));
 
         // When: Calling swapViaPool.
-        (uint256 balance0_, uint256 balance1_, Rebalancer.PositionState memory position_) =
+        (uint256 balance0_, uint256 balance1_, RebalancerUniV3Slipstream.PositionState memory position_) =
             swapLogic.swapViaPool(address(nonfungiblePositionManager), position, true, amountOut, balance0, balance1);
 
         // Then: The correct balances are returned.
@@ -85,7 +85,7 @@ contract SwapViaPool_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
 
     function testFuzz_Success_swapViaPool_ZeroToOne_UniswapV3(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         uint128 balance0,
         uint128 balance1,
         uint64 amountOut
@@ -123,7 +123,7 @@ contract SwapViaPool_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
             uint160(bound(position.upperBoundSqrtPriceX96, sqrtPriceNew + 10, BOUND_SQRT_PRICE_UPPER));
 
         // When: Calling swapViaPool.
-        (uint256 balance0_, uint256 balance1_, Rebalancer.PositionState memory position_) =
+        (uint256 balance0_, uint256 balance1_, RebalancerUniV3Slipstream.PositionState memory position_) =
             swapLogic.swapViaPool(address(nonfungiblePositionManager), position, false, amountOut, balance0, balance1);
 
         // Then: The correct balances are returned.
@@ -137,7 +137,7 @@ contract SwapViaPool_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
     function testFuzz_Success_swapViaPool_oneToZero_Slipstream(
         address positionManager,
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         uint128 balance0,
         uint128 balance1,
         uint64 amountOut
@@ -178,7 +178,7 @@ contract SwapViaPool_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
             uint160(bound(position.lowerBoundSqrtPriceX96, BOUND_SQRT_PRICE_LOWER, sqrtPriceNew - 10));
 
         // When: Calling swapViaPool.
-        (uint256 balance0_, uint256 balance1_, Rebalancer.PositionState memory position_) =
+        (uint256 balance0_, uint256 balance1_, RebalancerUniV3Slipstream.PositionState memory position_) =
             swapLogic.swapViaPool(positionManager, position, true, amountOut, balance0, balance1);
 
         // Then: The correct balances are returned.
@@ -192,7 +192,7 @@ contract SwapViaPool_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
     function testFuzz_Success_swapViaPool_ZeroToOne_Slipstream(
         address positionManager,
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         uint128 balance0,
         uint128 balance1,
         uint64 amountOut
@@ -233,7 +233,7 @@ contract SwapViaPool_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
             uint160(bound(position.upperBoundSqrtPriceX96, sqrtPriceNew + 10, BOUND_SQRT_PRICE_UPPER));
 
         // When: Calling swapViaPool.
-        (uint256 balance0_, uint256 balance1_, Rebalancer.PositionState memory position_) =
+        (uint256 balance0_, uint256 balance1_, RebalancerUniV3Slipstream.PositionState memory position_) =
             swapLogic.swapViaPool(positionManager, position, false, amountOut, balance0, balance1);
 
         // Then: The correct balances are returned.
@@ -246,7 +246,7 @@ contract SwapViaPool_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
 
     function testFuzz_Success_swapViaPool_oneToZero_Unbalanced(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         uint128 balance0,
         uint128 balance1,
         uint64 amountOut
@@ -285,7 +285,7 @@ contract SwapViaPool_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
             uint160(bound(position.lowerBoundSqrtPriceX96, sqrtPriceNew + 1, uint160(position.sqrtPriceX96) - 1));
 
         // When: Calling swapViaPool.
-        (,, Rebalancer.PositionState memory position_) =
+        (,, RebalancerUniV3Slipstream.PositionState memory position_) =
             swapLogic.swapViaPool(address(nonfungiblePositionManager), position, true, amountOut, balance0, balance1);
 
         // Then: The sqrtPriceX96 equals the lower bound.
@@ -294,7 +294,7 @@ contract SwapViaPool_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
 
     function testFuzz_Success_swapViaPool_ZeroToOne_Unbalanced(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         uint128 balance0,
         uint128 balance1,
         uint64 amountOut
@@ -333,7 +333,7 @@ contract SwapViaPool_SwapLogic_Fuzz_Test is SwapLogic_Fuzz_Test {
             uint160(bound(position.upperBoundSqrtPriceX96, uint160(position.sqrtPriceX96) + 1, sqrtPriceNew - 1));
 
         // When: Calling swapViaPool.
-        (,, Rebalancer.PositionState memory position_) =
+        (,, RebalancerUniV3Slipstream.PositionState memory position_) =
             swapLogic.swapViaPool(address(nonfungiblePositionManager), position, false, amountOut, balance0, balance1);
 
         // Then: The sqrtPriceX96 equals the upper bound.

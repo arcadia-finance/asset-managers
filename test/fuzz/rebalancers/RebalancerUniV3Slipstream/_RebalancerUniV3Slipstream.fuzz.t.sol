@@ -18,25 +18,25 @@ import { IUniswapV3PoolExtension } from
 import { IUniswapV3PositionManager } from "../../../../src/rebalancers/interfaces/IUniswapV3PositionManager.sol";
 import { ISwapRouter02 } from
     "../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/interfaces/ISwapRouter02.sol";
-import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/uniswap-v3/LiquidityAmounts.sol";
+import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/cl-math/LiquidityAmounts.sol";
 import { QuoterV2Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/QuoterV2Fixture.f.sol";
+import { RebalancerUniV3SlipstreamExtension } from "../../../utils/extensions/RebalancerUniV3SlipstreamExtension.sol";
 import { RouterMock } from "../../../utils/mocks/RouterMock.sol";
 import { SwapMath } from "../../../utils/uniswap-v3/SwapMath.sol";
 import { SwapRouter02Fixture } from
     "../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/SwapRouter02Fixture.f.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
-import { UniswapV3Logic } from "../../../../src/rebalancers/libraries/UniswapV3Logic.sol";
+import { UniswapV3Logic } from "../../../../src/rebalancers/libraries/uniswap-v3/UniswapV3Logic.sol";
 import { UniswapV3Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";
 import { UniswapV3AMFixture } from
     "../../../../lib/accounts-v2/test/utils/fixtures/arcadia-accounts/UniswapV3AMFixture.f.sol";
 import { UniswapV3AMExtension } from "../../../../lib/accounts-v2/test/utils/extensions/UniswapV3AMExtension.sol";
-import { RebalancerExtension } from "../../../utils/extensions/RebalancerExtension.sol";
 import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
 
 /**
  * @notice Common logic needed by all "Rebalancer" fuzz tests.
  */
-abstract contract Rebalancer_Fuzz_Test is
+abstract contract RebalancerUniV3Slipstream_Fuzz_Test is
     Fuzz_Test,
     UniswapV3Fixture,
     UniswapV3AMFixture,
@@ -110,7 +110,7 @@ abstract contract Rebalancer_Fuzz_Test is
                             TEST CONTRACTS
     /////////////////////////////////////////////////////////////// */
 
-    RebalancerExtension internal rebalancer;
+    RebalancerUniV3SlipstreamExtension internal rebalancer;
     RouterMock internal routerMock;
 
     /* ///////////////////////////////////////////////////////////////
@@ -171,7 +171,7 @@ abstract contract Rebalancer_Fuzz_Test is
 
     function deployRebalancer(uint256 maxTolerance, uint256 maxInitiatorFee) public {
         vm.prank(users.owner);
-        rebalancer = new RebalancerExtension(maxTolerance, maxInitiatorFee, MIN_LIQUIDITY_RATIO);
+        rebalancer = new RebalancerUniV3SlipstreamExtension(maxTolerance, maxInitiatorFee, MIN_LIQUIDITY_RATIO);
 
         // Get the bytecode of the UniswapV3PoolExtension.
         bytes memory args = abi.encode();

@@ -4,10 +4,10 @@
  */
 pragma solidity ^0.8.22;
 
-import { IUniswapV3Pool } from "../interfaces/IUniswapV3Pool.sol";
-import { IUniswapV3PositionManager } from "../interfaces/IUniswapV3PositionManager.sol";
-import { PoolAddress } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/PoolAddress.sol";
-import { Rebalancer } from "../Rebalancer.sol";
+import { IUniswapV3Pool } from "../../interfaces/IUniswapV3Pool.sol";
+import { IUniswapV3PositionManager } from "../../interfaces/IUniswapV3PositionManager.sol";
+import { PoolAddress } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/PoolAddress.sol";
+import { RebalancerUniV3Slipstream } from "../../RebalancerUniV3Slipstream.sol";
 
 library UniswapV3Logic {
     // The Uniswap V3 Factory contract.
@@ -36,7 +36,7 @@ library UniswapV3Logic {
      * @return tickCurrent The current tick of the pool.
      * @return tickRange The tick range of the position.
      */
-    function _getPositionState(Rebalancer.PositionState memory position, uint256 id, bool getTickSpacing)
+    function _getPositionState(RebalancerUniV3Slipstream.PositionState memory position, uint256 id, bool getTickSpacing)
         internal
         view
         returns (int24 tickCurrent, int24 tickRange)
