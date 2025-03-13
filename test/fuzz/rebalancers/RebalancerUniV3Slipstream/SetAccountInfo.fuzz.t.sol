@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.26;
 
 import { RebalancerUniV3Slipstream } from "../../../../src/rebalancers/RebalancerUniV3Slipstream.sol";
 import { RebalancerUniV3Slipstream_Fuzz_Test } from "./_RebalancerUniV3Slipstream.fuzz.t.sol";
@@ -31,7 +31,6 @@ contract SetAccountInfo_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Sl
     ) public {
         // Given: A rebalance is ongoing.
         vm.assume(account_ != address(0));
-        rebalancer.setAccount(account_);
 
         // When: calling rebalance
         // Then: it should revert

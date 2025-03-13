@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.26;
 
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { RebalancerUniV3Slipstream } from "../../../../src/rebalancers/RebalancerUniV3Slipstream.sol";
@@ -32,7 +32,6 @@ contract SetInitiatorInfo_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3
     ) public {
         // Given: A rebalance is ongoing.
         vm.assume(account_ != address(0));
-        rebalancer.setAccount(account_);
 
         // When: calling rebalance
         // Then: it should revert

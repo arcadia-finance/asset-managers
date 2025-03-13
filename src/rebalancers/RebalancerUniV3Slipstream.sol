@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.26;
 
 import { ActionData, IActionBase } from "../../lib/accounts-v2/src/interfaces/IActionBase.sol";
 import { ArcadiaLogic } from "./libraries/ArcadiaLogic.sol";
@@ -45,6 +45,12 @@ contract RebalancerUniV3Slipstream is IActionBase {
                                 CONSTANTS
     ////////////////////////////////////////////////////////////// */
 
+    // keccak256("RebalancerUniV3SlipstreamAddress")
+    bytes32 internal constant ACCOUNT_SLOT = 0xcd2c25b35d5753cf28ebb8e4e9c4836ff8a159efc9d9bdd9baf86b4d298f71dd;
+    // keccak256("RebalancerUniV3SlipstreamTrustedSqrtPriceX96")
+    bytes32 internal constant TRUSTED_SQRT_PRICE_X96_SLOT =
+        0xc1217b1ba5774770322d997c6ef127c9f706ff8010e8b53556df548eb192e25b;
+
     // The maximum lower deviation of the pools actual sqrtPriceX96,
     // The maximum deviation of the actual pool price, in % with 18 decimals precision.
     uint256 public immutable MAX_TOLERANCE;
@@ -61,9 +67,6 @@ contract RebalancerUniV3Slipstream is IActionBase {
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
     ////////////////////////////////////////////////////////////// */
-
-    // The Account to compound the fees for, used as transient storage.
-    address internal account;
 
     // A mapping from initiator to rebalancing fee.
     mapping(address initiator => InitiatorInfo) public initiatorInfo;
@@ -145,38 +148,41 @@ contract RebalancerUniV3Slipstream is IActionBase {
 
     /**
      * @notice Rebalances a UniswapV3 or Slipstream Liquidity Position, owned by an Arcadia Account.
-     * @param account_ The Arcadia Account owning the position.
+     * @param account The Arcadia Account owning the position.
      * @param positionManager The contract address of the Position Manager.
      * @param oldId The oldId of the Liquidity Position to rebalance.
+     * @param trustedSqrtPriceX96 The pool sqrtPriceX96 provided at the time of calling rebalance().
      * @param tickLower The new lower tick to rebalance to.
      * @param tickUpper The new upper tick to rebalance to.
      * @dev When tickLower and tickUpper are equal, ticks will be updated with same tick-spacing as current position
      * and with a balanced, 50/50 ratio around current tick.
      */
     function rebalance(
-        address account_,
+        address account,
         address positionManager,
         uint256 oldId,
+        uint256 trustedSqrtPriceX96,
         int24 tickLower,
         int24 tickUpper,
         bytes calldata swapData
     ) external {
         // If the initiator is set, account_ is an actual Arcadia Account.
+        // TODO: add reentrancy check.
         if (account != address(0)) revert Reentered();
-        if (accountToInitiator[account_] != msg.sender) revert InitiatorNotValid();
+        if (accountToInitiator[account] != msg.sender) revert InitiatorNotValid();
 
         // Store Account address, used to validate the caller of the executeAction() callback and serves as a reentrancy guard.
-        account = account_;
+        assembly {
+            tstore(ACCOUNT_SLOT, account)
+            tstore(TRUSTED_SQRT_PRICE_X96_SLOT, trustedSqrtPriceX96)
+        }
 
         // Encode data for the flash-action.
         bytes memory actionData =
             ArcadiaLogic._encodeAction(positionManager, oldId, msg.sender, tickLower, tickUpper, swapData);
 
         // Call flashAction() with this contract as actionTarget.
-        IAccount(account_).flashAction(address(this), actionData);
-
-        // Reset account.
-        account = address(0);
+        IAccount(account).flashAction(address(this), actionData);
     }
 
     /**
@@ -188,6 +194,11 @@ contract RebalancerUniV3Slipstream is IActionBase {
      */
     function executeAction(bytes calldata rebalanceData) external override returns (ActionData memory depositData) {
         // Caller should be the Account, provided as input in rebalance().
+        address account;
+        assembly {
+            account := tload(ACCOUNT_SLOT)
+        }
+
         if (msg.sender != account) revert OnlyAccount();
 
         // Cache the strategy hook.
@@ -402,16 +413,14 @@ contract RebalancerUniV3Slipstream is IActionBase {
         position.sqrtRatioLower = TickMath.getSqrtPriceAtTick(position.tickLower);
         position.sqrtRatioUpper = TickMath.getSqrtPriceAtTick(position.tickUpper);
 
-        // Get trusted USD prices for 1e18 gwei of token0 and token1.
-        (uint256 usdPriceToken0, uint256 usdPriceToken1) =
-            ArcadiaLogic._getValuesInUsd(position.token0, position.token1);
-
-        // Calculate the square root of the relative rate sqrt(token1/token0) from the trusted USD price of both tokens.
-        uint256 trustedSqrtPriceX96 = PricingLogic._getSqrtPriceX96(usdPriceToken0, usdPriceToken1);
-
         // Calculate the upper and lower bounds of sqrtPriceX96 for the Pool to be balanced.
         // We do not handle the edge cases where exceed MIN_SQRT_RATIO or MAX_SQRT_RATIO.
         // This will result in a revert during swapViaPool, if ever needed a different rebalancer has to be deployed.
+        uint256 trustedSqrtPriceX96;
+        assembly {
+            trustedSqrtPriceX96 := tload(TRUSTED_SQRT_PRICE_X96_SLOT)
+        }
+
         position.lowerBoundSqrtPriceX96 =
             trustedSqrtPriceX96.mulDivDown(initiatorInfo[initiator].lowerSqrtPriceDeviation, 1e18);
         position.upperBoundSqrtPriceX96 =
@@ -423,7 +432,7 @@ contract RebalancerUniV3Slipstream is IActionBase {
     /////////////////////////////////////////////////////////////// */
     /**
      * @notice Sets the required information for an Account.
-     * @param account_ The contract address of the Arcadia Account to set the information for.
+     * @param account The contract address of the Arcadia Account to set the information for.
      * @param initiator The address of the initiator.
      * @param hook The contract address of the hook.
      * @dev An initiator will be permissioned to rebalance any
@@ -432,15 +441,15 @@ contract RebalancerUniV3Slipstream is IActionBase {
      * @dev When an Account is transferred to a new owner,
      * the asset manager itself (this contract) and hence its initiator and hook will no longer be allowed by the Account.
      */
-    function setAccountInfo(address account_, address initiator, address hook) external {
+    function setAccountInfo(address account, address initiator, address hook) external {
         if (account != address(0)) revert Reentered();
-        if (!ArcadiaLogic.FACTORY.isAccount(account_)) revert NotAnAccount();
-        if (msg.sender != IAccount(account_).owner()) revert OnlyAccountOwner();
+        if (!ArcadiaLogic.FACTORY.isAccount(account)) revert NotAnAccount();
+        if (msg.sender != IAccount(account).owner()) revert OnlyAccountOwner();
 
-        accountToInitiator[account_] = initiator;
-        strategyHook[account_] = hook;
+        accountToInitiator[account] = initiator;
+        strategyHook[account] = hook;
 
-        emit AccountInfoSet(account_, initiator, hook);
+        emit AccountInfoSet(account, initiator, hook);
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -460,7 +469,7 @@ contract RebalancerUniV3Slipstream is IActionBase {
      * allowed deviation of the sqrtPriceX96 for the lower and upper boundaries.
      */
     function setInitiatorInfo(uint256 tolerance, uint256 fee, uint256 minLiquidityRatio) external {
-        if (account != address(0)) revert Reentered();
+        // TODO: make nonReentrant.
 
         // Cache struct
         InitiatorInfo memory initiatorInfo_ = initiatorInfo[msg.sender];

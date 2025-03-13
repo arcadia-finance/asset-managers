@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.26;
 
 import { ActionData } from "../../../../lib/accounts-v2/src/interfaces/IActionBase.sol";
 import { ArcadiaLogic } from "../../../../src/rebalancers/libraries/ArcadiaLogic.sol";
@@ -41,18 +41,21 @@ contract ExecuteAction_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Sli
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Revert_executeAction_NonAccount(bytes calldata rebalanceData, address account_, address caller)
+    function testFuzz_Revert_executeAction_NonAccount(bytes calldata rebalanceData, address account_, address caller_)
         public
     {
         // Given: Caller is not the account.
-        vm.assume(caller != account_);
+        vm.assume(caller_ != account_);
 
-        // And: account is set.
-        rebalancer.setAccount(account_);
+        // And: valid transient storage.
+        rebalancer.setTransientStorage(account_, 0);
+
         // When: Calling executeAction().
         // Then: it should revert.
+        vm.startPrank(caller_);
         vm.expectRevert(RebalancerUniV3Slipstream.OnlyAccount.selector);
         rebalancer.executeAction(rebalanceData);
+        vm.stopPrank();
     }
 
     function testFuzz_Revert_executeAction_UnbalancedPoolBeforeSwap(
@@ -66,6 +69,9 @@ contract ExecuteAction_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Sli
     ) public {
         // Given: rebalancer is not the account.
         vm.assume(account_ != address(rebalancer));
+
+        // And: set valid transient storage.
+        rebalancer.setTransientStorage(account_, 0);
 
         // And: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
@@ -112,9 +118,6 @@ contract ExecuteAction_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Sli
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, TickMath.MIN_SQRT_PRICE, lowerBoundSqrtPriceX96);
         poolUniswap.setSqrtPriceX96(uint160(position.sqrtPriceX96));
 
-        // And: caller is the account.
-        rebalancer.setAccount(account_);
-
         // When: Calling executeAction().
         // Then: it should revert.
         bytes memory swapData = "";
@@ -136,6 +139,9 @@ contract ExecuteAction_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Sli
     ) public {
         // Given: rebalancer is not the account.
         vm.assume(account_ != address(rebalancer));
+
+        // And: set valid transient storage.
+        rebalancer.setTransientStorage(account_, 0);
 
         // And: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
@@ -185,9 +191,6 @@ contract ExecuteAction_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Sli
             lowerBoundSqrtPriceX96 = trustedSqrtPriceX96 * lowerSqrtPriceDeviation / 1e18;
         }
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, TickMath.MIN_SQRT_PRICE, lowerBoundSqrtPriceX96);
-
-        // And: Caller is the account.
-        rebalancer.setAccount(account_);
 
         // And: Pool is unbalanced after swap (done via router mock).
         bytes memory swapData;
@@ -260,9 +263,6 @@ contract ExecuteAction_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Sli
         vm.prank(initiator);
         rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
 
-        // And: Caller is the account.
-        rebalancer.setAccount(account_);
-
         // And: Swap is not optimal resulting in little liquidity.
         bytes memory swapData;
         {
@@ -271,6 +271,9 @@ contract ExecuteAction_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Sli
                 abi.encodeWithSelector(RouterMock.swap.selector, address(token1), address(token0), 0, 0);
             swapData = abi.encode(address(router), 0, routerData);
         }
+
+        // And: set valid transient storage.
+        rebalancer.setTransientStorage(account_, position.sqrtPriceX96);
 
         // When: Calling executeAction().
         // Then: it should revert.
@@ -293,6 +296,11 @@ contract ExecuteAction_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Sli
     ) public {
         // Given: rebalancer is not the account.
         vm.assume(account_ != address(rebalancer));
+
+        // Given: valid transient storage.
+        assembly {
+            tstore(ACCOUNT_SLOT, account_)
+        }
 
         // And: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
@@ -336,9 +344,6 @@ contract ExecuteAction_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Sli
         vm.prank(initiator);
         rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
 
-        // And: Caller is the account.
-        rebalancer.setAccount(account_);
-
         ActionData memory depositData;
         {
             bytes memory rebalanceData;
@@ -361,6 +366,9 @@ contract ExecuteAction_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Sli
             // And: Hook is set.
             HookMock hook = new HookMock();
             rebalancer.setHook(account_, address(hook));
+
+            // And: set valid transient storage.
+            rebalancer.setTransientStorage(account_, position.sqrtPriceX96);
 
             // When: Calling executeAction().
             // Then: Hook should be called.
@@ -466,9 +474,6 @@ contract ExecuteAction_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Sli
         vm.prank(initiator);
         rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
 
-        // And: Caller is the account.
-        rebalancer.setAccount(account_);
-
         ActionData memory depositData;
         {
             // And: Swap is successful.
@@ -480,6 +485,9 @@ contract ExecuteAction_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Sli
                     abi.encodeWithSelector(RouterMock.swap.selector, address(token1), address(token0), 0, 0);
                 swapData = abi.encode(address(router), 0, routerData);
             }
+
+            // And: set valid transient storage.
+            rebalancer.setTransientStorage(account_, position.sqrtPriceX96);
 
             // When: Calling executeAction().
             bytes memory rebalanceData =
@@ -575,9 +583,6 @@ contract ExecuteAction_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Sli
         vm.prank(initiator);
         rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
 
-        // And: Caller is the account.
-        rebalancer.setAccount(account_);
-
         ActionData memory depositData;
         {
             bytes memory rebalanceData;
@@ -596,6 +601,9 @@ contract ExecuteAction_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Sli
                     address(slipstreamPositionManager), id, initiator, tickLower, tickUpper, swapData
                 );
             }
+
+            // And: set valid transient storage.
+            rebalancer.setTransientStorage(account_, position.sqrtPriceX96);
 
             // When: Calling executeAction().
             vm.prank(account_);
@@ -699,9 +707,6 @@ contract ExecuteAction_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Sli
         vm.prank(initiator);
         rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
 
-        // And: Caller is the account.
-        rebalancer.setAccount(account_);
-
         ActionData memory depositData;
         {
             bytes memory rebalanceData;
@@ -719,6 +724,9 @@ contract ExecuteAction_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Sli
                 rebalanceData =
                     encodeRebalanceData(address(stakedSlipstreamAM), id, initiator, tickLower, tickUpper, swapData);
             }
+
+            // And: set valid transient storage.
+            rebalancer.setTransientStorage(account_, position.sqrtPriceX96);
 
             // When: Calling executeAction().
             vm.prank(account_);
@@ -828,9 +836,6 @@ contract ExecuteAction_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Sli
         vm.prank(initiator);
         rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
 
-        // And: Caller is the account.
-        rebalancer.setAccount(account_);
-
         ActionData memory depositData;
         {
             bytes memory rebalanceData;
@@ -848,6 +853,9 @@ contract ExecuteAction_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Sli
                 rebalanceData =
                     encodeRebalanceData(address(stakedSlipstreamAM), id, initiator, tickLower, tickUpper, swapData);
             }
+
+            // And: set valid transient storage.
+            rebalancer.setTransientStorage(account_, position.sqrtPriceX96);
 
             // When: Calling executeAction().
             vm.prank(account_);

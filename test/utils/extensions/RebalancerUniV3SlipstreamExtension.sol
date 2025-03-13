@@ -95,11 +95,14 @@ contract RebalancerUniV3SlipstreamExtension is RebalancerUniV3Slipstream {
         actionData = ArcadiaLogic._encodeAction(positionManager, id, initiator, tickLower, tickUpper, swapData);
     }
 
-    function setAccount(address account_) public {
-        account = account_;
+    function setHook(address account, address hook) public {
+        strategyHook[account] = hook;
     }
 
-    function setHook(address account_, address hook) public {
-        strategyHook[account_] = hook;
+    function setTransientStorage(address account, uint256 sqrtPriceX96) public {
+        assembly {
+            tstore(ACCOUNT_SLOT, account)
+            tstore(TRUSTED_SQRT_PRICE_X96_SLOT, sqrtPriceX96)
+        }
     }
 }
