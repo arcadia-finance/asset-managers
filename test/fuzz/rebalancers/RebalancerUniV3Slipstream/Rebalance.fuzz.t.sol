@@ -175,28 +175,12 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Revert_rebalancePosition_Reentered(
-        address account_,
-        address positionManager,
-        uint256 tokenId,
-        int24 tickLower,
-        int24 tickUpper,
-        uint160 trustedSqrtPriceX96
-    ) public {
-        vm.assume(account_ != address(0));
-
-        // When : calling rebalance
-        // Then : it should revert
-        vm.expectRevert(RebalancerUniV3Slipstream.Reentered.selector);
-        rebalancer.rebalance(account_, positionManager, tokenId, trustedSqrtPriceX96, tickLower, tickUpper, "");
-    }
-
     function testFuzz_Revert_rebalancePosition_InitiatorNotValid(
         uint256 tokenId,
         address positionManager,
         int24 tickLower,
         int24 tickUpper,
-        uint160 trustedSqrtPriceX96
+        uint256 trustedSqrtPriceX96
     ) public {
         // Given : Owner of the account has not set an initiator yet
         // When : calling rebalance

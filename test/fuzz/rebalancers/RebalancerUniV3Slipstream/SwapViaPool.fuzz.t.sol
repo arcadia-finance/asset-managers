@@ -15,7 +15,7 @@ import { UniswapV3Logic } from "../../../../src/rebalancers/libraries/uniswap-v3
 /**
  * @notice Fuzz tests for the function "swapViaPool" of contract "RebalancerUniV3Slipstream".
  */
-contract SwapViaPool_Rebalancer_Fuzz_Test is RebalancerUniV3Slipstream_Fuzz_Test {
+contract SwapViaPool_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstream_Fuzz_Test {
     using FixedPointMathLib for uint256;
     /* ///////////////////////////////////////////////////////////////
                               SETUP
@@ -28,7 +28,6 @@ contract SwapViaPool_Rebalancer_Fuzz_Test is RebalancerUniV3Slipstream_Fuzz_Test
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-
     function testFuzz_Success_swapViaPool_ZeroAmount(
         RebalancerUniV3Slipstream.PositionState memory position,
         bool zeroToOne

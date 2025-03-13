@@ -70,11 +70,11 @@ contract ExecuteAction_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Sli
         // Given: rebalancer is not the account.
         vm.assume(account_ != address(rebalancer));
 
-        // And: set valid transient storage.
-        rebalancer.setTransientStorage(account_, 0);
-
         // And: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
+
+        // And: set valid transient storage.
+        rebalancer.setTransientStorage(account_, position.sqrtPriceX96);
 
         // And: Pool has reasonable liquidity.
         liquidityPool =
@@ -140,11 +140,11 @@ contract ExecuteAction_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Sli
         // Given: rebalancer is not the account.
         vm.assume(account_ != address(rebalancer));
 
-        // And: set valid transient storage.
-        rebalancer.setTransientStorage(account_, 0);
-
         // And: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
+
+        // And: set valid transient storage.
+        rebalancer.setTransientStorage(account_, position.sqrtPriceX96);
 
         // And: Pool has reasonable liquidity.
         liquidityPool =

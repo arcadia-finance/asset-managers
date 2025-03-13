@@ -39,6 +39,9 @@ contract GetPositionState_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3
         // Given: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
 
+        // And: Valid transient storage.
+        rebalancer.setTransientStorage(address(0), position.sqrtPriceX96);
+
         // And: Pool has reasonable liquidity.
         liquidityPool =
             uint128(bound(liquidityPool, UniswapHelpers.maxLiquidity(10) / 1000, UniswapHelpers.maxLiquidity(1) / 10));
@@ -81,12 +84,9 @@ contract GetPositionState_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3
         assertEq(position_.sqrtRatioLower, TickMath.getSqrtPriceAtTick(position_.tickLower));
         assertEq(position_.sqrtRatioUpper, TickMath.getSqrtPriceAtTick(position_.tickUpper));
         assertEq(position_.sqrtPriceX96, position.sqrtPriceX96);
-        uint256 price0 = FullMath.mulDiv(1e18, position.sqrtPriceX96 ** 2, PricingLogic.Q192);
-        uint256 price1 = 1e18;
-        uint256 trustedSqrtPriceX96 = PricingLogic._getSqrtPriceX96(price0, price1);
         (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,,) = rebalancer.initiatorInfo(initiator);
-        assertEq(position_.lowerBoundSqrtPriceX96, trustedSqrtPriceX96 * lowerSqrtPriceDeviation / 1e18);
-        assertEq(position_.upperBoundSqrtPriceX96, trustedSqrtPriceX96 * upperSqrtPriceDeviation / 1e18);
+        assertEq(position_.lowerBoundSqrtPriceX96, position_.sqrtPriceX96 * lowerSqrtPriceDeviation / 1e18);
+        assertEq(position_.upperBoundSqrtPriceX96, position_.sqrtPriceX96 * upperSqrtPriceDeviation / 1e18);
     }
 
     function testFuzz_Success_getPositionState_UniswapV3_SameTickRange_MultipleTickSpacings(
@@ -98,6 +98,9 @@ contract GetPositionState_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3
     ) public {
         // Given: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
+
+        // And: Valid transient storage.
+        rebalancer.setTransientStorage(address(0), position.sqrtPriceX96);
 
         // And: Pool has reasonable liquidity.
         liquidityPool =
@@ -147,12 +150,7 @@ contract GetPositionState_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3
         assertEq(position_.sqrtRatioLower, TickMath.getSqrtPriceAtTick(position_.tickLower));
         assertEq(position_.sqrtRatioUpper, TickMath.getSqrtPriceAtTick(position_.tickUpper));
         assertEq(position_.sqrtPriceX96, position.sqrtPriceX96);
-        uint256 trustedSqrtPriceX96;
-        {
-            uint256 price0 = FullMath.mulDiv(1e18, position.sqrtPriceX96 ** 2, PricingLogic.Q192);
-            uint256 price1 = 1e18;
-            trustedSqrtPriceX96 = PricingLogic._getSqrtPriceX96(price0, price1);
-        }
+        uint256 trustedSqrtPriceX96 = position.sqrtPriceX96;
         (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,,) = rebalancer.initiatorInfo(initiator);
         assertEq(position_.lowerBoundSqrtPriceX96, trustedSqrtPriceX96 * lowerSqrtPriceDeviation / 1e18);
         assertEq(position_.upperBoundSqrtPriceX96, trustedSqrtPriceX96 * upperSqrtPriceDeviation / 1e18);
@@ -168,6 +166,9 @@ contract GetPositionState_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3
     ) public {
         // Given: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
+
+        // And: Valid transient storage.
+        rebalancer.setTransientStorage(address(0), position.sqrtPriceX96);
 
         // And: Pool has reasonable liquidity.
         liquidityPool =
@@ -223,12 +224,7 @@ contract GetPositionState_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3
         assertEq(position_.sqrtRatioLower, TickMath.getSqrtPriceAtTick(position_.tickLower));
         assertEq(position_.sqrtRatioUpper, TickMath.getSqrtPriceAtTick(position_.tickUpper));
         assertEq(position_.sqrtPriceX96, position.sqrtPriceX96);
-        uint256 trustedSqrtPriceX96;
-        {
-            uint256 price0 = FullMath.mulDiv(1e18, position.sqrtPriceX96 ** 2, PricingLogic.Q192);
-            uint256 price1 = 1e18;
-            trustedSqrtPriceX96 = PricingLogic._getSqrtPriceX96(price0, price1);
-        }
+        uint256 trustedSqrtPriceX96 = position.sqrtPriceX96;
         (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,,) = rebalancer.initiatorInfo(initiator);
         assertEq(position_.lowerBoundSqrtPriceX96, trustedSqrtPriceX96 * lowerSqrtPriceDeviation / 1e18);
         assertEq(position_.upperBoundSqrtPriceX96, trustedSqrtPriceX96 * upperSqrtPriceDeviation / 1e18);
@@ -248,6 +244,9 @@ contract GetPositionState_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3
 
         // Given: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
+
+        // And: Valid transient storage.
+        rebalancer.setTransientStorage(address(0), position.sqrtPriceX96);
 
         // And: Pool has reasonable liquidity.
         liquidityPool =
@@ -303,12 +302,7 @@ contract GetPositionState_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3
         assertEq(position_.sqrtRatioLower, TickMath.getSqrtPriceAtTick(position_.tickLower));
         assertEq(position_.sqrtRatioUpper, TickMath.getSqrtPriceAtTick(position_.tickUpper));
         assertEq(position_.sqrtPriceX96, position.sqrtPriceX96);
-        uint256 trustedSqrtPriceX96;
-        {
-            uint256 price0 = FullMath.mulDiv(1e18, position.sqrtPriceX96 ** 2, PricingLogic.Q192);
-            uint256 price1 = 1e18;
-            trustedSqrtPriceX96 = PricingLogic._getSqrtPriceX96(price0, price1);
-        }
+        uint256 trustedSqrtPriceX96 = position.sqrtPriceX96;
         (uint256 upperSqrtPriceDeviation, uint256 lowerSqrtPriceDeviation,,) = rebalancer.initiatorInfo(initiator);
         assertEq(position_.lowerBoundSqrtPriceX96, trustedSqrtPriceX96 * lowerSqrtPriceDeviation / 1e18);
         assertEq(position_.upperBoundSqrtPriceX96, trustedSqrtPriceX96 * upperSqrtPriceDeviation / 1e18);

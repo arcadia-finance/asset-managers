@@ -23,23 +23,6 @@ contract SetInitiatorInfo_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Revert_setInitiatorInfo_Reentered(
-        address initiator,
-        address account_,
-        uint256 tolerance,
-        uint256 fee,
-        uint256 minLiquidityRatio
-    ) public {
-        // Given: A rebalance is ongoing.
-        vm.assume(account_ != address(0));
-
-        // When: calling rebalance
-        // Then: it should revert
-        vm.prank(initiator);
-        vm.expectRevert(RebalancerUniV3Slipstream.Reentered.selector);
-        rebalancer.setInitiatorInfo(tolerance, fee, minLiquidityRatio);
-    }
-
     function testFuzz_Revert_setInitiatorInfo_NotInitialised_InvalidFee(
         address initiator,
         uint256 tolerance,

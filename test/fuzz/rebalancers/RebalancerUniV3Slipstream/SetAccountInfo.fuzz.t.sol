@@ -22,23 +22,6 @@ contract SetAccountInfo_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Sl
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Revert_setAccountInfo_Reentered(
-        address caller,
-        address account_,
-        address account__,
-        address initiator,
-        address hook
-    ) public {
-        // Given: A rebalance is ongoing.
-        vm.assume(account_ != address(0));
-
-        // When: calling rebalance
-        // Then: it should revert
-        vm.prank(caller);
-        vm.expectRevert(RebalancerUniV3Slipstream.Reentered.selector);
-        rebalancer.setAccountInfo(account__, initiator, hook);
-    }
-
     function testFuzz_Revert_setAccountInfo_NotAnAccount(
         address caller,
         address account_,

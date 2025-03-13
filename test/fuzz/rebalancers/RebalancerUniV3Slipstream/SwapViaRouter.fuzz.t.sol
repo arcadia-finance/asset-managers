@@ -28,7 +28,6 @@ contract SwapViaRouter_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Sli
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-
     function testFuzz_Revert_swapViaRouter_oneToZero_UnbalancedPool(
         InitVariables memory initVars,
         LpVariables memory lpVars,

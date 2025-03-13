@@ -18,6 +18,7 @@ import { IStrategyHook } from "./interfaces/IStrategyHook.sol";
 import { MintLogic } from "./libraries/shared-uniswap-v3-slipstream/MintLogic.sol";
 import { PricingLogic } from "./libraries/cl-math/PricingLogic.sol";
 import { RebalanceLogic } from "./libraries/RebalanceLogic.sol";
+import { ReentrancyGuard } from "../../lib/accounts-v2/lib/solmate/src/utils/ReentrancyGuard.sol";
 import { SafeApprove } from "./libraries/SafeApprove.sol";
 import { SlipstreamLogic } from "./libraries/slipstream/SlipstreamLogic.sol";
 import { StakedSlipstreamLogic } from "./libraries/slipstream/StakedSlipstreamLogic.sol";
@@ -37,7 +38,7 @@ import { UniswapV3Logic } from "./libraries/uniswap-v3/UniswapV3Logic.sol";
  * based on a hypothetical optimal swap through the pool itself without slippage.
  * This protects the Account owners from incompetent or malicious initiators who route swaps poorly, or try to skim off liquidity from the position.
  */
-contract RebalancerUniV3Slipstream is IActionBase {
+contract RebalancerUniV3Slipstream is ReentrancyGuard, IActionBase {
     using FixedPointMathLib for uint256;
     using SafeApprove for ERC20;
     using SafeTransferLib for ERC20;
@@ -165,10 +166,8 @@ contract RebalancerUniV3Slipstream is IActionBase {
         int24 tickLower,
         int24 tickUpper,
         bytes calldata swapData
-    ) external {
+    ) external nonReentrant {
         // If the initiator is set, account_ is an actual Arcadia Account.
-        // TODO: add reentrancy check.
-        if (account != address(0)) revert Reentered();
         if (accountToInitiator[account] != msg.sender) revert InitiatorNotValid();
 
         // Store Account address, used to validate the caller of the executeAction() callback and serves as a reentrancy guard.
@@ -441,8 +440,7 @@ contract RebalancerUniV3Slipstream is IActionBase {
      * @dev When an Account is transferred to a new owner,
      * the asset manager itself (this contract) and hence its initiator and hook will no longer be allowed by the Account.
      */
-    function setAccountInfo(address account, address initiator, address hook) external {
-        if (account != address(0)) revert Reentered();
+    function setAccountInfo(address account, address initiator, address hook) external nonReentrant {
         if (!ArcadiaLogic.FACTORY.isAccount(account)) revert NotAnAccount();
         if (msg.sender != IAccount(account).owner()) revert OnlyAccountOwner();
 
@@ -468,9 +466,7 @@ contract RebalancerUniV3Slipstream is IActionBase {
      * The tolerance boundaries are symmetric around the price, but taking the square root will result in a different
      * allowed deviation of the sqrtPriceX96 for the lower and upper boundaries.
      */
-    function setInitiatorInfo(uint256 tolerance, uint256 fee, uint256 minLiquidityRatio) external {
-        // TODO: make nonReentrant.
-
+    function setInitiatorInfo(uint256 tolerance, uint256 fee, uint256 minLiquidityRatio) external nonReentrant {
         // Cache struct
         InitiatorInfo memory initiatorInfo_ = initiatorInfo[msg.sender];
 
