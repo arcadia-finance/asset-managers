@@ -36,12 +36,6 @@ abstract contract RebalancerUniV3Slipstream_Fuzz_Test is Fuzz_Test, UniswapV3Fix
     uint256 internal constant MAX_INITIATOR_FEE = 0.01 * 1e18;
     uint256 internal constant MIN_LIQUIDITY_RATIO = 0.99 * 1e18;
 
-    // keccak256("RebalancerUniV3SlipstreamAddress")
-    bytes32 internal constant ACCOUNT_SLOT = 0xcd2c25b35d5753cf28ebb8e4e9c4836ff8a159efc9d9bdd9baf86b4d298f71dd;
-    // keccak256("RebalancerUniV3SlipstreamTrustedSqrtPriceX96")
-    bytes32 internal constant TRUSTED_SQRT_PRICE_X96_SLOT =
-        0xc1217b1ba5774770322d997c6ef127c9f706ff8010e8b53556df548eb192e25b;
-
     /*////////////////////////////////////////////////////////////////
                             VARIABLES
     /////////////////////////////////////////////////////////////// */

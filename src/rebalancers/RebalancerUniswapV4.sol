@@ -6,28 +6,33 @@ pragma solidity ^0.8.26;
 
 import { ActionData, IActionBase } from "../../lib/accounts-v2/src/interfaces/IActionBase.sol";
 import { ArcadiaLogic } from "./libraries/ArcadiaLogic.sol";
-import { BurnLogic } from "./libraries/shared-uniswap-v3-slipstream/BurnLogic.sol";
+import { BalanceDelta } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/BalanceDelta.sol";
+import { Currency } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
-import { FeeLogic } from "./libraries/FeeLogic.sol";
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { FullMath } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { IAccount } from "./interfaces/IAccount.sol";
+import { IHooks } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/interfaces/IHooks.sol";
 import { IPool } from "./interfaces/IPool.sol";
 import { IPositionManager } from "./interfaces/IPositionManager.sol";
 import { IStrategyHook } from "./interfaces/IStrategyHook.sol";
+import { IWETH } from "./interfaces/IWETH.sol";
+import { LiquidityAmounts } from "../../lib/accounts-v2/lib/v4-periphery/src/libraries/LiquidityAmounts.sol";
 import { MintLogic } from "./libraries/shared-uniswap-v3-slipstream/MintLogic.sol";
+import { PoolKey } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 import { PricingLogic } from "./libraries/cl-math/PricingLogic.sol";
 import { RebalanceLogic } from "./libraries/RebalanceLogic.sol";
 import { ReentrancyGuard } from "../../lib/accounts-v2/lib/solmate/src/utils/ReentrancyGuard.sol";
 import { SafeApprove } from "./libraries/SafeApprove.sol";
 import { SlipstreamLogic } from "./libraries/slipstream/SlipstreamLogic.sol";
 import { StakedSlipstreamLogic } from "./libraries/slipstream/StakedSlipstreamLogic.sol";
-import { SwapLogic } from "./libraries/shared-uniswap-v3-slipstream/SwapLogic.sol";
+import { SwapLogicV4 } from "./libraries/uniswap-v4/SwapLogicV4.sol";
+import { SwapParams } from "./interfaces/IPoolManager.sol";
 import { TickMath } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
-import { UniswapV3Logic } from "./libraries/uniswap-v3/UniswapV3Logic.sol";
+import { UniswapV4Logic } from "./libraries/uniswap-v4/UniswapV4Logic.sol";
 
 /**
- * @title Permissioned rebalancer for Uniswap V3 and Slipstream Liquidity Positions.
+ * @title Permissioned rebalancer for Uniswap V4 Positions.
  * @notice The Rebalancer will act as an Asset Manager for Arcadia Accounts.
  * It will allow third parties to trigger the rebalancing functionality for a Liquidity Position in the Account.
  * The owner of an Arcadia Account should set an initiator via setAccountInfo() that will be permisionned to rebalance
@@ -39,7 +44,7 @@ import { UniswapV3Logic } from "./libraries/uniswap-v3/UniswapV3Logic.sol";
  * based on a hypothetical optimal swap through the pool itself without slippage.
  * This protects the Account owners from incompetent or malicious initiators who route swaps poorly, or try to skim off liquidity from the position.
  */
-contract RebalancerUniV3Slipstream is ReentrancyGuard, IActionBase {
+contract RebalancerUniswapV4 is ReentrancyGuard, IActionBase {
     using FixedPointMathLib for uint256;
     using SafeApprove for ERC20;
     using SafeTransferLib for ERC20;
@@ -47,11 +52,13 @@ contract RebalancerUniV3Slipstream is ReentrancyGuard, IActionBase {
                                 CONSTANTS
     ////////////////////////////////////////////////////////////// */
 
-    // keccak256("RebalancerUniV3SlipstreamAccount")
-    bytes32 internal constant ACCOUNT_SLOT = 0x95e0fbe5317a9deca8e9d004ad52c693f4394d5dee16fb1f306aaa4b94692f13;
-    // keccak256("RebalancerUniV3SlipstreamTrustedSqrtPriceX96")
+    // keccak256("RebalancerUniswapV4Account")
+    bytes32 internal constant ACCOUNT_SLOT = 0x77a1096cdeeb44155ee048b1ea572763589db8a085320c2033ef421fb1ea0fd9;
+    // keccak256("RebalancerUniswapV4TrustedSqrtPriceX96")
     bytes32 internal constant TRUSTED_SQRT_PRICE_X96_SLOT =
-        0xc1217b1ba5774770322d997c6ef127c9f706ff8010e8b53556df548eb192e25b;
+        0x6812d077d53d77b2024c92449df504697e32036eb13236495d0c94a4f1ddc1e6;
+    // The contract address of WETH.
+    address internal constant WETH = 0x4200000000000000000000000000000000000006;
 
     // The maximum lower deviation of the pools actual sqrtPriceX96,
     // The maximum deviation of the actual pool price, in % with 18 decimals precision.
@@ -81,7 +88,7 @@ contract RebalancerUniV3Slipstream is ReentrancyGuard, IActionBase {
 
     // A struct with the state of a specific position, only used in memory.
     struct PositionState {
-        address pool;
+        address hook;
         address token0;
         address token1;
         uint24 fee;
@@ -115,7 +122,8 @@ contract RebalancerUniV3Slipstream is ReentrancyGuard, IActionBase {
     error OnlyAccount();
     error OnlyAccountOwner();
     error OnlyPool();
-    error OnlyPositionManager();
+    error OnlyPoolManager();
+    error PoolManagerOnly();
     error Reentered();
     error UnbalancedPool();
 
@@ -125,6 +133,18 @@ contract RebalancerUniV3Slipstream is ReentrancyGuard, IActionBase {
 
     event AccountInfoSet(address indexed account, address indexed initiator, address indexed strategyHook);
     event Rebalance(address indexed account, address indexed positionManager, uint256 oldId, uint256 newId);
+
+    /* //////////////////////////////////////////////////////////////
+                                MODIFIERS
+    ////////////////////////////////////////////////////////////// */
+
+    /**
+     * @dev Only the UniswapV4 PoolManager can call functions with this modifier.
+     */
+    modifier onlyPoolManager() {
+        if (msg.sender != address(UniswapV4Logic.POOL_MANAGER)) revert PoolManagerOnly();
+        _;
+    }
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -149,7 +169,7 @@ contract RebalancerUniV3Slipstream is ReentrancyGuard, IActionBase {
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Rebalances a UniswapV3 or Slipstream Liquidity Position, owned by an Arcadia Account.
+     * @notice Rebalances a Uniswap V4 or Slipstream Liquidity Position, owned by an Arcadia Account.
      * @param account The Arcadia Account owning the position.
      * @param positionManager The contract address of the Position Manager.
      * @param oldId The oldId of the Liquidity Position to rebalance.
@@ -221,7 +241,7 @@ contract RebalancerUniV3Slipstream is ReentrancyGuard, IActionBase {
             oldId = assetData.assetIds[0];
 
             // Fetch and cache all position related data.
-            position = getPositionState(positionManager, oldId, tickLower, tickUpper, initiator);
+            position = getPositionState(oldId, tickLower, tickUpper, initiator);
         }
 
         // If set, call the strategy hook before the rebalance (view function).
@@ -242,7 +262,7 @@ contract RebalancerUniV3Slipstream is ReentrancyGuard, IActionBase {
         if (isPoolUnbalanced(position)) revert UnbalancedPool();
 
         // Remove liquidity of the position and claim outstanding fees/rewards.
-        (uint256 balance0, uint256 balance1, uint256 reward) = BurnLogic._burn(positionManager, oldId, position);
+        (uint256 balance0, uint256 balance1) = _burn(oldId, position.token0, position.token1);
 
         {
             // Get the rebalance parameters.
@@ -259,21 +279,20 @@ contract RebalancerUniV3Slipstream is ReentrancyGuard, IActionBase {
                 balance1
             );
 
+            PoolKey memory poolKey = PoolKey(
+                Currency.wrap(position.token0),
+                Currency.wrap(position.token1),
+                position.fee,
+                position.tickSpacing,
+                IHooks(position.hook)
+            );
             // Do the actual swap to rebalance the position.
             // This can be done either directly through the pool, or via a router with custom swap data.
             // For swaps directly through the pool, if slippage is bigger than calculated, the transaction will not immediately revert,
             // but excess slippage will be subtracted from the initiatorFee.
             // For swaps via a router, tokenOut should be the limiting factor when increasing liquidity.
-            (balance0, balance1) = SwapLogic._swap(
-                swapData,
-                positionManager,
-                position,
-                zeroToOne,
-                amountInitiatorFee,
-                amountIn,
-                amountOut,
-                balance0,
-                balance1
+            (balance0, balance1) = SwapLogicV4._swap(
+                swapData, position, poolKey, zeroToOne, amountInitiatorFee, amountIn, amountOut, balance0, balance1
             );
 
             // Check that the pool is still balanced after the swap.
@@ -284,7 +303,7 @@ contract RebalancerUniV3Slipstream is ReentrancyGuard, IActionBase {
             // Leftovers must be in tokenIn, otherwise the total tokenIn balance will be added as liquidity,
             // and the initiator fee will be 0 (but the transaction will not revert).
             uint256 liquidity;
-            (newId, liquidity, balance0, balance1) = MintLogic._mint(positionManager, position, balance0, balance1);
+            (newId, liquidity, balance0, balance1) = _mint(position, poolKey, balance0, balance1);
 
             // Check that the actual liquidity of the position is above the minimum threshold.
             // This prevents loss of principal of the liquidity position due to slippage,
@@ -292,7 +311,7 @@ contract RebalancerUniV3Slipstream is ReentrancyGuard, IActionBase {
             if (liquidity < minLiquidity) revert InsufficientLiquidity();
 
             // Transfer fee to the initiator.
-            (balance0, balance1) = FeeLogic._transfer(
+            (balance0, balance1) = _transferFee(
                 initiator, zeroToOne, amountInitiatorFee, position.token0, position.token1, balance0, balance1
             );
         }
@@ -301,6 +320,11 @@ contract RebalancerUniV3Slipstream is ReentrancyGuard, IActionBase {
         {
             uint256 count = 1;
             IPositionManager(positionManager).approve(msg.sender, newId);
+
+            // If leftover is in native ETH, we need to wrap it and send WETH to the Account.
+            if (position.token0 == address(0)) position.token0 = WETH;
+            if (position.token1 == address(0)) position.token1 = WETH;
+
             if (balance0 > 0) {
                 ERC20(position.token0).safeApproveWithRetry(msg.sender, balance0);
                 count = 2;
@@ -309,14 +333,10 @@ contract RebalancerUniV3Slipstream is ReentrancyGuard, IActionBase {
                 ERC20(position.token1).safeApproveWithRetry(msg.sender, balance1);
                 ++count;
             }
-            if (reward > 0) {
-                ERC20(StakedSlipstreamLogic.REWARD_TOKEN).safeApproveWithRetry(msg.sender, reward);
-                ++count;
-            }
 
             // Encode deposit data for the flash-action.
             depositData = ArcadiaLogic._encodeDeposit(
-                positionManager, newId, position.token0, position.token1, count, balance0, balance1, reward
+                positionManager, newId, position.token0, position.token1, count, balance0, balance1, 0
             );
         }
 
@@ -330,35 +350,108 @@ contract RebalancerUniV3Slipstream is ReentrancyGuard, IActionBase {
     }
 
     /* ///////////////////////////////////////////////////////////////
-                          SWAP CALLBACK
+                          UNISWAP V4 LOGIC
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Callback after executing a swap via IPool.swap.
-     * @param amount0Delta The amount of token0 that was sent (negative) or must be received (positive) by the pool by
-     * the end of the swap. If positive, the callback must send that amount of token0 to the pool.
-     * @param amount1Delta The amount of token1 that was sent (negative) or must be received (positive) by the pool by
-     * the end of the swap. If positive, the callback must send that amount of token1 to the pool.
-     * @param data Any data passed by this contract via the IPool.swap() call.
+     * @dev Mints a new Uniswap V4 position by providing liquidity to a specified pool.
+     * @param position The memory struct containing details about the state of the Uniswap position.
+     * @param balance0 The amount of token0 to be added to the position.
+     * @param balance1 The amount of token1 to be added to the position.
+     * @return newTokenId The ID of the newly minted Uniswap V4 position.
+     * @return liquidity The calculated liquidity corresponding to the provided balances and ticks.
+     * @return balance0_ The final amount of token0 used in the minting process.
+     * @return balance1_ The final amount of token1 used in the minting process.
      */
-    function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external {
-        // Check that callback came from an actual Uniswap V3 or Slipstream pool.
-        (address positionManager, address token0, address token1, uint24 feeOrTickSpacing) =
-            abi.decode(data, (address, address, address, uint24));
-        if (positionManager == address(UniswapV3Logic.POSITION_MANAGER)) {
-            if (UniswapV3Logic._computePoolAddress(token0, token1, feeOrTickSpacing) != msg.sender) revert OnlyPool();
-        } else {
-            // Logic holds for both Slipstream and staked Slipstream positions.
-            if (SlipstreamLogic._computePoolAddress(token0, token1, int24(feeOrTickSpacing)) != msg.sender) {
-                revert OnlyPool();
-            }
+    function _mint(PositionState memory position, PoolKey memory poolKey, uint256 balance0, uint256 balance1)
+        internal
+        returns (uint256 newTokenId, uint256 liquidity, uint256 balance0_, uint256 balance1_)
+    {
+        // Manage token approvals and check if native ETH has to be added to the position.
+        if (position.token0 != address(0)) UniswapV4Logic._checkAndApprovePermit2(position.token0, balance0);
+        if (position.token1 != address(0)) UniswapV4Logic._checkAndApprovePermit2(position.token1, balance1);
+
+        // Generate calldata to mint new position.
+        bytes[] memory params = new bytes[](2);
+        {
+            (uint160 newSqrtPriceX96,,,) = UniswapV4Logic.STATE_VIEW.getSlot0(poolKey.toId());
+            liquidity = LiquidityAmounts.getLiquidityForAmounts(
+                newSqrtPriceX96, position.sqrtRatioLower, position.sqrtRatioUpper, balance0, balance1
+            );
+
+            params[0] = abi.encode(
+                poolKey,
+                position.tickLower,
+                position.tickUpper,
+                liquidity,
+                type(uint128).max,
+                type(uint128).max,
+                address(this),
+                ""
+            );
+            params[1] = abi.encode(poolKey.currency0, poolKey.currency1);
         }
 
-        if (amount0Delta > 0) {
-            ERC20(token0).safeTransfer(msg.sender, uint256(amount0Delta));
-        } else if (amount1Delta > 0) {
-            ERC20(token1).safeTransfer(msg.sender, uint256(amount1Delta));
-        }
+        bytes memory actions = new bytes(2);
+        actions[0] = bytes1(uint8(UniswapV4Logic.MINT_POSITION));
+        actions[1] = bytes1(uint8(UniswapV4Logic.SETTLE_PAIR));
+
+        // Get new token id.
+        newTokenId = UniswapV4Logic.POSITION_MANAGER.nextTokenId();
+
+        // Mint the new position.
+        uint256 ethValue =
+            (position.token0 == address(0) ? balance0 : 0) + (position.token1 == address(0) ? balance1 : 0);
+        bytes memory mintParams = abi.encode(actions, params);
+        UniswapV4Logic.POSITION_MANAGER.modifyLiquidities{ value: ethValue }(mintParams, block.timestamp);
+
+        // As UniswapV4 works with specific liquidity, there should be no leftovers.
+        // Note : To Confirm. (in tests-)
+        balance0_ = 0;
+        balance1_ = 0;
+    }
+
+    /**
+     * @dev Burns a Uniswap V4 position, removing liquidity and collecting the underlying assets.
+     * @param id The id of the Uniswap V4 position to burn.
+     * @param token0 The address of the first token in the pair.
+     * @param token1 The address of the second token in the pair.
+     * @return balance0 The amount of token0 received after burning the position.
+     * @return balance1 The amount of token1 received after burning the position.
+     */
+    function _burn(uint256 id, address token0, address token1) internal returns (uint256 balance0, uint256 balance1) {
+        // Generate calldata to burn the position and collect the underlying assets.
+        bytes memory actions = new bytes(2);
+        actions[0] = bytes1(uint8(UniswapV4Logic.BURN_POSITION));
+        actions[1] = bytes1(uint8(UniswapV4Logic.TAKE_PAIR));
+        bytes[] memory params = new bytes[](2);
+        Currency currency0 = Currency.wrap(token0);
+        Currency currency1 = Currency.wrap(token1);
+        params[0] = abi.encode(id, 0, 0, "");
+        params[1] = abi.encode(currency0, currency1, address(this));
+
+        // Cache init balance of token0 and token1.
+        uint256 initBalanceCurrency0 = currency0.balanceOfSelf();
+        uint256 initBalanceCurrency1 = currency1.balanceOfSelf();
+
+        bytes memory burnParams = abi.encode(actions, params);
+        UniswapV4Logic.POSITION_MANAGER.modifyLiquidities(burnParams, block.timestamp);
+
+        balance0 = currency0.balanceOfSelf() - initBalanceCurrency0;
+        balance1 = currency1.balanceOfSelf() - initBalanceCurrency1;
+    }
+
+    /**
+     * @notice Callback function executed during the unlock phase of a Uniswap V4 pool operation.
+     * @dev This function can only be called by the Pool Manager. It processes a swap and handles the resulting balance deltas.
+     * @param data The encoded swap parameters and pool key.
+     * @return results The encoded BalanceDelta result from the swap operation.
+     */
+    function unlockCallback(bytes calldata data) external payable onlyPoolManager returns (bytes memory results) {
+        (SwapParams memory params, PoolKey memory poolKey) = abi.decode(data, (SwapParams, PoolKey));
+        BalanceDelta delta = UniswapV4Logic.POOL_MANAGER.swap(poolKey, params, "");
+        UniswapV4Logic._processSwapDelta(delta, poolKey.currency0, poolKey.currency1);
+        results = abi.encode(delta);
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -378,25 +471,20 @@ contract RebalancerUniV3Slipstream is ReentrancyGuard, IActionBase {
 
     /**
      * @notice Fetches all required position data from external contracts.
-     * @param positionManager The contract address of the Position Manager.
      * @param oldId The oldId of the Liquidity Position.
      * @param tickLower The lower tick of the newly minted position.
      * @param tickUpper The upper tick of the newly minted position.
      * @param initiator The address of the initiator.
      * @return position Struct with the position data.
      */
-    function getPositionState(
-        address positionManager,
-        uint256 oldId,
-        int24 tickLower,
-        int24 tickUpper,
-        address initiator
-    ) public view virtual returns (PositionState memory position) {
+    function getPositionState(uint256 oldId, int24 tickLower, int24 tickUpper, address initiator)
+        public
+        view
+        virtual
+        returns (PositionState memory position)
+    {
         // Get data of the Liquidity Position.
-        (int24 tickCurrent, int24 tickRange) = positionManager == address(UniswapV3Logic.POSITION_MANAGER)
-            ? UniswapV3Logic._getPositionState(position, oldId, tickLower == tickUpper)
-            // Logic holds for both Slipstream and staked Slipstream positions.
-            : SlipstreamLogic._getPositionState(position, oldId);
+        (int24 tickCurrent, int24 tickRange) = UniswapV4Logic._getPositionState(position, oldId);
 
         // Store the new ticks for the rebalance
         if (tickLower == tickUpper) {
@@ -500,6 +588,41 @@ contract RebalancerUniV3Slipstream is ReentrancyGuard, IActionBase {
         initiatorInfo[msg.sender] = initiatorInfo_;
     }
 
+    /**
+     * @notice Transfers the initiator fee to the initiator.
+     * @param initiator The address of the initiator.
+     * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
+     * @param amountInitiatorFee The amount of initiator fee.
+     * @param token0 The contract address of token0.
+     * @param token1 The contract address of token1.
+     * @param balance0 The balance of token0 before transferring the initiator fee.
+     * @param balance1 The balance of token1 before transferring the initiator fee.
+     * @return balance0 The balance of token0 after transferring the initiator fee.
+     * @return balance1 The balance of token1 after transferring the initiator fee.
+     */
+    function _transferFee(
+        address initiator,
+        bool zeroToOne,
+        uint256 amountInitiatorFee,
+        address token0,
+        address token1,
+        uint256 balance0,
+        uint256 balance1
+    ) internal returns (uint256, uint256) {
+        unchecked {
+            if (zeroToOne) {
+                (balance0, amountInitiatorFee) =
+                    balance0 > amountInitiatorFee ? (balance0 - amountInitiatorFee, amountInitiatorFee) : (0, balance0);
+                if (amountInitiatorFee > 0) Currency.wrap(token0).transfer(initiator, amountInitiatorFee);
+            } else {
+                (balance1, amountInitiatorFee) =
+                    balance1 > amountInitiatorFee ? (balance1 - amountInitiatorFee, amountInitiatorFee) : (0, balance1);
+                if (amountInitiatorFee > 0) Currency.wrap(token1).transfer(initiator, amountInitiatorFee);
+            }
+            return (balance0, balance1);
+        }
+    }
+
     /* ///////////////////////////////////////////////////////////////
                       ERC721 HANDLER FUNCTION
     /////////////////////////////////////////////////////////////// */
@@ -523,6 +646,6 @@ contract RebalancerUniV3Slipstream is ReentrancyGuard, IActionBase {
      * @dev Funds received can not be reclaimed, the receive only serves as a protection against griefing attacks.
      */
     receive() external payable {
-        if (msg.sender != address(SlipstreamLogic.POSITION_MANAGER)) revert OnlyPositionManager();
+        if (msg.sender != address(UniswapV4Logic.POOL_MANAGER)) revert OnlyPoolManager();
     }
 }

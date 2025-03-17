@@ -90,7 +90,8 @@ library ArcadiaLogic {
      * @notice Encodes the deposit data after the flash-action used to rebalance the Liquidity Position.
      * @param positionManager The contract address of the Position Manager.
      * @param id The id of the Liquidity Position.
-     * @param position Struct with the position data.
+     * @param token0 The contract address of token0.
+     * @param token1 The contract address of token1.
      * @param count The number of assets to deposit.
      * @param balance0 The amount of token0 to deposit.
      * @param balance1 The amount of token1 to deposit.
@@ -100,7 +101,8 @@ library ArcadiaLogic {
     function _encodeDeposit(
         address positionManager,
         uint256 id,
-        RebalancerUniV3Slipstream.PositionState memory position,
+        address token0,
+        address token1,
         uint256 count,
         uint256 balance0,
         uint256 balance1,
@@ -121,14 +123,14 @@ library ArcadiaLogic {
         uint256 index = 1;
 
         if (balance0 > 0) {
-            depositData.assets[1] = position.token0;
+            depositData.assets[1] = token0;
             depositData.assetAmounts[1] = balance0;
             depositData.assetTypes[1] = 1;
             index = 2;
         }
 
         if (balance1 > 0) {
-            depositData.assets[index] = position.token1;
+            depositData.assets[index] = token1;
             depositData.assetAmounts[index] = balance1;
             depositData.assetTypes[index] = 1;
             ++index;

@@ -22,4 +22,10 @@ interface IStateView {
     /// @param positionId The ID of the position.
     /// @return liquidity The liquidity of the position.
     function getPositionLiquidity(PoolId poolId, bytes32 positionId) external view returns (uint128 liquidity);
+
+    /// @notice Retrieves the total liquidity of a pool.
+    /// @dev Corresponds to pools[poolId].liquidity
+    /// @param poolId The ID of the pool.
+    /// @return liquidity The liquidity of the pool.
+    function getLiquidity(PoolId poolId) external view returns (uint128 liquidity);
 }

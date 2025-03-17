@@ -12,12 +12,14 @@ contract ArcadiaLogicExtension {
     function encodeDeposit(
         address positionManager,
         uint256 id,
-        RebalancerUniV3Slipstream.PositionState memory position,
+        address token0,
+        address token1,
         uint256 count,
         uint256 balance0,
         uint256 balance1,
         uint256 reward
     ) external pure returns (ActionData memory depositData) {
-        depositData = ArcadiaLogic._encodeDeposit(positionManager, id, position, count, balance0, balance1, reward);
+        depositData =
+            ArcadiaLogic._encodeDeposit(positionManager, id, token0, token1, count, balance0, balance1, reward);
     }
 }

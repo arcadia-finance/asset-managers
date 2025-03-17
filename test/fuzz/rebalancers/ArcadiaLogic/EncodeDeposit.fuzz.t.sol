@@ -38,8 +38,9 @@ contract EncodeDeposit_ArcadiaLogic_Fuzz_Test is ArcadiaLogic_Fuzz_Test {
         if (reward > 0) ++count;
 
         // When: calling _encodeDeposit().
-        ActionData memory depositData =
-            arcadiaLogic.encodeDeposit(positionManager, id, position, count, balance0, balance1, reward);
+        ActionData memory depositData = arcadiaLogic.encodeDeposit(
+            positionManager, id, position.token0, position.token1, count, balance0, balance1, reward
+        );
 
         // Then: It should return the correct arrays.
         assertEq(depositData.assets.length, count);

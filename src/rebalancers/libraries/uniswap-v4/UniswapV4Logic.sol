@@ -13,7 +13,7 @@ import { IPositionManagerV4 } from "../../interfaces/IPositionManagerV4.sol";
 import { IStateView } from "../../interfaces/IStateView.sol";
 import { PoolKey } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 import { PositionInfo } from "../../../../lib/accounts-v2/lib/v4-periphery/src/libraries/PositionInfoLibrary.sol";
-import { RebalancerUniV3Slipstream } from "../../RebalancerUniV3Slipstream.sol";
+import { RebalancerUniswapV4 } from "../../RebalancerUniswapV4.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
 library UniswapV4Logic {
@@ -43,7 +43,7 @@ library UniswapV4Logic {
      * @return tickCurrent The current tick of the pool.
      * @return tickRange The tick range of the position.
      */
-    function _getPositionState(RebalancerUniV3Slipstream.PositionState memory position, uint256 id)
+    function _getPositionState(RebalancerUniswapV4.PositionState memory position, uint256 id)
         internal
         view
         returns (int24 tickCurrent, int24 tickRange)
@@ -54,8 +54,7 @@ library UniswapV4Logic {
         position.token1 = Currency.unwrap(poolKey.currency1);
         position.tickSpacing = poolKey.tickSpacing;
         position.fee = poolKey.fee;
-        position.pool = address(poolKey.hooks);
-        //position.poolId = poolKey.toId();
+        position.hook = address(poolKey.hooks);
         bytes32 positionId =
             keccak256(abi.encodePacked(address(POSITION_MANAGER), info.tickLower(), info.tickUpper(), bytes32(id)));
         position.liquidity = STATE_VIEW.getPositionLiquidity(poolKey.toId(), positionId);
@@ -96,12 +95,12 @@ library UniswapV4Logic {
 
     /**
      * @notice Ensures that the Permit2 contract has sufficient approval to spend a given token
-     *         and grants unlimited approval to the PositionManager via Permit2.
+     * and grants unlimited approval to the PositionManager via Permit2.
      * @dev This function performs two key approval steps:
      *      1. Approves Permit2 to spend the specified token.
      *      2. Approves the PositionManager to spend the token through Permit2.
      * @dev If the token requires resetting the approval to zero before setting a new value,
-     *      this function first resets the approval to `0` before setting it to `type(uint256).max`.
+     * this function first resets the approval to `0` before setting it to `type(uint256).max`.
      * @param token The address of the ERC20 token to approve.
      * @param amount The minimum amount required to be approved.
      */

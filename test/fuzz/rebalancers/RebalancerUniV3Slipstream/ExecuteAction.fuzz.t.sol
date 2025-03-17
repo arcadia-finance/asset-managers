@@ -297,11 +297,6 @@ contract ExecuteAction_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Sli
         // Given: rebalancer is not the account.
         vm.assume(account_ != address(rebalancer));
 
-        // Given: valid transient storage.
-        assembly {
-            tstore(ACCOUNT_SLOT, account_)
-        }
-
         // And: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
 
