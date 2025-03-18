@@ -6,10 +6,12 @@ pragma solidity ^0.8.22;
 
 import { ArcadiaLogic } from "../../../src/rebalancers/libraries/ArcadiaLogic.sol";
 import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
+import { PoolKey } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 import { PricingLogic } from "../../../src/rebalancers/libraries/cl-math/PricingLogic.sol";
 import { RebalanceLogic } from "../../../src/rebalancers/libraries/RebalanceLogic.sol";
-import { UniswapV4Logic } from "../../../src/rebalancers/libraries/uniswap-v4/UniswapV4Logic.sol";
 import { RebalancerUniswapV4 } from "../../../src/rebalancers/RebalancerUniswapV4.sol";
+import { UniswapV4Logic } from "../../../src/rebalancers/libraries/uniswap-v4/UniswapV4Logic.sol";
+import { SwapLogicV4 } from "../../../src/rebalancers/libraries/uniswap-v4/SwapLogicV4.sol";
 
 contract RebalancerUniswapV4Extension is RebalancerUniswapV4 {
     using SafeTransferLib for ERC20;
@@ -55,5 +57,43 @@ contract RebalancerUniswapV4Extension is RebalancerUniswapV4 {
             tstore(ACCOUNT_SLOT, account)
             tstore(TRUSTED_SQRT_PRICE_X96_SLOT, sqrtPriceX96)
         }
+    }
+
+    function swap(
+        bytes memory swapData,
+        RebalancerUniswapV4.PositionState memory position,
+        PoolKey memory poolKey,
+        bool zeroToOne,
+        uint256 amountInitiatorFee,
+        uint256 amountIn,
+        uint256 amountOut,
+        uint256 balance0,
+        uint256 balance1
+    ) public returns (uint256 balance0_, uint256 balance1_) {
+        (balance0_, balance1_) = SwapLogicV4._swap(
+            swapData, position, poolKey, zeroToOne, amountInitiatorFee, amountIn, amountOut, balance0, balance1
+        );
+    }
+
+    function swapViaPool(
+        PoolKey memory poolKey,
+        RebalancerUniswapV4.PositionState memory position,
+        bool zeroToOne,
+        uint256 amountOut,
+        uint256 balance0,
+        uint256 balance1
+    ) public returns (uint256 balance0_, uint256 balance1_, RebalancerUniswapV4.PositionState memory position_) {
+        (balance0_, balance1_) = SwapLogicV4._swapViaPool(poolKey, position, zeroToOne, amountOut, balance0, balance1);
+        position_ = position;
+    }
+
+    function swapViaRouter(
+        PoolKey memory poolKey,
+        RebalancerUniswapV4.PositionState memory position,
+        bool zeroToOne,
+        bytes memory swapData
+    ) public returns (uint256 balance0, uint256 balance1, RebalancerUniswapV4.PositionState memory position_) {
+        (balance0, balance1) = SwapLogicV4._swapViaRouter(poolKey, position, zeroToOne, swapData);
+        position_ = position;
     }
 }

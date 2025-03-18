@@ -641,8 +641,7 @@ contract RebalancerUniswapV4 is ReentrancyGuard, IActionBase {
 
     /**
      * @notice Receives native ether.
-     * @dev Required since the Slipstream Non Fungible Position Manager sends full ether balance to caller
-     * on an increaseLiquidity.
+     * @dev Required for native ETH swaps through Uniswap V4 PoolManager.
      * @dev Funds received can not be reclaimed, the receive only serves as a protection against griefing attacks.
      */
     receive() external payable {
