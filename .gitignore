@@ -5,3 +5,5 @@ build/*
 node_modules
 broadcast/
 .vscode/
+.DS_Store
+.idea
