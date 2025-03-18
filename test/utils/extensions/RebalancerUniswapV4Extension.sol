@@ -69,10 +69,11 @@ contract RebalancerUniswapV4Extension is RebalancerUniswapV4 {
         uint256 amountOut,
         uint256 balance0,
         uint256 balance1
-    ) public returns (uint256 balance0_, uint256 balance1_) {
+    ) public returns (uint256 balance0_, uint256 balance1_, RebalancerUniswapV4.PositionState memory position_) {
         (balance0_, balance1_) = SwapLogicV4._swap(
             swapData, position, poolKey, zeroToOne, amountInitiatorFee, amountIn, amountOut, balance0, balance1
         );
+        position_ = position;
     }
 
     function swapViaPool(
