@@ -399,16 +399,18 @@ contract RebalancerUniswapV4 is ReentrancyGuard, IActionBase {
         // Get new token id.
         newTokenId = UniswapV4Logic.POSITION_MANAGER.nextTokenId();
 
+        uint256 balance0BeforeMint = Currency.wrap(position.token0).balanceOfSelf();
+        uint256 balance1BeforeMint = Currency.wrap(position.token1).balanceOfSelf();
+
         // Mint the new position.
         uint256 ethValue =
             (position.token0 == address(0) ? balance0 : 0) + (position.token1 == address(0) ? balance1 : 0);
         bytes memory mintParams = abi.encode(actions, params);
         UniswapV4Logic.POSITION_MANAGER.modifyLiquidities{ value: ethValue }(mintParams, block.timestamp);
 
-        // As UniswapV4 works with specific liquidity, there should be no leftovers.
-        // Note : To Confirm. (in tests-)
-        balance0_ = 0;
-        balance1_ = 0;
+        // Get the updated available balances after mint.
+        balance0_ = balance0 - (balance0BeforeMint - Currency.wrap(position.token0).balanceOfSelf());
+        balance1_ = balance1 - (balance1BeforeMint - Currency.wrap(position.token1).balanceOfSelf());
     }
 
     /**

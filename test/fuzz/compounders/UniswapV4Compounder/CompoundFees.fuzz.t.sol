@@ -131,7 +131,7 @@ contract CompoundFees_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_
         assertLe(initiatorFeesToken1, initiatorFeeToken1Calculated);
     }
 
-    function testFuzz_Success_compoundFees_MoveTickRight(
+    function testFuzz_Success_compoundFees_MoveTickRight_1(
         TestVariables memory testVars,
         FeeGrowth memory feeData,
         address initiator
