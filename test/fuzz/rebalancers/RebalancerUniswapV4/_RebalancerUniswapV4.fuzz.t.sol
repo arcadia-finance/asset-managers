@@ -5,6 +5,7 @@
 pragma solidity ^0.8.26;
 
 import { ArcadiaOracle } from "../../../../lib/accounts-v2/test/utils/mocks/oracles/ArcadiaOracle.sol";
+import { AssetValueAndRiskFactors } from "../../../../lib/accounts-v2/src/libraries/AssetValuationLib.sol";
 import { BalanceDelta } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/BalanceDelta.sol";
 import { BitPackingLib } from "../../../../lib/accounts-v2/src/libraries/BitPackingLib.sol";
 import { Currency } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
@@ -15,12 +16,17 @@ import { FixedPoint128 } from "../../../../lib/accounts-v2/src/asset-modules/Uni
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { Fuzz_Test } from "../../Fuzz.t.sol";
+import { IPoolManager } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/interfaces/IPoolManager.sol";
 import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/cl-math/LiquidityAmounts.sol";
 import { LiquidityAmountsExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/libraries/LiquidityAmountsExtension.sol";
 import { NativeTokenAM } from "../../../../lib/accounts-v2/src/asset-modules/native-token/NativeTokenAM.sol";
 import { PoolId } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolId.sol";
 import { PoolKey } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
+import {
+    PositionInfoLibrary,
+    PositionInfo
+} from "../../../../accounts-v2/lib/v4-periphery/src/libraries/PositionInfoLibrary.sol";
 import { RebalancerUniswapV4Extension } from "../../../utils/extensions/RebalancerUniswapV4Extension.sol";
 import { RegistryMock } from "../../../utils/mocks/RegistryMock.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
@@ -28,6 +34,7 @@ import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
 import { UniswapV4Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v4/UniswapV4Fixture.f.sol";
 import { UniswapV4HooksRegistry } from
     "../../../../lib/accounts-v2/src/asset-modules/UniswapV4/UniswapV4HooksRegistry.sol";
+import { UniswapV4Logic } from "../../../../src/rebalancers/libraries/uniswap-v4/UniswapV4Logic.sol";
 import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
 
 /**
@@ -346,7 +353,7 @@ abstract contract RebalancerUniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         return (tolerance, fee);
     }
 
-    function initPoolAndCreatePositioWithFees(
+    function initPoolAndCreatePositionWithFees(
         InitVariables memory initVars,
         LpVariables memory lpVars,
         FeeGrowth memory feeData
@@ -479,5 +486,64 @@ abstract contract RebalancerUniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
             type(uint128).max,
             users.liquidityProvider
         );
+    }
+
+    function unlockCallback(bytes calldata data) external payable returns (bytes memory results) {
+        (IPoolManager.SwapParams memory params, PoolKey memory poolKey) =
+            abi.decode(data, (IPoolManager.SwapParams, PoolKey));
+        BalanceDelta delta = poolManager.swap(poolKey, params, "");
+        UniswapV4Logic._processSwapDelta(delta, poolKey.currency0, poolKey.currency1);
+        results = abi.encode(delta);
+    }
+
+    function getFeeAmounts(uint256 id, PoolId poolId, int24 tickLower, int24 tickUpper, uint128 liquidity)
+        public
+        view
+        returns (uint256 amount0, uint256 amount1)
+    {
+        (uint256 feeGrowthInside0CurrentX128, uint256 feeGrowthInside1CurrentX128) =
+            stateView.getFeeGrowthInside(poolId, tickLower, tickUpper);
+
+        bytes32 positionId = keccak256(abi.encodePacked(address(positionManagerV4), tickLower, tickUpper, bytes32(id)));
+
+        (, uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128) =
+            stateView.getPositionInfo(poolId, positionId);
+
+        // Calculate accumulated fees since the last time the position was updated:
+        // (feeGrowthInsideCurrentX128 - feeGrowthInsideLastX128) * liquidity.
+        // Fee calculations in PositionManager.sol overflow (without reverting) when
+        // one or both terms, or their sum, is bigger than a uint128.
+        // This is however much bigger than any realistic situation.
+        unchecked {
+            amount0 =
+                FullMath.mulDiv(feeGrowthInside0CurrentX128 - feeGrowthInside0LastX128, liquidity, FixedPoint128.Q128);
+            amount1 =
+                FullMath.mulDiv(feeGrowthInside1CurrentX128 - feeGrowthInside1LastX128, liquidity, FixedPoint128.Q128);
+        }
+    }
+
+    function getValuesInUsd(uint256 amountA0, uint256 amountA1, uint256 amountB0, uint256 amountB1)
+        public
+        view
+        returns (uint256 usdValueA, uint256 usdValueB)
+    {
+        address[] memory assets = new address[](2);
+        assets[0] = address(token0);
+        assets[1] = address(token1);
+        uint256[] memory assetAmounts = new uint256[](2);
+        assetAmounts[0] = amountA0;
+        assetAmounts[1] = amountA1;
+
+        AssetValueAndRiskFactors[] memory valuesAndRiskFactors =
+            registry.getValuesInUsd(address(0), assets, new uint256[](2), assetAmounts);
+
+        usdValueA = valuesAndRiskFactors[0].assetValue + valuesAndRiskFactors[1].assetValue;
+
+        assetAmounts[0] = amountB0;
+        assetAmounts[1] = amountB1;
+
+        valuesAndRiskFactors = registry.getValuesInUsd(address(0), assets, new uint256[](2), assetAmounts);
+
+        usdValueB = valuesAndRiskFactors[0].assetValue + valuesAndRiskFactors[1].assetValue;
     }
 }
