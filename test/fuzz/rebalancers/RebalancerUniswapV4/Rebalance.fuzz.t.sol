@@ -237,12 +237,6 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         tickUpper = int24(bound(tickUpper, tickLower + 1, tickCurrent - 1));
         tickUpper = tickUpper / tickSpacing * tickSpacing;
 
-        emit log_named_int("tickCurrent", tickCurrent);
-        emit log_named_int("position tick upper", position.tickUpper);
-        emit log_named_int("position tick lower", position.tickLower);
-        emit log_named_int("new tick upper", tickUpper);
-        emit log_named_int("new tick lower", tickLower);
-
         // And: The initiator is initiated.
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
         fee = bound(fee, 0, MAX_INITIATOR_FEE);

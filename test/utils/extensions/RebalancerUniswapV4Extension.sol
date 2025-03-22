@@ -97,4 +97,17 @@ contract RebalancerUniswapV4Extension is RebalancerUniswapV4 {
         (balance0, balance1) = SwapLogicV4._swapViaRouter(poolKey, position, zeroToOne, swapData);
         position_ = position;
     }
+
+    function mint(
+        RebalancerUniswapV4.PositionState memory position,
+        PoolKey memory poolKey,
+        uint256 balance0,
+        uint256 balance1
+    ) public returns (uint256 newTokenId, uint256 liquidity, uint256 balance0_, uint256 balance1_) {
+        (newTokenId, liquidity, balance0_, balance1_) = _mint(position, poolKey, balance0, balance1);
+    }
+
+    function burn(uint256 id, address token0, address token1) public returns (uint256 balance0, uint256 balance1) {
+        (balance0, balance1) = _burn(id, token0, token1);
+    }
 }

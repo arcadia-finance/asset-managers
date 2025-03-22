@@ -183,12 +183,30 @@ abstract contract RebalancerUniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         vm.stopPrank();
     }
 
-    /*     function deployNativeEthPool() public {
+    function deployNativeEthPool(uint128 liquidity, uint24 fee, int24 tickSpacing, address hook)
+        public
+        returns (uint256 tokenId, uint256 sqrtPriceX96)
+    {
+        // Add a token 1 with fixed 18 decimals (we dont test for decimals in this flow).
+        token1 = new ERC20Mock("TokenB", "TOKB", 18);
+        vm.label({ account: address(token1), newLabel: "TOKENB" });
+        addAssetToArcadia(address(token1), int256(10 ** MOCK_ORACLE_DECIMALS));
+
         // Create UniswapV4 pool, native ETH has 18 decimals
-        uint256 sqrtPriceX96 = rebalancer.getSqrtPriceX96(10 ** token1.decimals(), 1e18);
-        nativeEthPoolKey =
-            initializePoolV4(address(0), address(token1), uint160(sqrtPriceX96), address(0), POOL_FEE, TICK_SPACING);
-    } */
+        sqrtPriceX96 = getSqrtPriceX96(10 ** token1.decimals(), 1e18);
+        nativeEthPoolKey = initializePoolV4(address(0), address(token1), uint160(sqrtPriceX96), hook, fee, tickSpacing);
+
+        // Add liquidity.
+        tokenId = mintPositionV4(
+            nativeEthPoolKey,
+            BOUND_TICK_LOWER / tickSpacing * tickSpacing,
+            BOUND_TICK_UPPER / tickSpacing * tickSpacing,
+            liquidity,
+            type(uint128).max,
+            type(uint128).max,
+            users.liquidityProvider
+        );
+    }
 
     function deployUniswapV4Rebalancer() public {
         rebalancer = new RebalancerUniswapV4Extension(MAX_TOLERANCE, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
@@ -200,12 +218,6 @@ abstract contract RebalancerUniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         );
         bytecode = Utils.veryBadBytesReplacer(
             bytecode, abi.encodePacked(0xd0690557600eb8Be8391D1d97346e2aab5300d5f), abi.encodePacked(registry), false
-        );
-        bytecode = Utils.veryBadBytesReplacer(
-            bytecode,
-            abi.encodePacked(0x4200000000000000000000000000000000000006),
-            abi.encodePacked(address(weth9)),
-            false
         );
         bytecode = Utils.veryBadBytesReplacer(
             bytecode,
@@ -229,6 +241,12 @@ abstract contract RebalancerUniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
             bytecode,
             abi.encodePacked(0x000000000022D473030F116dDEE9F6B43aC78BA3),
             abi.encodePacked((address(permit2))),
+            false
+        );
+        bytecode = Utils.veryBadBytesReplacer(
+            bytecode,
+            abi.encodePacked(0x4200000000000000000000000000000000000006),
+            abi.encodePacked(address(weth9)),
             false
         );
 
@@ -545,5 +563,21 @@ abstract contract RebalancerUniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         valuesAndRiskFactors = registry.getValuesInUsd(address(0), assets, new uint256[](2), assetAmounts);
 
         usdValueB = valuesAndRiskFactors[0].assetValue + valuesAndRiskFactors[1].assetValue;
+    }
+
+    function getSqrtPriceX96(uint256 priceToken0, uint256 priceToken1) public pure returns (uint160 sqrtPriceX96) {
+        if (priceToken1 == 0) return TickMath.MAX_SQRT_PRICE;
+
+        // Both priceTokens have 18 decimals precision and result of division should have 28 decimals precision.
+        // -> multiply by 1e28
+        // priceXd28 will overflow if priceToken0 is greater than 1.158e+49.
+        // For WBTC (which only has 8 decimals) this would require a bitcoin price greater than 115 792 089 237 316 198 989 824 USD/BTC.
+        uint256 priceXd28 = priceToken0.mulDivDown(1e28, priceToken1);
+        // Square root of a number with 28 decimals precision has 14 decimals precision.
+        uint256 sqrtPriceXd14 = FixedPointMathLib.sqrt(priceXd28);
+
+        // Change sqrtPrice from a decimal fixed point number with 14 digits to a binary fixed point number with 96 digits.
+        // Unsafe cast: Cast will only overflow when priceToken0/priceToken1 >= 2^128.
+        sqrtPriceX96 = uint160((sqrtPriceXd14 << FixedPoint96.RESOLUTION) / 1e14);
     }
 }

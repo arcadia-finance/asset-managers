@@ -23,6 +23,7 @@ import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-co
 import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
 import { UniswapV3Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";
 import { UniswapV3Logic } from "../../../../src/rebalancers/libraries/uniswap-v3/UniswapV3Logic.sol";
+import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
 
 /**
  * @notice Fuzz tests for the function "_executeAction" of contract "RebalancerUniswapV4".
@@ -379,7 +380,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
                 {
                     RouterMock router = new RouterMock();
                     bytes memory routerData =
-                        abi.encodeWithSelector(RouterMock.swap.selector, address(token1), address(token0), 0, 0);
+                        abi.encodeWithSelector(RouterMock.swap.selector, address(token0), address(token1), 0, 0);
                     swapData = abi.encode(address(router), 0, routerData);
                 }
 
@@ -544,6 +545,253 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
             assertEq(token1.allowance(address(rebalancer), account_), depositData.assetAmounts[1]);
         } else {
             assertEq(token0.allowance(address(rebalancer), account_), depositData.assetAmounts[1]);
+            assertEq(token1.allowance(address(rebalancer), account_), depositData.assetAmounts[2]);
+        }
+
+        // And: Initiator fees are given.
+        if (fee > 1e16) assertGt(token1.balanceOf(initiator), 0);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                        NATIVE ETH FLOW
+    //////////////////////////////////////////////////////////////*/
+
+    function testFuzz_Success_executeAction_ZeroToOne_NativeETH(
+        address account_,
+        RebalancerUniswapV4.PositionState memory position,
+        uint128 liquidityPool,
+        int24 tickLower,
+        int24 tickUpper,
+        address initiator,
+        uint256 tolerance,
+        uint256 fee
+    ) public {
+        // Given: rebalancer is not the account.
+        vm.assume(account_ != address(rebalancer));
+
+        // And: Pool has reasonable liquidity.
+        liquidityPool =
+            uint128(bound(liquidityPool, UniswapHelpers.maxLiquidity(10) / 1000, UniswapHelpers.maxLiquidity(1) / 10));
+
+        // And: Deploy V4 AM and native ETH pool.
+        deployNativeAM();
+        (, position.sqrtPriceX96) = deployNativeEthPool(liquidityPool, POOL_FEE, TICK_SPACING, address(0));
+
+        uint256 id;
+        {
+            int24 tickSpacing = TICK_SPACING;
+
+            // And: A valid position with multiple tickSpacing.
+            // And: Position is in range (has both tokens).
+            (, int24 tickCurrent,,) = stateView.getSlot0(nativeEthPoolKey.toId());
+            position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, tickCurrent - 10));
+            position.tickLower = position.tickLower / tickSpacing * tickSpacing;
+            position.tickUpper = int24(bound(position.tickUpper, tickCurrent + 10, BOUND_TICK_UPPER));
+            position.tickUpper = position.tickUpper / tickSpacing * tickSpacing;
+            position.liquidity = uint128(bound(position.liquidity, 1e6, 1e10));
+
+            id = mintPositionV4(
+                nativeEthPoolKey,
+                position.tickLower,
+                position.tickUpper,
+                position.liquidity,
+                type(uint128).max,
+                type(uint128).max,
+                address(rebalancer)
+            );
+
+            bytes32 positionId = keccak256(
+                abi.encodePacked(address(positionManagerV4), position.tickLower, position.tickUpper, bytes32(id))
+            );
+            position.liquidity = stateView.getPositionLiquidity(nativeEthPoolKey.toId(), positionId);
+
+            // And: A new position with a valid tick range.
+            // And: New Position is below current tick.
+            tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, tickCurrent - 2));
+            tickLower = tickLower / tickSpacing * tickSpacing;
+            tickUpper = int24(bound(tickUpper, tickLower + 1, tickCurrent - 1));
+            tickUpper = tickUpper / tickSpacing * tickSpacing;
+        }
+
+        // And: The initiator is initiated.
+        tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
+        fee = bound(fee, 0, MAX_INITIATOR_FEE);
+        vm.prank(initiator);
+        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
+
+        ActionData memory depositData;
+        {
+            bytes memory rebalanceData;
+            {
+                // And: Swap is successful.
+                deal(address(token1), address(rebalancer), type(uint72).max, true);
+                bytes memory swapData;
+                {
+                    RouterMock router = new RouterMock();
+                    bytes memory routerData =
+                        abi.encodeWithSelector(RouterMock.swap.selector, address(token0), address(token1), 0, 0);
+                    swapData = abi.encode(address(router), 0, routerData);
+                }
+
+                rebalanceData =
+                    encodeRebalanceData(address(positionManagerV4), id, initiator, tickLower, tickUpper, swapData);
+            }
+
+            // And: Hook is set.
+            HookMock hook = new HookMock();
+            rebalancer.setHook(account_, address(hook));
+
+            // And: set valid transient storage.
+            rebalancer.setTransientStorage(account_, position.sqrtPriceX96);
+
+            // When: Calling executeAction().
+            // Then: Hook should be called.
+            vm.prank(account_);
+            vm.expectEmit();
+            emit RebalancerUniswapV4.Rebalance(account_, address(positionManagerV4), id, id + 1);
+            vm.expectCall(
+                address(hook),
+                abi.encodeWithSelector(
+                    hook.beforeRebalance.selector, account_, address(positionManagerV4), id, tickLower, tickUpper
+                )
+            );
+            vm.expectCall(
+                address(hook),
+                abi.encodeWithSelector(hook.afterRebalance.selector, account_, address(positionManagerV4), id, id + 1)
+            );
+            depositData = rebalancer.executeAction(rebalanceData);
+        }
+
+        // And: It should return the correct values to be deposited back into the account.
+        assertEq(depositData.assets[0], address(positionManagerV4));
+        assertEq(depositData.assetIds[0], id + 1);
+        assertEq(depositData.assetAmounts[0], 1);
+        assertEq(depositData.assetTypes[0], 2);
+        assertEq(depositData.assets[1], address(weth9));
+        assertEq(depositData.assetIds[1], 0);
+        assertGt(depositData.assetAmounts[1], 0);
+        assertEq(depositData.assetTypes[1], 1);
+
+        // And: Approvals are given.
+        assertEq(ERC721(address(positionManagerV4)).getApproved(id + 1), account_);
+        assertEq(ERC20(address(weth9)).allowance(address(rebalancer), account_), depositData.assetAmounts[1]);
+
+        // And: Initiator fees are given.
+        if (fee > 1e16) assertGt(initiator.balance, 0);
+    }
+
+    function testFuzz_Success_executeAction_OneToZero_NativeETH(
+        address account_,
+        RebalancerUniswapV4.PositionState memory position,
+        uint128 liquidityPool,
+        int24 tickLower,
+        int24 tickUpper,
+        address initiator,
+        uint256 tolerance,
+        uint256 fee
+    ) public {
+        // Given: rebalancer is not the account.
+        vm.assume(account_ != address(rebalancer));
+
+        // And: Pool has reasonable liquidity.
+        liquidityPool =
+            uint128(bound(liquidityPool, UniswapHelpers.maxLiquidity(10) / 1000, UniswapHelpers.maxLiquidity(1) / 10));
+
+        // And: Deploy V4 AM and native ETH pool.
+        deployNativeAM();
+        (, position.sqrtPriceX96) = deployNativeEthPool(liquidityPool, POOL_FEE, TICK_SPACING, address(0));
+        int24 tickSpacing = TICK_SPACING;
+
+        // And: A valid position with multiple tickSpacing.
+        // And: Position is in range (has both tokens).
+        int24 tickCurrent = TickMath.getTickAtSqrtPrice(uint160(position.sqrtPriceX96));
+        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, tickCurrent - 10));
+        position.tickLower = position.tickLower / tickSpacing * tickSpacing;
+        position.tickUpper = int24(bound(position.tickUpper, tickCurrent + 10, BOUND_TICK_UPPER));
+        position.tickUpper = position.tickUpper / tickSpacing * tickSpacing;
+        position.liquidity = uint128(bound(position.liquidity, 1e6, 1e10));
+
+        uint256 id = mintPositionV4(
+            nativeEthPoolKey,
+            position.tickLower,
+            position.tickUpper,
+            position.liquidity,
+            type(uint128).max,
+            type(uint128).max,
+            address(rebalancer)
+        );
+
+        {
+            bytes32 positionId = keccak256(
+                abi.encodePacked(address(positionManagerV4), position.tickLower, position.tickUpper, bytes32(id))
+            );
+            position.liquidity = stateView.getPositionLiquidity(nativeEthPoolKey.toId(), positionId);
+        }
+
+        // And: A new position with a valid tick range.
+        // And: New Position is above current tick.
+        tickLower = int24(bound(tickLower, tickCurrent + 1, BOUND_TICK_UPPER - 10));
+        tickLower = tickLower / tickSpacing * tickSpacing;
+        tickUpper = int24(bound(tickUpper, tickLower + 10, BOUND_TICK_UPPER));
+        tickUpper = tickUpper / tickSpacing * tickSpacing;
+
+        // And: The initiator is initiated.
+        tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
+        fee = bound(fee, 0, MAX_INITIATOR_FEE);
+        vm.prank(initiator);
+        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
+
+        ActionData memory depositData;
+        {
+            // And: Swap is successful.
+            vm.deal(address(rebalancer), type(uint72).max);
+            bytes memory swapData;
+            {
+                RouterMock router = new RouterMock();
+                bytes memory routerData =
+                    abi.encodeWithSelector(RouterMock.swap.selector, address(token1), address(token0), 0, 0);
+                swapData = abi.encode(address(router), 0, routerData);
+            }
+
+            // And: set valid transient storage.
+            rebalancer.setTransientStorage(account_, position.sqrtPriceX96);
+
+            // When: Calling executeAction().
+            bytes memory rebalanceData =
+                encodeRebalanceData(address(positionManagerV4), id, initiator, tickLower, tickUpper, swapData);
+            vm.prank(account_);
+            vm.expectEmit();
+            emit RebalancerUniswapV4.Rebalance(account_, address(positionManagerV4), id, id + 1);
+            depositData = rebalancer.executeAction(rebalanceData);
+        }
+
+        // Then: It should return the correct values to be deposited back into the account.
+        assertEq(depositData.assets[0], address(positionManagerV4));
+        assertEq(depositData.assetIds[0], id + 1);
+        assertEq(depositData.assetAmounts[0], 1);
+        assertEq(depositData.assetTypes[0], 2);
+        if (depositData.assets.length == 2) {
+            assertEq(depositData.assets[1], address(token1));
+            assertEq(depositData.assetIds[1], 0);
+            assertGt(depositData.assetAmounts[1], 0);
+            assertEq(depositData.assetTypes[1], 1);
+        } else {
+            assertEq(depositData.assets[1], address(address(weth9)));
+            assertEq(depositData.assetIds[1], 0);
+            assertGt(depositData.assetAmounts[1], 0);
+            assertEq(depositData.assetTypes[1], 1);
+            assertEq(depositData.assets[2], address(token1));
+            assertEq(depositData.assetIds[2], 0);
+            assertGt(depositData.assetAmounts[2], 0);
+            assertEq(depositData.assetTypes[2], 1);
+        }
+
+        // And: Approvals are given.
+        assertEq(ERC721(address(positionManagerV4)).getApproved(id + 1), account_);
+        if (depositData.assets.length == 2) {
+            assertEq(token1.allowance(address(rebalancer), account_), depositData.assetAmounts[1]);
+        } else {
+            assertEq(ERC20(address(weth9)).allowance(address(rebalancer), account_), depositData.assetAmounts[1]);
             assertEq(token1.allowance(address(rebalancer), account_), depositData.assetAmounts[2]);
         }
 

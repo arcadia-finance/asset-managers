@@ -17,7 +17,7 @@ import { IPool } from "./interfaces/IPool.sol";
 import { IPositionManager } from "./interfaces/IPositionManager.sol";
 import { IStrategyHook } from "./interfaces/IStrategyHook.sol";
 import { IWETH } from "./interfaces/IWETH.sol";
-import { LiquidityAmounts } from "../../lib/accounts-v2/lib/v4-periphery/src/libraries/LiquidityAmounts.sol";
+import { LiquidityAmounts } from "./libraries/cl-math/LiquidityAmounts.sol";
 import { MintLogic } from "./libraries/shared-uniswap-v3-slipstream/MintLogic.sol";
 import { PoolKey } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 import { PricingLogic } from "./libraries/cl-math/PricingLogic.sol";
@@ -133,6 +133,9 @@ contract RebalancerUniswapV4 is ReentrancyGuard, IActionBase {
 
     event AccountInfoSet(address indexed account, address indexed initiator, address indexed strategyHook);
     event Rebalance(address indexed account, address indexed positionManager, uint256 oldId, uint256 newId);
+
+    event Log(uint256);
+    event LogAddress(address);
 
     /* //////////////////////////////////////////////////////////////
                                 MODIFIERS
@@ -320,13 +323,23 @@ contract RebalancerUniswapV4 is ReentrancyGuard, IActionBase {
         {
             uint256 count = 1;
             IPositionManager(positionManager).approve(msg.sender, newId);
-
-            // If leftover is in native ETH, we need to wrap it and send WETH to the Account.
-            if (position.token0 == address(0)) position.token0 = WETH;
-            if (position.token1 == address(0)) position.token1 = WETH;
-
+            emit Log(balance0);
+            emit Log(balance1);
+            emit Log(address(this).balance);
+            emit Log(ERC20(position.token1).balanceOf(address(this)));
             if (balance0 > 0) {
-                ERC20(position.token0).safeApproveWithRetry(msg.sender, balance0);
+                // If leftover is in native ETH, we need to wrap it and send WETH to the Account.
+                if (position.token0 == address(0)) {
+                    emit Log(balance0);
+                    position.token0 = WETH;
+                    emit Log(balance0);
+                    emit LogAddress(position.token0);
+                    emit LogAddress(WETH);
+                    IWETH(payable(WETH)).deposit{ value: balance0 }();
+                    emit Log(balance0);
+                } else {
+                    ERC20(position.token0).safeApproveWithRetry(msg.sender, balance0);
+                }
                 count = 2;
             }
             if (balance1 > 0) {
@@ -369,12 +382,15 @@ contract RebalancerUniswapV4 is ReentrancyGuard, IActionBase {
     {
         // Manage token approvals and check if native ETH has to be added to the position.
         if (position.token0 != address(0)) UniswapV4Logic._checkAndApprovePermit2(position.token0, balance0);
-        if (position.token1 != address(0)) UniswapV4Logic._checkAndApprovePermit2(position.token1, balance1);
+        UniswapV4Logic._checkAndApprovePermit2(position.token1, balance1);
+
+        // Get new token id.
+        newTokenId = UniswapV4Logic.POSITION_MANAGER.nextTokenId();
 
         // Generate calldata to mint new position.
         bytes[] memory params = new bytes[](2);
+        (uint160 newSqrtPriceX96,,,) = UniswapV4Logic.STATE_VIEW.getSlot0(poolKey.toId());
         {
-            (uint160 newSqrtPriceX96,,,) = UniswapV4Logic.STATE_VIEW.getSlot0(poolKey.toId());
             liquidity = LiquidityAmounts.getLiquidityForAmounts(
                 newSqrtPriceX96, position.sqrtRatioLower, position.sqrtRatioUpper, balance0, balance1
             );
@@ -396,21 +412,26 @@ contract RebalancerUniswapV4 is ReentrancyGuard, IActionBase {
         actions[0] = bytes1(uint8(UniswapV4Logic.MINT_POSITION));
         actions[1] = bytes1(uint8(UniswapV4Logic.SETTLE_PAIR));
 
-        // Get new token id.
-        newTokenId = UniswapV4Logic.POSITION_MANAGER.nextTokenId();
+        // Mint the new position.
+        uint256 ethValue;
+        if (position.token0 == address(0)) {
+            (ethValue,) = LiquidityAmounts.getAmountsForLiquidity(
+                newSqrtPriceX96, position.sqrtRatioLower, position.sqrtRatioUpper, uint128(liquidity)
+            );
+            // We can have rounding differences between amount returned from getAmountsForLiquidity library and PoolManager.
+            // Therefore we increment ethValue to avoid a revert in modifyLiquidities(). This amount should never be higher than available balance (balance0).
+            ethValue = ethValue < balance0 ? ethValue + 1 : balance0;
+        }
 
         uint256 balance0BeforeMint = Currency.wrap(position.token0).balanceOfSelf();
-        uint256 balance1BeforeMint = Currency.wrap(position.token1).balanceOfSelf();
+        uint256 balance1BeforeMint = ERC20(position.token1).balanceOf(address(this));
 
-        // Mint the new position.
-        uint256 ethValue =
-            (position.token0 == address(0) ? balance0 : 0) + (position.token1 == address(0) ? balance1 : 0);
         bytes memory mintParams = abi.encode(actions, params);
         UniswapV4Logic.POSITION_MANAGER.modifyLiquidities{ value: ethValue }(mintParams, block.timestamp);
 
         // Get the updated available balances after mint.
         balance0_ = balance0 - (balance0BeforeMint - Currency.wrap(position.token0).balanceOfSelf());
-        balance1_ = balance1 - (balance1BeforeMint - Currency.wrap(position.token1).balanceOfSelf());
+        balance1_ = balance1 - (balance1BeforeMint - ERC20(position.token1).balanceOf(address(this)));
     }
 
     /**
@@ -619,7 +640,7 @@ contract RebalancerUniswapV4 is ReentrancyGuard, IActionBase {
             } else {
                 (balance1, amountInitiatorFee) =
                     balance1 > amountInitiatorFee ? (balance1 - amountInitiatorFee, amountInitiatorFee) : (0, balance1);
-                if (amountInitiatorFee > 0) Currency.wrap(token1).transfer(initiator, amountInitiatorFee);
+                if (amountInitiatorFee > 0) ERC20(token1).transfer(initiator, amountInitiatorFee);
             }
             return (balance0, balance1);
         }
@@ -643,10 +664,7 @@ contract RebalancerUniswapV4 is ReentrancyGuard, IActionBase {
 
     /**
      * @notice Receives native ether.
-     * @dev Required for native ETH swaps through Uniswap V4 PoolManager.
-     * @dev Funds received can not be reclaimed, the receive only serves as a protection against griefing attacks.
+     * @dev Required for native ETH swaps through Uniswap V4 PoolManager or Router.
      */
-    receive() external payable {
-        if (msg.sender != address(UniswapV4Logic.POOL_MANAGER)) revert OnlyPoolManager();
-    }
+    receive() external payable { }
 }
