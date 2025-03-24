@@ -122,24 +122,33 @@ library UniswapV4Logic {
     }
 
     /**
-     * @notice Processes token balance changes resulting from a swap operation
+     * @notice Processes token balance changes resulting from a swap operation.
+     * @param delta The BalanceDelta containing the positive/negative changes in token amounts.
+     * @param currency0 The address of the first token in the pair.
+     * @param currency1 The address of the second token in the pair.
      * @dev Handles token transfers between the contract and the Pool Manager based on delta values:
      *      - For tokens owed to the Pool Manager: transfers tokens and calls settle()
      *      - For tokens owed from the Pool Manager: calls take() to receive tokens
-     * @param delta The BalanceDelta containing the positive/negative changes in token amounts
-     * @param currency0 The address of the first token in the pair
-     * @param currency1 The address of the second token in the pair
      */
     function _processSwapDelta(BalanceDelta delta, Currency currency0, Currency currency1) internal {
         if (delta.amount0() < 0) {
             POOL_MANAGER.sync(currency0);
-            currency0.transfer(address(POOL_MANAGER), uint128(-delta.amount0()));
-            POOL_MANAGER.settle();
+            if (currency0.isAddressZero()) {
+                POOL_MANAGER.settle{ value: uint128(-delta.amount0()) }();
+            } else {
+                currency0.transfer(address(POOL_MANAGER), uint128(-delta.amount0()));
+                POOL_MANAGER.settle();
+            }
         }
+
         if (delta.amount1() < 0) {
             POOL_MANAGER.sync(currency1);
-            currency1.transfer(address(POOL_MANAGER), uint128(-delta.amount1()));
-            POOL_MANAGER.settle();
+            if (currency1.isAddressZero()) {
+                POOL_MANAGER.settle{ value: uint128(-delta.amount1()) }();
+            } else {
+                currency1.transfer(address(POOL_MANAGER), uint128(-delta.amount1()));
+                POOL_MANAGER.settle();
+            }
         }
 
         if (delta.amount0() > 0) {
