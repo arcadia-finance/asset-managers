@@ -4,10 +4,11 @@
  */
 pragma solidity ^0.8.22;
 
-import { RebalancerUniV3Slipstream } from "../../../../src/rebalancers/RebalancerUniV3Slipstream.sol";
+import { RebalancerUniV3Slipstream } from "../../../../../src/rebalancers/RebalancerUniV3Slipstream.sol";
 import { SwapLogic_Fuzz_Test } from "./_SwapLogic.fuzz.t.sol";
-import { SqrtPriceMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/SqrtPriceMath.sol";
-import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
+import { SqrtPriceMath } from
+    "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/SqrtPriceMath.sol";
+import { UniswapHelpers } from "../../../../utils/uniswap-v3/UniswapHelpers.sol";
 
 /**
  * @notice Fuzz tests for the function "_swapViaPool" of contract "SwapLogic".

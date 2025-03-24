@@ -4,13 +4,13 @@
  */
 pragma solidity ^0.8.22;
 
-import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
+import { ERC20Mock } from "../../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { ICLPoolExtension } from
-    "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/extensions/interfaces/ICLPoolExtension.sol";
-import { RebalancerUniV3Slipstream } from "../../../../src/rebalancers/RebalancerUniV3Slipstream.sol";
+    "../../../../../lib/accounts-v2/test/utils/fixtures/slipstream/extensions/interfaces/ICLPoolExtension.sol";
+import { RebalancerUniV3Slipstream } from "../../../../../src/rebalancers/RebalancerUniV3Slipstream.sol";
 import { SlipstreamLogic_Fuzz_Test } from "./_SlipstreamLogic.fuzz.t.sol";
-import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
-import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
+import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
+import { UniswapHelpers } from "../../../../utils/uniswap-v3/UniswapHelpers.sol";
 
 /**
  * @notice Fuzz tests for the function "_getPositionState" of contract "SlipstreamLogic".

@@ -4,10 +4,10 @@
  */
 pragma solidity ^0.8.22;
 
-import { Fuzz_Test } from "../../Fuzz.t.sol";
-import { UniswapV3Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";
-import { UniswapV3LogicExtension } from "../../../utils/extensions/UniswapV3LogicExtension.sol";
-import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
+import { Fuzz_Test } from "../../../Fuzz.t.sol";
+import { UniswapV3Fixture } from "../../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";
+import { UniswapV3LogicExtension } from "../../../../utils/extensions/UniswapV3LogicExtension.sol";
+import { Utils } from "../../../../../lib/accounts-v2/test/utils/Utils.sol";
 
 /**
  * @notice Common logic needed by all "UniswapV3Logic" fuzz tests.

@@ -4,13 +4,14 @@
  */
 pragma solidity ^0.8.22;
 
-import { MintLogicExtension } from "../../../utils/extensions/MintLogicExtension.sol";
-import { Fuzz_Test } from "../../Fuzz.t.sol";
+import { SlipstreamFixture } from "../../../../../lib/accounts-v2/test/utils/fixtures/slipstream/Slipstream.f.sol";
+import { SlipstreamLogicExtension } from "../../../../utils/extensions/SlipstreamLogicExtension.sol";
+import { Fuzz_Test } from "../../../Fuzz.t.sol";
 
 /**
- * @notice Common logic needed by all "MintLogic" fuzz tests.
+ * @notice Common logic needed by all "SlipstreamLogic" fuzz tests.
  */
-abstract contract MintLogic_Fuzz_Test is Fuzz_Test {
+abstract contract SlipstreamLogic_Fuzz_Test is Fuzz_Test, SlipstreamFixture {
     /*////////////////////////////////////////////////////////////////
                             CONSTANTS
     /////////////////////////////////////////////////////////////// */
@@ -23,16 +24,21 @@ abstract contract MintLogic_Fuzz_Test is Fuzz_Test {
                             TEST CONTRACTS
     /////////////////////////////////////////////////////////////// */
 
-    MintLogicExtension internal mintLogic;
+    SlipstreamLogicExtension internal slipstreamLogic;
 
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
-    function setUp() public virtual override(Fuzz_Test) {
+    function setUp() public virtual override(Fuzz_Test, SlipstreamFixture) {
         Fuzz_Test.setUp();
 
-        mintLogic = new MintLogicExtension();
+        slipstreamLogic = new SlipstreamLogicExtension();
+
+        // And: Slipstream fixtures are deployed.
+        SlipstreamFixture.setUp();
+        deployAerodromePeriphery();
+        deploySlipstream();
     }
 
     /*////////////////////////////////////////////////////////////////

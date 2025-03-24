@@ -4,13 +4,13 @@
  */
 pragma solidity ^0.8.22;
 
-import { BurnLogicExtension } from "../../../utils/extensions/BurnLogicExtension.sol";
-import { Fuzz_Test } from "../../Fuzz.t.sol";
+import { MintLogicExtension } from "../../../../utils/extensions/MintLogicExtension.sol";
+import { Fuzz_Test } from "../../../Fuzz.t.sol";
 
 /**
- * @notice Common logic needed by all "BurnLogic" fuzz tests.
+ * @notice Common logic needed by all "MintLogic" fuzz tests.
  */
-abstract contract BurnLogic_Fuzz_Test is Fuzz_Test {
+abstract contract MintLogic_Fuzz_Test is Fuzz_Test {
     /*////////////////////////////////////////////////////////////////
                             CONSTANTS
     /////////////////////////////////////////////////////////////// */
@@ -23,7 +23,7 @@ abstract contract BurnLogic_Fuzz_Test is Fuzz_Test {
                             TEST CONTRACTS
     /////////////////////////////////////////////////////////////// */
 
-    BurnLogicExtension internal burnLogic;
+    MintLogicExtension internal mintLogic;
 
     /* ///////////////////////////////////////////////////////////////
                               SETUP
@@ -32,7 +32,7 @@ abstract contract BurnLogic_Fuzz_Test is Fuzz_Test {
     function setUp() public virtual override(Fuzz_Test) {
         Fuzz_Test.setUp();
 
-        burnLogic = new BurnLogicExtension();
+        mintLogic = new MintLogicExtension();
     }
 
     /*////////////////////////////////////////////////////////////////

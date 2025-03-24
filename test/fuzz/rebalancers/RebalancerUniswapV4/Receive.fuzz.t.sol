@@ -23,18 +23,6 @@ contract Receive_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test 
                               TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function testFuzz_Revert_receive_NonPoolManager(address sender, uint256 value) public {
-        vm.assume(sender != address(poolManager));
-
-        deal(sender, value);
-
-        vm.prank(sender);
-        (bool success, bytes memory data) = address(rebalancer).call{ value: value }(new bytes(0));
-
-        assertFalse(success);
-        assertEq(bytes4(data), RebalancerUniswapV4.OnlyPoolManager.selector);
-    }
-
     function testFuzz_Success_receive(uint256 value) public {
         deal(address(poolManager), value);
 

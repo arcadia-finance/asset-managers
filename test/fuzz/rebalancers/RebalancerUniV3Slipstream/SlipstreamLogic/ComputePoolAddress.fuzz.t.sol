@@ -4,7 +4,7 @@
  */
 pragma solidity ^0.8.22;
 
-import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
+import { ERC20Mock } from "../../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { SlipstreamLogic_Fuzz_Test } from "./_SlipstreamLogic.fuzz.t.sol";
 
 /**

@@ -4,14 +4,15 @@
  */
 pragma solidity ^0.8.22;
 
-import { RebalanceLogicExtension } from "../../../utils/extensions/RebalanceLogicExtension.sol";
-import { RebalancerUniV3Slipstream } from "../../../../src/rebalancers/RebalancerUniV3Slipstream.sol";
-import { RouterMock } from "../../../utils/mocks/RouterMock.sol";
-import { stdError } from "../../../../lib/accounts-v2/lib/forge-std/src/StdError.sol";
-import { SqrtPriceMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/SqrtPriceMath.sol";
+import { RebalanceLogicExtension } from "../../../../utils/extensions/RebalanceLogicExtension.sol";
+import { RebalancerUniV3Slipstream } from "../../../../../src/rebalancers/RebalancerUniV3Slipstream.sol";
+import { RouterMock } from "../../../../utils/mocks/RouterMock.sol";
+import { stdError } from "../../../../../lib/accounts-v2/lib/forge-std/src/StdError.sol";
+import { SqrtPriceMath } from
+    "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/SqrtPriceMath.sol";
 import { SwapLogic_Fuzz_Test } from "./_SwapLogic.fuzz.t.sol";
-import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
-import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
+import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
+import { UniswapHelpers } from "../../../../utils/uniswap-v3/UniswapHelpers.sol";
 
 /**
  * @notice Fuzz tests for the function "_swap" of contract "SwapLogic".

@@ -4,14 +4,13 @@
  */
 pragma solidity ^0.8.22;
 
-import { SlipstreamFixture } from "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/Slipstream.f.sol";
-import { SlipstreamLogicExtension } from "../../../utils/extensions/SlipstreamLogicExtension.sol";
-import { Fuzz_Test } from "../../Fuzz.t.sol";
+import { BurnLogicExtension } from "../../../../utils/extensions/BurnLogicExtension.sol";
+import { Fuzz_Test } from "../../../Fuzz.t.sol";
 
 /**
- * @notice Common logic needed by all "SlipstreamLogic" fuzz tests.
+ * @notice Common logic needed by all "BurnLogic" fuzz tests.
  */
-abstract contract SlipstreamLogic_Fuzz_Test is Fuzz_Test, SlipstreamFixture {
+abstract contract BurnLogic_Fuzz_Test is Fuzz_Test {
     /*////////////////////////////////////////////////////////////////
                             CONSTANTS
     /////////////////////////////////////////////////////////////// */
@@ -24,21 +23,16 @@ abstract contract SlipstreamLogic_Fuzz_Test is Fuzz_Test, SlipstreamFixture {
                             TEST CONTRACTS
     /////////////////////////////////////////////////////////////// */
 
-    SlipstreamLogicExtension internal slipstreamLogic;
+    BurnLogicExtension internal burnLogic;
 
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
-    function setUp() public virtual override(Fuzz_Test, SlipstreamFixture) {
+    function setUp() public virtual override(Fuzz_Test) {
         Fuzz_Test.setUp();
 
-        slipstreamLogic = new SlipstreamLogicExtension();
-
-        // And: Slipstream fixtures are deployed.
-        SlipstreamFixture.setUp();
-        deployAerodromePeriphery();
-        deploySlipstream();
+        burnLogic = new BurnLogicExtension();
     }
 
     /*////////////////////////////////////////////////////////////////
