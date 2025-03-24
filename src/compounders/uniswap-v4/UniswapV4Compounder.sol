@@ -232,42 +232,7 @@ contract UniswapV4Compounder is IActionBase {
             fees.amount1 -= (tokenInBeforeSwap - tokenInAfterSwap);
         }
 
-        // Increase liquidity of the position.
-        // Handle approvals based on whether tokens are ETH or ERC20.
-        bool token0IsNative = Currency.unwrap(poolKey.currency0) == address(0);
-
-        // Handle approvals for non-native tokens
-        if (!token0IsNative && fees.amount0 > 0) {
-            _checkAndApprovePermit2(Currency.unwrap(poolKey.currency0), fees.amount0);
-        }
-        if (fees.amount1 > 0) _checkAndApprovePermit2(Currency.unwrap(poolKey.currency1), fees.amount1);
-
-        {
-            // Calculate liquidity to be added based on fee amounts and updated sqrtPriceX96 after swap.
-            (uint160 newSqrtPriceX96,,,) = UniswapV4Logic.STATE_VIEW.getSlot0(poolKey.toId());
-            uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
-                newSqrtPriceX96,
-                uint160(position.sqrtRatioLower),
-                uint160(position.sqrtRatioUpper),
-                fees.amount0,
-                fees.amount1
-            );
-
-            uint256 ethValue = token0IsNative ? fees.amount0 : 0;
-
-            // Generate calldata to increase liquidity.
-            bytes memory actions = new bytes(2);
-            actions[0] = bytes1(uint8(UniswapV4Logic.INCREASE_LIQUIDITY));
-            actions[1] = bytes1(uint8(UniswapV4Logic.SETTLE_PAIR));
-            bytes[] memory params = new bytes[](2);
-            params[0] = abi.encode(id, liquidity, type(uint128).max, type(uint128).max, "");
-            params[1] = abi.encode(poolKey.currency0, poolKey.currency1);
-
-            bytes memory increaseLiquidityParams = abi.encode(actions, params);
-            UniswapV4Logic.POSITION_MANAGER.modifyLiquidities{ value: ethValue }(
-                increaseLiquidityParams, block.timestamp
-            );
-        }
+        _mint(poolKey, fees.amount0, fees.amount1, position.sqrtRatioLower, position.sqrtRatioUpper, id);
 
         // Initiator rewards are transferred to the initiator.
         uint256 balance0 = poolKey.currency0.balanceOfSelf();
@@ -278,6 +243,52 @@ contract UniswapV4Compounder is IActionBase {
 
         // Approve Account to deposit Liquidity Position back into the Account.
         UniswapV4Logic.POSITION_MANAGER.approve(msg.sender, id);
+    }
+
+    /**
+     * @notice Adds liquidity to a UniswapV4 position.
+     * @param poolKey The key containing information about the pool.
+     * @param amount0 The amount of token0 to add as liquidity.
+     * @param amount1 The amount of token1 to add as liquidity.
+     * @param sqrtRatioLower The lower bound of the price range.
+     * @param sqrtRatioUpper The upper bound of the price range.
+     * @param tokenId The id of the position to add liquidity to.
+     */
+    function _mint(
+        PoolKey memory poolKey,
+        uint256 amount0,
+        uint256 amount1,
+        uint256 sqrtRatioLower,
+        uint256 sqrtRatioUpper,
+        uint256 tokenId
+    ) internal {
+        // Handle approvals based on whether tokens are ETH or ERC20.
+        bool token0IsNative = Currency.unwrap(poolKey.currency0) == address(0);
+
+        // Handle approvals for non-native tokens.
+        if (!token0IsNative && amount0 > 0) {
+            _checkAndApprovePermit2(Currency.unwrap(poolKey.currency0), amount0);
+        }
+        if (amount1 > 0) _checkAndApprovePermit2(Currency.unwrap(poolKey.currency1), amount1);
+
+        // Calculate liquidity to be added based on fee amounts and updated sqrtPriceX96 after swap.
+        (uint160 newSqrtPriceX96,,,) = UniswapV4Logic.STATE_VIEW.getSlot0(poolKey.toId());
+        uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
+            newSqrtPriceX96, uint160(sqrtRatioLower), uint160(sqrtRatioUpper), amount0, amount1
+        );
+
+        uint256 ethValue = token0IsNative ? amount0 : 0;
+
+        // Generate calldata to increase liquidity.
+        bytes memory actions = new bytes(2);
+        actions[0] = bytes1(uint8(UniswapV4Logic.INCREASE_LIQUIDITY));
+        actions[1] = bytes1(uint8(UniswapV4Logic.SETTLE_PAIR));
+        bytes[] memory params = new bytes[](2);
+        params[0] = abi.encode(tokenId, liquidity, type(uint128).max, type(uint128).max, "");
+        params[1] = abi.encode(poolKey.currency0, poolKey.currency1);
+
+        bytes memory increaseLiquidityParams = abi.encode(actions, params);
+        UniswapV4Logic.POSITION_MANAGER.modifyLiquidities{ value: ethValue }(increaseLiquidityParams, block.timestamp);
     }
 
     /* ///////////////////////////////////////////////////////////////
