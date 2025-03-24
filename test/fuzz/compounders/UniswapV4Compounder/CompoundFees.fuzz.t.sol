@@ -86,8 +86,8 @@ contract CompoundFees_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_
         uint256 tokenId = setState(testVars, stablePoolKey);
 
         // And : Fee amounts above minimum treshold.
-        feeData.desiredFee0 = bound(feeData.desiredFee0, ((COMPOUND_THRESHOLD / 1e18) / 2), type(uint16).max);
-        feeData.desiredFee1 = bound(feeData.desiredFee1, ((COMPOUND_THRESHOLD / 1e18) / 2), type(uint16).max);
+        feeData.desiredFee0 = bound(feeData.desiredFee0, ((COMPOUND_THRESHOLD / 1e18) / 2) + 1, type(uint16).max);
+        feeData.desiredFee1 = bound(feeData.desiredFee1, ((COMPOUND_THRESHOLD / 1e18) / 2) + 1, type(uint16).max);
         feeData = setFeeState(feeData, stablePoolKey, testVars.liquidity);
 
         // And : Transfer position to account owner
@@ -146,8 +146,8 @@ contract CompoundFees_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_
         uint256 tokenId = setState(testVars, stablePoolKey);
 
         // And : Fee amounts above minimum treshold.
-        feeData.desiredFee0 = bound(feeData.desiredFee0, ((COMPOUND_THRESHOLD / 1e18) / 2), type(uint16).max);
-        feeData.desiredFee1 = bound(feeData.desiredFee1, ((COMPOUND_THRESHOLD / 1e18) / 2), type(uint16).max);
+        feeData.desiredFee0 = bound(feeData.desiredFee0, ((COMPOUND_THRESHOLD / 1e18) / 2) + 1, type(uint16).max);
+        feeData.desiredFee1 = bound(feeData.desiredFee1, ((COMPOUND_THRESHOLD / 1e18) / 2) + 1, type(uint16).max);
         feeData = setFeeState(feeData, stablePoolKey, testVars.liquidity);
 
         // And : Transfer position to account owner
@@ -172,7 +172,9 @@ contract CompoundFees_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_
         // And : Move tick right.
         {
             (, int24 currentTick,,) = stateView.getSlot0(stablePoolKey.toId());
-            int256 tickDelta = (int256(testVars.tickUpper - currentTick) * 9500) / 10_000;
+            (UniswapV4Compounder.PositionState memory position,) = compounder.getPositionState(tokenId);
+            int24 upperBoundTick = TickMath.getTickAtSqrtPrice(uint160(position.upperBoundSqrtPriceX96));
+            int256 tickDelta = (int256(upperBoundTick - currentTick) * 9500) / 10_000;
             int24 newTick = currentTick + int24(tickDelta);
             poolManager.setCurrentPrice(stablePoolKey.toId(), newTick, TickMath.getSqrtPriceAtTick(newTick));
         }
@@ -229,8 +231,8 @@ contract CompoundFees_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_
         uint256 tokenId = setState(testVars, stablePoolKey);
 
         // And : Fee amounts above minimum treshold.
-        feeData.desiredFee0 = bound(feeData.desiredFee0, ((COMPOUND_THRESHOLD / 1e18) / 2), type(uint16).max);
-        feeData.desiredFee1 = bound(feeData.desiredFee1, ((COMPOUND_THRESHOLD / 1e18) / 2), type(uint16).max);
+        feeData.desiredFee0 = bound(feeData.desiredFee0, ((COMPOUND_THRESHOLD / 1e18) / 2) + 1, type(uint16).max);
+        feeData.desiredFee1 = bound(feeData.desiredFee1, ((COMPOUND_THRESHOLD / 1e18) / 2) + 1, type(uint16).max);
         feeData = setFeeState(feeData, stablePoolKey, testVars.liquidity);
 
         // And : Transfer position to account owner
@@ -255,8 +257,10 @@ contract CompoundFees_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_
         // And : Move tick left.
         {
             (, int24 currentTick,,) = stateView.getSlot0(stablePoolKey.toId());
-            int256 tickDelta = (int256(currentTick - testVars.tickUpper) * 9500) / 10_000;
-            int24 newTick = currentTick + int24(tickDelta);
+            (UniswapV4Compounder.PositionState memory position,) = compounder.getPositionState(tokenId);
+            int24 upperBoundTick = TickMath.getTickAtSqrtPrice(uint160(position.upperBoundSqrtPriceX96));
+            int256 tickDelta = (int256(upperBoundTick - currentTick) * 9500) / 10_000;
+            int24 newTick = currentTick - int24(tickDelta);
             poolManager.setCurrentPrice(stablePoolKey.toId(), newTick, TickMath.getSqrtPriceAtTick(newTick));
         }
 
@@ -305,15 +309,22 @@ contract CompoundFees_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_
         // Given : initiator is not the liquidity provider.
         vm.assume(initiator != users.liquidityProvider);
 
+        // And : deploy new compounder with a high maxTolerance to avoid unbalancedPool (this is not objective of test here).
+        uint256 tolerance = 0.9 * 1e18;
+        deployCompounder(COMPOUND_THRESHOLD, INITIATOR_SHARE, tolerance);
+        // And : Compounder is allowed as Asset Manager
+        vm.prank(users.accountOwner);
+        account.setAssetManager(address(compounder), true);
+
         // And : Valid state
         (testVars,) = givenValidBalancedState(testVars, nativeEthPoolKey);
 
         // And : State is persisted
         uint256 tokenId = setState(testVars, nativeEthPoolKey);
 
-        // And : Fee amounts above minimum treshold.
-        feeData.desiredFee0 = bound(feeData.desiredFee0, ((COMPOUND_THRESHOLD / 1e18) / 2), type(uint16).max);
-        feeData.desiredFee1 = bound(feeData.desiredFee1, ((COMPOUND_THRESHOLD / 1e18) / 2), type(uint16).max);
+        // And : Fee amounts above minimum treshold (in $).
+        feeData.desiredFee0 = bound(feeData.desiredFee0, ((COMPOUND_THRESHOLD / 1e18) / 2) + 1, 100);
+        feeData.desiredFee1 = bound(feeData.desiredFee1, ((COMPOUND_THRESHOLD / 1e18) / 2) + 1, 100);
         feeData = setFeeState(feeData, nativeEthPoolKey, testVars.liquidity);
 
         // And : Transfer position to account owner
@@ -347,7 +358,7 @@ contract CompoundFees_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_
         assertGt(newLiquidity, testVars.liquidity);
 
         // And : initiatorFees should never be bigger than the calculated share plus a small bonus due to rounding errors in.
-        uint256 initiatorFeesToken0 = token0.balanceOf(initiator);
+        uint256 initiatorFeesToken0 = initiator.balance;
         uint256 initiatorFeesToken1 = token1.balanceOf(initiator);
 
         uint256 initiatorFeeToken0Calculated = feeData.desiredFee0 * (INITIATOR_SHARE + TOLERANCE) / 1e18;

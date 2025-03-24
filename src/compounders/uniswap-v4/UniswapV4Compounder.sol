@@ -103,6 +103,8 @@ contract UniswapV4Compounder is IActionBase {
 
     event Compound(address indexed account, uint256 id);
 
+    event LogUint(uint256);
+
     /* //////////////////////////////////////////////////////////////
                                 MODIFIERS
     ////////////////////////////////////////////////////////////// */
@@ -212,32 +214,33 @@ contract UniswapV4Compounder is IActionBase {
         // Rebalance the fee amounts so that the maximum amount of liquidity can be added.
         // The Pool must still be balanced after the swap.
         (bool zeroToOne, uint256 amountOut) = getSwapParameters(position, fees);
+        uint256 tokenInBeforeSwap = zeroToOne ? poolKey.currency0.balanceOfSelf() : poolKey.currency1.balanceOfSelf();
         if (_swap(poolKey, position.lowerBoundSqrtPriceX96, position.upperBoundSqrtPriceX96, zeroToOne, amountOut)) {
             revert UnbalancedPool();
         }
+        uint256 tokenInAfterSwap = zeroToOne ? poolKey.currency0.balanceOfSelf() : poolKey.currency1.balanceOfSelf();
 
         // We increase the fee amount of tokenOut, but we do not decrease the fee amount of tokenIn.
         // This guarantees that tokenOut is the limiting factor when increasing liquidity and not tokenIn.
         // As a consequence, slippage will result in less tokenIn going to the initiator,
         // instead of more tokenOut going to the initiator.
-        if (zeroToOne) fees.amount1 += amountOut;
-        else fees.amount0 += amountOut;
+        if (zeroToOne) {
+            fees.amount1 += amountOut;
+            fees.amount0 -= (tokenInBeforeSwap - tokenInAfterSwap);
+        } else {
+            fees.amount0 += amountOut;
+            fees.amount1 -= (tokenInBeforeSwap - tokenInAfterSwap);
+        }
 
         // Increase liquidity of the position.
         // Handle approvals based on whether tokens are ETH or ERC20.
         bool token0IsNative = Currency.unwrap(poolKey.currency0) == address(0);
-        bool token1IsNative = Currency.unwrap(poolKey.currency1) == address(0);
-
-        // Calculate ETH value to send, if any.
-        uint256 ethValue = (token0IsNative ? fees.amount0 : 0) + (token1IsNative ? fees.amount1 : 0);
 
         // Handle approvals for non-native tokens
         if (!token0IsNative && fees.amount0 > 0) {
             _checkAndApprovePermit2(Currency.unwrap(poolKey.currency0), fees.amount0);
         }
-        if (!token1IsNative && fees.amount1 > 0) {
-            _checkAndApprovePermit2(Currency.unwrap(poolKey.currency1), fees.amount1);
-        }
+        if (fees.amount1 > 0) _checkAndApprovePermit2(Currency.unwrap(poolKey.currency1), fees.amount1);
 
         {
             // Calculate liquidity to be added based on fee amounts and updated sqrtPriceX96 after swap.
@@ -249,6 +252,8 @@ contract UniswapV4Compounder is IActionBase {
                 fees.amount0,
                 fees.amount1
             );
+
+            uint256 ethValue = token0IsNative ? fees.amount0 : 0;
 
             // Generate calldata to increase liquidity.
             bytes memory actions = new bytes(2);
@@ -406,6 +411,7 @@ contract UniswapV4Compounder is IActionBase {
     function unlockCallback(bytes calldata data) external payable onlyPoolManager returns (bytes memory results) {
         (SwapParams memory params, PoolKey memory poolKey) = abi.decode(data, (SwapParams, PoolKey));
         BalanceDelta delta = UniswapV4Logic.POOL_MANAGER.swap(poolKey, params, "");
+
         UniswapV4Logic._processSwapDelta(delta, poolKey.currency0, poolKey.currency1);
         results = abi.encode(delta);
     }

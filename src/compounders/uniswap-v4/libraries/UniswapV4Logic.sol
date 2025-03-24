@@ -133,13 +133,22 @@ library UniswapV4Logic {
     function _processSwapDelta(BalanceDelta delta, Currency currency0, Currency currency1) internal {
         if (delta.amount0() < 0) {
             POOL_MANAGER.sync(currency0);
-            currency0.transfer(address(POOL_MANAGER), uint128(-delta.amount0()));
-            POOL_MANAGER.settle();
+            if (currency0.isAddressZero()) {
+                POOL_MANAGER.settle{ value: uint128(-delta.amount0()) }();
+            } else {
+                currency0.transfer(address(POOL_MANAGER), uint128(-delta.amount0()));
+                POOL_MANAGER.settle();
+            }
         }
+
         if (delta.amount1() < 0) {
             POOL_MANAGER.sync(currency1);
-            currency1.transfer(address(POOL_MANAGER), uint128(-delta.amount1()));
-            POOL_MANAGER.settle();
+            if (currency1.isAddressZero()) {
+                POOL_MANAGER.settle{ value: uint128(-delta.amount1()) }();
+            } else {
+                currency1.transfer(address(POOL_MANAGER), uint128(-delta.amount1()));
+                POOL_MANAGER.settle();
+            }
         }
 
         if (delta.amount0() > 0) {

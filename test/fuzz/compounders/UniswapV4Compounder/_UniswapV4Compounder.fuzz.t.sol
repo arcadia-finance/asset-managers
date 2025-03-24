@@ -291,28 +291,8 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
 
         BalanceDelta delta = poolManager.swap(poolKey, params, "");
 
-        _processSwapDelta(delta, poolKey.currency0, poolKey.currency1);
+        UniswapV4Logic._processSwapDelta(delta, poolKey.currency0, poolKey.currency1);
         results = abi.encode(delta);
-    }
-
-    function _processSwapDelta(BalanceDelta delta, Currency currency0, Currency currency1) internal {
-        if (delta.amount0() < 0) {
-            poolManager.sync(currency0);
-            currency0.transfer(address(poolManager), uint128(-delta.amount0()));
-            poolManager.settle();
-        }
-        if (delta.amount1() < 0) {
-            poolManager.sync(currency1);
-            currency1.transfer(address(poolManager), uint128(-delta.amount1()));
-            poolManager.settle();
-        }
-
-        if (delta.amount0() > 0) {
-            poolManager.take(currency0, (address(this)), uint128(delta.amount0()));
-        }
-        if (delta.amount1() > 0) {
-            poolManager.take(currency1, address(this), uint128(delta.amount1()));
-        }
     }
 
     // From UniV4-core tests
