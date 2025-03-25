@@ -308,6 +308,8 @@ contract IsCompoundable_UniswapV3CompounderHelper_Fuzz_Test is UniswapV3Compound
         bool isCompoundable_ = compounderHelper.isCompoundable(tokenId);
         assertEq(isCompoundable_, true);
 
-        compounder.compoundFees(address(account), tokenId);
+        (uint160 sqrtPriceX96_,,,,,,) = usdStablePool.slot0();
+
+        compounder.compoundFees(address(account), tokenId, uint256(sqrtPriceX96_));
     }
 }

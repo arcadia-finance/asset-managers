@@ -65,10 +65,11 @@ contract CompoundFees_SlipstreamCompounderSpot_Fuzz_Test is SlipstreamCompounder
 
         // Check liquidity pre-compounding
         (,,,,,,, uint128 initialLiquidity,,,,) = slipstreamPositionManager.positions(tokenId);
+        (uint160 sqrtPriceX96,,,,,) = usdStablePool.slot0();
 
         // When : Calling compoundFees()
         vm.prank(initiator);
-        compounderSpot.compoundFees(address(account), tokenId);
+        compounderSpot.compoundFees(address(account), tokenId, uint256(sqrtPriceX96));
 
         // Then : Liquidity of position should have increased
         (,,,,,,, uint128 newLiquidity,,,,) = slipstreamPositionManager.positions(tokenId);
@@ -153,9 +154,11 @@ contract CompoundFees_SlipstreamCompounderSpot_Fuzz_Test is SlipstreamCompounder
         // Check liquidity pre-compounding
         (,,,,,,, uint128 initialLiquidity,,,,) = slipstreamPositionManager.positions(tokenId);
 
+        (uint160 sqrtPriceX96,,,,,) = usdStablePool.slot0();
+
         // When : Calling compoundFees()
         vm.prank(initiator);
-        compounderSpot.compoundFees(address(account), tokenId);
+        compounderSpot.compoundFees(address(account), tokenId, uint256(sqrtPriceX96));
 
         // Then : Liquidity of position should have increased
         (,,,,,,, uint128 newLiquidity,,,,) = slipstreamPositionManager.positions(tokenId);
@@ -252,9 +255,11 @@ contract CompoundFees_SlipstreamCompounderSpot_Fuzz_Test is SlipstreamCompounder
         // Check liquidity pre-compounding
         (,,,,,,, uint128 initialLiquidity,,,,) = slipstreamPositionManager.positions(tokenId);
 
+        (uint160 sqrtPriceX96,,,,,) = usdStablePool.slot0();
+
         // When : Calling compoundFees()
         vm.prank(initiator);
-        compounderSpot.compoundFees(address(account), tokenId);
+        compounderSpot.compoundFees(address(account), tokenId, uint256(sqrtPriceX96));
 
         // Then : Liquidity of position should have increased
         (,,,,,,, uint128 newLiquidity,,,,) = slipstreamPositionManager.positions(tokenId);

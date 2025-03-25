@@ -64,9 +64,11 @@ contract CompoundFees_UniswapV3CompounderSpot_Fuzz_Test is UniswapV3CompounderSp
         // Check liquidity pre-compounding
         (,,,,,,, uint128 initialLiquidity,,,,) = nonfungiblePositionManager.positions(tokenId);
 
+        (uint160 sqrtPriceX96,,,,,,) = usdStablePool.slot0();
+
         // When : Calling compoundFees()
         vm.prank(initiator);
-        compounderSpot.compoundFees(address(account), tokenId);
+        compounderSpot.compoundFees(address(account), tokenId, uint256(sqrtPriceX96));
 
         // Then : Liquidity of position should have increased
         (,,,,,,, uint128 newLiquidity,,,,) = nonfungiblePositionManager.positions(tokenId);
@@ -150,9 +152,11 @@ contract CompoundFees_UniswapV3CompounderSpot_Fuzz_Test is UniswapV3CompounderSp
         // Check liquidity pre-compounding
         (,,,,,,, uint128 initialLiquidity,,,,) = nonfungiblePositionManager.positions(tokenId);
 
+        (uint160 sqrtPriceX96,,,,,,) = usdStablePool.slot0();
+
         // When : Calling compoundFees()
         vm.prank(initiator);
-        compounderSpot.compoundFees(address(account), tokenId);
+        compounderSpot.compoundFees(address(account), tokenId, uint256(sqrtPriceX96));
 
         // Then : Liquidity of position should have increased
         (,,,,,,, uint128 newLiquidity,,,,) = nonfungiblePositionManager.positions(tokenId);
@@ -248,9 +252,11 @@ contract CompoundFees_UniswapV3CompounderSpot_Fuzz_Test is UniswapV3CompounderSp
         // Check liquidity pre-compounding
         (,,,,,,, uint128 initialLiquidity,,,,) = nonfungiblePositionManager.positions(tokenId);
 
+        (uint160 sqrtPriceX96,,,,,,) = usdStablePool.slot0();
+
         // When : Calling compoundFees()
         vm.prank(initiator);
-        compounderSpot.compoundFees(address(account), tokenId);
+        compounderSpot.compoundFees(address(account), tokenId, uint256(sqrtPriceX96));
 
         // Then : Liquidity of position should have increased
         (,,,,,,, uint128 newLiquidity,,,,) = nonfungiblePositionManager.positions(tokenId);

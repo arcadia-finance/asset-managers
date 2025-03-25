@@ -58,10 +58,12 @@ contract CompoundFees_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder_Fuz
             vm.stopPrank();
         }
 
+        (uint160 sqrtPriceX96,,,,,) = usdStablePool.slot0();
+
         // When : Calling compoundFees()
         vm.startPrank(initiator);
         vm.expectRevert(SlipstreamCompounder.BelowThreshold.selector);
-        compounder.compoundFees(address(account), tokenId);
+        compounder.compoundFees(address(account), tokenId, uint256(sqrtPriceX96));
         vm.stopPrank();
     }
 
@@ -98,9 +100,11 @@ contract CompoundFees_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder_Fuz
         // Check liquidity pre-compounding
         (,,,,,,, uint128 initialLiquidity,,,,) = slipstreamPositionManager.positions(tokenId);
 
+        (uint160 sqrtPriceX96,,,,,) = usdStablePool.slot0();
+
         // When : Calling compoundFees()
         vm.prank(initiator);
-        compounder.compoundFees(address(account), tokenId);
+        compounder.compoundFees(address(account), tokenId, uint256(sqrtPriceX96));
 
         // Then : Liquidity of position should have increased
         (,,,,,,, uint128 newLiquidity,,,,) = slipstreamPositionManager.positions(tokenId);
@@ -182,9 +186,11 @@ contract CompoundFees_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder_Fuz
         // Check liquidity pre-compounding
         (,,,,,,, uint128 initialLiquidity,,,,) = slipstreamPositionManager.positions(tokenId);
 
+        (uint160 sqrtPriceX96,,,,,) = usdStablePool.slot0();
+
         // When : Calling compoundFees()
         vm.prank(initiator);
-        compounder.compoundFees(address(account), tokenId);
+        compounder.compoundFees(address(account), tokenId, uint256(sqrtPriceX96));
 
         // Then : Liquidity of position should have increased
         (,,,,,,, uint128 newLiquidity,,,,) = slipstreamPositionManager.positions(tokenId);
@@ -278,9 +284,11 @@ contract CompoundFees_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder_Fuz
         // Check liquidity pre-compounding
         (,,,,,,, uint128 initialLiquidity,,,,) = slipstreamPositionManager.positions(tokenId);
 
+        (uint160 sqrtPriceX96,,,,,) = usdStablePool.slot0();
+
         // When : Calling compoundFees()
         vm.prank(initiator);
-        compounder.compoundFees(address(account), tokenId);
+        compounder.compoundFees(address(account), tokenId, uint256(sqrtPriceX96));
 
         // Then : Liquidity of position should have increased
         (,,,,,,, uint128 newLiquidity,,,,) = slipstreamPositionManager.positions(tokenId);

@@ -11,6 +11,7 @@ import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IAccount } from "../interfaces/IAccount.sol";
 import { ICLPool } from "./interfaces/ICLPool.sol";
+import { ReentrancyGuard } from "../../../lib/accounts-v2/lib/solmate/src/utils/ReentrancyGuard.sol";
 import { SlipstreamLogic } from "./libraries/SlipstreamLogic.sol";
 import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 
@@ -22,18 +23,22 @@ import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/l
  * Compounding can only be triggered if certain conditions are met and the initiator will get a small fee for the service provided.
  * The compounding will collect the fees earned by a position and increase the liquidity of the position by those fees.
  * Depending on current tick of the pool and the position range, fees will be deposited in appropriate ratio.
- * @dev The contract prevents frontrunning/sandwiching by comparing the actual pool price with a pool price calculated from trusted
- * price feeds (oracles).
- * Some oracles can however deviate from the actual price by a few percent points, this could potentially open attack vectors by manipulating
- * pools and sandwiching the swap and/or increase liquidity. This asset manager should not be used for Arcadia Account that have/will have
- * Slipstream Liquidity Positions where one of the underlying assets is priced with such low precision oracles.
+ * @dev The initiator will provide a trusted sqrtPriceX96 input at the time of compounding to mitigate frontrunning risks.
+ * This input serves as a reference point for calculating the maximum allowed deviation during the compounding process,
+ * ensuring that the execution remains within a controlled price range.
  */
-contract SlipstreamCompounder is IActionBase {
+contract SlipstreamCompounder is ReentrancyGuard, IActionBase {
     using FixedPointMathLib for uint256;
     using SafeTransferLib for ERC20;
     /* //////////////////////////////////////////////////////////////
                                 CONSTANTS
     ////////////////////////////////////////////////////////////// */
+
+    // keccak256("SlipstreamCompounderAccount")
+    bytes32 internal constant ACCOUNT_SLOT = 0x0dcd7a30c9eea91efde45fef3a255499ad1cd34f68ade10fe211c3c04209adce;
+    // keccak256("SlipstreamCompounderTrustedSqrtPriceX96")
+    bytes32 internal constant TRUSTED_SQRT_PRICE_X96_SLOT =
+        0x317e46c43219a5886ac329256fca904c9256ca9d6727c9256e347d19a56ddaec;
 
     // Minimum fees value in USD to trigger the compounding of a position, with 18 decimals precision.
     uint256 public immutable COMPOUND_THRESHOLD;
@@ -49,9 +54,6 @@ contract SlipstreamCompounder is IActionBase {
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
     ////////////////////////////////////////////////////////////// */
-
-    // The Account to compound the fees for, used as transient storage.
-    address internal account;
 
     // A struct with the state of a specific position, only used in memory.
     struct PositionState {
@@ -123,26 +125,28 @@ contract SlipstreamCompounder is IActionBase {
 
     /**
      * @notice Compounds the fees earned by a Slipstream Liquidity Position owned by an Arcadia Account.
-     * @param account_ The Arcadia Account owning the position.
+     * @param account The Arcadia Account owning the position.
      * @param id The id of the Liquidity Position.
+     * @param trustedSqrtPriceX96 The pool sqrtPriceX96 provided at the time of calling compoundFees().
      */
-    function compoundFees(address account_, uint256 id) external {
+    function compoundFees(address account, uint256 id, uint256 trustedSqrtPriceX96) external {
         // Store Account address, used to validate the caller of the executeAction() callback.
-        if (account != address(0)) revert Reentered();
-        if (!ArcadiaLogic.FACTORY.isAccount(account_)) revert NotAnAccount();
-        account = account_;
+        if (!ArcadiaLogic.FACTORY.isAccount(account)) revert NotAnAccount();
+
+        // Store Account address, used to validate the caller of the executeAction() callback and serves as a reentrancy guard.
+        assembly {
+            tstore(ACCOUNT_SLOT, account)
+            tstore(TRUSTED_SQRT_PRICE_X96_SLOT, trustedSqrtPriceX96)
+        }
 
         // Encode data for the flash-action.
         bytes memory actionData =
             ArcadiaLogic._encodeActionData(msg.sender, address(SlipstreamLogic.POSITION_MANAGER), id);
 
         // Call flashAction() with this contract as actionTarget.
-        IAccount(account_).flashAction(address(this), actionData);
+        IAccount(account).flashAction(address(this), actionData);
 
-        // Reset account.
-        account = address(0);
-
-        emit Compound(account_, id);
+        emit Compound(account, id);
     }
 
     /**
@@ -161,6 +165,11 @@ contract SlipstreamCompounder is IActionBase {
      */
     function executeAction(bytes calldata compoundData) external override returns (ActionData memory assetData) {
         // Caller should be the Account, provided as input in compoundFees().
+        address account;
+        assembly {
+            account := tload(ACCOUNT_SLOT)
+        }
+
         if (msg.sender != account) revert OnlyAccount();
 
         // Decode compoundData.
@@ -361,8 +370,11 @@ contract SlipstreamCompounder is IActionBase {
         position.pool = SlipstreamLogic._computePoolAddress(position.token0, position.token1, position.tickSpacing);
         (position.sqrtPriceX96,,,,,) = ICLPool(position.pool).slot0();
 
-        // Calculate the square root of the relative rate sqrt(token1/token0) from the trusted USD price of both tokens.
-        uint256 trustedSqrtPriceX96 = SlipstreamLogic._getSqrtPriceX96(position.usdPriceToken0, position.usdPriceToken1);
+        // Get the trusted sqrtPriceX96 provided by the initiator.        uint256 trustedSqrtPriceX96;
+        uint256 trustedSqrtPriceX96;
+        assembly {
+            trustedSqrtPriceX96 := tload(TRUSTED_SQRT_PRICE_X96_SLOT)
+        }
 
         // Calculate the upper and lower bounds of sqrtPriceX96 for the Pool to be balanced.
         position.lowerBoundSqrtPriceX96 = trustedSqrtPriceX96.mulDivDown(LOWER_SQRT_PRICE_DEVIATION, 1e18);

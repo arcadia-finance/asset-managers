@@ -56,10 +56,12 @@ contract CompoundFees_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_Fuzz_
             vm.stopPrank();
         }
 
+        (uint160 sqrtPriceX96,,,,,,) = usdStablePool.slot0();
+
         // When : Calling compoundFees()
         vm.startPrank(initiator);
         vm.expectRevert(UniswapV3Compounder.BelowThreshold.selector);
-        compounder.compoundFees(address(account), tokenId);
+        compounder.compoundFees(address(account), tokenId, uint256(sqrtPriceX96));
         vm.stopPrank();
     }
 
@@ -96,9 +98,11 @@ contract CompoundFees_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_Fuzz_
         // Check liquidity pre-compounding
         (,,,,,,, uint128 initialLiquidity,,,,) = nonfungiblePositionManager.positions(tokenId);
 
+        (uint160 sqrtPriceX96,,,,,,) = usdStablePool.slot0();
+
         // When : Calling compoundFees()
         vm.prank(initiator);
-        compounder.compoundFees(address(account), tokenId);
+        compounder.compoundFees(address(account), tokenId, uint256(sqrtPriceX96));
 
         // Then : Liquidity of position should have increased
         (,,,,,,, uint128 newLiquidity,,,,) = nonfungiblePositionManager.positions(tokenId);
@@ -178,10 +182,11 @@ contract CompoundFees_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_Fuzz_
 
         // Check liquidity pre-compounding
         (,,,,,,, uint128 initialLiquidity,,,,) = nonfungiblePositionManager.positions(tokenId);
+        (uint160 sqrtPriceX96,,,,,,) = usdStablePool.slot0();
 
         // When : Calling compoundFees()
         vm.prank(initiator);
-        compounder.compoundFees(address(account), tokenId);
+        compounder.compoundFees(address(account), tokenId, uint256(sqrtPriceX96));
 
         // Then : Liquidity of position should have increased
         (,,,,,,, uint128 newLiquidity,,,,) = nonfungiblePositionManager.positions(tokenId);
@@ -274,9 +279,11 @@ contract CompoundFees_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_Fuzz_
         // Check liquidity pre-compounding
         (,,,,,,, uint128 initialLiquidity,,,,) = nonfungiblePositionManager.positions(tokenId);
 
+        (uint160 sqrtPriceX96,,,,,,) = usdStablePool.slot0();
+
         // When : Calling compoundFees()
         vm.prank(initiator);
-        compounder.compoundFees(address(account), tokenId);
+        compounder.compoundFees(address(account), tokenId, uint256(sqrtPriceX96));
 
         // Then : Liquidity of position should have increased
         (,,,,,,, uint128 newLiquidity,,,,) = nonfungiblePositionManager.positions(tokenId);
