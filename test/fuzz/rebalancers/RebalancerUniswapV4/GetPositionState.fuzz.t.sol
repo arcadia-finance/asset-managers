@@ -39,9 +39,6 @@ contract GetPositionState_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_F
         // Given: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
 
-        // And: Valid transient storage.
-        rebalancer.setTransientStorage(address(0), position.sqrtPriceX96);
-
         // And: Pool has reasonable liquidity.
         liquidityPool =
             uint128(bound(liquidityPool, UniswapHelpers.maxLiquidity(10) / 1000, UniswapHelpers.maxLiquidity(1) / 10));
@@ -77,7 +74,8 @@ contract GetPositionState_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_F
         rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
 
         // When: Calling getPositionState().
-        RebalancerUniswapV4.PositionState memory position_ = rebalancer.getPositionState(id, tick, tick, initiator);
+        RebalancerUniswapV4.PositionState memory position_ =
+            rebalancer.getPositionState(id, tick, tick, position.sqrtPriceX96, initiator);
 
         // Then : It should return the correct values
         assertEq(position_.hook, address(validHook));
@@ -106,9 +104,6 @@ contract GetPositionState_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_F
     ) public {
         // Given: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
-
-        // And: Valid transient storage.
-        rebalancer.setTransientStorage(address(0), position.sqrtPriceX96);
 
         // And: Pool has reasonable liquidity.
         liquidityPool =
@@ -146,7 +141,8 @@ contract GetPositionState_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_F
         rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
 
         // When: Calling getPositionState().
-        RebalancerUniswapV4.PositionState memory position_ = rebalancer.getPositionState(id, tick, tick, initiator);
+        RebalancerUniswapV4.PositionState memory position_ =
+            rebalancer.getPositionState(id, tick, tick, position.sqrtPriceX96, initiator);
 
         // Then : It should return the correct values
         assertEq(position_.hook, address(validHook));
@@ -183,9 +179,6 @@ contract GetPositionState_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_F
     ) public {
         // Given: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
-
-        // And: Valid transient storage.
-        rebalancer.setTransientStorage(address(0), position.sqrtPriceX96);
 
         // And: Pool has reasonable liquidity.
         liquidityPool =
@@ -235,7 +228,7 @@ contract GetPositionState_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_F
             rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
 
             // When: Calling getPositionState().
-            position_ = rebalancer.getPositionState(id, tickLower, tickUpper, initiator);
+            position_ = rebalancer.getPositionState(id, tickLower, tickUpper, position.sqrtPriceX96, initiator);
         }
 
         // Then : It should return the correct values

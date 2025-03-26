@@ -175,6 +175,24 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
+    function testFuzz_Revert_rebalancePosition_Reentered(
+        address account_,
+        address positionManager,
+        uint256 tokenId,
+        int24 tickLower,
+        int24 tickUpper,
+        uint256 trustedSqrtPriceX96
+    ) public {
+        vm.assume(account_ != address(0));
+        // Given : account is not address(0)
+        rebalancer.setAccount(account_);
+
+        // When : calling rebalance
+        // Then : it should revert
+        vm.expectRevert(RebalancerUniV3Slipstream.Reentered.selector);
+        rebalancer.rebalance(account_, positionManager, tokenId, trustedSqrtPriceX96, tickLower, tickUpper, "");
+    }
+
     function testFuzz_Revert_rebalancePosition_InitiatorNotValid(
         uint256 tokenId,
         address positionManager,
@@ -310,8 +328,14 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
 
         uint256 expectedFee;
         {
+            (uint160 trustedSqrtPriceX96,,,,,,) = uniV3Pool.slot0();
             RebalancerUniV3Slipstream.PositionState memory position_ = rebalancer.getPositionState(
-                address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, initVars.initiator
+                address(nonfungiblePositionManager),
+                tokenId,
+                tickLower,
+                tickUpper,
+                trustedSqrtPriceX96,
+                initVars.initiator
             );
             bool zeroToOne;
             uint256 amountIn;
@@ -383,8 +407,14 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
 
         uint256 expectedFee;
         {
+            (uint160 trustedSqrtPriceX96,,,,,,) = uniV3Pool.slot0();
             RebalancerUniV3Slipstream.PositionState memory position_ = rebalancer.getPositionState(
-                address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, initVars.initiator
+                address(nonfungiblePositionManager),
+                tokenId,
+                tickLower,
+                tickUpper,
+                trustedSqrtPriceX96,
+                initVars.initiator
             );
             bool zeroToOne;
             uint256 amountIn;
@@ -418,8 +448,10 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
         uint256 amount1ToSwap
     ) public {
         // Given : deploy new rebalancer with a high maxTolerance to avoid unbalancedPool due to external usd prices not aligned
-        uint256 maxTolerance = 0.9 * 1e18;
-        deployRebalancer(maxTolerance, MAX_INITIATOR_FEE);
+        {
+            uint256 maxTolerance = 0.8 * 1e18;
+            deployRebalancer(maxTolerance, MAX_INITIATOR_FEE);
+        }
 
         // And : Rebalancer is allowed as Asset Manager
         vm.prank(users.accountOwner);
@@ -487,8 +519,10 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
         uint256 amount0ToSwap
     ) public {
         // Given : deploy new rebalancer with a high maxTolerance to avoid unbalancedPool due to external usd prices not aligned
-        uint256 maxTolerance = 0.9 * 1e18;
-        deployRebalancer(maxTolerance, MAX_INITIATOR_FEE);
+        {
+            uint256 maxTolerance = 0.8 * 1e18;
+            deployRebalancer(maxTolerance, MAX_INITIATOR_FEE);
+        }
 
         // And : Rebalancer is allowed as Asset Manager
         vm.prank(users.accountOwner);
@@ -608,8 +642,9 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
         uint256 amount1;
         uint160 sqrtPrice;
         {
+            (sqrtPrice,,,,,,) = uniV3Pool.slot0();
             RebalancerUniV3Slipstream.PositionState memory position_ = rebalancer.getPositionState(
-                address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, initVars.initiator
+                address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, sqrtPrice, initVars.initiator
             );
 
             uint256 amountIn;
@@ -624,7 +659,6 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
             }
 
             // Exclude edge case where sqrtPrice starts in range, but sqrtPriceNew goes out of range during calculations.
-            (sqrtPrice,,,,,,) = uniV3Pool.slot0();
             if (
                 TickMath.getSqrtPriceAtTick(tickLower) < sqrtPrice && sqrtPrice < TickMath.getSqrtPriceAtTick(tickUpper)
             ) {
@@ -744,9 +778,10 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
         uint256 amount1;
         uint160 sqrtPrice;
         {
+            (sqrtPrice,,,,,,) = uniV3Pool.slot0();
             // Assume that liquidity will be bigger than 0
             RebalancerUniV3Slipstream.PositionState memory position_ = rebalancer.getPositionState(
-                address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, initVars.initiator
+                address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, sqrtPrice, initVars.initiator
             );
 
             uint256 amountIn;
@@ -761,7 +796,6 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
             }
 
             // Exclude edge case where sqrtPrice starts in range, but sqrtPriceNew goes out of range during calculations.
-            (sqrtPrice,,,,,,) = uniV3Pool.slot0();
             if (
                 TickMath.getSqrtPriceAtTick(tickLower) < sqrtPrice && sqrtPrice < TickMath.getSqrtPriceAtTick(tickUpper)
             ) {
@@ -876,11 +910,13 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
         uint256 amountIn;
         uint256 amountOut;
         {
+            (uint160 sqrtPrice,,,,,,) = uniV3Pool.slot0();
             RebalancerUniV3Slipstream.PositionState memory position_ = rebalancer.getPositionState(
                 address(nonfungiblePositionManager),
                 tokenId,
                 lpVarsStack.tickLower,
                 lpVarsStack.tickUpper,
+                sqrtPrice,
                 initiatorStack
             );
 
@@ -955,8 +991,10 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
         uint256 amount0ToSwap
     ) public {
         // Given : deploy new rebalancer with a high maxTolerance to avoid unbalancedPool due to external usd prices not aligned
-        uint256 maxTolerance = 0.9 * 1e18;
-        deployRebalancer(maxTolerance, MAX_INITIATOR_FEE);
+        {
+            uint256 maxTolerance = 0.8 * 1e18;
+            deployRebalancer(maxTolerance, MAX_INITIATOR_FEE);
+        }
 
         // And : Rebalancer is allowed as Asset Manager
         vm.prank(users.accountOwner);
@@ -995,19 +1033,22 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
         // And : Move ticks left to enable oneToZero swap
         moveTicksLeftWithIncreasedTolerance(initVars.tickLower, amount0ToSwap, true);
 
-        uint256 amount0;
-        uint256 amount1;
-        uint256 amountIn;
-        uint256 amountOut;
         // Given : new ticks are within boundaries (otherwise swap too big => unbalanced pool)
         tickLower = int24(bound(tickLower, initVars.tickLower + 1, initVars.tickUpper - (2 * MIN_TICK_SPACING)));
         tickUpper = int24(bound(tickUpper, tickLower + MIN_TICK_SPACING, initVars.tickUpper - 1));
+
+        uint256 amountIn;
+        uint256 amountOut;
+
         // Avoid stack too deep
         address initiatorStack = initVars.initiator;
         {
+            uint256 amount0;
+            uint256 amount1;
+            (uint160 trustedSqrtPriceX96_,,,,,,) = uniV3Pool.slot0();
             // Assume that liquidity will be bigger than 0
             RebalancerUniV3Slipstream.PositionState memory position_ = rebalancer.getPositionState(
-                address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, initiatorStack
+                address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, trustedSqrtPriceX96_, initiatorStack
             );
 
             bool zeroToOne;

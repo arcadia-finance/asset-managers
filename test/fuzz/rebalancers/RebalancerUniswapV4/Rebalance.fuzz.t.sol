@@ -83,12 +83,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         vm.assume(tick > tickCurrent);
     }
 
-    function moveTicksLeftWithIncreasedTolerance(
-        uint256 trustedSqrtPriceX96,
-        int24 initLpLowerTick,
-        uint256 amount0ToSwap,
-        bool maxLeft
-    ) public {
+    function moveTicksLeftWithIncreasedTolerance(int24 initLpLowerTick, uint256 amount0ToSwap, bool maxLeft) public {
         (uint160 sqrtPriceX96, int24 tickCurrent,,) = stateView.getSlot0(v4PoolKey.toId());
         uint128 liquidity_ = stateView.getLiquidity(v4PoolKey.toId());
 
@@ -172,6 +167,24 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
+    function testFuzz_Revert_rebalancePosition_Reentered(
+        address account_,
+        address positionManager,
+        uint256 tokenId,
+        int24 tickLower,
+        int24 tickUpper,
+        uint256 trustedSqrtPriceX96
+    ) public {
+        vm.assume(account_ != address(0));
+        // Given : account is not address(0)
+        rebalancer.setAccount(account_);
+
+        // When : calling rebalance
+        // Then : it should revert
+        vm.expectRevert(RebalancerUniswapV4.Reentered.selector);
+        rebalancer.rebalance(account_, positionManager, tokenId, trustedSqrtPriceX96, tickLower, tickUpper, "");
+    }
+
     function testFuzz_Revert_rebalancePosition_InitiatorNotValid(
         uint256 tokenId,
         address positionManager,

@@ -57,15 +57,11 @@ contract Burn_BurnLogic_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(rebalancer), id);
 
         // When: Calling _burn().
-        (uint256 balance0, uint256 balance1) = rebalancer.burn(id, address(token0), address(token1));
+        rebalancer.burn(id, address(token0), address(token1));
 
         // Then: Correct balances should be returned.
-        assertEq(balance0, principal0 + feeAmount0);
-        assertEq(balance1, principal1 + feeAmount1);
-
-        // And: Correct balances are transferred.
-        assertEq(token0.balanceOf(address(rebalancer)), balance0);
-        assertEq(token1.balanceOf(address(rebalancer)), balance1);
+        assertEq(token0.balanceOf(address(rebalancer)), principal0 + feeAmount0);
+        assertEq(token1.balanceOf(address(rebalancer)), principal1 + feeAmount1);
     }
 
     function testFuzz_Success_burn_nativeETH(uint128 liquidity) public {
@@ -88,15 +84,14 @@ contract Burn_BurnLogic_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
         vm.prank(users.liquidityProvider);
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(rebalancer), id);
 
+        assertEq(address(rebalancer).balance, 0);
+        assertEq(token1.balanceOf(address(rebalancer)), 0);
+
         // When: Calling _burn().
-        (uint256 balance0, uint256 balance1) = rebalancer.burn(id, address(0), address(token1));
+        rebalancer.burn(id, address(0), address(token1));
 
-        // Then: Correct balances should be returned.
-        assertEq(balance0, amount0);
-        assertEq(balance1, amount1);
-
-        // And: Correct balances are transferred.
-        assertEq(address(rebalancer).balance, balance0);
-        assertEq(token1.balanceOf(address(rebalancer)), balance1);
+        // Then: Assets should have been sent to the rebalancer.
+        assertEq(address(rebalancer).balance, amount0);
+        assertEq(token1.balanceOf(address(rebalancer)), amount1);
     }
 }

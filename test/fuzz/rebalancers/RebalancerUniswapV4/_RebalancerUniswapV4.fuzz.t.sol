@@ -26,7 +26,7 @@ import { PoolKey } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-cor
 import {
     PositionInfoLibrary,
     PositionInfo
-} from "../../../../accounts-v2/lib/v4-periphery/src/libraries/PositionInfoLibrary.sol";
+} from "../../../../lib/accounts-v2/lib/v4-periphery/src/libraries/PositionInfoLibrary.sol";
 import { RebalancerUniswapV4Extension } from "../../../utils/extensions/RebalancerUniswapV4Extension.sol";
 import { RegistryMock } from "../../../utils/mocks/RegistryMock.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
@@ -70,8 +70,7 @@ abstract contract RebalancerUniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
     // Max slippage of 1% (for testing purposes).
     uint256 internal MIN_LIQUIDITY_RATIO = 0.99 * 1e18;
 
-    // If set to "true" during tests, will enable to mock high tolerance
-    bool public increaseTolerance;
+    address public constant WETH = 0x4200000000000000000000000000000000000006;
 
     /*////////////////////////////////////////////////////////////////
                             VARIABLES
@@ -82,6 +81,9 @@ abstract contract RebalancerUniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
 
     PoolKey internal v4PoolKey;
     PoolKey internal nativeEthPoolKey;
+
+    // If set to "true" during tests, will enable to mock high tolerance
+    bool public increaseTolerance;
 
     struct InitVariables {
         int24 tickLower;
@@ -243,15 +245,10 @@ abstract contract RebalancerUniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
             abi.encodePacked((address(permit2))),
             false
         );
-        bytecode = Utils.veryBadBytesReplacer(
-            bytecode,
-            abi.encodePacked(0x4200000000000000000000000000000000000006),
-            abi.encodePacked(address(weth9)),
-            false
-        );
 
         // Store overwritten bytecode.
         vm.etch(address(rebalancer), bytecode);
+        vm.etch(0x4200000000000000000000000000000000000006, address(weth9).code);
     }
 
     function initPool(InitVariables memory initVars) public returns (InitVariables memory initVars_) {

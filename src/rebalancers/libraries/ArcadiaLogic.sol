@@ -50,6 +50,7 @@ library ArcadiaLogic {
      * @param initiator The address of the initiator.
      * @param tickLower The new lower tick to rebalance the position to.
      * @param tickUpper The new upper tick to rebalancer the position to.
+     * @param trustedSqrtPriceX96 The pool sqrtPriceX96 provided at the time of calling rebalance().
      * @param swapData Arbitrary calldata provided by an initiator for a swap.
      * @return actionData Bytes string with the encoded data.
      */
@@ -59,20 +60,28 @@ library ArcadiaLogic {
         address initiator,
         int24 tickLower,
         int24 tickUpper,
+        uint256 trustedSqrtPriceX96,
         bytes calldata swapData
     ) internal pure returns (bytes memory actionData) {
-        // Encode Uniswap V3 position that has to be withdrawn from and deposited back into the Account.
-        address[] memory assets_ = new address[](1);
-        assets_[0] = asset;
-        uint256[] memory assetIds_ = new uint256[](1);
-        assetIds_[0] = id;
-        uint256[] memory assetAmounts_ = new uint256[](1);
-        assetAmounts_[0] = 1;
-        uint256[] memory assetTypes_ = new uint256[](1);
-        assetTypes_[0] = 2;
+        ActionData memory assetData;
+        {
+            // Encode Uniswap V3 position that has to be withdrawn from and deposited back into the Account.
+            address[] memory assets_ = new address[](1);
+            assets_[0] = asset;
+            uint256[] memory assetIds_ = new uint256[](1);
+            assetIds_[0] = id;
+            uint256[] memory assetAmounts_ = new uint256[](1);
+            assetAmounts_[0] = 1;
+            uint256[] memory assetTypes_ = new uint256[](1);
+            assetTypes_[0] = 2;
 
-        ActionData memory assetData =
-            ActionData({ assets: assets_, assetIds: assetIds_, assetAmounts: assetAmounts_, assetTypes: assetTypes_ });
+            assetData = ActionData({
+                assets: assets_,
+                assetIds: assetIds_,
+                assetAmounts: assetAmounts_,
+                assetTypes: assetTypes_
+            });
+        }
 
         // Empty data objects that have to be encoded when calling flashAction(), but that are not used for this specific flash-action.
         bytes memory signature;
@@ -80,7 +89,8 @@ library ArcadiaLogic {
         IPermit2.PermitBatchTransferFrom memory permit;
 
         // Data required by this contract when Account does the executeAction() callback during the flash-action.
-        bytes memory rebalanceData = abi.encode(assetData, initiator, tickLower, tickUpper, swapData);
+        bytes memory rebalanceData =
+            abi.encode(assetData, initiator, tickLower, tickUpper, trustedSqrtPriceX96, swapData);
 
         // Encode the actionData.
         actionData = abi.encode(assetData, transferFromOwner, permit, signature, rebalanceData);

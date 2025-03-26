@@ -48,8 +48,8 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         // Given: Caller is not the account.
         vm.assume(caller_ != account_);
 
-        // And: valid transient storage.
-        rebalancer.setTransientStorage(account_, 0);
+        // And: account is set.
+        rebalancer.setAccount(account_);
 
         // When: Calling executeAction().
         // Then: it should revert.
@@ -73,9 +73,6 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
         // And: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
-
-        // And: set valid transient storage.
-        rebalancer.setTransientStorage(account_, position.sqrtPriceX96);
 
         // And: Pool has reasonable liquidity.
         liquidityPool =
@@ -113,10 +110,12 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         tolerance = bound(tolerance, 0, MAX_TOLERANCE);
         rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
 
+        // And: account is set.
+        rebalancer.setAccount(account_);
+        uint256 trustedSqrtPriceX96 = position.sqrtPriceX96;
         // And: The pool is unbalanced.
         uint256 lowerBoundSqrtPriceX96;
         {
-            uint256 trustedSqrtPriceX96 = position.sqrtPriceX96;
             (, uint256 lowerSqrtPriceDeviation,,) = rebalancer.initiatorInfo(initiator);
             lowerBoundSqrtPriceX96 = trustedSqrtPriceX96 * lowerSqrtPriceDeviation / 1e18;
         }
@@ -129,20 +128,21 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         // When: Calling executeAction().
         // Then: it should revert.
         bytes memory swapData = "";
-        bytes memory rebalanceData =
-            encodeRebalanceData(address(positionManagerV4), id, initiator, tickLower, tickUpper, swapData);
+        bytes memory rebalanceData = encodeRebalanceData(
+            address(positionManagerV4), id, initiator, tickLower, tickUpper, trustedSqrtPriceX96, swapData
+        );
         vm.prank(account_);
         vm.expectRevert(RebalancerUniswapV4.UnbalancedPool.selector);
         rebalancer.executeAction(rebalanceData);
     }
 
     function testFuzz_Revert_executeAction_UnbalancedPoolAfterSwap(
-        address account_,
         RebalancerUniswapV4.PositionState memory position,
         uint128 liquidityPool,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
+        address account_,
         uint256 tolerance
     ) public {
         // Given: rebalancer is not the account.
@@ -150,9 +150,6 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
         // And: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
-
-        // And: set valid transient storage.
-        rebalancer.setTransientStorage(account_, position.sqrtPriceX96);
 
         // And: Pool has reasonable liquidity.
         liquidityPool =
@@ -193,18 +190,23 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
         rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
 
+        // And: account is set.
+        rebalancer.setAccount(account_);
+
         // And: The pool is unbalanced.
         uint256 lowerBoundSqrtPriceX96;
+        uint256 trustedSqrtPriceX96 = position.sqrtPriceX96;
         {
-            uint256 trustedSqrtPriceX96 = position.sqrtPriceX96;
             (, uint256 lowerSqrtPriceDeviation,,) = rebalancer.initiatorInfo(initiator);
             lowerBoundSqrtPriceX96 = trustedSqrtPriceX96 * lowerSqrtPriceDeviation / 1e18;
         }
 
-        uint160 sqrtPriceX96 = uint160(bound(position.sqrtPriceX96, TickMath.MIN_SQRT_PRICE, lowerBoundSqrtPriceX96));
         // And: Pool is unbalanced after swap (done via router mock).
         bytes memory swapData;
         {
+            uint160 sqrtPriceX96 =
+                uint160(bound(position.sqrtPriceX96, TickMath.MIN_SQRT_PRICE, lowerBoundSqrtPriceX96));
+
             RouterSetPoolPriceUniV4Mock router = new RouterSetPoolPriceUniV4Mock();
             bytes memory routerData = abi.encodeWithSelector(
                 RouterSetPoolPriceUniV4Mock.swap.selector,
@@ -218,22 +220,23 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
         // When: Calling executeAction().
         // Then: it should revert.
-        bytes memory rebalanceData =
-            encodeRebalanceData(address(positionManagerV4), id, initiator, tickLower, tickUpper, swapData);
+        bytes memory rebalanceData = encodeRebalanceData(
+            address(positionManagerV4), id, initiator, tickLower, tickUpper, trustedSqrtPriceX96, swapData
+        );
         vm.prank(account_);
         vm.expectRevert(RebalancerUniswapV4.UnbalancedPool.selector);
         rebalancer.executeAction(rebalanceData);
     }
 
     function testFuzz_Revert_executeAction_InsufficientLiquidity(
-        address account_,
+        uint256 fee,
         RebalancerUniswapV4.PositionState memory position,
         uint128 liquidityPool,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
         uint256 tolerance,
-        uint256 fee
+        address account_
     ) public {
         // Given: rebalancer is not the account.
         vm.assume(account_ != address(rebalancer));
@@ -285,6 +288,11 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         vm.prank(initiator);
         rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
 
+        // And: account is set.
+        rebalancer.setAccount(account_);
+
+        uint256 trustedSqrtPriceX96 = position.sqrtPriceX96;
+
         // And: Swap is not optimal resulting in little liquidity.
         bytes memory swapData;
         {
@@ -294,27 +302,25 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
             swapData = abi.encode(address(router), 0, routerData);
         }
 
-        // And: set valid transient storage.
-        rebalancer.setTransientStorage(account_, position.sqrtPriceX96);
-
         // When: Calling executeAction().
         // Then: it should revert.
-        bytes memory rebalanceData =
-            encodeRebalanceData(address(positionManagerV4), id, initiator, tickLower, tickUpper, swapData);
+        bytes memory rebalanceData = encodeRebalanceData(
+            address(positionManagerV4), id, initiator, tickLower, tickUpper, trustedSqrtPriceX96, swapData
+        );
         vm.prank(account_);
         vm.expectRevert(RebalancerUniswapV4.InsufficientLiquidity.selector);
         rebalancer.executeAction(rebalanceData);
     }
 
     function testFuzz_Success_executeAction_ZeroToOne(
-        address account_,
+        uint256 fee,
         RebalancerUniswapV4.PositionState memory position,
         uint128 liquidityPool,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
         uint256 tolerance,
-        uint256 fee
+        address account_
     ) public {
         // Given: rebalancer is not the account.
         vm.assume(account_ != address(rebalancer));
@@ -370,6 +376,9 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         vm.prank(initiator);
         rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
 
+        // And: account is set.
+        rebalancer.setAccount(account_);
+        uint256 trustedSqrtPriceX96 = position.sqrtPriceX96;
         ActionData memory depositData;
         {
             bytes memory rebalanceData;
@@ -384,16 +393,17 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
                     swapData = abi.encode(address(router), 0, routerData);
                 }
 
-                rebalanceData =
-                    encodeRebalanceData(address(positionManagerV4), id, initiator, tickLower, tickUpper, swapData);
+                rebalanceData = encodeRebalanceData(
+                    address(positionManagerV4), id, initiator, tickLower, tickUpper, trustedSqrtPriceX96, swapData
+                );
             }
+
+            int24 tickLowerStack = tickLower;
+            int24 tickUpperStack = tickUpper;
 
             // And: Hook is set.
             HookMock hook = new HookMock();
             rebalancer.setHook(account_, address(hook));
-
-            // And: set valid transient storage.
-            rebalancer.setTransientStorage(account_, position.sqrtPriceX96);
 
             // When: Calling executeAction().
             // Then: Hook should be called.
@@ -403,7 +413,12 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
             vm.expectCall(
                 address(hook),
                 abi.encodeWithSelector(
-                    hook.beforeRebalance.selector, account_, address(positionManagerV4), id, tickLower, tickUpper
+                    hook.beforeRebalance.selector,
+                    account_,
+                    address(positionManagerV4),
+                    id,
+                    tickLowerStack,
+                    tickUpperStack
                 )
             );
             vm.expectCall(
@@ -432,14 +447,14 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
     }
 
     function testFuzz_Success_executeAction_OneToZero(
-        address account_,
+        uint256 fee,
         RebalancerUniswapV4.PositionState memory position,
         uint128 liquidityPool,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
         uint256 tolerance,
-        uint256 fee
+        address account_
     ) public {
         // Given: rebalancer is not the account.
         vm.assume(account_ != address(rebalancer));
@@ -494,6 +509,9 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         vm.prank(initiator);
         rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
 
+        // And: account is set.
+        rebalancer.setAccount(account_);
+        uint256 trustedSqrtPriceX96 = position.sqrtPriceX96;
         ActionData memory depositData;
         {
             // And: Swap is successful.
@@ -506,12 +524,10 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
                 swapData = abi.encode(address(router), 0, routerData);
             }
 
-            // And: set valid transient storage.
-            rebalancer.setTransientStorage(account_, position.sqrtPriceX96);
-
             // When: Calling executeAction().
-            bytes memory rebalanceData =
-                encodeRebalanceData(address(positionManagerV4), id, initiator, tickLower, tickUpper, swapData);
+            bytes memory rebalanceData = encodeRebalanceData(
+                address(positionManagerV4), id, initiator, tickLower, tickUpper, trustedSqrtPriceX96, swapData
+            );
             vm.prank(account_);
             vm.expectEmit();
             emit RebalancerUniswapV4.Rebalance(account_, address(positionManagerV4), id, id + 1);
@@ -557,14 +573,14 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
     //////////////////////////////////////////////////////////////*/
 
     function testFuzz_Success_executeAction_ZeroToOne_NativeETH(
-        address account_,
+        uint256 fee,
         RebalancerUniswapV4.PositionState memory position,
         uint128 liquidityPool,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
         uint256 tolerance,
-        uint256 fee
+        address account_
     ) public {
         // Given: rebalancer is not the account.
         vm.assume(account_ != address(rebalancer));
@@ -607,9 +623,11 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
             // And: A new position with a valid tick range.
             // And: New Position is below current tick.
-            tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, tickCurrent - 2));
+            // And : We slightly increase minium tick range to 10 in this case to avoid TickLiqudityOverflow,
+            // but this is covered by above similar test without native ETH and should in theory never be the case.
+            tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, tickCurrent - 10));
             tickLower = tickLower / tickSpacing * tickSpacing;
-            tickUpper = int24(bound(tickUpper, tickLower + 1, tickCurrent - 1));
+            tickUpper = int24(bound(tickUpper, tickLower + 10, tickCurrent - 1));
             tickUpper = tickUpper / tickSpacing * tickSpacing;
         }
 
@@ -619,6 +637,9 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         vm.prank(initiator);
         rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
 
+        // And: account is set.
+        rebalancer.setAccount(account_);
+        uint256 trustedSqrtPriceX96 = position.sqrtPriceX96;
         ActionData memory depositData;
         {
             bytes memory rebalanceData;
@@ -633,16 +654,17 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
                     swapData = abi.encode(address(router), 0, routerData);
                 }
 
-                rebalanceData =
-                    encodeRebalanceData(address(positionManagerV4), id, initiator, tickLower, tickUpper, swapData);
+                rebalanceData = encodeRebalanceData(
+                    address(positionManagerV4), id, initiator, tickLower, tickUpper, trustedSqrtPriceX96, swapData
+                );
             }
+
+            int24 tickLowerStack = tickLower;
+            int24 tickUpperStack = tickUpper;
 
             // And: Hook is set.
             HookMock hook = new HookMock();
             rebalancer.setHook(account_, address(hook));
-
-            // And: set valid transient storage.
-            rebalancer.setTransientStorage(account_, position.sqrtPriceX96);
 
             // When: Calling executeAction().
             // Then: Hook should be called.
@@ -652,7 +674,12 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
             vm.expectCall(
                 address(hook),
                 abi.encodeWithSelector(
-                    hook.beforeRebalance.selector, account_, address(positionManagerV4), id, tickLower, tickUpper
+                    hook.beforeRebalance.selector,
+                    account_,
+                    address(positionManagerV4),
+                    id,
+                    tickLowerStack,
+                    tickUpperStack
                 )
             );
             vm.expectCall(
@@ -667,28 +694,28 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         assertEq(depositData.assetIds[0], id + 1);
         assertEq(depositData.assetAmounts[0], 1);
         assertEq(depositData.assetTypes[0], 2);
-        assertEq(depositData.assets[1], address(weth9));
+        assertEq(depositData.assets[1], WETH);
         assertEq(depositData.assetIds[1], 0);
         assertGt(depositData.assetAmounts[1], 0);
         assertEq(depositData.assetTypes[1], 1);
 
         // And: Approvals are given.
         assertEq(ERC721(address(positionManagerV4)).getApproved(id + 1), account_);
-        assertEq(ERC20(address(weth9)).allowance(address(rebalancer), account_), depositData.assetAmounts[1]);
+        assertEq(ERC20(WETH).allowance(address(rebalancer), account_), depositData.assetAmounts[1]);
 
         // And: Initiator fees are given.
         if (fee > 1e16) assertGt(initiator.balance, 0);
     }
 
     function testFuzz_Success_executeAction_OneToZero_NativeETH(
-        address account_,
+        uint256 fee,
         RebalancerUniswapV4.PositionState memory position,
         uint128 liquidityPool,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
         uint256 tolerance,
-        uint256 fee
+        address account_
     ) public {
         // Given: rebalancer is not the account.
         vm.assume(account_ != address(rebalancer));
@@ -741,7 +768,11 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         vm.prank(initiator);
         rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
 
+        // And: account is set.
+        rebalancer.setAccount(account_);
+
         ActionData memory depositData;
+        uint256 trustedSqrtPriceX96 = position.sqrtPriceX96;
         {
             // And: Swap is successful.
             vm.deal(address(rebalancer), type(uint72).max);
@@ -753,12 +784,10 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
                 swapData = abi.encode(address(router), 0, routerData);
             }
 
-            // And: set valid transient storage.
-            rebalancer.setTransientStorage(account_, position.sqrtPriceX96);
-
             // When: Calling executeAction().
-            bytes memory rebalanceData =
-                encodeRebalanceData(address(positionManagerV4), id, initiator, tickLower, tickUpper, swapData);
+            bytes memory rebalanceData = encodeRebalanceData(
+                address(positionManagerV4), id, initiator, tickLower, tickUpper, trustedSqrtPriceX96, swapData
+            );
             vm.prank(account_);
             vm.expectEmit();
             emit RebalancerUniswapV4.Rebalance(account_, address(positionManagerV4), id, id + 1);
@@ -776,7 +805,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
             assertGt(depositData.assetAmounts[1], 0);
             assertEq(depositData.assetTypes[1], 1);
         } else {
-            assertEq(depositData.assets[1], address(address(weth9)));
+            assertEq(depositData.assets[1], WETH);
             assertEq(depositData.assetIds[1], 0);
             assertGt(depositData.assetAmounts[1], 0);
             assertEq(depositData.assetTypes[1], 1);
@@ -791,7 +820,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         if (depositData.assets.length == 2) {
             assertEq(token1.allowance(address(rebalancer), account_), depositData.assetAmounts[1]);
         } else {
-            assertEq(ERC20(address(weth9)).allowance(address(rebalancer), account_), depositData.assetAmounts[1]);
+            assertEq(ERC20(WETH).allowance(address(rebalancer), account_), depositData.assetAmounts[1]);
             assertEq(token1.allowance(address(rebalancer), account_), depositData.assetAmounts[2]);
         }
 
@@ -809,6 +838,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         address initiator,
         int24 tickLower,
         int24 tickUpper,
+        uint256 trustedSqrtPriceX96,
         bytes memory swapData
     ) public pure returns (bytes memory rebalanceData) {
         address[] memory assets_ = new address[](1);
@@ -823,6 +853,6 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         ActionData memory assetData =
             ActionData({ assets: assets_, assetIds: assetIds_, assetAmounts: assetAmounts_, assetTypes: assetTypes_ });
 
-        rebalanceData = abi.encode(assetData, initiator, tickLower, tickUpper, swapData);
+        rebalanceData = abi.encode(assetData, initiator, tickLower, tickUpper, trustedSqrtPriceX96, swapData);
     }
 }

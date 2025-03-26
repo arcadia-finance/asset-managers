@@ -43,20 +43,16 @@ contract RebalancerUniswapV4Extension is RebalancerUniswapV4 {
         address initiator,
         int24 tickLower,
         int24 tickUpper,
+        uint256 trustedSqrtPriceX96,
         bytes calldata swapData
     ) public pure returns (bytes memory actionData) {
-        actionData = ArcadiaLogic._encodeAction(positionManager, id, initiator, tickLower, tickUpper, swapData);
+        actionData = ArcadiaLogic._encodeAction(
+            positionManager, id, initiator, tickLower, tickUpper, trustedSqrtPriceX96, swapData
+        );
     }
 
     function setHook(address account, address hook) public {
         strategyHook[account] = hook;
-    }
-
-    function setTransientStorage(address account, uint256 sqrtPriceX96) public {
-        assembly {
-            tstore(ACCOUNT_SLOT, account)
-            tstore(TRUSTED_SQRT_PRICE_X96_SLOT, sqrtPriceX96)
-        }
     }
 
     function swap(
@@ -101,13 +97,17 @@ contract RebalancerUniswapV4Extension is RebalancerUniswapV4 {
     function mint(
         RebalancerUniswapV4.PositionState memory position,
         PoolKey memory poolKey,
-        uint256 balance0,
-        uint256 balance1
-    ) public returns (uint256 newTokenId, uint256 liquidity, uint256 balance0_, uint256 balance1_) {
-        (newTokenId, liquidity, balance0_, balance1_) = _mint(position, poolKey, balance0, balance1);
+        uint256 amount0,
+        uint256 amount1
+    ) public returns (uint256 newTokenId, uint256 liquidity) {
+        (newTokenId, liquidity) = _mint(position, poolKey, amount0, amount1);
     }
 
-    function burn(uint256 id, address token0, address token1) public returns (uint256 balance0, uint256 balance1) {
-        (balance0, balance1) = _burn(id, token0, token1);
+    function burn(uint256 id, address token0, address token1) public {
+        _burn(id, token0, token1);
+    }
+
+    function setAccount(address account_) public {
+        account = account_;
     }
 }

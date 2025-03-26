@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.22;
 
-import { PoolId } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolId.sol";
+import { PoolId } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolId.sol";
 
 interface IStateView {
     /// @notice Get Slot0 of the pool: sqrtPriceX96, tick, protocolFee, lpFee

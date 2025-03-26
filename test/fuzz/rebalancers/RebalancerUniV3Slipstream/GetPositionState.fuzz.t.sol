@@ -39,9 +39,6 @@ contract GetPositionState_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3
         // Given: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
 
-        // And: Valid transient storage.
-        rebalancer.setTransientStorage(address(0), position.sqrtPriceX96);
-
         // And: Pool has reasonable liquidity.
         liquidityPool =
             uint128(bound(liquidityPool, UniswapHelpers.maxLiquidity(10) / 1000, UniswapHelpers.maxLiquidity(1) / 10));
@@ -68,8 +65,9 @@ contract GetPositionState_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3
         rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
 
         // When: Calling getPositionState().
-        RebalancerUniV3Slipstream.PositionState memory position_ =
-            rebalancer.getPositionState(address(nonfungiblePositionManager), id, tick, tick, initiator);
+        RebalancerUniV3Slipstream.PositionState memory position_ = rebalancer.getPositionState(
+            address(nonfungiblePositionManager), id, tick, tick, position.sqrtPriceX96, initiator
+        );
 
         // Then : It should return the correct values
         assertEq(position_.pool, address(poolUniswap));
@@ -99,9 +97,6 @@ contract GetPositionState_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3
         // Given: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
 
-        // And: Valid transient storage.
-        rebalancer.setTransientStorage(address(0), position.sqrtPriceX96);
-
         // And: Pool has reasonable liquidity.
         liquidityPool =
             uint128(bound(liquidityPool, UniswapHelpers.maxLiquidity(10) / 1000, UniswapHelpers.maxLiquidity(1) / 10));
@@ -129,8 +124,9 @@ contract GetPositionState_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3
         rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
 
         // When: Calling getPositionState().
-        RebalancerUniV3Slipstream.PositionState memory position_ =
-            rebalancer.getPositionState(address(nonfungiblePositionManager), id, tick, tick, initiator);
+        RebalancerUniV3Slipstream.PositionState memory position_ = rebalancer.getPositionState(
+            address(nonfungiblePositionManager), id, tick, tick, position.sqrtPriceX96, initiator
+        );
 
         // Then : It should return the correct values
         assertEq(position_.pool, address(poolUniswap));
@@ -166,9 +162,6 @@ contract GetPositionState_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3
     ) public {
         // Given: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
-
-        // And: Valid transient storage.
-        rebalancer.setTransientStorage(address(0), position.sqrtPriceX96);
 
         // And: Pool has reasonable liquidity.
         liquidityPool =
@@ -208,8 +201,9 @@ contract GetPositionState_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3
             rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
 
             // When: Calling getPositionState().
-            position_ =
-                rebalancer.getPositionState(address(nonfungiblePositionManager), id, tickLower, tickUpper, initiator);
+            position_ = rebalancer.getPositionState(
+                address(nonfungiblePositionManager), id, tickLower, tickUpper, position.sqrtPriceX96, initiator
+            );
         }
 
         // Then : It should return the correct values
@@ -244,9 +238,6 @@ contract GetPositionState_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3
 
         // Given: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
-
-        // And: Valid transient storage.
-        rebalancer.setTransientStorage(address(0), position.sqrtPriceX96);
 
         // And: Pool has reasonable liquidity.
         liquidityPool =
@@ -287,7 +278,8 @@ contract GetPositionState_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3
             rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
 
             // When: Calling getPositionState().
-            position_ = rebalancer.getPositionState(positionManager, id, tickLower, tickUpper, initiator);
+            position_ =
+                rebalancer.getPositionState(positionManager, id, tickLower, tickUpper, position.sqrtPriceX96, initiator);
         }
 
         // Then : It should return the correct values

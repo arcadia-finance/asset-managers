@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.22;
 
 import { ActionData, IActionBase } from "../../lib/accounts-v2/src/interfaces/IActionBase.sol";
 import { ArcadiaLogic } from "./libraries/ArcadiaLogic.sol";
@@ -22,7 +22,6 @@ import { MintLogic } from "./libraries/shared-uniswap-v3-slipstream/MintLogic.so
 import { PoolKey } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 import { PricingLogic } from "./libraries/cl-math/PricingLogic.sol";
 import { RebalanceLogic } from "./libraries/RebalanceLogic.sol";
-import { ReentrancyGuard } from "../../lib/accounts-v2/lib/solmate/src/utils/ReentrancyGuard.sol";
 import { SafeApprove } from "./libraries/SafeApprove.sol";
 import { SlipstreamLogic } from "./libraries/slipstream/SlipstreamLogic.sol";
 import { StakedSlipstreamLogic } from "./libraries/slipstream/StakedSlipstreamLogic.sol";
@@ -44,7 +43,7 @@ import { UniswapV4Logic } from "./libraries/uniswap-v4/UniswapV4Logic.sol";
  * based on a hypothetical optimal swap through the pool itself without slippage.
  * This protects the Account owners from incompetent or malicious initiators who route swaps poorly, or try to skim off liquidity from the position.
  */
-contract RebalancerUniswapV4 is ReentrancyGuard, IActionBase {
+contract RebalancerUniswapV4 is IActionBase {
     using FixedPointMathLib for uint256;
     using SafeApprove for ERC20;
     using SafeTransferLib for ERC20;
@@ -52,11 +51,9 @@ contract RebalancerUniswapV4 is ReentrancyGuard, IActionBase {
                                 CONSTANTS
     ////////////////////////////////////////////////////////////// */
 
-    // keccak256("RebalancerUniswapV4Account")
-    bytes32 internal constant ACCOUNT_SLOT = 0x77a1096cdeeb44155ee048b1ea572763589db8a085320c2033ef421fb1ea0fd9;
-    // keccak256("RebalancerUniswapV4TrustedSqrtPriceX96")
-    bytes32 internal constant TRUSTED_SQRT_PRICE_X96_SLOT =
-        0x6812d077d53d77b2024c92449df504697e32036eb13236495d0c94a4f1ddc1e6;
+    // The Account to compound the fees for, used as transient storage.
+    address internal account;
+
     // The contract address of WETH.
     address internal constant WETH = 0x4200000000000000000000000000000000000006;
 
@@ -134,9 +131,6 @@ contract RebalancerUniswapV4 is ReentrancyGuard, IActionBase {
     event AccountInfoSet(address indexed account, address indexed initiator, address indexed strategyHook);
     event Rebalance(address indexed account, address indexed positionManager, uint256 oldId, uint256 newId);
 
-    event Log(uint256);
-    event LogAddress(address);
-
     /* //////////////////////////////////////////////////////////////
                                 MODIFIERS
     ////////////////////////////////////////////////////////////// */
@@ -173,7 +167,7 @@ contract RebalancerUniswapV4 is ReentrancyGuard, IActionBase {
 
     /**
      * @notice Rebalances a Uniswap V4 or Slipstream Liquidity Position, owned by an Arcadia Account.
-     * @param account The Arcadia Account owning the position.
+     * @param account_ The Arcadia Account owning the position.
      * @param positionManager The contract address of the Position Manager.
      * @param oldId The oldId of the Liquidity Position to rebalance.
      * @param trustedSqrtPriceX96 The pool sqrtPriceX96 provided at the time of calling rebalance().
@@ -183,29 +177,31 @@ contract RebalancerUniswapV4 is ReentrancyGuard, IActionBase {
      * and with a balanced, 50/50 ratio around current tick.
      */
     function rebalance(
-        address account,
+        address account_,
         address positionManager,
         uint256 oldId,
         uint256 trustedSqrtPriceX96,
         int24 tickLower,
         int24 tickUpper,
         bytes calldata swapData
-    ) external nonReentrant {
+    ) external {
         // If the initiator is set, account_ is an actual Arcadia Account.
+        if (account != address(0)) revert Reentered();
         if (accountToInitiator[account] != msg.sender) revert InitiatorNotValid();
 
         // Store Account address, used to validate the caller of the executeAction() callback and serves as a reentrancy guard.
-        assembly {
-            tstore(ACCOUNT_SLOT, account)
-            tstore(TRUSTED_SQRT_PRICE_X96_SLOT, trustedSqrtPriceX96)
-        }
+        account = account_;
 
         // Encode data for the flash-action.
-        bytes memory actionData =
-            ArcadiaLogic._encodeAction(positionManager, oldId, msg.sender, tickLower, tickUpper, swapData);
+        bytes memory actionData = ArcadiaLogic._encodeAction(
+            positionManager, oldId, msg.sender, tickLower, tickUpper, trustedSqrtPriceX96, swapData
+        );
 
         // Call flashAction() with this contract as actionTarget.
         IAccount(account).flashAction(address(this), actionData);
+
+        // Reset account.
+        account = address(0);
     }
 
     /**
@@ -217,11 +213,6 @@ contract RebalancerUniswapV4 is ReentrancyGuard, IActionBase {
      */
     function executeAction(bytes calldata rebalanceData) external override returns (ActionData memory depositData) {
         // Caller should be the Account, provided as input in rebalance().
-        address account;
-        assembly {
-            account := tload(ACCOUNT_SLOT)
-        }
-
         if (msg.sender != account) revert OnlyAccount();
 
         // Cache the strategy hook.
@@ -234,17 +225,19 @@ contract RebalancerUniswapV4 is ReentrancyGuard, IActionBase {
         uint256 newId;
         PositionState memory position;
         address initiator;
+
         {
             ActionData memory assetData;
             int24 tickLower;
             int24 tickUpper;
-            (assetData, initiator, tickLower, tickUpper, swapData) =
-                abi.decode(rebalanceData, (ActionData, address, int24, int24, bytes));
+            uint256 trustedSqrtPriceX96;
+            (assetData, initiator, tickLower, tickUpper, trustedSqrtPriceX96, swapData) =
+                abi.decode(rebalanceData, (ActionData, address, int24, int24, uint256, bytes));
             positionManager = assetData.assets[0];
             oldId = assetData.assetIds[0];
 
             // Fetch and cache all position related data.
-            position = getPositionState(oldId, tickLower, tickUpper, initiator);
+            position = getPositionState(oldId, tickLower, tickUpper, trustedSqrtPriceX96, initiator);
         }
 
         // If set, call the strategy hook before the rebalance (view function).
@@ -265,7 +258,11 @@ contract RebalancerUniswapV4 is ReentrancyGuard, IActionBase {
         if (isPoolUnbalanced(position)) revert UnbalancedPool();
 
         // Remove liquidity of the position and claim outstanding fees/rewards.
-        (uint256 balance0, uint256 balance1) = _burn(oldId, position.token0, position.token1);
+        _burn(oldId, position.token0, position.token1);
+
+        // Token0 might be native ETH.
+        uint256 balance0 = Currency.wrap(position.token0).balanceOfSelf();
+        uint256 balance1 = ERC20(position.token1).balanceOf(address(this));
 
         {
             // Get the rebalance parameters.
@@ -306,12 +303,15 @@ contract RebalancerUniswapV4 is ReentrancyGuard, IActionBase {
             // Leftovers must be in tokenIn, otherwise the total tokenIn balance will be added as liquidity,
             // and the initiator fee will be 0 (but the transaction will not revert).
             uint256 liquidity;
-            (newId, liquidity, balance0, balance1) = _mint(position, poolKey, balance0, balance1);
+            (newId, liquidity) = _mint(position, poolKey, balance0, balance1);
 
             // Check that the actual liquidity of the position is above the minimum threshold.
             // This prevents loss of principal of the liquidity position due to slippage,
             // or malicious initiators who remove liquidity during a custom swap.
             if (liquidity < minLiquidity) revert InsufficientLiquidity();
+
+            balance0 = Currency.wrap(position.token0).balanceOfSelf();
+            balance1 = ERC20(position.token1).balanceOf(address(this));
 
             // Transfer fee to the initiator.
             (balance0, balance1) = _transferFee(
@@ -323,23 +323,14 @@ contract RebalancerUniswapV4 is ReentrancyGuard, IActionBase {
         {
             uint256 count = 1;
             IPositionManager(positionManager).approve(msg.sender, newId);
-            emit Log(balance0);
-            emit Log(balance1);
-            emit Log(address(this).balance);
-            emit Log(ERC20(position.token1).balanceOf(address(this)));
             if (balance0 > 0) {
                 // If leftover is in native ETH, we need to wrap it and send WETH to the Account.
                 if (position.token0 == address(0)) {
-                    emit Log(balance0);
                     position.token0 = WETH;
-                    emit Log(balance0);
-                    emit LogAddress(position.token0);
-                    emit LogAddress(WETH);
                     IWETH(payable(WETH)).deposit{ value: balance0 }();
-                    emit Log(balance0);
-                } else {
-                    ERC20(position.token0).safeApproveWithRetry(msg.sender, balance0);
                 }
+
+                ERC20(position.token0).safeApproveWithRetry(msg.sender, balance0);
                 count = 2;
             }
             if (balance1 > 0) {
@@ -373,12 +364,10 @@ contract RebalancerUniswapV4 is ReentrancyGuard, IActionBase {
      * @param balance1 The amount of token1 to be added to the position.
      * @return newTokenId The ID of the newly minted Uniswap V4 position.
      * @return liquidity The calculated liquidity corresponding to the provided balances and ticks.
-     * @return balance0_ The final amount of token0 used in the minting process.
-     * @return balance1_ The final amount of token1 used in the minting process.
      */
     function _mint(PositionState memory position, PoolKey memory poolKey, uint256 balance0, uint256 balance1)
         internal
-        returns (uint256 newTokenId, uint256 liquidity, uint256 balance0_, uint256 balance1_)
+        returns (uint256 newTokenId, uint256 liquidity)
     {
         // Manage token approvals and check if native ETH has to be added to the position.
         if (position.token0 != address(0)) UniswapV4Logic._checkAndApprovePermit2(position.token0, balance0);
@@ -388,7 +377,7 @@ contract RebalancerUniswapV4 is ReentrancyGuard, IActionBase {
         newTokenId = UniswapV4Logic.POSITION_MANAGER.nextTokenId();
 
         // Generate calldata to mint new position.
-        bytes[] memory params = new bytes[](2);
+        bytes[] memory params = new bytes[](3);
         (uint160 newSqrtPriceX96,,,) = UniswapV4Logic.STATE_VIEW.getSlot0(poolKey.toId());
         {
             liquidity = LiquidityAmounts.getLiquidityForAmounts(
@@ -406,32 +395,19 @@ contract RebalancerUniswapV4 is ReentrancyGuard, IActionBase {
                 ""
             );
             params[1] = abi.encode(poolKey.currency0, poolKey.currency1);
+            params[2] = abi.encode(poolKey.currency0, address(this));
         }
 
-        bytes memory actions = new bytes(2);
+        bytes memory actions = new bytes(3);
         actions[0] = bytes1(uint8(UniswapV4Logic.MINT_POSITION));
         actions[1] = bytes1(uint8(UniswapV4Logic.SETTLE_PAIR));
+        actions[2] = bytes1(uint8(UniswapV4Logic.SWEEP));
 
         // Mint the new position.
-        uint256 ethValue;
-        if (position.token0 == address(0)) {
-            (ethValue,) = LiquidityAmounts.getAmountsForLiquidity(
-                newSqrtPriceX96, position.sqrtRatioLower, position.sqrtRatioUpper, uint128(liquidity)
-            );
-            // We can have rounding differences between amount returned from getAmountsForLiquidity library and PoolManager.
-            // Therefore we increment ethValue to avoid a revert in modifyLiquidities(). This amount should never be higher than available balance (balance0).
-            ethValue = ethValue < balance0 ? ethValue + 1 : balance0;
-        }
-
-        uint256 balance0BeforeMint = Currency.wrap(position.token0).balanceOfSelf();
-        uint256 balance1BeforeMint = ERC20(position.token1).balanceOf(address(this));
+        uint256 ethValue = position.token0 == address(0) ? balance0 : 0;
 
         bytes memory mintParams = abi.encode(actions, params);
         UniswapV4Logic.POSITION_MANAGER.modifyLiquidities{ value: ethValue }(mintParams, block.timestamp);
-
-        // Get the updated available balances after mint.
-        balance0_ = balance0 - (balance0BeforeMint - Currency.wrap(position.token0).balanceOfSelf());
-        balance1_ = balance1 - (balance1BeforeMint - ERC20(position.token1).balanceOf(address(this)));
     }
 
     /**
@@ -439,10 +415,8 @@ contract RebalancerUniswapV4 is ReentrancyGuard, IActionBase {
      * @param id The id of the Uniswap V4 position to burn.
      * @param token0 The address of the first token in the pair.
      * @param token1 The address of the second token in the pair.
-     * @return balance0 The amount of token0 received after burning the position.
-     * @return balance1 The amount of token1 received after burning the position.
      */
-    function _burn(uint256 id, address token0, address token1) internal returns (uint256 balance0, uint256 balance1) {
+    function _burn(uint256 id, address token0, address token1) internal {
         // Generate calldata to burn the position and collect the underlying assets.
         bytes memory actions = new bytes(2);
         actions[0] = bytes1(uint8(UniswapV4Logic.BURN_POSITION));
@@ -453,15 +427,8 @@ contract RebalancerUniswapV4 is ReentrancyGuard, IActionBase {
         params[0] = abi.encode(id, 0, 0, "");
         params[1] = abi.encode(currency0, currency1, address(this));
 
-        // Cache init balance of token0 and token1.
-        uint256 initBalanceCurrency0 = currency0.balanceOfSelf();
-        uint256 initBalanceCurrency1 = currency1.balanceOfSelf();
-
         bytes memory burnParams = abi.encode(actions, params);
         UniswapV4Logic.POSITION_MANAGER.modifyLiquidities(burnParams, block.timestamp);
-
-        balance0 = currency0.balanceOfSelf() - initBalanceCurrency0;
-        balance1 = currency1.balanceOfSelf() - initBalanceCurrency1;
     }
 
     /**
@@ -497,15 +464,17 @@ contract RebalancerUniswapV4 is ReentrancyGuard, IActionBase {
      * @param oldId The oldId of the Liquidity Position.
      * @param tickLower The lower tick of the newly minted position.
      * @param tickUpper The upper tick of the newly minted position.
+     * @param trustedSqrtPriceX96 The pool sqrtPriceX96 provided at the time of calling rebalance().
      * @param initiator The address of the initiator.
      * @return position Struct with the position data.
      */
-    function getPositionState(uint256 oldId, int24 tickLower, int24 tickUpper, address initiator)
-        public
-        view
-        virtual
-        returns (PositionState memory position)
-    {
+    function getPositionState(
+        uint256 oldId,
+        int24 tickLower,
+        int24 tickUpper,
+        uint256 trustedSqrtPriceX96,
+        address initiator
+    ) public view virtual returns (PositionState memory position) {
         // Get data of the Liquidity Position.
         (int24 tickCurrent, int24 tickRange) = UniswapV4Logic._getPositionState(position, oldId);
 
@@ -528,11 +497,6 @@ contract RebalancerUniswapV4 is ReentrancyGuard, IActionBase {
         // Calculate the upper and lower bounds of sqrtPriceX96 for the Pool to be balanced.
         // We do not handle the edge cases where exceed MIN_SQRT_RATIO or MAX_SQRT_RATIO.
         // This will result in a revert during swapViaPool, if ever needed a different rebalancer has to be deployed.
-        uint256 trustedSqrtPriceX96;
-        assembly {
-            trustedSqrtPriceX96 := tload(TRUSTED_SQRT_PRICE_X96_SLOT)
-        }
-
         position.lowerBoundSqrtPriceX96 =
             trustedSqrtPriceX96.mulDivDown(initiatorInfo[initiator].lowerSqrtPriceDeviation, 1e18);
         position.upperBoundSqrtPriceX96 =
@@ -544,7 +508,7 @@ contract RebalancerUniswapV4 is ReentrancyGuard, IActionBase {
     /////////////////////////////////////////////////////////////// */
     /**
      * @notice Sets the required information for an Account.
-     * @param account The contract address of the Arcadia Account to set the information for.
+     * @param account_ The contract address of the Arcadia Account to set the information for.
      * @param initiator The address of the initiator.
      * @param hook The contract address of the hook.
      * @dev An initiator will be permissioned to rebalance any
@@ -553,14 +517,15 @@ contract RebalancerUniswapV4 is ReentrancyGuard, IActionBase {
      * @dev When an Account is transferred to a new owner,
      * the asset manager itself (this contract) and hence its initiator and hook will no longer be allowed by the Account.
      */
-    function setAccountInfo(address account, address initiator, address hook) external nonReentrant {
-        if (!ArcadiaLogic.FACTORY.isAccount(account)) revert NotAnAccount();
-        if (msg.sender != IAccount(account).owner()) revert OnlyAccountOwner();
+    function setAccountInfo(address account_, address initiator, address hook) external {
+        if (account != address(0)) revert Reentered();
+        if (!ArcadiaLogic.FACTORY.isAccount(account_)) revert NotAnAccount();
+        if (msg.sender != IAccount(account_).owner()) revert OnlyAccountOwner();
 
-        accountToInitiator[account] = initiator;
-        strategyHook[account] = hook;
+        accountToInitiator[account_] = initiator;
+        strategyHook[account_] = hook;
 
-        emit AccountInfoSet(account, initiator, hook);
+        emit AccountInfoSet(account_, initiator, hook);
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -579,7 +544,9 @@ contract RebalancerUniswapV4 is ReentrancyGuard, IActionBase {
      * The tolerance boundaries are symmetric around the price, but taking the square root will result in a different
      * allowed deviation of the sqrtPriceX96 for the lower and upper boundaries.
      */
-    function setInitiatorInfo(uint256 tolerance, uint256 fee, uint256 minLiquidityRatio) external nonReentrant {
+    function setInitiatorInfo(uint256 tolerance, uint256 fee, uint256 minLiquidityRatio) external {
+        if (account != address(0)) revert Reentered();
+
         // Cache struct
         InitiatorInfo memory initiatorInfo_ = initiatorInfo[msg.sender];
 

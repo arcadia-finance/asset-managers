@@ -86,8 +86,7 @@ contract Mint_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
         position.fee = POOL_FEE;
 
         // When: Calling _mint().
-        (uint256 id, uint256 liquidity, uint256 balance0_, uint256 balance1_) =
-            rebalancer.mint(position, v4PoolKey, balance0, balance1);
+        (uint256 id, uint256 liquidity) = rebalancer.mint(position, v4PoolKey, balance0, balance1);
 
         // Then: Contract is owner of the position.
         assertEq(ERC721(address(positionManagerV4)).ownerOf(id), address(rebalancer));
@@ -100,10 +99,6 @@ contract Mint_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
             uint128 liquidity_ = stateView.getPositionLiquidity(v4PoolKey.toId(), positionId);
             assertEq(liquidity, liquidity_);
         }
-
-        // And: Correct balances should be returned.
-        assertEq(token0.balanceOf(address(rebalancer)), balance0_);
-        assertEq(token1.balanceOf(address(rebalancer)), balance1_);
     }
 
     function testFuzz_Success_mint_nativeETH(
@@ -163,8 +158,7 @@ contract Mint_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
         position.fee = POOL_FEE;
 
         // When: Calling _mint().
-        (uint256 id, uint256 liquidity, uint256 balance0_, uint256 balance1_) =
-            rebalancer.mint(position, nativeEthPoolKey, balance0, balance1);
+        (uint256 id, uint256 liquidity) = rebalancer.mint(position, nativeEthPoolKey, balance0, balance1);
 
         // Then: Contract is owner of the position.
         assertEq(ERC721(address(positionManagerV4)).ownerOf(id), address(rebalancer));
@@ -177,9 +171,5 @@ contract Mint_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
             uint128 liquidity_ = stateView.getPositionLiquidity(nativeEthPoolKey.toId(), positionId);
             assertEq(liquidity, liquidity_);
         }
-
-        // And: Correct balances should be returned.
-        assertEq(address(rebalancer).balance, balance0_);
-        assertEq(token1.balanceOf(address(rebalancer)), balance1_);
     }
 }

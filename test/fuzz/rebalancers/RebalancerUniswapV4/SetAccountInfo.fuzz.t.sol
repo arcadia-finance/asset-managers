@@ -22,6 +22,24 @@ contract SetAccountInfo_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuz
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
+    function testFuzz_Revert_setAccountInfo_Reentered(
+        address caller,
+        address account_,
+        address account__,
+        address initiator,
+        address hook
+    ) public {
+        // Given: A rebalance is ongoing.
+        vm.assume(account_ != address(0));
+        rebalancer.setAccount(account_);
+
+        // When: calling rebalance
+        // Then: it should revert
+        vm.prank(caller);
+        vm.expectRevert(RebalancerUniswapV4.Reentered.selector);
+        rebalancer.setAccountInfo(account__, initiator, hook);
+    }
+
     function testFuzz_Revert_setAccountInfo_NotAnAccount(
         address caller,
         address account_,

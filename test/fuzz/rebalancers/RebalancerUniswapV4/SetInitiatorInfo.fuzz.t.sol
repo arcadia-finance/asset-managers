@@ -23,6 +23,24 @@ contract SetInitiatorInfo_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_F
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
+    function testFuzz_Revert_setInitiatorInfo_Reentered(
+        address initiator,
+        address account_,
+        uint256 tolerance,
+        uint256 fee,
+        uint256 minLiquidityRatio
+    ) public {
+        // Given: A rebalance is ongoing.
+        vm.assume(account_ != address(0));
+        rebalancer.setAccount(account_);
+
+        // When: calling rebalance
+        // Then: it should revert
+        vm.prank(initiator);
+        vm.expectRevert(RebalancerUniswapV4.Reentered.selector);
+        rebalancer.setInitiatorInfo(tolerance, fee, minLiquidityRatio);
+    }
+
     function testFuzz_Revert_setInitiatorInfo_NotInitialised_InvalidFee(
         address initiator,
         uint256 tolerance,

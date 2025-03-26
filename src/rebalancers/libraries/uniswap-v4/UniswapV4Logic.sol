@@ -35,6 +35,7 @@ library UniswapV4Logic {
     uint256 internal constant BURN_POSITION = 0x03;
     uint256 internal constant SETTLE_PAIR = 0x0d;
     uint256 internal constant TAKE_PAIR = 0x11;
+    uint256 internal constant SWEEP = 0x14;
 
     /**
      * @notice Fetches Uniswap V3 specific position data from external contracts.
