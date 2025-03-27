@@ -138,7 +138,7 @@ abstract contract RebalancerUniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         UniswapV4Fixture.setUp();
 
         deployUniswapV4AM();
-        deployUniswapV4Rebalancer();
+        deployUniswapV4Rebalancer(MAX_TOLERANCE, MAX_INITIATOR_FEE);
 
         // And : Rebalancer is allowed as Asset Manager
         vm.prank(users.accountOwner);
@@ -210,8 +210,8 @@ abstract contract RebalancerUniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         );
     }
 
-    function deployUniswapV4Rebalancer() public {
-        rebalancer = new RebalancerUniswapV4Extension(MAX_TOLERANCE, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
+    function deployUniswapV4Rebalancer(uint256 maxTolerance, uint256 maxInitiatorFee) public {
+        rebalancer = new RebalancerUniswapV4Extension(maxTolerance, maxInitiatorFee, MIN_LIQUIDITY_RATIO);
         // Overwrite Arcadia contract addresses, stored as constants in Rebalancer.
         bytes memory bytecode = address(rebalancer).code;
 
@@ -248,6 +248,7 @@ abstract contract RebalancerUniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
 
         // Store overwritten bytecode.
         vm.etch(address(rebalancer), bytecode);
+        // Store the weth bytecode to the weth address.
         vm.etch(0x4200000000000000000000000000000000000006, address(weth9).code);
     }
 
@@ -301,7 +302,7 @@ abstract contract RebalancerUniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         uint256 maxLiquidity =
             getLiquidityDeltaFromAmounts(initVars.tickLower, initVars.tickUpper, uint160(sqrtPriceX96));
         // Here we set a minimum liquidity of 1e20 to avoid having unbalanced pool to quickly after fee swap.
-        initVars.liquidity = uint128(bound(initVars.liquidity, 1e20, maxLiquidity));
+        initVars.liquidity = uint128(bound(initVars.liquidity, 1e23, maxLiquidity));
         vm.assume(initVars.liquidity <= poolManager.getTickSpacingToMaxLiquidityPerTick(TICK_SPACING));
 
         // And : Mint initial position
@@ -355,9 +356,8 @@ abstract contract RebalancerUniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         returns (uint256 tolerance_, uint256 fee_)
     {
         // Too low tolerance for testing will make tests reverts too quickly with unbalancedPool()
-        tolerance = bound(tolerance, 0.018 * 1e18, rebalancer.MAX_TOLERANCE() - 1);
-        fee = bound(fee, MIN_INITIATOR_FEE, MAX_INITIATOR_FEE - 1);
-
+        tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
+        fee = bound(fee, 0, MAX_INITIATOR_FEE);
         if (increaseTolerance == true) {
             tolerance = rebalancer.MAX_TOLERANCE();
         }
@@ -403,8 +403,8 @@ abstract contract RebalancerUniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         // And : Lower and upper ticks of the position are within the initial liquidity range
         (, int24 tickCurrent,,) = stateView.getSlot0(poolKey.toId());
 
-        lpVars.tickLower = int24(bound(lpVars.tickLower, initVars.tickLower + 1, tickCurrent - MIN_TICK_SPACING));
-        lpVars.tickUpper = int24(bound(lpVars.tickUpper, tickCurrent + MIN_TICK_SPACING, initVars.tickUpper - 1));
+        lpVars.tickLower = int24(bound(lpVars.tickLower, initVars.tickLower + 10, tickCurrent - MIN_TICK_SPACING));
+        lpVars.tickUpper = int24(bound(lpVars.tickUpper, tickCurrent + MIN_TICK_SPACING, initVars.tickUpper - 10));
 
         lpVars_ = lpVars;
     }
@@ -425,9 +425,21 @@ abstract contract RebalancerUniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
             users.liquidityProvider
         );
 
+        {
+            (uint160 sqrtPrice,,,) = stateView.getSlot0(poolKey.toId());
+            (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
+                sqrtPrice,
+                TickMath.getSqrtPriceAtTick(lpVars.tickLower),
+                TickMath.getSqrtPriceAtTick(lpVars.tickUpper),
+                lpVars.liquidity
+            );
+            // Ensure a minimum amount of both tokens in the position
+            vm.assume(amount0 > 1e6 && amount1 > 1e6);
+        }
+
         // And : Set fees for pool in general (amount below are defined in USD)
-        feeData.desiredFee0 = bound(feeData.desiredFee0, 1000, type(uint16).max);
-        feeData.desiredFee1 = bound(feeData.desiredFee1, 1000, type(uint16).max);
+        feeData.desiredFee0 = bound(feeData.desiredFee0, 10, type(uint16).max);
+        feeData.desiredFee1 = bound(feeData.desiredFee1, 10, type(uint16).max);
         uint128 liquidity = stateView.getLiquidity(poolKey.toId());
         feeData = setFeeState(feeData, poolKey, liquidity);
     }

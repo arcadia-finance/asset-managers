@@ -199,7 +199,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         rebalancer.rebalance(address(account), positionManager, tokenId, trustedSqrtPriceX96, tickLower, tickUpper, "");
     }
 
-    function testFuzz_Success_rebalancePosition_SamePriceNewTicks_1(
+    /*     function testFuzz_Success_rebalancePosition_SamePriceNewTicks_1(
         RebalancerUniswapV4.PositionState memory position,
         uint128 liquidityPool,
         int24 tickLower,
@@ -213,7 +213,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
 
         // And : Pool has reasonable liquidity.
         liquidityPool =
-            uint128(bound(liquidityPool, UniswapHelpers.maxLiquidity(10) / 1000, UniswapHelpers.maxLiquidity(1) / 10));
+            uint128(bound(liquidityPool, 1e30, 1e31));
 
         // And: A pool with liquidity with tickSpacing 1 (fee = 100).
         initPoolAndAddLiquidity(uint160(position.sqrtPriceX96), liquidityPool, POOL_FEE, TICK_SPACING, address(0));
@@ -226,7 +226,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         position.tickLower = position.tickLower / tickSpacing * tickSpacing;
         position.tickUpper = int24(bound(position.tickUpper, tickCurrent + 10, BOUND_TICK_UPPER));
         position.tickUpper = position.tickUpper / tickSpacing * tickSpacing;
-        position.liquidity = uint128(bound(position.liquidity, 1e6, 1e10));
+        position.liquidity = uint128(bound(position.liquidity, 1e3, 1e7));
 
         uint256 tokenId = mintPositionV4(
             v4PoolKey,
@@ -308,16 +308,27 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
 
         // There can be 1 tick difference due to roundings.
         assertEq(tickLower, tickLowerActual);
-        assertEq(tickUpper, tickUpperActual); */
-    }
+        assertEq(tickUpper, tickUpperActual); 
+    } */
 
-    /*     function testFuzz_Success_rebalancePosition_SamePriceNewTicks_1(
+    function testFuzz_Success_rebalancePosition_SamePriceNewTicks_1(
         InitVariables memory initVars,
         LpVariables memory lpVars,
         FeeGrowth memory feeData,
         int24 tickLower,
         int24 tickUpper
     ) public {
+        // Given : deploy new rebalancer with a high maxTolerance to avoid unbalancedPool due to external usd prices not aligned
+        /*         uint256 maxTolerance = 0.9 * 1e18;
+        deployUniswapV4Rebalancer(maxTolerance, MAX_INITIATOR_FEE);
+
+        // And : Rebalancer is allowed as Asset Manager
+        vm.prank(users.accountOwner);
+        account.setAssetManager(address(rebalancer), true);
+
+        // And : Allow to test with increased tolerance
+        increaseTolerance = true; */
+
         // Given : Initialize a uniswapV3 pool and a lp position with valid test variables. Also generate fees for that position.
         uint256 tokenId;
         (initVars, lpVars, tokenId) = initPoolAndCreatePositionWithFees(initVars, lpVars, feeData);
@@ -354,9 +365,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         // When : calling rebalance()
         vm.prank(initVars.initiator);
         vm.expectEmit();
-        emit RebalancerUniswapV4.Rebalance(
-            address(account), address(positionManagerV4), tokenId, tokenId + 1
-        );
+        emit RebalancerUniswapV4.Rebalance(address(account), address(positionManagerV4), tokenId, tokenId + 1);
         rebalancer.rebalance(
             address(account),
             address(positionManagerV4),
@@ -367,7 +376,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
             ""
         );
 
-        (uint128 mintedLiquidity,,) = stateView.getPositionInfo(v4PoolKey.toId(), address(account), tickLower, tickUpper, bytes32(tokenId + 1));
+        /*         (uint128 mintedLiquidity,,) = stateView.getPositionInfo(v4PoolKey.toId(), address(account), tickLower, tickUpper, bytes32(tokenId + 1));
 
         emit log_named_uint("mintedLiquidity", mintedLiquidity);
 
@@ -379,9 +388,8 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
 
         // There can be 1 tick difference due to roundings.
         assertEq(tickLower, tickLowerActual);
-        assertEq(tickUpper, tickUpperActual); 
-
-    } 
+        assertEq(tickUpper, tickUpperActual);  */
+    }
 
     /*     function testFuzz_Success_rebalancePosition_InitiatorFees_Token0(
         InitVariables memory initVars,

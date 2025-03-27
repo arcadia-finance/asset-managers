@@ -187,7 +187,7 @@ contract RebalancerUniswapV4 is IActionBase {
     ) external {
         // If the initiator is set, account_ is an actual Arcadia Account.
         if (account != address(0)) revert Reentered();
-        if (accountToInitiator[account] != msg.sender) revert InitiatorNotValid();
+        if (accountToInitiator[account_] != msg.sender) revert InitiatorNotValid();
 
         // Store Account address, used to validate the caller of the executeAction() callback and serves as a reentrancy guard.
         account = account_;
@@ -225,7 +225,6 @@ contract RebalancerUniswapV4 is IActionBase {
         uint256 newId;
         PositionState memory position;
         address initiator;
-
         {
             ActionData memory assetData;
             int24 tickLower;
