@@ -12,6 +12,7 @@ import { DefaultUniswapV4AM } from "../../../../lib/accounts-v2/src/asset-module
 import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { FixedPoint128 } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
+import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { Fuzz_Test } from "../../Fuzz.t.sol";
 import { LiquidityAmounts } from
     "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/LiquidityAmounts.sol";
@@ -20,6 +21,10 @@ import { LiquidityAmountsExtension } from
 import { NativeTokenAM } from "../../../../lib/accounts-v2/src/asset-modules/native-token/NativeTokenAM.sol";
 import { PoolId } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolId.sol";
 import { PoolKey } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
+import {
+    PositionInfo,
+    PositionInfoLibrary
+} from "../../../../lib/accounts-v2/lib/v4-periphery/src/libraries/PositionInfoLibrary.sol";
 import { IPoolManager } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/interfaces/IPoolManager.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 import { UniswapV4CompounderExtension } from "../../../utils/extensions/UniswapV4CompounderExtension.sol";
@@ -42,13 +47,16 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
     uint24 internal POOL_FEE = 100;
     int24 internal TICK_SPACING = 1;
 
+    // 5 %
+    uint256 MAX_TOLERANCE = 0.05 * 1e18;
     // 4 % price diff for testing
-    uint256 internal TOLERANCE = 0.04 * 1e18;
-    // $10
-    uint256 internal COMPOUND_THRESHOLD = 10 * 1e18;
-    // 10% initiator fee
-    uint256 internal INITIATOR_SHARE = 0.1 * 1e18;
+    uint256 TOLERANCE = 0.04 * 1e18;
 
+    // 0,5% to 11% fee on swaps.
+    uint256 MIN_INITIATOR_SHARE = 0.005 * 1e18;
+    uint256 MAX_INITIATOR_SHARE = 0.11 * 1e18;
+    // 10 % initiator fee
+    uint256 INITIATOR_SHARE = 0.1 * 1e18;
     /*////////////////////////////////////////////////////////////////
                             VARIABLES
     /////////////////////////////////////////////////////////////// */
@@ -57,6 +65,8 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
     ERC20Mock internal token1;
     PoolKey internal stablePoolKey;
     PoolKey internal nativeEthPoolKey;
+
+    address internal initiator;
 
     struct TestVariables {
         int24 tickLower;
@@ -112,7 +122,7 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         UniswapV4Fixture.setUp();
 
         deployUniswapV4AM();
-        deployCompounder(COMPOUND_THRESHOLD, INITIATOR_SHARE, TOLERANCE);
+        deployCompounder(MAX_TOLERANCE, MAX_INITIATOR_SHARE);
 
         // Add two stable tokens with 6 and 18 decimals.
         token0 = new ERC20Mock("Token 6d", "TOK6", 6);
@@ -134,6 +144,15 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         // And : Compounder is allowed as Asset Manager
         vm.prank(users.accountOwner);
         account.setAssetManager(address(compounder), true);
+
+        // And : Create and set initiator details.
+        initiator = createUser("initiator");
+        vm.prank(initiator);
+        compounder.setInitiatorInfo(TOLERANCE, INITIATOR_SHARE);
+
+        // And : Set the initiator for the account.
+        vm.prank(users.accountOwner);
+        compounder.setInitiator(address(account), initiator);
     }
 
     /*////////////////////////////////////////////////////////////////
@@ -183,9 +202,9 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
             initializePoolV4(address(0), address(token1), uint160(sqrtPriceX96), address(0), POOL_FEE, TICK_SPACING);
     }
 
-    function deployCompounder(uint256 compoundThreshold, uint256 initiatorShare, uint256 tolerance) public {
+    function deployCompounder(uint256 maxTolerance, uint256 maxInitiatorShare) public {
         vm.prank(users.owner);
-        compounder = new UniswapV4CompounderExtension(compoundThreshold, initiatorShare, tolerance);
+        compounder = new UniswapV4CompounderExtension(maxTolerance, maxInitiatorShare);
 
         // Overwrite contract addresses stored as constants in Compounder.
         bytes memory bytecode = address(compounder).code;
@@ -246,7 +265,7 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         // And : Amount in $ to wei.
         feeData.desiredFee0 = PoolId.unwrap(poolKey.toId()) == PoolId.unwrap(nativeEthPoolKey.toId())
             ? feeData.desiredFee0 * 1e18
-            : feeData.desiredFee0 = feeData.desiredFee0 * 10 ** token0.decimals();
+            : feeData.desiredFee0 * 10 ** token0.decimals();
         feeData.desiredFee1 = feeData.desiredFee1 * 10 ** token1.decimals();
 
         // And : Calculate expected feeGrowth difference in order to obtain desired fee
@@ -325,5 +344,32 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
             maxAmount0,
             maxAmount1
         );
+    }
+
+    function getFeeAmounts(uint256 id, PoolId poolId, PositionInfo info, uint128 liquidity)
+        public
+        view
+        returns (uint256 amount0, uint256 amount1)
+    {
+        (uint256 feeGrowthInside0CurrentX128, uint256 feeGrowthInside1CurrentX128) =
+            stateView.getFeeGrowthInside(poolId, info.tickLower(), info.tickUpper());
+
+        bytes32 positionId =
+            keccak256(abi.encodePacked(address(positionManagerV4), info.tickLower(), info.tickUpper(), bytes32(id)));
+
+        (, uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128) =
+            stateView.getPositionInfo(poolId, positionId);
+
+        // Calculate accumulated fees since the last time the position was updated:
+        // (feeGrowthInsideCurrentX128 - feeGrowthInsideLastX128) * liquidity.
+        // Fee calculations in PositionManager.sol overflow (without reverting) when
+        // one or both terms, or their sum, is bigger than a uint128.
+        // This is however much bigger than any realistic situation.
+        unchecked {
+            amount0 =
+                FullMath.mulDiv(feeGrowthInside0CurrentX128 - feeGrowthInside0LastX128, liquidity, FixedPoint128.Q128);
+            amount1 =
+                FullMath.mulDiv(feeGrowthInside1CurrentX128 - feeGrowthInside1LastX128, liquidity, FixedPoint128.Q128);
+        }
     }
 }

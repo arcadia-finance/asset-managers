@@ -33,9 +33,10 @@ contract GetPositionState_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder
 
         // And : State is persisted
         uint256 tokenId = setState(testVars, usdStablePool);
+        (uint160 sqrtPriceX96,,,,,) = usdStablePool.slot0();
 
         // When : Calling getPositionState()
-        SlipstreamCompounder.PositionState memory position = compounder.getPositionState(tokenId);
+        SlipstreamCompounder.PositionState memory position = compounder.getPositionState(tokenId, sqrtPriceX96);
 
         // Then : It should return the correct values
         assertEq(position.token0, address(token0));
@@ -51,14 +52,10 @@ contract GetPositionState_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder
         assertEq(position.usdPriceToken1, priceToken1);
 
         assertEq(position.pool, address(usdStablePool));
-
-        (uint160 sqrtPriceX96,,,,,) = usdStablePool.slot0();
-
         assertEq(position.sqrtPriceX96, sqrtPriceX96);
 
-        uint256 trustedSqrtPriceX96 = SlipstreamLogic._getSqrtPriceX96(priceToken0, priceToken1);
-        uint256 lowerBoundSqrtPriceX96 = trustedSqrtPriceX96.mulDivDown(compounder.LOWER_SQRT_PRICE_DEVIATION(), 1e18);
-        uint256 upperBoundSqrtPriceX96 = trustedSqrtPriceX96.mulDivDown(compounder.UPPER_SQRT_PRICE_DEVIATION(), 1e18);
+        uint256 lowerBoundSqrtPriceX96 = uint256(sqrtPriceX96).mulDivDown(compounder.LOWER_SQRT_PRICE_DEVIATION(), 1e18);
+        uint256 upperBoundSqrtPriceX96 = uint256(sqrtPriceX96).mulDivDown(compounder.UPPER_SQRT_PRICE_DEVIATION(), 1e18);
 
         assertEq(position.lowerBoundSqrtPriceX96, lowerBoundSqrtPriceX96);
         assertEq(position.upperBoundSqrtPriceX96, upperBoundSqrtPriceX96);

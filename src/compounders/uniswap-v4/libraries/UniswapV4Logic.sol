@@ -29,6 +29,7 @@ library UniswapV4Logic {
     uint256 internal constant DECREASE_LIQUIDITY = 0x01;
     uint256 internal constant SETTLE_PAIR = 0x0d;
     uint256 internal constant TAKE_PAIR = 0x11;
+    uint256 internal constant SWEEP = 0x14;
 
     // The Uniswap V4 PoolManager contract.
     IPoolManager internal constant POOL_MANAGER = IPoolManager(0x498581fF718922c3f8e6A244956aF099B2652b2b);

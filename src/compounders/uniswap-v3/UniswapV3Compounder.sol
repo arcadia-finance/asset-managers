@@ -11,7 +11,6 @@ import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IAccount } from "../interfaces/IAccount.sol";
 import { IUniswapV3Pool } from "./interfaces/IUniswapV3Pool.sol";
-import { ReentrancyGuard } from "../../../lib/accounts-v2/lib/solmate/src/utils/ReentrancyGuard.sol";
 import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
 
@@ -27,18 +26,12 @@ import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
  * This input serves as a reference point for calculating the maximum allowed deviation during the compounding process,
  * ensuring that the execution remains within a controlled price range.
  */
-contract UniswapV3Compounder is ReentrancyGuard, IActionBase {
+contract UniswapV3Compounder is IActionBase {
     using FixedPointMathLib for uint256;
     using SafeTransferLib for ERC20;
     /* //////////////////////////////////////////////////////////////
                                 CONSTANTS
     ////////////////////////////////////////////////////////////// */
-
-    // keccak256("UniswapV3CompounderAccount")
-    bytes32 internal constant ACCOUNT_SLOT = 0xf0efd4ebe26a583de7872d9f2984363b24a4e1d8f0d522db4a58eca586aa4094;
-    // keccak256("UniswapV3CompounderTrustedSqrtPriceX96")
-    bytes32 internal constant TRUSTED_SQRT_PRICE_X96_SLOT =
-        0x22f468e61c4523c2f9f1d54749ae1fca8daeb58258c610fb6f5006254780dd97;
 
     // Minimum fees value in USD to trigger the compounding of a position, with 18 decimals precision.
     uint256 public immutable COMPOUND_THRESHOLD;
@@ -54,6 +47,9 @@ contract UniswapV3Compounder is ReentrancyGuard, IActionBase {
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
     ////////////////////////////////////////////////////////////// */
+
+    // The Account to compound the fees for, used as transient storage.
+    address internal account;
 
     // A struct with the state of a specific position, only used in memory.
     struct PositionState {
@@ -124,28 +120,25 @@ contract UniswapV3Compounder is ReentrancyGuard, IActionBase {
 
     /**
      * @notice Compounds the fees earned by a UniswapV3 Liquidity Position owned by an Arcadia Account.
-     * @param account The Arcadia Account owning the position.
+     * @param account_ The Arcadia Account owning the position.
      * @param id The id of the Liquidity Position.
      * @param trustedSqrtPriceX96 The pool sqrtPriceX96 provided at the time of calling compoundFees().
      */
-    function compoundFees(address account, uint256 id, uint256 trustedSqrtPriceX96) external nonReentrant {
+    function compoundFees(address account_, uint256 id, uint256 trustedSqrtPriceX96) external {
         // Store Account address, used to validate the caller of the executeAction() callback.
-        if (!ArcadiaLogic.FACTORY.isAccount(account)) revert NotAnAccount();
-
-        // Store Account address, used to validate the caller of the executeAction() callback and serves as a reentrancy guard.
-        assembly {
-            tstore(ACCOUNT_SLOT, account)
-            tstore(TRUSTED_SQRT_PRICE_X96_SLOT, trustedSqrtPriceX96)
-        }
+        if (account != address(0)) revert Reentered();
+        if (!ArcadiaLogic.FACTORY.isAccount(account_)) revert NotAnAccount();
+        account = account_;
 
         // Encode data for the flash-action.
-        bytes memory actionData =
-            ArcadiaLogic._encodeActionData(msg.sender, address(UniswapV3Logic.POSITION_MANAGER), id);
+        bytes memory actionData = ArcadiaLogic._encodeActionData(
+            msg.sender, address(UniswapV3Logic.POSITION_MANAGER), id, trustedSqrtPriceX96
+        );
 
         // Call flashAction() with this contract as actionTarget.
-        IAccount(account).flashAction(address(this), actionData);
+        IAccount(account_).flashAction(address(this), actionData);
 
-        emit Compound(account, id);
+        emit Compound(account_, id);
     }
 
     /**
@@ -164,20 +157,16 @@ contract UniswapV3Compounder is ReentrancyGuard, IActionBase {
      */
     function executeAction(bytes calldata compoundData) external override returns (ActionData memory assetData) {
         // Caller should be the Account, provided as input in compoundFees().
-        address account;
-        assembly {
-            account := tload(ACCOUNT_SLOT)
-        }
-
         if (msg.sender != account) revert OnlyAccount();
 
         // Decode compoundData.
         address initiator;
-        (assetData, initiator) = abi.decode(compoundData, (ActionData, address));
+        uint256 trustedSqrtPriceX96;
+        (assetData, initiator, trustedSqrtPriceX96) = abi.decode(compoundData, (ActionData, address, uint256));
         uint256 id = assetData.assetIds[0];
 
         // Fetch and cache all position related data.
-        PositionState memory position = getPositionState(id);
+        PositionState memory position = getPositionState(id, trustedSqrtPriceX96);
 
         // Check that pool is initially balanced.
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
@@ -351,9 +340,15 @@ contract UniswapV3Compounder is ReentrancyGuard, IActionBase {
     /**
      * @notice Fetches all required position data from external contracts.
      * @param id The id of the Liquidity Position.
+     * @param trustedSqrtPriceX96 The pool sqrtPriceX96 provided at the time of calling compoundFees().
      * @return position Struct with the position data.
      */
-    function getPositionState(uint256 id) public view virtual returns (PositionState memory position) {
+    function getPositionState(uint256 id, uint256 trustedSqrtPriceX96)
+        public
+        view
+        virtual
+        returns (PositionState memory position)
+    {
         // Get data of the Liquidity Position.
         int24 tickLower;
         int24 tickUpper;
@@ -369,12 +364,6 @@ contract UniswapV3Compounder is ReentrancyGuard, IActionBase {
         // Get data of the Liquidity Pool.
         position.pool = UniswapV3Logic._computePoolAddress(position.token0, position.token1, position.fee);
         (position.sqrtPriceX96,,,,,,) = IUniswapV3Pool(position.pool).slot0();
-
-        // Get the trusted sqrtPriceX96 provided by the initiator.
-        uint256 trustedSqrtPriceX96;
-        assembly {
-            trustedSqrtPriceX96 := tload(TRUSTED_SQRT_PRICE_X96_SLOT)
-        }
 
         // Calculate the upper and lower bounds of sqrtPriceX96 for the Pool to be balanced.
         position.lowerBoundSqrtPriceX96 = trustedSqrtPriceX96.mulDivDown(LOWER_SQRT_PRICE_DEVIATION, 1e18);

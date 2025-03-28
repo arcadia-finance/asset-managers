@@ -37,8 +37,10 @@ contract GetPositionState_SlipstreamCompounderSpot_Fuzz_Test is SlipstreamCompou
         // And: The minimum time interval to calculate TWAT should have passed.
         vm.warp(block.timestamp + TwapLogic.TWAT_INTERVAL);
 
+        (uint160 sqrtPriceX96,,,,,) = usdStablePool.slot0();
+
         // When : Calling getPositionState()
-        SlipstreamCompounderSpot.PositionState memory position = compounderSpot.getPositionState(tokenId);
+        SlipstreamCompounderSpot.PositionState memory position = compounderSpot.getPositionState(tokenId, sqrtPriceX96);
 
         // Then : It should return the correct values
         assertEq(position.token0, address(token0));
@@ -49,16 +51,12 @@ contract GetPositionState_SlipstreamCompounderSpot_Fuzz_Test is SlipstreamCompou
 
         assertEq(position.pool, address(usdStablePool));
 
-        (uint160 sqrtPriceX96,,,,,) = usdStablePool.slot0();
-
         assertEq(position.sqrtPriceX96, sqrtPriceX96);
 
-        // Get twat values
-        int24 twat = TwapLogic._getTwat(position.pool);
-        uint256 twaSqrtRatioX96 = TickMath.getSqrtRatioAtTick(twat);
-
-        uint256 lowerBoundSqrtPriceX96 = twaSqrtRatioX96.mulDivDown(compounderSpot.LOWER_SQRT_PRICE_DEVIATION(), 1e18);
-        uint256 upperBoundSqrtPriceX96 = twaSqrtRatioX96.mulDivDown(compounderSpot.UPPER_SQRT_PRICE_DEVIATION(), 1e18);
+        uint256 lowerBoundSqrtPriceX96 =
+            uint256(sqrtPriceX96).mulDivDown(compounderSpot.LOWER_SQRT_PRICE_DEVIATION(), 1e18);
+        uint256 upperBoundSqrtPriceX96 =
+            uint256(sqrtPriceX96).mulDivDown(compounderSpot.UPPER_SQRT_PRICE_DEVIATION(), 1e18);
 
         assertEq(position.lowerBoundSqrtPriceX96, lowerBoundSqrtPriceX96);
         assertEq(position.upperBoundSqrtPriceX96, upperBoundSqrtPriceX96);

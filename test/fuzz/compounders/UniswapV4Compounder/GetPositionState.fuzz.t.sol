@@ -36,27 +36,26 @@ contract GetPositionState_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_F
         // And : State is persisted
         uint256 tokenId = setState(testVars, stablePoolKey);
 
+        (uint160 sqrtPriceX96_,,,) = stateView.getSlot0(stablePoolKey.toId());
+
         // When : Calling getPositionState()
         (UniswapV4Compounder.PositionState memory position, PoolKey memory poolKey) =
-            compounder.getPositionState(tokenId);
+            compounder.getPositionState(tokenId, sqrtPriceX96_, initiator);
 
         // Then : It should return the correct values
         assertEq(position.sqrtRatioLower, TickMath.getSqrtRatioAtTick(testVars.tickLower));
         assertEq(position.sqrtRatioUpper, TickMath.getSqrtRatioAtTick(testVars.tickUpper));
 
-        uint256 priceToken0 = token0HasLowestDecimals ? 1e30 : 1e18;
-        uint256 priceToken1 = token0HasLowestDecimals ? 1e18 : 1e30;
-
-        assertEq(position.usdPriceToken0, priceToken0);
-        assertEq(position.usdPriceToken1, priceToken1);
-
         (uint160 sqrtPriceX96,,,) = stateView.getSlot0(stablePoolKey.toId());
 
         assertEq(position.sqrtPriceX96, sqrtPriceX96);
 
-        uint256 trustedSqrtPriceX96 = UniswapV4Logic._getSqrtPriceX96(priceToken0, priceToken1);
-        uint256 lowerBoundSqrtPriceX96 = trustedSqrtPriceX96.mulDivDown(compounder.LOWER_SQRT_PRICE_DEVIATION(), 1e18);
-        uint256 upperBoundSqrtPriceX96 = trustedSqrtPriceX96.mulDivDown(compounder.UPPER_SQRT_PRICE_DEVIATION(), 1e18);
+        uint256 trustedSqrtPriceX96 = uint256(sqrtPriceX96_);
+
+        (uint64 upperSqrtPriceDeviation, uint64 lowerSqrtPriceDeviation,) = compounder.initiatorInfo(initiator);
+
+        uint256 lowerBoundSqrtPriceX96 = trustedSqrtPriceX96.mulDivDown(uint256(lowerSqrtPriceDeviation), 1e18);
+        uint256 upperBoundSqrtPriceX96 = trustedSqrtPriceX96.mulDivDown(uint256(upperSqrtPriceDeviation), 1e18);
 
         assertEq(position.lowerBoundSqrtPriceX96, lowerBoundSqrtPriceX96);
         assertEq(position.upperBoundSqrtPriceX96, upperBoundSqrtPriceX96);

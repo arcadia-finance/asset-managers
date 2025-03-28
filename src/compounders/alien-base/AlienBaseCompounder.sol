@@ -12,7 +12,6 @@ import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IAccount } from "../interfaces/IAccount.sol";
 import { IUniswapV3Pool } from "../uniswap-v3/interfaces/IUniswapV3Pool.sol";
-import { ReentrancyGuard } from "../../../lib/accounts-v2/lib/solmate/src/utils/ReentrancyGuard.sol";
 import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 
 /**
@@ -34,12 +33,6 @@ contract AlienBaseCompounder is IActionBase {
                                 CONSTANTS
     ////////////////////////////////////////////////////////////// */
 
-    // keccak256("AlienBaseCompounderAccount")
-    bytes32 internal constant ACCOUNT_SLOT = 0x24f180efe883e327f853d7d785e971e11a0d28fedb8ee8907f0b25b8078882ab;
-    // keccak256("AlienBaseCompounderTrustedSqrtPriceX96")
-    bytes32 internal constant TRUSTED_SQRT_PRICE_X96_SLOT =
-        0x991b078a4da81417937c4543d0278311ab0b4e897a30b286b821d32a6797fc8d;
-
     // Minimum fees value in USD to trigger the compounding of a position, with 18 decimals precision.
     uint256 public immutable COMPOUND_THRESHOLD;
     // The share of the fees that are paid as reward to the initiator, with 18 decimals precision.
@@ -54,6 +47,9 @@ contract AlienBaseCompounder is IActionBase {
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
     ////////////////////////////////////////////////////////////// */
+
+    // The Account to compound the fees for, used as transient storage.
+    address internal account;
 
     // A struct with the state of a specific position, only used in memory.
     struct PositionState {
@@ -128,24 +124,24 @@ contract AlienBaseCompounder is IActionBase {
      * @param id The id of the Liquidity Position.
      * @param trustedSqrtPriceX96 The pool sqrtPriceX96 provided at the time of calling compoundFees().
      */
-    function compoundFees(address account, uint256 id, uint256 trustedSqrtPriceX96) external nonReentrant {
+    function compoundFees(address account_, uint256 id, uint256 trustedSqrtPriceX96) external {
         // Store Account address, used to validate the caller of the executeAction() callback.
-        if (!ArcadiaLogic.FACTORY.isAccount(account)) revert NotAnAccount();
-
-        // Store Account address, used to validate the caller of the executeAction() callback and serves as a reentrancy guard.
-        assembly {
-            tstore(ACCOUNT_SLOT, account)
-            tstore(TRUSTED_SQRT_PRICE_X96_SLOT, trustedSqrtPriceX96)
-        }
+        if (account != address(0)) revert Reentered();
+        if (!ArcadiaLogic.FACTORY.isAccount(account_)) revert NotAnAccount();
+        account = account_;
 
         // Encode data for the flash-action.
-        bytes memory actionData =
-            ArcadiaLogic._encodeActionData(msg.sender, address(UniswapV3Logic.POSITION_MANAGER), id);
+        bytes memory actionData = ArcadiaLogic._encodeActionData(
+            msg.sender, address(AlienBaseLogic.POSITION_MANAGER), id, trustedSqrtPriceX96
+        );
 
         // Call flashAction() with this contract as actionTarget.
-        IAccount(account).flashAction(address(this), actionData);
+        IAccount(account_).flashAction(address(this), actionData);
 
-        emit Compound(account, id);
+        // Reset account.
+        account = address(0);
+
+        emit Compound(account_, id);
     }
 
     /**
@@ -164,20 +160,16 @@ contract AlienBaseCompounder is IActionBase {
      */
     function executeAction(bytes calldata compoundData) external override returns (ActionData memory assetData) {
         // Caller should be the Account, provided as input in compoundFees().
-        address account;
-        assembly {
-            account := tload(ACCOUNT_SLOT)
-        }
-
         if (msg.sender != account) revert OnlyAccount();
 
         // Decode compoundData.
         address initiator;
-        (assetData, initiator) = abi.decode(compoundData, (ActionData, address));
+        uint256 trustedSqrtPriceX96;
+        (assetData, initiator, trustedSqrtPriceX96) = abi.decode(compoundData, (ActionData, address, uint256));
         uint256 id = assetData.assetIds[0];
 
         // Fetch and cache all position related data.
-        PositionState memory position = getPositionState(id);
+        PositionState memory position = getPositionState(id, trustedSqrtPriceX96);
 
         // Check that pool is initially balanced.
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
@@ -351,9 +343,15 @@ contract AlienBaseCompounder is IActionBase {
     /**
      * @notice Fetches all required position data from external contracts.
      * @param id The id of the Liquidity Position.
+     * @param trustedSqrtPriceX96 The pool sqrtPriceX96 provided at the time of calling compoundFees().
      * @return position Struct with the position data.
      */
-    function getPositionState(uint256 id) public view virtual returns (PositionState memory position) {
+    function getPositionState(uint256 id, uint256 trustedSqrtPriceX96)
+        public
+        view
+        virtual
+        returns (PositionState memory position)
+    {
         // Get data of the Liquidity Position.
         int24 tickLower;
         int24 tickUpper;
@@ -369,12 +367,6 @@ contract AlienBaseCompounder is IActionBase {
         // Get data of the Liquidity Pool.
         position.pool = AlienBaseLogic._computePoolAddress(position.token0, position.token1, position.fee);
         (position.sqrtPriceX96,,,,,,) = IUniswapV3Pool(position.pool).slot0();
-
-        // Get the trusted sqrtPriceX96 provided by the initiator.
-        uint256 trustedSqrtPriceX96;
-        assembly {
-            trustedSqrtPriceX96 := tload(TRUSTED_SQRT_PRICE_X96_SLOT)
-        }
 
         // Calculate the upper and lower bounds of sqrtPriceX96 for the Pool to be balanced.
         position.lowerBoundSqrtPriceX96 = trustedSqrtPriceX96.mulDivDown(LOWER_SQRT_PRICE_DEVIATION, 1e18);

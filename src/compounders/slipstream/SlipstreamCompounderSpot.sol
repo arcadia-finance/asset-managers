@@ -9,7 +9,6 @@ import { ICLPool } from "./interfaces/ICLPool.sol";
 import { SlipstreamCompounder } from "./SlipstreamCompounder.sol";
 import { SlipstreamLogic } from "./libraries/SlipstreamLogic.sol";
 import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
-import { TwapLogic } from "../../libraries/TwapLogic.sol";
 
 /**
  * @title Permissionless and Stateless Compounder for Slipstream Liquidity Positions.
@@ -46,9 +45,15 @@ contract SlipstreamCompounderSpot is SlipstreamCompounder {
     /**
      * @notice Fetches all required position data from third part contracts.
      * @param id The id of the Liquidity Position.
+     * @param trustedSqrtPriceX96 The pool sqrtPriceX96 provided at the time of calling compoundFees().
      * @return position Struct with the position data.
      */
-    function getPositionState(uint256 id) public view override returns (PositionState memory position) {
+    function getPositionState(uint256 id, uint256 trustedSqrtPriceX96)
+        public
+        view
+        override
+        returns (PositionState memory position)
+    {
         // Get data of the Liquidity Position.
         int24 tickLower;
         int24 tickUpper;
@@ -61,15 +66,9 @@ contract SlipstreamCompounderSpot is SlipstreamCompounder {
         position.pool = SlipstreamLogic._computePoolAddress(position.token0, position.token1, position.tickSpacing);
         (position.sqrtPriceX96,,,,,) = ICLPool(position.pool).slot0();
 
-        // Calculate the time weighted average tick over 300s.
-        // This is to prevent sandwiching attacks when swapping and/or adding liquidity.
-        int24 twat = TwapLogic._getTwat(position.pool);
-        // Get the time weighted average sqrtPriceX96 over 300s.
-        uint256 twaSqrtRatioX96 = TickMath.getSqrtRatioAtTick(twat);
-
         // Calculate the upper and lower bounds of sqrtPriceX96 for the Pool to be balanced.
-        position.lowerBoundSqrtPriceX96 = twaSqrtRatioX96.mulDivDown(LOWER_SQRT_PRICE_DEVIATION, 1e18);
-        position.upperBoundSqrtPriceX96 = twaSqrtRatioX96.mulDivDown(UPPER_SQRT_PRICE_DEVIATION, 1e18);
+        position.lowerBoundSqrtPriceX96 = trustedSqrtPriceX96.mulDivDown(LOWER_SQRT_PRICE_DEVIATION, 1e18);
+        position.upperBoundSqrtPriceX96 = trustedSqrtPriceX96.mulDivDown(UPPER_SQRT_PRICE_DEVIATION, 1e18);
     }
 
     /**

@@ -22,7 +22,6 @@ import {
     PositionInfoLibrary,
     PositionInfo
 } from "../../../lib/accounts-v2/lib/v4-periphery/src/libraries/PositionInfoLibrary.sol";
-import { ReentrancyGuard } from "../../../lib/accounts-v2/lib/solmate/src/utils/ReentrancyGuard.sol";
 import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { UniswapV4Logic } from "./libraries/UniswapV4Logic.sol";
 
@@ -46,29 +45,28 @@ contract UniswapV4Compounder is IActionBase {
                                 CONSTANTS
     ////////////////////////////////////////////////////////////// */
 
-    // keccak256("UniswapV4CompounderAccount")
-    bytes32 internal constant ACCOUNT_SLOT = 0x458efe87c11d10ad2afc0bf18bda7984b124af8be5cf0205ce13dfa0e3a95725;
-    // keccak256("UniswapV4CompounderTrustedSqrtPriceX96")
-    bytes32 internal constant TRUSTED_SQRT_PRICE_X96_SLOT =
-        0x56635324ca2d622a32146b8fdfce34f58e7b43aca2f35ffcb9e0df1785c58c5d;
-
     // The Permit2 contract.
     IPermit2 internal constant PERMIT_2 = IPermit2(0x000000000022D473030F116dDEE9F6B43aC78BA3);
 
-    // Minimum fees value in USD to trigger the compounding of a position, with 18 decimals precision.
-    uint256 public immutable COMPOUND_THRESHOLD;
-    // The share of the fees that are paid as reward to the initiator, with 18 decimals precision.
-    uint256 public immutable INITIATOR_SHARE;
     // The maximum lower deviation of the pools actual sqrtPriceX96,
-    // relative to the sqrtPriceX96 calculated with trusted price feeds, with 18 decimals precision.
-    uint256 public immutable LOWER_SQRT_PRICE_DEVIATION;
-    // The maximum upper deviation of the pools actual sqrtPriceX96,
-    // relative to the sqrtPriceX96 calculated with trusted price feeds, with 18 decimals precision.
-    uint256 public immutable UPPER_SQRT_PRICE_DEVIATION;
+    // The maximum deviation of the actual pool price, in % with 18 decimals precision.
+    uint256 public immutable MAX_TOLERANCE;
+
+    // The maximum fee an initiator can set, with 18 decimals precision.
+    uint256 public immutable MAX_INITIATOR_SHARE;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
     ////////////////////////////////////////////////////////////// */
+
+    // The Account to compound the fees for, used as transient storage.
+    address internal account;
+
+    // A mapping from initiator to rebalancing fee.
+    mapping(address initiator => InitiatorInfo) public initiatorInfo;
+
+    // A mapping that sets the approved initiator per account.
+    mapping(address account => address initiator) public accountToInitiator;
 
     // A struct with the state of a specific position, only used in memory.
     struct PositionState {
@@ -77,8 +75,6 @@ contract UniswapV4Compounder is IActionBase {
         uint256 sqrtRatioUpper;
         uint256 lowerBoundSqrtPriceX96;
         uint256 upperBoundSqrtPriceX96;
-        uint256 usdPriceToken0;
-        uint256 usdPriceToken1;
     }
 
     // A struct with variables to track the fee balances, only used in memory.
@@ -87,23 +83,35 @@ contract UniswapV4Compounder is IActionBase {
         uint256 amount1;
     }
 
+    // A struct with information for each specific initiator
+    struct InitiatorInfo {
+        uint64 upperSqrtPriceDeviation;
+        uint64 lowerSqrtPriceDeviation;
+        uint64 initiatorShare;
+    }
+
     /* //////////////////////////////////////////////////////////////
                                 ERRORS
     ////////////////////////////////////////////////////////////// */
 
-    error BelowThreshold();
+    error InitiatorNotValid();
+    error InvalidValue();
     error NotAnAccount();
     error OnlyAccount();
     error OnlyPool();
     error PoolManagerOnly();
     error Reentered();
     error UnbalancedPool();
+    error OnlyAccountOwner();
 
     /* //////////////////////////////////////////////////////////////
                                 EVENTS
     ////////////////////////////////////////////////////////////// */
 
+    event InitiatorSet(address indexed account, address indexed initiator);
     event Compound(address indexed account, uint256 id);
+
+    event Log(uint256);
 
     /* //////////////////////////////////////////////////////////////
                                 MODIFIERS
@@ -122,24 +130,17 @@ contract UniswapV4Compounder is IActionBase {
     ////////////////////////////////////////////////////////////// */
 
     /**
-     * @param compoundThreshold The minimum USD value that the compounded fees should have
-     * before a compoundFees() can be called, with 18 decimals precision.
-     * @param initiatorShare The share of the fees paid to the initiator as reward, with 18 decimals precision.
-     * @param tolerance The maximum deviation of the actual pool price,
+     * @param maxTolerance The maximum allowed deviation of the actual pool price for any initiator,
      * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
+     * @param maxInitiatorShare The maximum initiator share an initiator can set.
      * @dev The tolerance for the pool price will be converted to an upper and lower max sqrtPrice deviation,
      * using the square root of the basis (one with 18 decimals precision) +- tolerance (18 decimals precision).
      * The tolerance boundaries are symmetric around the price, but taking the square root will result in a different
      * allowed deviation of the sqrtPriceX96 for the lower and upper boundaries.
      */
-    constructor(uint256 compoundThreshold, uint256 initiatorShare, uint256 tolerance) {
-        COMPOUND_THRESHOLD = compoundThreshold;
-        INITIATOR_SHARE = initiatorShare;
-
-        // SQRT_PRICE_DEVIATION is the square root of maximum/minimum price deviation.
-        // Sqrt halves the number of decimals.
-        LOWER_SQRT_PRICE_DEVIATION = FixedPointMathLib.sqrt((1e18 - tolerance) * 1e18);
-        UPPER_SQRT_PRICE_DEVIATION = FixedPointMathLib.sqrt((1e18 + tolerance) * 1e18);
+    constructor(uint256 maxTolerance, uint256 maxInitiatorShare) {
+        MAX_INITIATOR_SHARE = maxInitiatorShare;
+        MAX_TOLERANCE = maxTolerance;
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -148,28 +149,30 @@ contract UniswapV4Compounder is IActionBase {
 
     /**
      * @notice Compounds the fees earned by a UniswapV4 Liquidity Position owned by an Arcadia Account.
-     * @param account The Arcadia Account owning the position.
+     * @param account_ The Arcadia Account owning the position.
      * @param id The id of the Liquidity Position.
      * @param trustedSqrtPriceX96 The pool sqrtPriceX96 provided at the time of calling compoundFees().
      */
-    function compoundFees(address account, uint256 id, uint256 trustedSqrtPriceX96) external nonReentrant {
+    function compoundFees(address account_, uint256 id, uint256 trustedSqrtPriceX96) external {
         // Store Account address, used to validate the caller of the executeAction() callback.
-        if (!ArcadiaLogic.FACTORY.isAccount(account)) revert NotAnAccount();
+        if (account != address(0)) revert Reentered();
+        if (accountToInitiator[account_] != msg.sender) revert InitiatorNotValid();
 
         // Store Account address, used to validate the caller of the executeAction() callback and serves as a reentrancy guard.
-        assembly {
-            tstore(ACCOUNT_SLOT, account)
-            tstore(TRUSTED_SQRT_PRICE_X96_SLOT, trustedSqrtPriceX96)
-        }
+        account = account_;
 
         // Encode data for the flash-action.
-        bytes memory actionData =
-            ArcadiaLogic._encodeActionData(msg.sender, address(UniswapV4Logic.POSITION_MANAGER), id);
+        bytes memory actionData = ArcadiaLogic._encodeActionData(
+            msg.sender, address(UniswapV4Logic.POSITION_MANAGER), id, trustedSqrtPriceX96
+        );
 
         // Call flashAction() with this contract as actionTarget.
-        IAccount(account).flashAction(address(this), actionData);
+        IAccount(account_).flashAction(address(this), actionData);
 
-        emit Compound(account, id);
+        // Reset account.
+        account = address(0);
+
+        emit Compound(account_, id);
     }
 
     /**
@@ -180,7 +183,6 @@ contract UniswapV4Compounder is IActionBase {
      * @dev This function will trigger the following actions:
      * - Verify that the pool's current price is initially within the defined tolerance price range.
      * - Collects the fees earned by the position.
-     * - Verify that the fee value is bigger than the threshold required to trigger a compoundFees.
      * - Rebalance the fee amounts so that the maximum amount of liquidity can be added, swaps one token to another if needed.
      * - Verify that the pool's price is still within the defined tolerance price range after the swap.
      * - Increases the liquidity of the current position with those fees.
@@ -188,20 +190,16 @@ contract UniswapV4Compounder is IActionBase {
      */
     function executeAction(bytes calldata compoundData) external override returns (ActionData memory assetData) {
         // Caller should be the Account, provided as input in compoundFees().
-        address account;
-        assembly {
-            account := tload(ACCOUNT_SLOT)
-        }
-
         if (msg.sender != account) revert OnlyAccount();
 
         // Decode compoundData.
         address initiator;
-        (assetData, initiator) = abi.decode(compoundData, (ActionData, address));
+        uint256 trustedSqrtPriceX96;
+        (assetData, initiator, trustedSqrtPriceX96) = abi.decode(compoundData, (ActionData, address, uint256));
         uint256 id = assetData.assetIds[0];
 
         // Fetch and cache all position related data.
-        (PositionState memory position, PoolKey memory poolKey) = getPositionState(id);
+        (PositionState memory position, PoolKey memory poolKey) = getPositionState(id, trustedSqrtPriceX96, initiator);
 
         // Check that pool is initially balanced.
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
@@ -211,33 +209,24 @@ contract UniswapV4Compounder is IActionBase {
         Fees memory fees;
         (fees.amount0, fees.amount1) = _collectFees(id, poolKey);
 
-        // Total value of the fees must be greater than the threshold.
-        if (isBelowThreshold(position, fees)) revert BelowThreshold();
-
         // Subtract initiator reward from fees, these will be send to the initiator.
-        fees.amount0 -= fees.amount0.mulDivDown(INITIATOR_SHARE, 1e18);
-        fees.amount1 -= fees.amount1.mulDivDown(INITIATOR_SHARE, 1e18);
+        uint256 initiatorShare = uint256(initiatorInfo[initiator].initiatorShare);
+        fees.amount0 -= fees.amount0.mulDivDown(initiatorShare, 1e18);
+        fees.amount1 -= fees.amount1.mulDivDown(initiatorShare, 1e18);
 
         // Rebalance the fee amounts so that the maximum amount of liquidity can be added.
         // The Pool must still be balanced after the swap.
         (bool zeroToOne, uint256 amountOut) = getSwapParameters(position, fees);
-        uint256 tokenInBeforeSwap = zeroToOne ? poolKey.currency0.balanceOfSelf() : poolKey.currency1.balanceOfSelf();
         if (_swap(poolKey, position.lowerBoundSqrtPriceX96, position.upperBoundSqrtPriceX96, zeroToOne, amountOut)) {
             revert UnbalancedPool();
         }
-        uint256 tokenInAfterSwap = zeroToOne ? poolKey.currency0.balanceOfSelf() : poolKey.currency1.balanceOfSelf();
 
         // We increase the fee amount of tokenOut, but we do not decrease the fee amount of tokenIn.
         // This guarantees that tokenOut is the limiting factor when increasing liquidity and not tokenIn.
         // As a consequence, slippage will result in less tokenIn going to the initiator,
         // instead of more tokenOut going to the initiator.
-        if (zeroToOne) {
-            fees.amount1 += amountOut;
-            fees.amount0 -= (tokenInBeforeSwap - tokenInAfterSwap);
-        } else {
-            fees.amount0 += amountOut;
-            fees.amount1 -= (tokenInBeforeSwap - tokenInAfterSwap);
-        }
+        if (zeroToOne) fees.amount1 += amountOut;
+        else fees.amount0 += amountOut;
 
         _mint(poolKey, fees.amount0, fees.amount1, position.sqrtRatioLower, position.sqrtRatioUpper, id);
 
@@ -284,15 +273,23 @@ contract UniswapV4Compounder is IActionBase {
             newSqrtPriceX96, uint160(sqrtRatioLower), uint160(sqrtRatioUpper), amount0, amount1
         );
 
+        emit Log(amount0);
         uint256 ethValue = token0IsNative ? amount0 : 0;
+        if (ethValue > address(this).balance) {
+            ethValue = address(this).balance;
+        }
+        emit Log(ethValue);
+        emit Log(address(this).balance);
 
         // Generate calldata to increase liquidity.
-        bytes memory actions = new bytes(2);
+        bytes memory actions = new bytes(3);
         actions[0] = bytes1(uint8(UniswapV4Logic.INCREASE_LIQUIDITY));
         actions[1] = bytes1(uint8(UniswapV4Logic.SETTLE_PAIR));
-        bytes[] memory params = new bytes[](2);
+        actions[2] = bytes1(uint8(UniswapV4Logic.SWEEP));
+        bytes[] memory params = new bytes[](3);
         params[0] = abi.encode(tokenId, liquidity, type(uint128).max, type(uint128).max, "");
         params[1] = abi.encode(poolKey.currency0, poolKey.currency1);
+        params[2] = abi.encode(poolKey.currency0, address(this));
 
         bytes memory increaseLiquidityParams = abi.encode(actions, params);
         UniswapV4Logic.POSITION_MANAGER.modifyLiquidities{ value: ethValue }(increaseLiquidityParams, block.timestamp);
@@ -441,9 +438,11 @@ contract UniswapV4Compounder is IActionBase {
     /**
      * @notice Fetches all required position data from external contracts.
      * @param id The id of the Liquidity Position.
+     * @param trustedSqrtPriceX96 The pool sqrtPriceX96 provided at the time of calling compoundFees().
+     * @param initiator The address of the initiator.
      * @return position Struct with the position data.
      */
-    function getPositionState(uint256 id)
+    function getPositionState(uint256 id, uint256 trustedSqrtPriceX96, address initiator)
         public
         view
         virtual
@@ -457,37 +456,12 @@ contract UniswapV4Compounder is IActionBase {
         position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(info.tickUpper());
         // TODO: try to access via PoolManager instead of StateView, but fails.
         (position.sqrtPriceX96,,,) = UniswapV4Logic.STATE_VIEW.getSlot0(poolKey.toId());
-        // Get trusted USD prices for 1e18 gwei of token0 and token1.
-        (position.usdPriceToken0, position.usdPriceToken1) =
-            ArcadiaLogic._getValuesInUsd(Currency.unwrap(poolKey.currency0), Currency.unwrap(poolKey.currency1));
-
-        // Get the trusted sqrtPriceX96 provided by the initiator.
-        uint256 trustedSqrtPriceX96;
-        assembly {
-            trustedSqrtPriceX96 := tload(TRUSTED_SQRT_PRICE_X96_SLOT)
-        }
 
         // Calculate the upper and lower bounds of sqrtPriceX96 for the Pool to be balanced.
-        position.lowerBoundSqrtPriceX96 = trustedSqrtPriceX96.mulDivDown(LOWER_SQRT_PRICE_DEVIATION, 1e18);
-        position.upperBoundSqrtPriceX96 = trustedSqrtPriceX96.mulDivDown(UPPER_SQRT_PRICE_DEVIATION, 1e18);
-    }
-
-    /**
-     * @notice Returns if the total fee value in USD is below the rebalancing threshold.
-     * @param position Struct with the position data.
-     * @param fees Struct with the fees accumulated by a position.
-     * @return isBelowThreshold_ Bool indicating if the total fee value in USD is below the threshold.
-     */
-    function isBelowThreshold(PositionState memory position, Fees memory fees)
-        public
-        view
-        virtual
-        returns (bool isBelowThreshold_)
-    {
-        uint256 totalValueFees = position.usdPriceToken0.mulDivDown(fees.amount0, 1e18)
-            + position.usdPriceToken1.mulDivDown(fees.amount1, 1e18);
-
-        isBelowThreshold_ = totalValueFees < COMPOUND_THRESHOLD;
+        position.lowerBoundSqrtPriceX96 =
+            trustedSqrtPriceX96.mulDivDown(initiatorInfo[initiator].lowerSqrtPriceDeviation, 1e18);
+        position.upperBoundSqrtPriceX96 =
+            trustedSqrtPriceX96.mulDivDown(initiatorInfo[initiator].upperSqrtPriceDeviation, 1e18);
     }
 
     /**
@@ -499,6 +473,72 @@ contract UniswapV4Compounder is IActionBase {
         // Check if current priceX96 of the Pool is within accepted tolerance of the calculated trusted priceX96.
         isPoolUnbalanced_ = position.sqrtPriceX96 < position.lowerBoundSqrtPriceX96
             || position.sqrtPriceX96 > position.upperBoundSqrtPriceX96;
+    }
+
+    /* ///////////////////////////////////////////////////////////////
+                            INITIATORS LOGIC
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Sets the information requested for an initiator.
+     * @param tolerance The maximum deviation of the actual pool price,
+     * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
+     * @param initiatorShare The fee paid to the initiator, with 18 decimals precision.
+     * @dev The tolerance for the pool price will be converted to an upper and lower max sqrtPrice deviation,
+     * using the square root of the basis (one with 18 decimals precision) +- tolerance (18 decimals precision).
+     * The tolerance boundaries are symmetric around the price, but taking the square root will result in a different
+     * allowed deviation of the sqrtPriceX96 for the lower and upper boundaries.
+     */
+    function setInitiatorInfo(uint256 tolerance, uint256 initiatorShare) external {
+        if (account != address(0)) revert Reentered();
+
+        // Cache struct
+        InitiatorInfo memory initiatorInfo_ = initiatorInfo[msg.sender];
+
+        // Calculation required for checks.
+        uint64 upperSqrtPriceDeviation = uint64(FixedPointMathLib.sqrt((1e18 + tolerance) * 1e18));
+
+        // Check if initiator is already set.
+        if (initiatorInfo_.upperSqrtPriceDeviation > 0) {
+            // If so, the initiator can only change parameters to more favourable values for users.
+            if (
+                initiatorShare > initiatorInfo_.initiatorShare
+                    || upperSqrtPriceDeviation > initiatorInfo_.upperSqrtPriceDeviation
+            ) revert InvalidValue();
+        } else {
+            // If not, the parameters can not exceed certain thresholds.
+            if (initiatorShare > MAX_INITIATOR_SHARE || tolerance > MAX_TOLERANCE) {
+                revert InvalidValue();
+            }
+        }
+
+        initiatorInfo_.initiatorShare = uint64(initiatorShare);
+        initiatorInfo_.lowerSqrtPriceDeviation = uint64(FixedPointMathLib.sqrt((1e18 - tolerance) * 1e18));
+        initiatorInfo_.upperSqrtPriceDeviation = upperSqrtPriceDeviation;
+
+        initiatorInfo[msg.sender] = initiatorInfo_;
+    }
+
+    /* ///////////////////////////////////////////////////////////////
+                            ACCOUNT LOGIC
+    /////////////////////////////////////////////////////////////// */
+    /**
+     * @notice Sets an initiator for an Account.
+     * @param account_ The contract address of the Arcadia Account to set the information for.
+     * @param initiator The address of the initiator.
+     * @dev An initiator will be permissioned to compound any
+     * Liquidity Position held in the specified Arcadia Account.
+     * @dev When an Account is transferred to a new owner,
+     * the asset manager itself (this contract) and hence its initiator will no longer be allowed by the Account.
+     */
+    function setInitiator(address account_, address initiator) external {
+        if (account != address(0)) revert Reentered();
+        if (!ArcadiaLogic.FACTORY.isAccount(account_)) revert NotAnAccount();
+        if (msg.sender != IAccount(account_).owner()) revert OnlyAccountOwner();
+
+        accountToInitiator[account_] = initiator;
+
+        emit InitiatorSet(account_, initiator);
     }
 
     /* ///////////////////////////////////////////////////////////////
