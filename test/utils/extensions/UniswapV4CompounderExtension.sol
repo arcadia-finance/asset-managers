@@ -31,4 +31,8 @@ contract UniswapV4CompounderExtension is UniswapV4Compounder {
     {
         return _collectFees(tokenId, poolKey);
     }
+
+    function setAccount(address account_) public {
+        account = account_;
+    }
 }

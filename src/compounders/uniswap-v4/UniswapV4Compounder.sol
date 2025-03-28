@@ -481,8 +481,7 @@ contract UniswapV4Compounder is IActionBase {
 
     /**
      * @notice Sets the information requested for an initiator.
-     * @param tolerance The maximum deviation of the actual pool price,
-     * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
+     * @param tolerance The maximum deviation of the actual pool price compared to the trustedSqrtPriceX96 provided by the initiator.
      * @param initiatorShare The fee paid to the initiator, with 18 decimals precision.
      * @dev The tolerance for the pool price will be converted to an upper and lower max sqrtPrice deviation,
      * using the square root of the basis (one with 18 decimals precision) +- tolerance (18 decimals precision).
