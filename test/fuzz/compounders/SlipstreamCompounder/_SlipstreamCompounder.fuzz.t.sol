@@ -38,12 +38,16 @@ abstract contract SlipstreamCompounder_Fuzz_Test is
     uint24 internal POOL_FEE = 100;
     int24 internal TICK_SPACING = 1;
 
+    // 5 %
+    uint256 MAX_TOLERANCE = 0.05 * 1e18;
     // 4 % price diff for testing
-    uint256 internal TOLERANCE = 0.04 * 1e18;
-    // $10
-    uint256 internal COMPOUND_THRESHOLD = 10 * 1e18;
-    // 10% initiator fee
-    uint256 internal INITIATOR_SHARE = 0.1 * 1e18;
+    uint256 TOLERANCE = 0.04 * 1e18;
+
+    // 0,5% to 11% fee on swaps.
+    uint256 MIN_INITIATOR_SHARE = 0.005 * 1e18;
+    uint256 MAX_INITIATOR_SHARE = 0.11 * 1e18;
+    // 10 % initiator fee
+    uint256 INITIATOR_SHARE = 0.1 * 1e18;
 
     /*////////////////////////////////////////////////////////////////
                             VARIABLES
@@ -53,6 +57,8 @@ abstract contract SlipstreamCompounder_Fuzz_Test is
     ERC20Mock internal token1;
 
     ICLPoolExtension internal usdStablePool;
+
+    address internal initiator;
 
     struct TestVariables {
         int24 tickLower;
@@ -91,7 +97,7 @@ abstract contract SlipstreamCompounder_Fuzz_Test is
         CLQuoterFixture.deployQuoter(address(cLFactory), address(weth9));
 
         deploySlipstreamAM();
-        deployCompounder(COMPOUND_THRESHOLD, INITIATOR_SHARE, TOLERANCE);
+        deployCompounder(MAX_TOLERANCE, MAX_INITIATOR_SHARE);
 
         // Add two stable tokens with 6 and 18 decimals.
         token0 = new ERC20Mock("Token 6d", "TOK6", 6);
@@ -108,15 +114,24 @@ abstract contract SlipstreamCompounder_Fuzz_Test is
         // And : Compounder is allowed as Asset Manager
         vm.prank(users.accountOwner);
         account.setAssetManager(address(compounder), true);
+
+        // And : Create and set initiator details.
+        initiator = createUser("initiator");
+        vm.prank(initiator);
+        compounder.setInitiatorInfo(TOLERANCE, INITIATOR_SHARE);
+
+        // And : Set the initiator for the account.
+        vm.prank(users.accountOwner);
+        compounder.setInitiator(address(account), initiator);
     }
 
     /*////////////////////////////////////////////////////////////////
                         HELPER FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
-    function deployCompounder(uint256 compoundThreshold, uint256 initiatorShare, uint256 tolerance) public {
+    function deployCompounder(uint256 maxTolerance, uint256 maxInitiatorShare) public {
         vm.prank(users.owner);
-        compounder = new SlipstreamCompounderExtension(compoundThreshold, initiatorShare, tolerance);
+        compounder = new SlipstreamCompounderExtension(maxTolerance, maxInitiatorShare);
 
         // Overwrite code hash of the CLPool.
         bytes memory bytecode = address(compounder).code;

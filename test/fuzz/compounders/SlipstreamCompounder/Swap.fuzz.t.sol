@@ -66,10 +66,11 @@ contract Swap_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder_Fuzz_Test {
         );
 
         {
+            (, uint64 lowerSqrtPriceDeviation,) = compounder.initiatorInfo(initiator);
             position.token0 = address(token0);
             position.token1 = address(token1);
             position.tickSpacing = TICK_SPACING;
-            position.lowerBoundSqrtPriceX96 = sqrtPriceX96 * compounder.LOWER_SQRT_PRICE_DEVIATION() / 1e18;
+            position.lowerBoundSqrtPriceX96 = sqrtPriceX96 * uint256(lowerSqrtPriceDeviation) / 1e18;
             position.pool = address(usdStablePool);
         }
 
@@ -117,10 +118,11 @@ contract Swap_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder_Fuzz_Test {
         );
 
         {
+            (uint64 upperSqrtPriceDeviation,,) = compounder.initiatorInfo(initiator);
             position.token0 = address(token0);
             position.token1 = address(token1);
             position.tickSpacing = TICK_SPACING;
-            position.upperBoundSqrtPriceX96 = sqrtPriceX96 * compounder.UPPER_SQRT_PRICE_DEVIATION() / 1e18;
+            position.upperBoundSqrtPriceX96 = sqrtPriceX96 * uint256(upperSqrtPriceDeviation) / 1e18;
             position.pool = address(usdStablePool);
         }
 
@@ -168,10 +170,11 @@ contract Swap_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder_Fuzz_Test {
         );
 
         {
+            (, uint64 lowerSqrtPriceDeviation,) = compounder.initiatorInfo(initiator);
             position.token0 = address(token0);
             position.token1 = address(token1);
             position.tickSpacing = TICK_SPACING;
-            position.lowerBoundSqrtPriceX96 = sqrtPriceX96 * compounder.LOWER_SQRT_PRICE_DEVIATION() / 1e18;
+            position.lowerBoundSqrtPriceX96 = sqrtPriceX96 * uint256(lowerSqrtPriceDeviation) / 1e18;
             position.pool = address(usdStablePool);
         }
 
@@ -219,10 +222,11 @@ contract Swap_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder_Fuzz_Test {
         );
 
         {
+            (uint64 upperSqrtPriceDeviation,,) = compounder.initiatorInfo(initiator);
             position.token0 = address(token0);
             position.token1 = address(token1);
             position.tickSpacing = TICK_SPACING;
-            position.upperBoundSqrtPriceX96 = sqrtPriceX96 * compounder.UPPER_SQRT_PRICE_DEVIATION() / 1e18;
+            position.upperBoundSqrtPriceX96 = sqrtPriceX96 * uint256(upperSqrtPriceDeviation) / 1e18;
             position.pool = address(usdStablePool);
         }
 

@@ -28,50 +28,7 @@ contract CompoundFees_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder_Fuz
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Revert_compoundFees_FeeAmountTooLow(TestVariables memory testVars, address initiator) public {
-        // Given : Valid state
-        (testVars,) = givenValidBalancedState(testVars);
-
-        // And : Fee amounts are too low
-        testVars.feeAmount0 = ((COMPOUND_THRESHOLD / 2e18) - 1);
-        testVars.feeAmount1 = ((COMPOUND_THRESHOLD / 2e18) - 1);
-
-        // And : State is persisted
-        uint256 tokenId = setState(testVars, usdStablePool);
-
-        // And : Transfer position to account owner
-        vm.prank(users.liquidityProvider);
-        ERC721(address(slipstreamPositionManager)).transferFrom(users.liquidityProvider, users.accountOwner, tokenId);
-
-        {
-            address[] memory assets_ = new address[](1);
-            assets_[0] = address(slipstreamPositionManager);
-            uint256[] memory assetIds_ = new uint256[](1);
-            assetIds_[0] = tokenId;
-            uint256[] memory assetAmounts_ = new uint256[](1);
-            assetAmounts_[0] = 1;
-
-            // And : Deposit position in Account
-            vm.startPrank(users.accountOwner);
-            ERC721(address(slipstreamPositionManager)).approve(address(account), tokenId);
-            account.deposit(assets_, assetIds_, assetAmounts_);
-            vm.stopPrank();
-        }
-
-        (uint160 sqrtPriceX96,,,,,) = usdStablePool.slot0();
-
-        // When : Calling compoundFees()
-        vm.startPrank(initiator);
-        vm.expectRevert(SlipstreamCompounder.BelowThreshold.selector);
-        compounder.compoundFees(address(account), tokenId, uint256(sqrtPriceX96));
-        vm.stopPrank();
-    }
-
-    function testFuzz_Success_compoundFees(TestVariables memory testVars, address initiator) public {
-        // Given : initiator is not the liquidity provider.
-        vm.assume(initiator != users.liquidityProvider);
-        vm.assume(initiator != address(usdStablePool));
-
+    function testFuzz_Success_compoundFees(TestVariables memory testVars) public {
         // And : Valid state
         (testVars,) = givenValidBalancedState(testVars);
 
@@ -126,7 +83,7 @@ contract CompoundFees_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder_Fuz
         assertLe(initiatorFeesToken1, initiatorFeeToken1Calculated);
     }
 
-    function testFuzz_Success_compoundFees_MoveTickRight(TestVariables memory testVars, address initiator) public {
+    function testFuzz_Success_compoundFees_MoveTickRight(TestVariables memory testVars) public {
         // Given : initiator is not the liquidity provider.
         vm.assume(initiator != users.liquidityProvider);
         vm.assume(initiator != address(usdStablePool));
@@ -224,7 +181,7 @@ contract CompoundFees_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder_Fuz
         assertLe(initiatorFeeUsdValue, totalFeeInUsdValue * INITIATOR_SHARE / 1e18);
     }
 
-    function testFuzz_Success_compoundFees_MoveTickLeft(TestVariables memory testVars, address initiator) public {
+    function testFuzz_Success_compoundFees_MoveTickLeft(TestVariables memory testVars) public {
         // Given : initiator is not the liquidity provider.
         vm.assume(initiator != users.liquidityProvider);
         vm.assume(initiator != address(usdStablePool));

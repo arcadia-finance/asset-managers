@@ -29,16 +29,13 @@ interface IUniswapV3Compounder {
         view
         returns (bool zeroToOne, uint256 amountOut);
 
-    function getPositionState(uint256 id) external view returns (PositionState memory position);
-
-    function isBelowThreshold(PositionState memory position, Fees memory fees)
+    function getPositionState(uint256 id, uint256 trustedSqrtPriceX96, address initiator)
         external
         view
-        returns (bool isBelowThreshold_);
+        returns (PositionState memory position);
 
     function isPoolUnbalanced(PositionState memory position) external view returns (bool isPoolUnbalanced_);
 
-    function COMPOUND_THRESHOLD() external view returns (uint256);
-
-    function INITIATOR_SHARE() external view returns (uint256);
+    function initiatorInfo(address) external returns (uint64, uint64, uint64);
+    function accountToInitiator(address) external returns (address);
 }

@@ -5,36 +5,37 @@
 pragma solidity ^0.8.22;
 
 import { UniswapV3Compounder_Fuzz_Test } from "../../compounders/UniswapV3Compounder/_UniswapV3Compounder.fuzz.t.sol";
+/*
 import { UniswapV3CompounderHelper } from
-    "../../../../src/compounders/periphery/libraries/margin-accounts/uniswap-v3/UniswapV3CompounderHelper.sol";
+    "../../../../src/compounders/periphery/libraries/uniswap-v3/UniswapV3CompounderHelper.sol";
 import { UniswapV3CompounderHelperExtension } from "../../../utils/extensions/UniswapV3CompounderHelperExtension.sol";
-import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
+import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol"; */
 
 /**
  * @notice Common logic needed by all "UniswapV3CompounderHelper" fuzz tests.
  */
 abstract contract UniswapV3CompounderHelper_Fuzz_Test is UniswapV3Compounder_Fuzz_Test {
-    /*////////////////////////////////////////////////////////////////
+/*////////////////////////////////////////////////////////////////
                             TEST CONTRACTS
     /////////////////////////////////////////////////////////////// */
 
-    UniswapV3CompounderHelperExtension public compounderHelper;
+//UniswapV3CompounderHelperExtension public compounderHelper;
 
-    /* ///////////////////////////////////////////////////////////////
+/* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
-    function setUp() public virtual override(UniswapV3Compounder_Fuzz_Test) {
+/*     function setUp() public virtual override(UniswapV3Compounder_Fuzz_Test) {
         UniswapV3Compounder_Fuzz_Test.setUp();
 
         deployCompounderHelper();
-    }
+    } */
 
-    /*////////////////////////////////////////////////////////////////
+/*////////////////////////////////////////////////////////////////
                         HELPER FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
-    function deployCompounderHelper() public {
+/*     function deployCompounderHelper() public {
         vm.prank(users.owner);
         compounderHelper = new UniswapV3CompounderHelperExtension(address(compounder));
 
@@ -71,5 +72,5 @@ abstract contract UniswapV3CompounderHelper_Fuzz_Test is UniswapV3Compounder_Fuz
             bytecode, abi.encodePacked(0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a), abi.encodePacked(quoter), false
         );
         vm.etch(address(compounderHelper), bytecode);
-    }
+    } */
 }

@@ -4,44 +4,34 @@
  */
 pragma solidity ^0.8.22;
 
-import { Fees, ISlipstreamCompounder, PositionState } from "../../../../slipstream/interfaces/ISlipstreamCompounder.sol";
-import { FixedPoint128 } from
-    "../../../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint128.sol";
-import { FixedPointMathLib } from "../../../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { FullMath } from "../../../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
-import { ICLPool } from "../../../../slipstream/interfaces/ICLPool.sol";
-import { IQuoter, QuoteExactOutputSingleParams } from "../../../../slipstream/interfaces/IQuoter.sol";
-import { LiquidityAmounts } from "../../../../libraries/LiquidityAmounts.sol";
-import { TickMath } from "../../../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
-import { SlipstreamLogic } from "../../../../slipstream/libraries/SlipstreamLogic.sol";
+import { Fees, ISlipstreamCompounder, PositionState } from "../../../slipstream/interfaces/ISlipstreamCompounder.sol";
+import { FixedPoint128 } from "../../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint128.sol";
+import { FixedPointMathLib } from "../../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { FullMath } from "../../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
+import { ICLPool } from "../../../slipstream/interfaces/ICLPool.sol";
+import { IQuoter, QuoteExactOutputSingleParams } from "../../../slipstream/interfaces/IQuoter.sol";
+import { LiquidityAmounts } from "../../../libraries/LiquidityAmounts.sol";
+import { TickMath } from "../../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
+import { SlipstreamLogic } from "../../../slipstream/libraries/SlipstreamLogic.sol";
 
 /**
  * @title Off-chain view functions for Slipstream Compounder Asset-Manager.
  * @author Pragma Labs
- * @notice This contract holds view functions accessible for initiators to check if the fees of a certain Liquidity Position can be compounded.
+ * @notice This library holds view functions accessible for initiators to check if the fees of a certain Liquidity Position can be compounded.
  */
-contract SlipstreamCompounderHelper {
+library SlipstreamCompounderHelperLogic {
     using FixedPointMathLib for uint256;
+
     /* //////////////////////////////////////////////////////////////
                             CONSTANTS
     ////////////////////////////////////////////////////////////// */
 
     // The contract address of the Asset Manager.
-    ISlipstreamCompounder public immutable COMPOUNDER;
+    ISlipstreamCompounder internal constant COMPOUNDER =
+        ISlipstreamCompounder(payable((0xccc601cFd309894ED7B8F15Cb35057E5A6a18B79)));
 
     // The Slipstream Quoter contract.
     IQuoter internal constant QUOTER = IQuoter(0x254cF9E1E6e233aa1AC962CB9B05b2cfeAaE15b0);
-
-    /* //////////////////////////////////////////////////////////////
-                            CONSTRUCTOR
-    ////////////////////////////////////////////////////////////// */
-
-    /**
-     * @param compounder The contract address of the Asset-Manager for compounding Slipstream fees of a certain Liquidity Position.
-     */
-    constructor(address compounder) {
-        COMPOUNDER = ISlipstreamCompounder(compounder);
-    }
 
     /* ///////////////////////////////////////////////////////////////
                       OFF-CHAIN VIEW FUNCTIONS
@@ -50,39 +40,54 @@ contract SlipstreamCompounderHelper {
     /**
      * @notice Off-chain view function to check if the fees of a certain Liquidity Position can be compounded.
      * @param id The id of the Liquidity Position.
+     * @param account The address of the Arcadia Account.
      * @return isCompoundable_ Bool indicating if the fees can be compounded.
+     * @return compounder_ The address of the Compounder contract.
+     * @return sqrtPriceX96 The current sqrtPriceX96 of the pool.
      * @dev While this function does not persist state changes, it cannot be declared as view function.
      * Since quoteExactOutputSingle() of Uniswap's Quoter02.sol uses a try - except pattern where it first
      * does the swap (with state changes), next it reverts (state changes are not persisted) and information about
      * the final state is passed via the error message in the expect.
      */
-    function isCompoundable(uint256 id) external returns (bool isCompoundable_) {
+    function isCompoundable(uint256 id, address account)
+        public
+        returns (bool isCompoundable_, address compounder_, uint160 sqrtPriceX96)
+    {
+        // Get current sqrtPriceX96 of the pool.
+        {
+            (,, address token0, address token1, int24 tickSpacing,,,,,,,) =
+                SlipstreamLogic.POSITION_MANAGER.positions(id);
+            address pool = SlipstreamLogic._computePoolAddress(token0, token1, tickSpacing);
+            (sqrtPriceX96,,,,,) = ICLPool(pool).slot0();
+        }
+
+        // Get the initiator.
+        address initiator = COMPOUNDER.accountToInitiator(account);
+        if (initiator == address(0)) return (false, address(0), 0);
+
         // Fetch and cache all position related data.
-        PositionState memory position = COMPOUNDER.getPositionState(id);
+        PositionState memory position = COMPOUNDER.getPositionState(id, uint256(sqrtPriceX96), initiator);
 
         // Check that pool is initially balanced.
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
-        if (COMPOUNDER.isPoolUnbalanced(position)) return false;
+        if (COMPOUNDER.isPoolUnbalanced(position)) return (false, address(0), 0);
 
         // Get fee amounts
         Fees memory balances;
         (balances.amount0, balances.amount1) = _getFeeAmounts(id);
 
-        // Total value of the fees must be greater than the threshold.
-        if (COMPOUNDER.isBelowThreshold(position, balances)) return false;
-
         // Remove initiator reward from fees, these will be send to the initiator.
         Fees memory desiredAmounts;
-        uint256 initiatorShare = COMPOUNDER.INITIATOR_SHARE();
-        desiredAmounts.amount0 = balances.amount0 - balances.amount0.mulDivDown(initiatorShare, 1e18);
-        desiredAmounts.amount1 = balances.amount1 - balances.amount1.mulDivDown(initiatorShare, 1e18);
+        (,, uint64 initiatorShare) = COMPOUNDER.initiatorInfo(initiator);
+        desiredAmounts.amount0 = balances.amount0 - balances.amount0.mulDivDown(uint256(initiatorShare), 1e18);
+        desiredAmounts.amount1 = balances.amount1 - balances.amount1.mulDivDown(uint256(initiatorShare), 1e18);
 
         // Calculate fee amounts to match ratios of current pool tick relative to ticks of the position.
         (bool zeroToOne, uint256 amountOut) = COMPOUNDER.getSwapParameters(position, desiredAmounts);
         (bool isPoolUnbalanced, uint256 amountIn) = _quote(position, zeroToOne, amountOut);
 
         // Pool should still be balanced after the swap.
-        if (isPoolUnbalanced) return false;
+        if (isPoolUnbalanced) return (false, address(0), 0);
 
         // Calculate balances after swap.
         // Note that for the desiredAmounts only tokenOut is updated in SlipstreamCompounder,
@@ -100,7 +105,7 @@ contract SlipstreamCompounderHelper {
         // The balances of the fees after swapping must be bigger than the actual input amount when increasing liquidity.
         // Due to slippage, or for pools with high swapping fees this might not always hold.
         (uint256 amount0, uint256 amount1) = _getLiquidityAmounts(position, desiredAmounts);
-        return (balances.amount0 > amount0 && balances.amount1 > amount1);
+        return (balances.amount0 > amount0 && balances.amount1 > amount1, address(COMPOUNDER), sqrtPriceX96);
     }
 
     /**

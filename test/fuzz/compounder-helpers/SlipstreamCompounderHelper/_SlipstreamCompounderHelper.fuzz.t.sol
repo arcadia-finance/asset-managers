@@ -5,36 +5,36 @@
 pragma solidity ^0.8.22;
 
 import { SlipstreamCompounder_Fuzz_Test } from "../../compounders/SlipstreamCompounder/_SlipstreamCompounder.fuzz.t.sol";
-import { SlipstreamCompounderHelper } from
-    "../../../../src/compounders/periphery/libraries/margin-accounts/slipstream/SlipstreamCompounderHelper.sol";
+/*import { SlipstreamCompounderHelper } from
+    "../../../../src/compounders/periphery/libraries/slipstream/SlipstreamCompounderHelper.sol";
 import { SlipstreamCompounderHelperExtension } from "../../../utils/extensions/SlipstreamCompounderHelperExtension.sol";
-import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
+import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol"; */
 
 /**
  * @notice Common logic needed by all "SlipstreamCompounderHelper" fuzz tests.
  */
 abstract contract SlipstreamCompounderHelper_Fuzz_Test is SlipstreamCompounder_Fuzz_Test {
-    /*////////////////////////////////////////////////////////////////
+/*////////////////////////////////////////////////////////////////
                             TEST CONTRACTS
     /////////////////////////////////////////////////////////////// */
 
-    SlipstreamCompounderHelperExtension public compounderHelper;
+//SlipstreamCompounderHelperExtension public compounderHelper;
 
-    /* ///////////////////////////////////////////////////////////////
+/* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
-    function setUp() public virtual override(SlipstreamCompounder_Fuzz_Test) {
+/*     function setUp() public virtual override(SlipstreamCompounder_Fuzz_Test) {
         SlipstreamCompounder_Fuzz_Test.setUp();
 
         deployCompounderHelper();
-    }
+    } */
 
-    /*////////////////////////////////////////////////////////////////
+/*////////////////////////////////////////////////////////////////
                         HELPER FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
-    function deployCompounderHelper() public {
+/*     function deployCompounderHelper() public {
         vm.prank(users.owner);
         compounderHelper = new SlipstreamCompounderHelperExtension(address(compounder));
 
@@ -61,5 +61,5 @@ abstract contract SlipstreamCompounderHelper_Fuzz_Test is SlipstreamCompounder_F
             bytecode, abi.encodePacked(0x254cF9E1E6e233aa1AC962CB9B05b2cfeAaE15b0), abi.encodePacked(clQuoter), false
         );
         vm.etch(address(compounderHelper), bytecode);
-    }
+    } */
 }

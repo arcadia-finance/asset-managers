@@ -98,11 +98,11 @@ contract UniswapV4Compounder is IActionBase {
     error InvalidValue();
     error NotAnAccount();
     error OnlyAccount();
+    error OnlyAccountOwner();
     error OnlyPool();
     error PoolManagerOnly();
     error Reentered();
     error UnbalancedPool();
-    error OnlyAccountOwner();
 
     /* //////////////////////////////////////////////////////////////
                                 EVENTS
@@ -521,6 +521,7 @@ contract UniswapV4Compounder is IActionBase {
     /* ///////////////////////////////////////////////////////////////
                             ACCOUNT LOGIC
     /////////////////////////////////////////////////////////////// */
+
     /**
      * @notice Sets an initiator for an Account.
      * @param account_ The contract address of the Arcadia Account to set the information for.
