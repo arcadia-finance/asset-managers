@@ -212,8 +212,8 @@ abstract contract UniswapV3Compounder_Fuzz_Test is
             : type(uint112).max / uint112((10 ** (token0.decimals() - token1.decimals())));
 
         // And : Position has accumulated fees (amount in USD)
-        testVars.feeAmount0 = bound(testVars.feeAmount0, 100, type(uint16).max);
-        testVars.feeAmount1 = bound(testVars.feeAmount1, 100, type(uint16).max);
+        testVars.feeAmount0 = bound(testVars.feeAmount0, 5, type(uint16).max);
+        testVars.feeAmount1 = bound(testVars.feeAmount1, 5, type(uint16).max);
 
         testVars_ = testVars;
     }

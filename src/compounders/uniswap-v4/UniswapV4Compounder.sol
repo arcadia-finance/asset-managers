@@ -274,10 +274,7 @@ contract UniswapV4Compounder is IActionBase {
         );
 
         emit Log(amount0);
-        uint256 ethValue = token0IsNative ? amount0 : 0;
-        if (ethValue > address(this).balance) {
-            ethValue = address(this).balance;
-        }
+        uint256 ethValue = token0IsNative ? address(this).balance : 0;
         emit Log(ethValue);
         emit Log(address(this).balance);
 
