@@ -15,10 +15,11 @@ import { SlipstreamLogic } from "./libraries/SlipstreamLogic.sol";
 import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 
 /**
- * @title Permissionless and Stateless Compounder for Slipstream Liquidity Positions.
+ * @title Permissioned Compounder for Slipstream Liquidity Positions.
  * @author Pragma Labs
  * @notice The Compounder will act as an Asset Manager for Slipstream Liquidity Positions.
- * It will allow third parties to trigger the compounding functionality for a Slipstream Liquidity Position in the Account.
+ * It will allow third parties (initiators) to trigger the compounding functionality for a Slipstream Liquidity Position in the Account.
+ * The Arcadia Account owner must set a specific initiator that will be permissioned to compound the positions in their Account.
  * Compounding can only be triggered if certain conditions are met and the initiator will get a small fee for the service provided.
  * The compounding will collect the fees earned by a position and increase the liquidity of the position by those fees.
  * Depending on current tick of the pool and the position range, fees will be deposited in appropriate ratio.
@@ -33,8 +34,7 @@ contract SlipstreamCompounder is IActionBase {
                                 CONSTANTS
     ////////////////////////////////////////////////////////////// */
 
-    // The maximum lower deviation of the pools actual sqrtPriceX96,
-    // The maximum deviation of the actual pool price, in % with 18 decimals precision.
+    // The maximum deviation of the actual pool price an initiator can set, in % with 18 decimals precision.
     uint256 public immutable MAX_TOLERANCE;
 
     // The maximum fee an initiator can set, with 18 decimals precision.
@@ -158,7 +158,6 @@ contract SlipstreamCompounder is IActionBase {
      * @dev This function will trigger the following actions:
      * - Verify that the pool's current price is initially within the defined tolerance price range.
      * - Collects the fees earned by the position.
-     * - Verify that the fee value is bigger than the threshold required to trigger a compoundFees.
      * - Rebalance the fee amounts so that the maximum amount of liquidity can be added, swaps one token to another if needed.
      * - Verify that the pool's price is still within the defined tolerance price range after the swap.
      * - Increases the liquidity of the current position with those fees.

@@ -6,26 +6,26 @@ import { Currency } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-co
 import { PoolId } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolId.sol";
 import { PoolKey } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 
-struct ModifyLiquidityParams {
-    // the lower and upper tick of the position
-    int24 tickLower;
-    int24 tickUpper;
-    // how to modify the liquidity
-    int256 liquidityDelta;
-    // a value to set if you want unique liquidity positions at the same range
-    bytes32 salt;
-}
-
-struct SwapParams {
-    /// Whether to swap token0 for token1 or vice versa
-    bool zeroForOne;
-    /// The desired input amount if negative (exactIn), or the desired output amount if positive (exactOut)
-    int256 amountSpecified;
-    /// The sqrt price at which, if reached, the swap will stop executing
-    uint160 sqrtPriceLimitX96;
-}
-
 interface IPoolManager {
+    struct ModifyLiquidityParams {
+        // the lower and upper tick of the position
+        int24 tickLower;
+        int24 tickUpper;
+        // how to modify the liquidity
+        int256 liquidityDelta;
+        // a value to set if you want unique liquidity positions at the same range
+        bytes32 salt;
+    }
+
+    struct SwapParams {
+        /// Whether to swap token0 for token1 or vice versa
+        bool zeroForOne;
+        /// The desired input amount if negative (exactIn), or the desired output amount if positive (exactOut)
+        int256 amountSpecified;
+        /// The sqrt price at which, if reached, the swap will stop executing
+        uint160 sqrtPriceLimitX96;
+    }
+
     /// @notice All interactions on the contract that account deltas require unlocking. A caller that calls `unlock` must implement
     /// `IUnlockCallback(msg.sender).unlockCallback(data)`, where they interact with the remaining functions on this contract.
     /// @dev The only functions callable without an unlocking are `initialize` and `updateDynamicLPFee`

@@ -15,7 +15,7 @@ import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IAccount } from "../interfaces/IAccount.sol";
 import { IPermit2 } from "../interfaces/IPermit2.sol";
-import { IPoolManager, ModifyLiquidityParams, SwapParams } from "./interfaces/IPoolManager.sol";
+import { IPoolManager } from "./interfaces/IPoolManager.sol";
 import { LiquidityAmounts } from "../../../lib/accounts-v2/lib/v4-periphery/src/libraries/LiquidityAmounts.sol";
 import { PoolKey } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 import {
@@ -26,10 +26,11 @@ import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/l
 import { UniswapV4Logic } from "./libraries/UniswapV4Logic.sol";
 
 /**
- * @title Permissionless and Stateless Compounder for UniswapV4 Liquidity Positions.
+ * @title Permissioned Compounder for UniswapV4 Liquidity Positions.
  * @author Pragma Labs
  * @notice The Compounder will act as an Asset Manager for Arcadia Accounts.
- * It will allow third parties to trigger the compounding functionality for a Uniswap V4 Liquidity Position in the Account.
+ * It will allow third parties (initiators) to trigger the compounding functionality for a Uniswap V4 Liquidity Position in the Account.
+ * The Arcadia Account owner must set a specific initiator that will be permissioned to compound the positions in their Account.
  * Compounding can only be triggered if certain conditions are met and the initiator will get a small fee for the service provided.
  * The compounding will collect the fees earned by a position and increase the liquidity of the position by those fees.
  * Depending on current tick of the pool and the position range, fees will be deposited in appropriate ratio.
@@ -48,8 +49,7 @@ contract UniswapV4Compounder is IActionBase {
     // The Permit2 contract.
     IPermit2 internal constant PERMIT_2 = IPermit2(0x000000000022D473030F116dDEE9F6B43aC78BA3);
 
-    // The maximum lower deviation of the pools actual sqrtPriceX96,
-    // The maximum deviation of the actual pool price, in % with 18 decimals precision.
+    // The maximum deviation of the actual pool price an initiator can set, in % with 18 decimals precision.
     uint256 public immutable MAX_TOLERANCE;
 
     // The maximum fee an initiator can set, with 18 decimals precision.
@@ -110,8 +110,6 @@ contract UniswapV4Compounder is IActionBase {
 
     event InitiatorSet(address indexed account, address indexed initiator);
     event Compound(address indexed account, uint256 id);
-
-    event Log(uint256);
 
     /* //////////////////////////////////////////////////////////////
                                 MODIFIERS
@@ -273,10 +271,7 @@ contract UniswapV4Compounder is IActionBase {
             newSqrtPriceX96, uint160(sqrtRatioLower), uint160(sqrtRatioUpper), amount0, amount1
         );
 
-        emit Log(amount0);
         uint256 ethValue = token0IsNative ? address(this).balance : 0;
-        emit Log(ethValue);
-        emit Log(address(this).balance);
 
         // Generate calldata to increase liquidity.
         bytes memory actions = new bytes(3);
@@ -369,7 +364,7 @@ contract UniswapV4Compounder is IActionBase {
         // Pool should still be balanced (within tolerance boundaries) after the swap.
         uint160 sqrtPriceLimitX96 = uint160(zeroToOne ? lowerBoundSqrtPriceX96 : upperBoundSqrtPriceX96);
 
-        SwapParams memory params = SwapParams({
+        IPoolManager.SwapParams memory params = IPoolManager.SwapParams({
             zeroForOne: zeroToOne,
             amountSpecified: int256(amountOut),
             sqrtPriceLimitX96: sqrtPriceLimitX96
@@ -421,7 +416,8 @@ contract UniswapV4Compounder is IActionBase {
      * @return results The encoded BalanceDelta result from the swap operation.
      */
     function unlockCallback(bytes calldata data) external payable onlyPoolManager returns (bytes memory results) {
-        (SwapParams memory params, PoolKey memory poolKey) = abi.decode(data, (SwapParams, PoolKey));
+        (IPoolManager.SwapParams memory params, PoolKey memory poolKey) =
+            abi.decode(data, (IPoolManager.SwapParams, PoolKey));
         BalanceDelta delta = UniswapV4Logic.POOL_MANAGER.swap(poolKey, params, "");
 
         UniswapV4Logic._processSwapDelta(delta, poolKey.currency0, poolKey.currency1);
