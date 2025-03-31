@@ -12,7 +12,7 @@ import { SlipstreamLogic } from "../../../../src/compounders/slipstream/librarie
 import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
 
 /**
- * @notice Fuzz tests for the function "isCompoundable" of contract "SlipstreamCompounderHelper".
+ * @notice Fuzz tests for the function "isCompoundable" of contract "SlipstreamCompounderHelperLogic".
  */
 contract IsCompoundable_SlipstreamCompounderHelper_Fuzz_Test is SlipstreamCompounderHelper_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
@@ -107,7 +107,7 @@ contract IsCompoundable_SlipstreamCompounderHelper_Fuzz_Test is SlipstreamCompou
         assertEq(isCompoundable_, false);
     }
 
-    function testFuzz_Success_isCompoundable_true(SlipstreamCompounder.PositionState memory position) public {
+    function testFuzz_Success_isCompoundable_true() public {
         // Given : New balanced stable pool 1:1
         token0 = new ERC20Mock("Token0", "TOK0", 18);
         token1 = new ERC20Mock("Token1", "TOK1", 18);
@@ -134,8 +134,11 @@ contract IsCompoundable_SlipstreamCompounderHelper_Fuzz_Test is SlipstreamCompou
         generateFees(2, 2);
 
         // When : Calling isCompoundable()
-        (bool isCompoundable_,,) =
+        (bool isCompoundable_, address compounder_, uint160 sqrtPriceX96_) =
             compounderHelper.isCompoundable(tokenId, address(slipstreamPositionManager), address(account));
         assertEq(isCompoundable_, true);
+        assertEq(compounder_, address(slipstreamCompounder));
+        assert(sqrtPriceX96_ > sqrtPriceX96);
+        // Todo: test for specific sqrtPrice here.
     }
 }

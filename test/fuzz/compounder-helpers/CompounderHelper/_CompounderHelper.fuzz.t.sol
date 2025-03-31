@@ -145,8 +145,16 @@ abstract contract CompounderHelper_Fuzz_Test is
 
     function deployCompounderHelper() public {
         compounderHelper = new CompounderHelper(address(factory), address(uniswapV4CompounderHelper));
+
+        // Get the bytecode of the UniswapV3PoolExtension.
+        bytes memory args = abi.encode();
+        bytes memory bytecode = abi.encodePacked(vm.getCode("UniswapV3PoolExtension.sol"), args);
+        bytes32 poolExtensionInitCodeHash = keccak256(bytecode);
+        bytes32 POOL_INIT_CODE_HASH = 0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54;
+
         // Overwrite contract addresses stored as constants in Compounder.
-        bytes memory bytecode = address(compounderHelper).code;
+        bytecode = address(compounderHelper).code;
+        bytecode = Utils.veryBadBytesReplacer(bytecode, POOL_INIT_CODE_HASH, poolExtensionInitCodeHash);
         bytecode = Utils.veryBadBytesReplacer(
             bytecode,
             abi.encodePacked(0xccc601cFd309894ED7B8F15Cb35057E5A6a18B79),
@@ -171,6 +179,13 @@ abstract contract CompounderHelper_Fuzz_Test is
             abi.encodePacked(address(quoter)),
             false
         );
+        bytecode = Utils.veryBadBytesReplacer(
+            bytecode,
+            abi.encodePacked(0x33128a8fC17869897dcE68Ed026d694621f6FDfD),
+            abi.encodePacked(address(uniswapV3Factory)),
+            false
+        );
+
         vm.etch(address(compounderHelper), bytecode);
     }
 

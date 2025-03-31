@@ -14,8 +14,6 @@ struct PositionState {
     uint256 sqrtRatioUpper;
     uint256 lowerBoundSqrtPriceX96;
     uint256 upperBoundSqrtPriceX96;
-    uint256 usdPriceToken0;
-    uint256 usdPriceToken1;
 }
 
 struct Fees {

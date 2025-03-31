@@ -79,8 +79,7 @@ library UniswapV3CompounderHelperLogic {
         // Fetch and cache all position related data.
         PositionState memory position = compounder.getPositionState(id, uint256(sqrtPriceX96), initiator);
 
-        // Check that pool is initially balanced.
-        // Prevents sandwiching attacks when swapping and/or adding liquidity.
+        // It should never be unbalanced at this point as we fetch currentSqrtPriceX96 above.
         if (compounder.isPoolUnbalanced(position)) return (false, address(0), 0);
 
         // Get fee amounts
