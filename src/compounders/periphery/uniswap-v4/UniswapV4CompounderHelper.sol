@@ -7,38 +7,36 @@ pragma solidity ^0.8.22;
 import {
     BalanceDelta,
     BalanceDeltaLibrary
-} from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/BalanceDelta.sol";
-import { FixedPoint128 } from "../../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint128.sol";
-import { FixedPointMathLib } from "../../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { FullMath } from "../../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
-import { IPoolManager } from "../../../uniswap-V4/interfaces/IPoolManager.sol";
-import { IUniswapV4Compounder, PositionState, Fees } from "../../../uniswap-V4/interfaces/IUniswapV4Compounder.sol";
-import { IQuoter, QuoteExactSingleParams } from "../../../uniswap-v4/interfaces/IQuoter.sol";
-import { LiquidityAmounts } from "../../../libraries/LiquidityAmounts.sol";
-import { PoolId } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolId.sol";
-import { PoolKey } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
+} from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/BalanceDelta.sol";
+import { FixedPoint128 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint128.sol";
+import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
+import { IPoolManager } from "../../uniswap-V4/interfaces/IPoolManager.sol";
+import { IUniswapV4Compounder, PositionState, Fees } from "../../uniswap-V4/interfaces/IUniswapV4Compounder.sol";
+import { LiquidityAmounts } from "../../libraries/LiquidityAmounts.sol";
+import { PoolId } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolId.sol";
+import { PoolKey } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 import {
     PositionInfo,
     PositionInfoLibrary
-} from "../../../../../lib/accounts-v2/lib/v4-periphery/src/libraries/PositionInfoLibrary.sol";
-import { TickMath } from "../../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
-import { UniswapV4Logic } from "../../../uniswap-v4/libraries/UniswapV4Logic.sol";
+} from "../../../../lib/accounts-v2/lib/v4-periphery/src/libraries/PositionInfoLibrary.sol";
+import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
+import { UniswapV4Logic } from "../../uniswap-v4/libraries/UniswapV4Logic.sol";
 
 /**
  * @title Off-chain view functions for UniswapV4 Compounder Asset-Manager.
  * @author Pragma Labs
  * @notice This contract holds view functions accessible for initiators to check if the fees of a certain Liquidity Position can be compounded.
  */
-contract UniswapV4CompounderHelperLogic {
+contract UniswapV4CompounderHelper {
     using BalanceDeltaLibrary for BalanceDelta;
     using FixedPointMathLib for uint256;
     /* //////////////////////////////////////////////////////////////
                             CONSTANTS
     ////////////////////////////////////////////////////////////// */
 
-    // The contract addresses of the Asset Managers.
+    // The contract addresse of the Asset Manager.
     IUniswapV4Compounder internal constant COMPOUNDER = IUniswapV4Compounder(0x254cF9E1E6e233aa1AC962CB9B05b2cfeAaE15b0);
-    IQuoter internal constant QUOTER = IQuoter(0x0d5e0F971ED27FBfF6c2837bf31316121532048D);
 
     /* //////////////////////////////////////////////////////////////
                             ERRORS
@@ -47,18 +45,6 @@ contract UniswapV4CompounderHelperLogic {
     error QuoteSwap(uint128, uint160);
     error UnexpectedRevertBytes();
     error PoolManagerOnly();
-
-    /* //////////////////////////////////////////////////////////////
-                                MODIFIERS
-    ////////////////////////////////////////////////////////////// */
-
-    /**
-     * @dev Only the UniswapV4 PoolManager can call functions with this modifier.
-     */
-    modifier onlyPoolManager() {
-        if (msg.sender != address(UniswapV4Logic.POOL_MANAGER)) revert PoolManagerOnly();
-        _;
-    }
 
     /* //////////////////////////////////////////////////////////////
                                 CONSTRUCTOR
@@ -78,7 +64,7 @@ contract UniswapV4CompounderHelperLogic {
      * @return compounder_ The address of the Compounder contract.
      * @return sqrtPriceX96 The current sqrtPriceX96 of the pool.
      */
-    function isCompoundable(uint256 id, address positionManager, address account)
+    function isCompoundable(uint256 id, address account)
         public
         returns (bool isCompoundable_, address compounder_, uint160 sqrtPriceX96)
     {
@@ -106,7 +92,7 @@ contract UniswapV4CompounderHelperLogic {
                 )
             );
             uint128 liquidity = UniswapV4Logic.STATE_VIEW.getPositionLiquidity(poolKey.toId(), positionId);
-            (balances.amount0, balances.amount1) = _getFeeAmounts(id, poolKey.toId(), info, liquidity, positionId);
+            (balances.amount0, balances.amount1) = _getFeeAmounts(poolKey.toId(), info, liquidity, positionId);
         }
 
         // Remove initiator reward from fees, these will be send to the initiator.
@@ -202,17 +188,19 @@ contract UniswapV4CompounderHelperLogic {
         // Instead it is another revert that was triggered somewhere in the simulation.
         if (selector != QuoteSwap.selector) revert UnexpectedRevertBytes();
     }
+
     /**
      * @notice Executes a simulated swap and reverts with the amountIn and resulting sqrtPriceX96.
      * @dev This function is meant to be called during a swap simulation and intentionally reverts to return swap quote data.
      * @param data The encoded swap parameters and pool key.
      * @return results This function always reverts, so `results` is never returned
      */
+    function unlockCallback(bytes calldata data) external payable returns (bytes memory) {
+        if (msg.sender != address(UniswapV4Logic.POOL_MANAGER)) revert PoolManagerOnly();
 
-    function unlockCallback(bytes calldata data) external payable onlyPoolManager returns (bytes memory results) {
         (IPoolManager.SwapParams memory params, PoolKey memory poolKey) =
             abi.decode(data, (IPoolManager.SwapParams, PoolKey));
-        BalanceDelta swapDelta = UniswapV4Logic.POOL_MANAGER.swap(poolKey, params, "");
+        BalanceDelta swapDelta = IPoolManager(address(UniswapV4Logic.POOL_MANAGER)).swap(poolKey, params, "");
 
         // The input delta of a swap is negative so we must flip it.
         uint128 amountIn = params.zeroForOne ? uint128(-swapDelta.amount0()) : uint128(-swapDelta.amount1());
@@ -223,7 +211,6 @@ contract UniswapV4CompounderHelperLogic {
 
     /**
      * @notice Retrieves the accumulated fee amounts of a Uniswap V4 position.
-     * @param id The id of the position.
      * @param poolId The id of the pool that the position belongs to.
      * @param info The position information structure.
      * @param liquidity The amount of liquidity in the position.
@@ -231,7 +218,7 @@ contract UniswapV4CompounderHelperLogic {
      * @return amount0 The amount of token0 fees collected
      * @return amount1 The amount of token1 fees collected
      */
-    function _getFeeAmounts(uint256 id, PoolId poolId, PositionInfo info, uint128 liquidity, bytes32 positionId)
+    function _getFeeAmounts(PoolId poolId, PositionInfo info, uint128 liquidity, bytes32 positionId)
         internal
         view
         returns (uint256 amount0, uint256 amount1)

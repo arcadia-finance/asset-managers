@@ -53,8 +53,8 @@ library UniswapV3CompounderHelperLogic {
      * does the swap (with state changes), next it reverts (state changes are not persisted) and information about
      * the final state is passed via the error message in the expect.
      */
-    function isCompoundable(uint256 id, address positionManager, address account)
-        public
+    function _isCompoundable(uint256 id, address positionManager, address account)
+        internal
         returns (bool isCompoundable_, address compounder_, uint160 sqrtPriceX96)
     {
         IUniswapV3Compounder compounder =

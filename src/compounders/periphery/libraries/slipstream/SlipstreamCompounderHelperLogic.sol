@@ -49,8 +49,8 @@ library SlipstreamCompounderHelperLogic {
      * does the swap (with state changes), next it reverts (state changes are not persisted) and information about
      * the final state is passed via the error message in the expect.
      */
-    function isCompoundable(uint256 id, address account)
-        public
+    function _isCompoundable(uint256 id, address account)
+        internal
         returns (bool isCompoundable_, address compounder_, uint160 sqrtPriceX96)
     {
         // Get current sqrtPriceX96 of the pool.
@@ -68,8 +68,7 @@ library SlipstreamCompounderHelperLogic {
         // Fetch and cache all position related data.
         PositionState memory position = COMPOUNDER.getPositionState(id, uint256(sqrtPriceX96), initiator);
 
-        // Check that pool is initially balanced.
-        // Prevents sandwiching attacks when swapping and/or adding liquidity.
+        // It should never be unbalanced at this point as we fetch currentSqrtPriceX96 above.
         if (COMPOUNDER.isPoolUnbalanced(position)) return (false, address(0), 0);
 
         // Get fee amounts

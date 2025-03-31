@@ -11,6 +11,8 @@ import { SlipstreamLogic } from "../slipstream/libraries/SlipstreamLogic.sol";
 import { SlipstreamCompounderHelperLogic } from "./libraries/slipstream/SlipstreamCompounderHelperLogic.sol";
 import { SlipstreamLogic } from "../slipstream/libraries/SlipstreamLogic.sol";
 import { UniswapV3Logic } from "../uniswap-v3/libraries/UniswapV3Logic.sol";
+import { UniswapV4Logic } from "../uniswap-v4/libraries/UniswapV4Logic.sol";
+import { UniswapV4CompounderHelper } from "./uniswap-v4/UniswapV4CompounderHelper.sol";
 import { UniswapV3CompounderHelperLogic } from "./libraries/uniswap-v3/UniswapV3CompounderHelperLogic.sol";
 
 /**
@@ -24,6 +26,7 @@ contract CompounderHelper {
     ////////////////////////////////////////////////////////////// */
 
     IFactory internal immutable FACTORY;
+    UniswapV4CompounderHelper internal immutable UNISWAPV4_COMPOUNDER_HELPER;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
@@ -33,8 +36,9 @@ contract CompounderHelper {
                             CONSTRUCTOR
     ////////////////////////////////////////////////////////////// */
 
-    constructor(address factory_) {
+    constructor(address factory_, address uniswapV4CompounderHelper) {
         FACTORY = IFactory(factory_);
+        UNISWAPV4_COMPOUNDER_HELPER = UniswapV4CompounderHelper(uniswapV4CompounderHelper);
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -62,13 +66,15 @@ contract CompounderHelper {
         if (!isAccount) return (false, address(0), 0);
 
         if (positionManager == address(SlipstreamLogic.POSITION_MANAGER)) {
-            (isCompoundable_, compounder, sqrtPriceX96) = SlipstreamCompounderHelperLogic.isCompoundable(id, account);
+            (isCompoundable_, compounder, sqrtPriceX96) = SlipstreamCompounderHelperLogic._isCompoundable(id, account);
         } else if (positionManager == address(UniswapV3Logic.POSITION_MANAGER)) {
             (isCompoundable_, compounder, sqrtPriceX96) =
-                UniswapV3CompounderHelperLogic.isCompoundable(id, positionManager, account);
+                UniswapV3CompounderHelperLogic._isCompoundable(id, positionManager, account);
+        } else if (positionManager == address(UniswapV4Logic.POSITION_MANAGER)) {
+            (isCompoundable_, compounder, sqrtPriceX96) = UNISWAPV4_COMPOUNDER_HELPER.isCompoundable(id, account);
         } else if (positionManager == address(AlienBaseLogic.POSITION_MANAGER)) {
             (isCompoundable_, compounder, sqrtPriceX96) =
-                UniswapV3CompounderHelperLogic.isCompoundable(id, positionManager, account);
+                UniswapV3CompounderHelperLogic._isCompoundable(id, positionManager, account);
         }
     }
 }
