@@ -4,7 +4,6 @@
  */
 pragma solidity ^0.8.22;
 
-import { UniswapV3CompounderHelper_Fuzz_Test } from "./_UniswapV3CompounderHelper.fuzz.t.sol";
 import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { UniswapV3Compounder } from "../../../../src/compounders/uniswap-v3/UniswapV3Compounder.sol";

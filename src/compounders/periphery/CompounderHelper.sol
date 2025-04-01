@@ -29,10 +29,6 @@ contract CompounderHelper {
     UniswapV4CompounderHelper internal immutable UNISWAPV4_COMPOUNDER_HELPER;
 
     /* //////////////////////////////////////////////////////////////
-                                STORAGE
-    ////////////////////////////////////////////////////////////// */
-
-    /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
     ////////////////////////////////////////////////////////////// */
 
@@ -65,12 +61,16 @@ contract CompounderHelper {
         bool isAccount = FACTORY.isAccount(account);
         if (!isAccount) return (false, address(0), 0);
 
+        // As the position manager for UniswapV4 needs to be overwritten for tests,
+        // we need to call the constant outside of "else if" statement.
+        bool isUniswapV4 = positionManager == address(UniswapV4Logic.POSITION_MANAGER);
+
         if (positionManager == address(SlipstreamLogic.POSITION_MANAGER)) {
             (isCompoundable_, compounder, sqrtPriceX96) = SlipstreamCompounderHelperLogic._isCompoundable(id, account);
         } else if (positionManager == address(UniswapV3Logic.POSITION_MANAGER)) {
             (isCompoundable_, compounder, sqrtPriceX96) =
                 UniswapV3CompounderHelperLogic._isCompoundable(id, positionManager, account);
-        } else if (positionManager == address(UniswapV4Logic.POSITION_MANAGER)) {
+        } else if (isUniswapV4) {
             (isCompoundable_, compounder, sqrtPriceX96) = UNISWAPV4_COMPOUNDER_HELPER.isCompoundable(id, account);
         } else if (positionManager == address(AlienBaseLogic.POSITION_MANAGER)) {
             (isCompoundable_, compounder, sqrtPriceX96) =

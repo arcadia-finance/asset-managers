@@ -124,6 +124,18 @@ abstract contract CompounderHelper_Fuzz_Test is
         vm.stopPrank();
 
         // And : Deploy Uniswap V4 Compounder Helper.
+        deployUniswapV4CompounderHelper();
+
+        // And : Deploy Compounder Helper.
+        deployCompounderHelper();
+    }
+
+    /*////////////////////////////////////////////////////////////////
+                        HELPER FUNCTIONS
+    ////////////////////////////////////////////////////////////////*/
+
+    function deployUniswapV4CompounderHelper() public {
+        // And : Deploy Uniswap V4 Compounder Helper.
         uniswapV4CompounderHelper = new UniswapV4CompounderHelper();
         // Overwrite contract addresses stored as constants in Compounder.
         bytes memory bytecode = address(uniswapV4CompounderHelper).code;
@@ -133,15 +145,26 @@ abstract contract CompounderHelper_Fuzz_Test is
             abi.encodePacked(address(uniswapV4Compounder)),
             false
         );
+        bytecode = Utils.veryBadBytesReplacer(
+            bytecode,
+            abi.encodePacked(0x498581fF718922c3f8e6A244956aF099B2652b2b),
+            abi.encodePacked(address(poolManager)),
+            false
+        );
+        bytecode = Utils.veryBadBytesReplacer(
+            bytecode,
+            abi.encodePacked(0x7C5f5A4bBd8fD63184577525326123B519429bDc),
+            abi.encodePacked(address(positionManagerV4)),
+            false
+        );
+        bytecode = Utils.veryBadBytesReplacer(
+            bytecode,
+            abi.encodePacked(0xA3c0c9b65baD0b08107Aa264b0f3dB444b867A71),
+            abi.encodePacked(address(stateView)),
+            false
+        );
         vm.etch(address(uniswapV4CompounderHelper), bytecode);
-
-        // And : Deploy Compounder Helper.
-        deployCompounderHelper();
     }
-
-    /*////////////////////////////////////////////////////////////////
-                        HELPER FUNCTIONS
-    ////////////////////////////////////////////////////////////////*/
 
     function deployCompounderHelper() public {
         compounderHelper = new CompounderHelper(address(factory), address(uniswapV4CompounderHelper));
@@ -183,6 +206,12 @@ abstract contract CompounderHelper_Fuzz_Test is
             bytecode,
             abi.encodePacked(0x33128a8fC17869897dcE68Ed026d694621f6FDfD),
             abi.encodePacked(address(uniswapV3Factory)),
+            false
+        );
+        bytecode = Utils.veryBadBytesReplacer(
+            bytecode,
+            abi.encodePacked(0x7C5f5A4bBd8fD63184577525326123B519429bDc),
+            abi.encodePacked(address(positionManagerV4)),
             false
         );
 

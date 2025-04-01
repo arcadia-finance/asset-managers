@@ -46,6 +46,8 @@ contract UniswapV4CompounderHelper {
     error UnexpectedRevertBytes();
     error PoolManagerOnly();
 
+    event LogUint(uint256);
+
     /* //////////////////////////////////////////////////////////////
                                 CONSTRUCTOR
     ////////////////////////////////////////////////////////////// */
@@ -79,8 +81,7 @@ contract UniswapV4CompounderHelper {
         // Fetch and cache all position related data.
         PositionState memory position = COMPOUNDER.getPositionState(id, uint256(sqrtPriceX96), initiator);
 
-        // Check that pool is initially balanced.
-        // Prevents sandwiching attacks when swapping and/or adding liquidity.
+        // It should never be unbalanced at this point as we fetch sqrtPriceX96 above.
         if (COMPOUNDER.isPoolUnbalanced(position)) return (false, address(0), 0);
 
         // Get fee amounts
@@ -182,10 +183,13 @@ contract UniswapV4CompounderHelper {
      */
     function _parseReason(bytes memory reason) internal pure returns (uint128 amountIn, uint160 sqrtPriceX96) {
         bytes4 selector;
-        (selector, amountIn, sqrtPriceX96) = abi.decode(reason, (bytes4, uint128, uint160));
+        assembly {
+            // Load the first 4 bytes of data (after the length prefix)
+            selector := mload(add(reason, 0x20))
+            amountIn := mload(add(reason, 0x24))
+            sqrtPriceX96 := mload(add(reason, 0x44))
+        }
 
-        // If the error doesnt start with QuoteSwap, we know this isnt a valid quote to parse.
-        // Instead it is another revert that was triggered somewhere in the simulation.
         if (selector != QuoteSwap.selector) revert UnexpectedRevertBytes();
     }
 
