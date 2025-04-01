@@ -26,6 +26,30 @@ contract CompoundFees_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_Fuzz_
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
+
+    function testFuzz_Revert_compoundFees_Reentered(address random, uint256 tokenId, uint160 sqrtPriceX96) public {
+        // Given: An account address is defined in storage.
+        compounder.setAccount(random);
+
+        // When: Calling compoundFees().
+        // Then: It should revert.
+        vm.expectRevert(UniswapV3Compounder.Reentered.selector);
+        compounder.compoundFees(address(account), tokenId, sqrtPriceX96);
+    }
+
+    function testFuzz_Revert_compoundFees_InitiatorNotValid(address notInitiator, uint256 tokenId, uint160 sqrtPriceX96)
+        public
+    {
+        // Given: The caller is not the initiator.
+        vm.assume(initiator != notInitiator);
+
+        // When: Calling compoundFees().
+        // Then: It should revert.
+        vm.prank(notInitiator);
+        vm.expectRevert(UniswapV3Compounder.InitiatorNotValid.selector);
+        compounder.compoundFees(address(account), tokenId, sqrtPriceX96);
+    }
+
     function testFuzz_Success_compoundFees(TestVariables memory testVars) public {
         // Given : Valid state
         (testVars,) = givenValidBalancedState(testVars);
