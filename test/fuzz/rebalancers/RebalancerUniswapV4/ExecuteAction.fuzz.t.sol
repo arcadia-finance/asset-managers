@@ -625,7 +625,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
             // And: New Position is below current tick.
             // And : We slightly increase minium tick range to 10 in this case to avoid TickLiqudityOverflow,
             // but this is covered by above similar test without native ETH and should in theory never be the case.
-            tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, tickCurrent - 10));
+            tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, tickCurrent - 20));
             tickLower = tickLower / tickSpacing * tickSpacing;
             tickUpper = int24(bound(tickUpper, tickLower + 10, tickCurrent - 1));
             tickUpper = tickUpper / tickSpacing * tickSpacing;

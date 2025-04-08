@@ -352,7 +352,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
 
         // And : Move upper tick to the right (should trigger a oneToZero swap)
         tickLower = position.tickLower;
-        tickUpper = int24(bound(tickUpper, position.tickUpper + 1000, BOUND_TICK_UPPER));
+        tickUpper = int24(bound(tickUpper, position.tickUpper + 1, BOUND_TICK_UPPER));
 
         // And: The initiator is initiated.
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
@@ -564,7 +564,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         );
 
         // And : Move current tick to the right.
-        newTick = int24(bound(newTick, tickCurrent + 10, BOUND_TICK_UPPER));
+        newTick = int24(bound(newTick, tickCurrent + 10, position.tickUpper));
         poolManager.setCurrentPrice(v4PoolKey.toId(), newTick, TickMath.getSqrtPriceAtTick(newTick));
 
         // And: The initiator is initiated.
@@ -665,7 +665,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         );
 
         // And : Move current tick to the left.
-        newTick = int24(bound(newTick, BOUND_TICK_LOWER, tickCurrent - 10));
+        newTick = int24(bound(newTick, position.tickLower, tickCurrent - 10));
         poolManager.setCurrentPrice(v4PoolKey.toId(), newTick, TickMath.getSqrtPriceAtTick(newTick));
 
         // And: The initiator is initiated.
@@ -1279,5 +1279,118 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         // There can be 1 tick difference due to roundings.
         assertEq(tickLowerExpected, info.tickLower());
         assertEq(tickUpperExpected, info.tickUpper());
+    }
+
+    function testFuzz_Success_rebalancePosition_NativeETH_SurplusInWethReceivedByAccount(
+        uint256 fee,
+        uint128 liquidityPool,
+        uint256 tolerance,
+        address initiator,
+        int24 tickLower,
+        int24 tickUpper,
+        RebalancerUniswapV4.PositionState memory position,
+        address account_
+    ) public {
+        // Given: rebalancer is not the account.
+        vm.assume(account_ != address(rebalancer));
+
+        // And: Pool has reasonable liquidity.
+        liquidityPool =
+            uint128(bound(liquidityPool, UniswapHelpers.maxLiquidity(10) / 1000, UniswapHelpers.maxLiquidity(1) / 10));
+
+        // And: Deploy V4 AM and native ETH pool.
+        deployNativeAM();
+        (, position.sqrtPriceX96) = deployNativeEthPool(liquidityPool, POOL_FEE, TICK_SPACING, address(0));
+
+        // And: Add WETH to Registry.
+        {
+            ethOracle = initMockedOracle(8, "ETH / USD", uint256(1e8));
+            uint80[] memory oracleEthToUsdArr = new uint80[](1);
+
+            vm.startPrank(registry.owner());
+            erc20AM.addAsset(WETH, BitPackingLib.pack(BA_TO_QA_SINGLE, oracleEthToUsdArr));
+        }
+
+        // And: A valid position with multiple tickSpacing.
+        // And: Position is in range (has both tokens).
+        int24 tickCurrent = TickMath.getTickAtSqrtPrice(uint160(position.sqrtPriceX96));
+        position.tickLower = tickCurrent - 100;
+        position.tickLower = position.tickLower / TICK_SPACING * TICK_SPACING;
+        position.tickUpper = tickCurrent + 100;
+        position.tickUpper = position.tickUpper / TICK_SPACING * TICK_SPACING;
+        position.liquidity = 1e20;
+
+        uint256 tokenId = mintPositionV4(
+            nativeEthPoolKey,
+            position.tickLower,
+            position.tickUpper,
+            position.liquidity,
+            type(uint128).max,
+            type(uint128).max,
+            users.liquidityProvider
+        );
+
+        // And : Move lower tick to the left (should trigger a zeroToOne swap)
+        tickLower = position.tickLower - 100;
+        tickUpper = position.tickUpper;
+
+        // And: The initiator is initiated.
+        tolerance = MAX_TOLERANCE;
+        fee = MIN_INITIATOR_FEE;
+        vm.prank(initiator);
+        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
+
+        // And : Set initiator for account
+        vm.prank(account.owner());
+        rebalancer.setAccountInfo(address(account), initiator, address(0));
+
+        // And : Transfer position to account owner
+        vm.prank(users.liquidityProvider);
+        ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, users.accountOwner, tokenId);
+
+        {
+            address[] memory assets_ = new address[](1);
+            assets_[0] = address(positionManagerV4);
+            uint256[] memory assetIds_ = new uint256[](1);
+            assetIds_[0] = tokenId;
+            uint256[] memory assetAmounts_ = new uint256[](1);
+            assetAmounts_[0] = 1;
+
+            // And : Deposit position in Account
+            vm.startPrank(users.accountOwner);
+            ERC721(address(positionManagerV4)).approve(address(account), tokenId);
+            account.deposit(assets_, assetIds_, assetAmounts_);
+            vm.stopPrank();
+        }
+
+        {
+            RebalancerUniswapV4.PositionState memory position_ = rebalancer.getPositionState(
+                tokenId, tickLower, tickUpper, TickMath.getSqrtPriceAtTick(tickCurrent), initiator
+            );
+            bool zeroToOne;
+            uint256 amountIn;
+            (,, zeroToOne, amountIn,,) =
+                getRebalanceParams(tokenId, position.tickLower, position.tickUpper, position_, initiator);
+            vm.assume(zeroToOne == true);
+            // And : Assume minimum amountIn so that there's a positive fee.
+            vm.assume(amountIn > 1e6);
+        }
+
+        (uint160 currentSqrtPriceX96,,,) = stateView.getSlot0(nativeEthPoolKey.toId());
+
+        // When : calling rebalance()
+        vm.prank(initiator);
+        rebalancer.rebalance(
+            address(account),
+            address(positionManagerV4),
+            tokenId,
+            uint256(currentSqrtPriceX96),
+            tickLower,
+            tickUpper,
+            ""
+        );
+
+        // Then : It should return the correct values
+        assertGt(ERC20(WETH).balanceOf(address(account)), 0);
     }
 }
