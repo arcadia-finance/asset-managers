@@ -9,9 +9,7 @@ import { UniswapV4Compounder } from "../../../src/compounders/uniswap-v4/Uniswap
 import { UniswapV4Logic } from "../../../src/compounders/uniswap-v4/libraries/UniswapV4Logic.sol";
 
 contract UniswapV4CompounderExtension is UniswapV4Compounder {
-    constructor(uint256 compoundThreshold, uint256 initiatorShare, uint256 tolerance)
-        UniswapV4Compounder(compoundThreshold, initiatorShare, tolerance)
-    { }
+    constructor(uint256 maxTolerance, uint256 maxInitiatorShare) UniswapV4Compounder(maxTolerance, maxInitiatorShare) { }
 
     function getSqrtPriceX96(uint256 priceToken0, uint256 priceToken1) public pure returns (uint256) {
         return UniswapV4Logic._getSqrtPriceX96(priceToken0, priceToken1);
@@ -32,5 +30,9 @@ contract UniswapV4CompounderExtension is UniswapV4Compounder {
         returns (uint256 feeAmount0, uint256 feeAmount1)
     {
         return _collectFees(tokenId, poolKey);
+    }
+
+    function setAccount(address account_) public {
+        account = account_;
     }
 }

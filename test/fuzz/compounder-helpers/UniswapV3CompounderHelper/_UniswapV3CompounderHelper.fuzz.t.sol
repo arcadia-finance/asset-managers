@@ -4,72 +4,89 @@
  */
 pragma solidity ^0.8.22;
 
+import { CompounderHelper_Fuzz_Test } from "../CompounderHelper/_CompounderHelper.fuzz.t.sol";
+import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
+import { IUniswapV3PoolExtension } from
+    "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/IUniswapV3PoolExtension.sol";
+import { ISwapRouter02 } from
+    "../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/interfaces/ISwapRouter02.sol";
+import { SwapRouter02Fixture } from
+    "../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/SwapRouter02Fixture.f.sol";
 import { UniswapV3Compounder_Fuzz_Test } from "../../compounders/UniswapV3Compounder/_UniswapV3Compounder.fuzz.t.sol";
-import { UniswapV3CompounderHelper } from
-    "../../../../src/compounders/periphery/libraries/margin-accounts/uniswap-v3/UniswapV3CompounderHelper.sol";
-import { UniswapV3CompounderHelperExtension } from "../../../utils/extensions/UniswapV3CompounderHelperExtension.sol";
-import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
 
 /**
- * @notice Common logic needed by all "UniswapV3CompounderHelper" fuzz tests.
+ * @notice Common logic needed by all "UniswapV3CompounderHelperLogic" fuzz tests.
  */
-abstract contract UniswapV3CompounderHelper_Fuzz_Test is UniswapV3Compounder_Fuzz_Test {
+abstract contract UniswapV3CompounderHelper_Fuzz_Test is CompounderHelper_Fuzz_Test, SwapRouter02Fixture {
     /*////////////////////////////////////////////////////////////////
                             TEST CONTRACTS
     /////////////////////////////////////////////////////////////// */
 
-    UniswapV3CompounderHelperExtension public compounderHelper;
+    ERC20Mock internal token0;
+    ERC20Mock internal token1;
+
+    IUniswapV3PoolExtension internal usdStablePool;
 
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
-    function setUp() public virtual override(UniswapV3Compounder_Fuzz_Test) {
-        UniswapV3Compounder_Fuzz_Test.setUp();
+    function setUp() public virtual override(CompounderHelper_Fuzz_Test) {
+        CompounderHelper_Fuzz_Test.setUp();
 
-        deployCompounderHelper();
+        SwapRouter02Fixture.deploySwapRouter02(
+            address(0), address(uniswapV3Factory), address(nonfungiblePositionManager), address(weth9)
+        );
     }
 
     /*////////////////////////////////////////////////////////////////
                         HELPER FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
-    function deployCompounderHelper() public {
-        vm.prank(users.owner);
-        compounderHelper = new UniswapV3CompounderHelperExtension(address(compounder));
+    function generateFees(uint256 amount0ToGenerate, uint256 amount1ToGenerate) public {
+        vm.startPrank(users.liquidityProvider);
+        ISwapRouter02.ExactInputSingleParams memory exactInputParams;
+        // Swap token0 for token1
+        if (amount0ToGenerate > 0) {
+            uint256 amount0ToSwap = ((amount0ToGenerate * (1e6 / usdStablePool.fee())) * 10 ** token0.decimals());
 
-        // Get the bytecode of the UniswapV3PoolExtension.
-        bytes memory args = abi.encode();
-        bytes memory bytecode = abi.encodePacked(vm.getCode("UniswapV3PoolExtension.sol"), args);
-        bytes32 poolExtensionInitCodeHash = keccak256(bytecode);
-        bytes32 POOL_INIT_CODE_HASH = 0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54;
+            deal(address(token0), users.liquidityProvider, amount0ToSwap, true);
 
-        // Overwrite code hash of the UniswapV3Pool.
-        bytecode = address(compounderHelper).code;
-        bytecode = Utils.veryBadBytesReplacer(bytecode, POOL_INIT_CODE_HASH, poolExtensionInitCodeHash);
+            token0.approve(address(swapRouter), amount0ToSwap);
 
-        // Overwrite contract addresses stored as constants in CompounderViews.
-        bytecode = Utils.veryBadBytesReplacer(
-            bytecode, abi.encodePacked(0xDa14Fdd72345c4d2511357214c5B89A919768e59), abi.encodePacked(factory), false
-        );
-        bytecode = Utils.veryBadBytesReplacer(
-            bytecode, abi.encodePacked(0xd0690557600eb8Be8391D1d97346e2aab5300d5f), abi.encodePacked(registry), false
-        );
-        bytecode = Utils.veryBadBytesReplacer(
-            bytecode,
-            abi.encodePacked(0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1),
-            abi.encodePacked(nonfungiblePositionManager),
-            false
-        );
-        bytecode = Utils.veryBadBytesReplacer(
-            bytecode,
-            abi.encodePacked(0x33128a8fC17869897dcE68Ed026d694621f6FDfD),
-            abi.encodePacked(uniswapV3Factory),
-            false
-        );
-        bytecode = Utils.veryBadBytesReplacer(
-            bytecode, abi.encodePacked(0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a), abi.encodePacked(quoter), false
-        );
-        vm.etch(address(compounderHelper), bytecode);
+            exactInputParams = ISwapRouter02.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                fee: usdStablePool.fee(),
+                recipient: users.liquidityProvider,
+                amountIn: amount0ToSwap,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            });
+
+            swapRouter.exactInputSingle(exactInputParams);
+        }
+
+        // Swap token1 for token0
+        if (amount1ToGenerate > 0) {
+            uint256 amount1ToSwap = ((amount1ToGenerate * (1e6 / usdStablePool.fee())) * 10 ** token1.decimals());
+
+            deal(address(token1), users.liquidityProvider, amount1ToSwap, true);
+            token1.approve(address(swapRouter), amount1ToSwap);
+
+            exactInputParams = ISwapRouter02.ExactInputSingleParams({
+                tokenIn: address(token1),
+                tokenOut: address(token0),
+                fee: usdStablePool.fee(),
+                recipient: users.liquidityProvider,
+                amountIn: amount1ToSwap,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            });
+
+            swapRouter.exactInputSingle(exactInputParams);
+        }
+
+        vm.stopPrank();
     }
 }

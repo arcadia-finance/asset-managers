@@ -4,62 +4,99 @@
  */
 pragma solidity ^0.8.22;
 
-import { SlipstreamCompounder_Fuzz_Test } from "../../compounders/SlipstreamCompounder/_SlipstreamCompounder.fuzz.t.sol";
-import { SlipstreamCompounderHelper } from
-    "../../../../src/compounders/periphery/libraries/margin-accounts/slipstream/SlipstreamCompounderHelper.sol";
-import { SlipstreamCompounderHelperExtension } from "../../../utils/extensions/SlipstreamCompounderHelperExtension.sol";
+import { AerodromeFixture } from "../../../../lib/accounts-v2/test/utils/fixtures/aerodrome/AerodromeFixture.f.sol";
+import { CLSwapRouterFixture } from "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/CLSwapRouter.f.sol";
+import { CompounderHelper_Fuzz_Test } from "../CompounderHelper/_CompounderHelper.fuzz.t.sol";
+import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
+import { ICLSwapRouter } from "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/interfaces/ICLSwapRouter.sol";
+import { Fuzz_Test } from "../../Fuzz.t.sol";
+import { ICLPoolExtension } from
+    "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/extensions/interfaces/ICLPoolExtension.sol";
+import { ISwapRouter } from "../../../../src/compounders/slipstream/interfaces/ISwapRouter.sol";
+import { SlipstreamCompounder } from "../../../../src/compounders/slipstream/SlipstreamCompounder.sol";
+import { SlipstreamAMExtension } from "../../../../lib/accounts-v2/test/utils/extensions/SlipstreamAMExtension.sol";
+import { SlipstreamFixture } from "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/Slipstream.f.sol";
+import { SlipstreamCompounderExtension } from "../../../utils/extensions/SlipstreamCompounderExtension.sol";
 import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
 
 /**
  * @notice Common logic needed by all "SlipstreamCompounderHelper" fuzz tests.
  */
-abstract contract SlipstreamCompounderHelper_Fuzz_Test is SlipstreamCompounder_Fuzz_Test {
+abstract contract SlipstreamCompounderHelper_Fuzz_Test is CompounderHelper_Fuzz_Test, CLSwapRouterFixture {
     /*////////////////////////////////////////////////////////////////
                             TEST CONTRACTS
     /////////////////////////////////////////////////////////////// */
 
-    SlipstreamCompounderHelperExtension public compounderHelper;
+    /*////////////////////////////////////////////////////////////////
+                            VARIABLES
+    /////////////////////////////////////////////////////////////// */
+
+    ERC20Mock internal token0;
+    ERC20Mock internal token1;
+
+    ICLPoolExtension internal usdStablePool;
 
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
-    function setUp() public virtual override(SlipstreamCompounder_Fuzz_Test) {
-        SlipstreamCompounder_Fuzz_Test.setUp();
+    function setUp() public virtual override(CompounderHelper_Fuzz_Test) {
+        CompounderHelper_Fuzz_Test.setUp();
 
-        deployCompounderHelper();
+        CLSwapRouterFixture.deploySwapRouter(address(cLFactory), address(weth9));
     }
 
     /*////////////////////////////////////////////////////////////////
                         HELPER FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
-    function deployCompounderHelper() public {
-        vm.prank(users.owner);
-        compounderHelper = new SlipstreamCompounderHelperExtension(address(compounder));
+    function generateFees(uint256 amount0ToGenerate, uint256 amount1ToGenerate) public {
+        vm.startPrank(users.liquidityProvider);
+        ICLSwapRouter.ExactInputSingleParams memory exactInputParams;
+        // Swap token0 for token1
+        if (amount0ToGenerate > 0) {
+            uint256 amount0ToSwap = ((amount0ToGenerate * (1e6 / usdStablePool.fee())) * 10 ** token0.decimals());
 
-        // Get the bytecode to overwrite
-        bytes memory bytecode = address(compounderHelper).code;
+            deal(address(token0), users.liquidityProvider, amount0ToSwap, true);
 
-        // Overwrite contract addresses stored as constants in Compounder.
-        bytecode = Utils.veryBadBytesReplacer(
-            bytecode, abi.encodePacked(0xDa14Fdd72345c4d2511357214c5B89A919768e59), abi.encodePacked(factory), false
-        );
-        bytecode = Utils.veryBadBytesReplacer(
-            bytecode, abi.encodePacked(0xd0690557600eb8Be8391D1d97346e2aab5300d5f), abi.encodePacked(registry), false
-        );
-        bytecode = Utils.veryBadBytesReplacer(
-            bytecode,
-            abi.encodePacked(0x827922686190790b37229fd06084350E74485b72),
-            abi.encodePacked(slipstreamPositionManager),
-            false
-        );
-        bytecode = Utils.veryBadBytesReplacer(
-            bytecode, abi.encodePacked(0x5e7BB104d84c7CB9B682AaC2F3d509f5F406809A), abi.encodePacked(cLFactory), false
-        );
-        bytecode = Utils.veryBadBytesReplacer(
-            bytecode, abi.encodePacked(0x254cF9E1E6e233aa1AC962CB9B05b2cfeAaE15b0), abi.encodePacked(clQuoter), false
-        );
-        vm.etch(address(compounderHelper), bytecode);
+            vm.startPrank(users.liquidityProvider);
+            token0.approve(address(clSwapRouter), amount0ToSwap);
+
+            exactInputParams = ICLSwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                tickSpacing: usdStablePool.tickSpacing(),
+                recipient: users.liquidityProvider,
+                deadline: block.timestamp,
+                amountIn: amount0ToSwap,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            });
+
+            clSwapRouter.exactInputSingle(exactInputParams);
+        }
+
+        // Swap token1 for token0
+        if (amount1ToGenerate > 0) {
+            uint256 amount1ToSwap = ((amount1ToGenerate * (1e6 / usdStablePool.fee())) * 10 ** token1.decimals());
+
+            deal(address(token1), users.liquidityProvider, amount1ToSwap, true);
+            token1.approve(address(clSwapRouter), amount1ToSwap);
+
+            exactInputParams = ICLSwapRouter.ExactInputSingleParams({
+                tokenIn: address(token1),
+                tokenOut: address(token0),
+                tickSpacing: usdStablePool.tickSpacing(),
+                recipient: users.liquidityProvider,
+                deadline: block.timestamp,
+                amountIn: amount1ToSwap,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            });
+
+            clSwapRouter.exactInputSingle(exactInputParams);
+        }
+
+        vm.stopPrank();
     }
 }

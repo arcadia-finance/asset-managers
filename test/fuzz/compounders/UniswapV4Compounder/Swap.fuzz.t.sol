@@ -70,7 +70,9 @@ contract Swap_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_Test {
             stablePoolKey, -1000, 1000, liquidity, type(uint128).max, type(uint128).max, users.liquidityProvider
         );
 
-        uint256 lowerBoundSqrtPriceX96 = sqrtPriceX96 * compounder.LOWER_SQRT_PRICE_DEVIATION() / 1e18;
+        (, uint64 lowerSqrtPriceDeviation,) = compounder.initiatorInfo(initiator);
+
+        uint256 lowerBoundSqrtPriceX96 = sqrtPriceX96 * uint256(lowerSqrtPriceDeviation) / 1e18;
 
         // When : Swapping an amount that will move the price out of tolerance zone
         uint256 amount0 = 100_000 * 10 ** token0.decimals();
@@ -115,7 +117,9 @@ contract Swap_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_Test {
             stablePoolKey, -1000, 1000, liquidity, type(uint128).max, type(uint128).max, users.liquidityProvider
         );
 
-        uint256 upperBoundSqrtPriceX96 = sqrtPriceX96 * compounder.UPPER_SQRT_PRICE_DEVIATION() / 1e18;
+        (uint64 upperSqrtPriceDeviation,,) = compounder.initiatorInfo(initiator);
+
+        uint256 upperBoundSqrtPriceX96 = sqrtPriceX96 * uint256(upperSqrtPriceDeviation) / 1e18;
 
         // When : Swapping an amount that will move the price out of tolerance zone
         uint256 amount1 = 100_000 * 10 ** token1.decimals();
@@ -160,7 +164,9 @@ contract Swap_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_Test {
             stablePoolKey, -1000, 1000, liquidity, type(uint128).max, type(uint128).max, users.liquidityProvider
         );
 
-        uint256 lowerBoundSqrtPriceX96 = sqrtPriceX96 * compounder.LOWER_SQRT_PRICE_DEVIATION() / 1e18;
+        (, uint64 lowerSqrtPriceDeviation,) = compounder.initiatorInfo(initiator);
+
+        uint256 lowerBoundSqrtPriceX96 = sqrtPriceX96 * uint256(lowerSqrtPriceDeviation) / 1e18;
 
         // When : Swapping an amount that will move the price at limit of tolerance (still withing tolerance)
         uint256 amount0 = 100_000 * 10 ** token0.decimals();
@@ -205,7 +211,9 @@ contract Swap_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_Test {
             stablePoolKey, -1000, 1000, liquidity, type(uint128).max, type(uint128).max, users.liquidityProvider
         );
 
-        uint256 upperBoundSqrtPriceX96 = sqrtPriceX96 * compounder.UPPER_SQRT_PRICE_DEVIATION() / 1e18;
+        (uint64 upperSqrtPriceDeviation,,) = compounder.initiatorInfo(initiator);
+
+        uint256 upperBoundSqrtPriceX96 = sqrtPriceX96 * uint256(upperSqrtPriceDeviation) / 1e18;
 
         // When : Swapping an amount that will move the price out of tolerance zone
         uint256 amount1 = 100_000 * 10 ** token1.decimals();

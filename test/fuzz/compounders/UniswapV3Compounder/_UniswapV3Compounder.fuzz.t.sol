@@ -39,12 +39,16 @@ abstract contract UniswapV3Compounder_Fuzz_Test is
     uint256 internal MOCK_ORACLE_DECIMALS = 18;
     uint24 internal POOL_FEE = 100;
 
+    // 5 %
+    uint256 MAX_TOLERANCE = 0.05 * 1e18;
     // 4 % price diff for testing
-    uint256 internal TOLERANCE = 0.04 * 1e18;
-    // $10
-    uint256 internal COMPOUND_THRESHOLD = 10 * 1e18;
-    // 10% initiator fee
-    uint256 internal INITIATOR_SHARE = 0.1 * 1e18;
+    uint256 TOLERANCE = 0.04 * 1e18;
+
+    // 0,5% to 11% fee on swaps.
+    uint256 MIN_INITIATOR_SHARE = 0.005 * 1e18;
+    uint256 MAX_INITIATOR_SHARE = 0.11 * 1e18;
+    // 10 % initiator fee
+    uint256 INITIATOR_SHARE = 0.1 * 1e18;
 
     /*////////////////////////////////////////////////////////////////
                             VARIABLES
@@ -54,6 +58,8 @@ abstract contract UniswapV3Compounder_Fuzz_Test is
     ERC20Mock internal token1;
 
     IUniswapV3PoolExtension internal usdStablePool;
+
+    address internal initiator;
 
     struct TestVariables {
         int24 tickLower;
@@ -91,7 +97,7 @@ abstract contract UniswapV3Compounder_Fuzz_Test is
         QuoterV2Fixture.deployQuoterV2(address(uniswapV3Factory), address(weth9));
 
         deployUniswapV3AM();
-        deployCompounder(COMPOUND_THRESHOLD, INITIATOR_SHARE, TOLERANCE);
+        deployCompounder(MAX_TOLERANCE, MAX_INITIATOR_SHARE);
 
         // Add two stable tokens with 6 and 18 decimals.
         token0 = new ERC20Mock("Token 6d", "TOK6", 6);
@@ -108,6 +114,15 @@ abstract contract UniswapV3Compounder_Fuzz_Test is
         // And : Compounder is allowed as Asset Manager
         vm.prank(users.accountOwner);
         account.setAssetManager(address(compounder), true);
+
+        // And : Create and set initiator details.
+        initiator = createUser("initiator");
+        vm.prank(initiator);
+        compounder.setInitiatorInfo(TOLERANCE, INITIATOR_SHARE);
+
+        // And : Set the initiator for the account.
+        vm.prank(users.accountOwner);
+        compounder.setInitiator(address(account), initiator);
     }
 
     /*////////////////////////////////////////////////////////////////
@@ -133,9 +148,9 @@ abstract contract UniswapV3Compounder_Fuzz_Test is
         vm.etch(address(uniV3AM), bytecode);
     }
 
-    function deployCompounder(uint256 compoundThreshold, uint256 initiatorShare, uint256 tolerance) public {
+    function deployCompounder(uint256 maxTolerance, uint256 maxInitiatorShare) public {
         vm.prank(users.owner);
-        compounder = new UniswapV3CompounderExtension(compoundThreshold, initiatorShare, tolerance);
+        compounder = new UniswapV3CompounderExtension(maxTolerance, maxInitiatorShare);
 
         // Get the bytecode of the UniswapV3PoolExtension.
         bytes memory args = abi.encode();
@@ -197,8 +212,8 @@ abstract contract UniswapV3Compounder_Fuzz_Test is
             : type(uint112).max / uint112((10 ** (token0.decimals() - token1.decimals())));
 
         // And : Position has accumulated fees (amount in USD)
-        testVars.feeAmount0 = bound(testVars.feeAmount0, 100, type(uint16).max);
-        testVars.feeAmount1 = bound(testVars.feeAmount1, 100, type(uint16).max);
+        testVars.feeAmount0 = bound(testVars.feeAmount0, 5, type(uint16).max);
+        testVars.feeAmount1 = bound(testVars.feeAmount1, 5, type(uint16).max);
 
         testVars_ = testVars;
     }

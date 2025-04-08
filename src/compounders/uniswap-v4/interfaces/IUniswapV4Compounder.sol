@@ -5,10 +5,6 @@
 pragma solidity ^0.8.22;
 
 struct PositionState {
-    address pool;
-    address token0;
-    address token1;
-    uint24 fee;
     uint256 sqrtPriceX96;
     uint256 sqrtRatioLower;
     uint256 sqrtRatioUpper;
@@ -21,7 +17,7 @@ struct Fees {
     uint256 amount1;
 }
 
-interface IUniswapV3Compounder {
+interface IUniswapV4Compounder {
     function getSwapParameters(PositionState memory position, Fees memory fees)
         external
         view
