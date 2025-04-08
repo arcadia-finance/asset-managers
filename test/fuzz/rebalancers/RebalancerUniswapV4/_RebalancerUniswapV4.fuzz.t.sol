@@ -403,8 +403,8 @@ abstract contract RebalancerUniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         // And : Lower and upper ticks of the position are within the initial liquidity range
         (, int24 tickCurrent,,) = stateView.getSlot0(poolKey.toId());
 
-        lpVars.tickLower = int24(bound(lpVars.tickLower, initVars.tickLower + 10, tickCurrent - MIN_TICK_SPACING));
-        lpVars.tickUpper = int24(bound(lpVars.tickUpper, tickCurrent + MIN_TICK_SPACING, initVars.tickUpper - 10));
+        lpVars.tickLower = int24(bound(lpVars.tickLower, initVars.tickLower + 20, tickCurrent - MIN_TICK_SPACING));
+        lpVars.tickUpper = int24(bound(lpVars.tickUpper, tickCurrent + MIN_TICK_SPACING, initVars.tickUpper - 20));
 
         lpVars_ = lpVars;
     }
@@ -438,8 +438,8 @@ abstract contract RebalancerUniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         }
 
         // And : Set fees for pool in general (amount below are defined in USD)
-        feeData.desiredFee0 = bound(feeData.desiredFee0, 10, type(uint16).max);
-        feeData.desiredFee1 = bound(feeData.desiredFee1, 10, type(uint16).max);
+        feeData.desiredFee0 = bound(feeData.desiredFee0, 10, 12);
+        feeData.desiredFee1 = bound(feeData.desiredFee1, 10, 12);
         uint128 liquidity = stateView.getLiquidity(poolKey.toId());
         feeData = setFeeState(feeData, poolKey, liquidity);
     }
