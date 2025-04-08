@@ -5,7 +5,7 @@
 pragma solidity ^0.8.26;
 
 import { ArcadiaOracle } from "../../../../lib/accounts-v2/test/utils/mocks/oracles/ArcadiaOracle.sol";
-import { AssetValueAndRiskFactors } from "../../../../lib/accounts-v2/src/libraries/AssetValuationLib.sol";
+import { AssetValueAndRiskFactors } from "../../../../lib/accounts-v2/src/Registry.sol";
 import { BalanceDelta } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/BalanceDelta.sol";
 import { BitPackingLib } from "../../../../lib/accounts-v2/src/libraries/BitPackingLib.sol";
 import { Currency } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
@@ -28,7 +28,6 @@ import {
     PositionInfo
 } from "../../../../lib/accounts-v2/lib/v4-periphery/src/libraries/PositionInfoLibrary.sol";
 import { RebalancerUniswapV4Extension } from "../../../utils/extensions/RebalancerUniswapV4Extension.sol";
-import { RegistryMock } from "../../../utils/mocks/RegistryMock.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
 import { UniswapV4Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v4/UniswapV4Fixture.f.sol";

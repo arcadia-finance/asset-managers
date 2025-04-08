@@ -6,12 +6,10 @@ pragma solidity ^0.8.26;
 
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
-import { PricingLogic } from "../../../../src/rebalancers/libraries/cl-math/PricingLogic.sol";
 import { RebalancerUniswapV4 } from "../../../../src/rebalancers/RebalancerUniswapV4.sol";
 import { RebalancerUniswapV4_Fuzz_Test } from "./_RebalancerUniswapV4.fuzz.t.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
-import { UniswapV3Logic } from "../../../../src/rebalancers/libraries/uniswap-v3/UniswapV3Logic.sol";
 
 /**
  * @notice Fuzz tests for the function "_getPositionState" of contract "RebalancerUniswapV4".

@@ -9,7 +9,6 @@ import { RebalancerUniswapV4 } from "../../../../src/rebalancers/RebalancerUnisw
 import { RebalancerUniswapV4_Fuzz_Test } from "./_RebalancerUniswapV4.fuzz.t.sol";
 import { SqrtPriceMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/SqrtPriceMath.sol";
 import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
-import { UniswapV3Logic } from "../../../../src/rebalancers/libraries/uniswap-v3/UniswapV3Logic.sol";
 
 /**
  * @notice Fuzz tests for the function "swapViaPool" of contract "RebalancerUniswapV4".

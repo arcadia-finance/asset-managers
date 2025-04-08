@@ -6,14 +6,12 @@ pragma solidity ^0.8.26;
 
 import { ActionData } from "../../../../lib/accounts-v2/src/interfaces/IActionBase.sol";
 import { ArcadiaLogic } from "../../../../src/rebalancers/libraries/ArcadiaLogic.sol";
-import { AssetValueAndRiskFactors } from "../../../../lib/accounts-v2/src/Registry.sol";
 import { ERC20 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC20.sol";
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { FixedPoint128 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint128.sol";
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { HookMock } from "../../../utils/mocks/HookMock.sol";
-import { PricingLogic } from "../../../../src/rebalancers/libraries/cl-math/PricingLogic.sol";
 import { RebalancerUniswapV4 } from "../../../../src/rebalancers/RebalancerUniswapV4.sol";
 import { RebalancerUniswapV4_Fuzz_Test } from "./_RebalancerUniswapV4.fuzz.t.sol";
 import { RouterMock } from "../../../utils/mocks/RouterMock.sol";
@@ -21,8 +19,6 @@ import { RouterSetPoolPriceUniV4Mock } from "../../../utils/mocks/RouterSetPoolP
 import { StdStorage, stdStorage } from "../../../../lib/accounts-v2/lib/forge-std/src/Test.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
-import { UniswapV3Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";
-import { UniswapV3Logic } from "../../../../src/rebalancers/libraries/uniswap-v3/UniswapV3Logic.sol";
 import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
 
 /**

@@ -4,19 +4,13 @@
  */
 pragma solidity ^0.8.26;
 
-import { BalanceDelta } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/BalanceDelta.sol";
 import { BitPackingLib } from "../../../../lib/accounts-v2/src/libraries/BitPackingLib.sol";
 import { ERC20 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC20.sol";
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/cl-math/LiquidityAmounts.sol";
 import { PositionInfo } from "../../../../lib/accounts-v2/lib/v4-periphery/src/libraries/PositionInfoLibrary.sol";
-import { PricingLogic } from "../../../../src/rebalancers/libraries/cl-math/PricingLogic.sol";
-import { RebalanceOptimizationMath } from "../../../../src/rebalancers/libraries/RebalanceOptimizationMath.sol";
 import { RebalancerUniswapV4 } from "../../../../src/rebalancers/RebalancerUniswapV4.sol";
-import { RouterMock } from "../../../utils/mocks/RouterMock.sol";
-import { SwapMath } from "../../../utils/uniswap-v3/SwapMath.sol";
-import { SwapParams } from "../../../../src/rebalancers/interfaces/IPoolManager.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
 import { RebalancerUniswapV4_Fuzz_Test } from "./_RebalancerUniswapV4.fuzz.t.sol";
@@ -38,96 +32,6 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
     /* ///////////////////////////////////////////////////////////////
                               HELPERS
     /////////////////////////////////////////////////////////////// */
-
-    function moveTicksRightWithIncreasedTolerance(
-        uint256 trustedSqrtPriceX96,
-        address initiator,
-        uint256 amount1ToSwap,
-        bool maxRight
-    ) public {
-        (uint160 sqrtPriceX96, int24 tickCurrent,,) = stateView.getSlot0(v4PoolKey.toId());
-        uint128 liquidity_ = stateView.getLiquidity(v4PoolKey.toId());
-
-        (uint256 upperSqrtPriceDeviation,,,) = rebalancer.initiatorInfo(initiator);
-        // Calculate max sqrtPriceX96 to the right to avoid unbalancedPool()
-        uint256 sqrtPriceX96Target = trustedSqrtPriceX96.mulDivDown(upperSqrtPriceDeviation, 1e18);
-
-        // Take 5 % below to allow swapping and avoid unbalancedPool
-        sqrtPriceX96Target -= ((sqrtPriceX96Target * (0.05 * 1e18)) / 1e18);
-
-        int256 amountRemaining = type(int128).max;
-        // Calculate the max amount of token 1 to swap to achieve target price
-        (, uint256 amountIn,,) = SwapMath.computeSwapStep(
-            sqrtPriceX96, uint160(sqrtPriceX96Target), liquidity_, amountRemaining, 100 * POOL_FEE
-        );
-
-        // Amount to swap should be max equal to amountIn which will achieve the highest possible swap withing maxTolerance.
-        if (maxRight) {
-            amount1ToSwap = amountIn;
-        } else {
-            amount1ToSwap = bound(amount1ToSwap, 1, amountIn);
-        }
-
-        vm.startPrank(users.swapper);
-        deal(address(token1), users.swapper, type(uint128).max);
-
-        // Encode the swap data.
-        SwapParams memory params =
-            SwapParams({ zeroForOne: false, amountSpecified: -int256(amount1ToSwap), sqrtPriceLimitX96: 0 });
-
-        bytes memory swapData = abi.encode(params, v4PoolKey);
-
-        // Do the swap.
-        poolManager.unlock(swapData);
-
-        vm.stopPrank();
-
-        (, int24 tick,,) = stateView.getSlot0(v4PoolKey.toId());
-        vm.assume(tick > tickCurrent);
-    }
-
-    function moveTicksLeftWithIncreasedTolerance(int24 initLpLowerTick, uint256 amount0ToSwap, bool maxLeft) public {
-        (uint160 sqrtPriceX96, int24 tickCurrent,,) = stateView.getSlot0(v4PoolKey.toId());
-        uint128 liquidity_ = stateView.getLiquidity(v4PoolKey.toId());
-
-        // Calculate max sqrtPriceX96 to the left to avoid unbalancedPool()
-        // No probleme in this case as lower ratio will be 0.
-        // But we still want to be within initial lp range for liquidity
-        uint256 sqrtPriceX96Target = TickMath.getSqrtPriceAtTick(initLpLowerTick);
-
-        // Take 5 % above to ensure we are withing the liquidity and enable swapping without being unbalanced
-        sqrtPriceX96Target += ((sqrtPriceX96Target * (0.05 * 1e18)) / 1e18);
-
-        int256 amountRemaining = type(int128).max;
-        // Calculate the max amount of token 0 to swap to achieve target price
-        (, uint256 amountIn,,) = SwapMath.computeSwapStep(
-            sqrtPriceX96, uint160(sqrtPriceX96Target), liquidity_, amountRemaining, 100 * POOL_FEE
-        );
-
-        // Amount to swap should be max amountIn that will achieve the highest possible swap withing maxTolerance.
-        if (maxLeft) {
-            amount0ToSwap = amountIn;
-        } else {
-            amount0ToSwap = bound(amount0ToSwap, 1, amountIn);
-        }
-
-        vm.startPrank(users.swapper);
-        deal(address(token0), users.swapper, type(uint128).max);
-
-        // Encode the swap data.
-        SwapParams memory params =
-            SwapParams({ zeroForOne: true, amountSpecified: -int256(amount0ToSwap), sqrtPriceLimitX96: 0 });
-
-        bytes memory swapData = abi.encode(params, v4PoolKey);
-
-        // Do the swap.
-        poolManager.unlock(swapData);
-
-        vm.stopPrank();
-
-        (, int24 tick,,) = stateView.getSlot0(v4PoolKey.toId());
-        vm.assume(tick < tickCurrent);
-    }
 
     function getRebalanceParams(
         uint256 tokenId,
