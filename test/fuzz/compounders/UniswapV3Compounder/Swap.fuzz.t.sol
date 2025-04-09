@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity 0.8.22;
+pragma solidity ^0.8.22;
 
 import { ERC20Mock } from "./_UniswapV3Compounder.fuzz.t.sol";
 import { UniswapV3Compounder } from "./_UniswapV3Compounder.fuzz.t.sol";
@@ -66,10 +66,11 @@ contract Swap_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_Fuzz_Test {
         );
 
         {
+            (, uint64 lowerSqrtPriceDeviation,) = compounder.initiatorInfo(initiator);
             position.token0 = address(token0);
             position.token1 = address(token1);
             position.fee = POOL_FEE;
-            position.lowerBoundSqrtPriceX96 = sqrtPriceX96 * compounder.LOWER_SQRT_PRICE_DEVIATION() / 1e18;
+            position.lowerBoundSqrtPriceX96 = sqrtPriceX96 * uint256(lowerSqrtPriceDeviation) / 1e18;
             position.pool = address(usdStablePool);
         }
 
@@ -117,10 +118,11 @@ contract Swap_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_Fuzz_Test {
         );
 
         {
+            (uint64 upperSqrtPriceDeviation,,) = compounder.initiatorInfo(initiator);
             position.token0 = address(token0);
             position.token1 = address(token1);
             position.fee = POOL_FEE;
-            position.upperBoundSqrtPriceX96 = sqrtPriceX96 * compounder.UPPER_SQRT_PRICE_DEVIATION() / 1e18;
+            position.upperBoundSqrtPriceX96 = sqrtPriceX96 * uint256(upperSqrtPriceDeviation) / 1e18;
             position.pool = address(usdStablePool);
         }
 
@@ -168,10 +170,11 @@ contract Swap_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_Fuzz_Test {
         );
 
         {
+            (, uint64 lowerSqrtPriceDeviation,) = compounder.initiatorInfo(initiator);
             position.token0 = address(token0);
             position.token1 = address(token1);
             position.fee = POOL_FEE;
-            position.lowerBoundSqrtPriceX96 = sqrtPriceX96 * compounder.LOWER_SQRT_PRICE_DEVIATION() / 1e18;
+            position.lowerBoundSqrtPriceX96 = sqrtPriceX96 * uint256(lowerSqrtPriceDeviation) / 1e18;
             position.pool = address(usdStablePool);
         }
 
@@ -219,10 +222,11 @@ contract Swap_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_Fuzz_Test {
         );
 
         {
+            (uint64 upperSqrtPriceDeviation,,) = compounder.initiatorInfo(initiator);
             position.token0 = address(token0);
             position.token1 = address(token1);
             position.fee = POOL_FEE;
-            position.upperBoundSqrtPriceX96 = sqrtPriceX96 * compounder.UPPER_SQRT_PRICE_DEVIATION() / 1e18;
+            position.upperBoundSqrtPriceX96 = sqrtPriceX96 * uint256(upperSqrtPriceDeviation) / 1e18;
             position.pool = address(usdStablePool);
         }
 
