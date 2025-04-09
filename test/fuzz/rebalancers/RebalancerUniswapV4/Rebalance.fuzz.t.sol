@@ -320,6 +320,139 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         assertLe(token1.balanceOf(initiator), expectedFee);
     }
 
+    function testFuzz_Success_rebalancePosition_InitiatorFees_Token0_WithFees(
+        uint256 fee,
+        uint128 liquidityPool,
+        uint256 tolerance,
+        address initiator,
+        int24 tickLower,
+        int24 tickUpper,
+        RebalancerUniswapV4.PositionState memory position,
+        address account_
+    ) public {
+        // Given: rebalancer is not the account.
+        vm.assume(account_ != address(rebalancer));
+
+        // And: Reasonable current price.
+        position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
+
+        // And: Pool has reasonable liquidity.
+        // Hardcoded value, the only objective of this test is to validate fee accounting.
+        liquidityPool = 1e27;
+
+        // And: A pool with liquidity with tickSpacing 1 (fee = 100).
+        initPoolAndAddLiquidity(uint160(position.sqrtPriceX96), liquidityPool, POOL_FEE, TICK_SPACING, address(0));
+
+        // And: A valid position with multiple tickSpacing.
+        // And: Position is in range (has both tokens).
+        int24 tickCurrent = TickMath.getTickAtSqrtPrice(uint160(position.sqrtPriceX96));
+        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, tickCurrent - 10));
+        position.tickLower = position.tickLower / TICK_SPACING * TICK_SPACING;
+        position.tickUpper = int24(bound(position.tickUpper, tickCurrent + 10, BOUND_TICK_UPPER));
+        position.tickUpper = position.tickUpper / TICK_SPACING * TICK_SPACING;
+        position.liquidity = uint128(bound(position.liquidity, 1e19, 1e23));
+
+        uint256 tokenId = mintPositionV4(
+            v4PoolKey,
+            position.tickLower,
+            position.tickUpper,
+            position.liquidity,
+            type(uint128).max,
+            type(uint128).max,
+            users.liquidityProvider
+        );
+
+        // And : Move upper tick to the right (should trigger a oneToZero swap)
+        tickLower = position.tickLower;
+        tickUpper = int24(bound(tickUpper, position.tickUpper + 1, BOUND_TICK_UPPER));
+
+        {
+            // And : Set fees for pool in general (amount below are defined in USD)
+            // We use upper and lower boundSqrtPriceX96 of the position to avoid stack to deep declaring other vars.
+            FeeGrowth memory feeData;
+            feeData.desiredFee0 = bound(position.lowerBoundSqrtPriceX96, 1, 100_000);
+            feeData.desiredFee1 = bound(position.upperBoundSqrtPriceX96, 1, 100_000);
+            feeData = setFeeState(feeData, v4PoolKey, stateView.getLiquidity(v4PoolKey.toId()));
+        }
+
+        {
+            bytes32 positionId = keccak256(
+                abi.encodePacked(address(positionManagerV4), position.tickLower, position.tickUpper, bytes32(tokenId))
+            );
+
+            // And: Position has accumulated fees.
+            (uint256 feeAmount0, uint256 feeAmount1) = getFeeAmounts(
+                tokenId,
+                v4PoolKey.toId(),
+                position.tickLower,
+                position.tickUpper,
+                stateView.getPositionLiquidity(v4PoolKey.toId(), positionId)
+            );
+            vm.assume(feeAmount0 + feeAmount1 > 0);
+        }
+
+        // And: The initiator is initiated.
+        tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
+        fee = bound(fee, MIN_INITIATOR_FEE, MAX_INITIATOR_FEE);
+        vm.prank(initiator);
+        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
+
+        // And : Set initiator for account
+        vm.prank(account.owner());
+        rebalancer.setAccountInfo(address(account), initiator, address(0));
+
+        // And : Transfer position to account owner
+        vm.prank(users.liquidityProvider);
+        ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, users.accountOwner, tokenId);
+
+        {
+            address[] memory assets_ = new address[](1);
+            assets_[0] = address(positionManagerV4);
+            uint256[] memory assetIds_ = new uint256[](1);
+            assetIds_[0] = tokenId;
+            uint256[] memory assetAmounts_ = new uint256[](1);
+            assetAmounts_[0] = 1;
+
+            // And : Deposit position in Account
+            vm.startPrank(users.accountOwner);
+            ERC721(address(positionManagerV4)).approve(address(account), tokenId);
+            account.deposit(assets_, assetIds_, assetAmounts_);
+            vm.stopPrank();
+        }
+
+        uint256 expectedFee;
+        {
+            RebalancerUniswapV4.PositionState memory position_ = rebalancer.getPositionState(
+                tokenId, tickLower, tickUpper, TickMath.getSqrtPriceAtTick(tickCurrent), initiator
+            );
+            bool zeroToOne;
+            uint256 amountIn;
+            (,, zeroToOne, amountIn,, expectedFee) =
+                getRebalanceParams(tokenId, position.tickLower, position.tickUpper, position_, initiator);
+            vm.assume(zeroToOne == false);
+            // And : Minimum swap amount to generate fees.
+            vm.assume(amountIn > 1e6);
+        }
+
+        (uint160 currentSqrtPriceX96,,,) = stateView.getSlot0(v4PoolKey.toId());
+
+        // When : calling rebalance()
+        vm.prank(initiator);
+        rebalancer.rebalance(
+            address(account),
+            address(positionManagerV4),
+            tokenId,
+            uint256(currentSqrtPriceX96),
+            tickLower,
+            tickUpper,
+            ""
+        );
+
+        // Then : It should return the correct values
+        assertGt(token1.balanceOf(initiator), 0);
+        assertLe(token1.balanceOf(initiator), expectedFee);
+    }
+
     function testFuzz_Success_rebalancePosition_InitiatorFees_Token1(
         uint256 fee,
         uint128 liquidityPool,
@@ -365,6 +498,139 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         // And : Move lower tick to the left (should trigger a zeroToOne swap)
         tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, position.tickLower - 1000));
         tickUpper = position.tickUpper;
+
+        // And: The initiator is initiated.
+        tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
+        fee = bound(fee, MIN_INITIATOR_FEE, MAX_INITIATOR_FEE);
+        vm.prank(initiator);
+        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
+
+        // And : Set initiator for account
+        vm.prank(account.owner());
+        rebalancer.setAccountInfo(address(account), initiator, address(0));
+
+        // And : Transfer position to account owner
+        vm.prank(users.liquidityProvider);
+        ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, users.accountOwner, tokenId);
+
+        {
+            address[] memory assets_ = new address[](1);
+            assets_[0] = address(positionManagerV4);
+            uint256[] memory assetIds_ = new uint256[](1);
+            assetIds_[0] = tokenId;
+            uint256[] memory assetAmounts_ = new uint256[](1);
+            assetAmounts_[0] = 1;
+
+            // And : Deposit position in Account
+            vm.startPrank(users.accountOwner);
+            ERC721(address(positionManagerV4)).approve(address(account), tokenId);
+            account.deposit(assets_, assetIds_, assetAmounts_);
+            vm.stopPrank();
+        }
+
+        uint256 expectedFee;
+        {
+            RebalancerUniswapV4.PositionState memory position_ = rebalancer.getPositionState(
+                tokenId, tickLower, tickUpper, TickMath.getSqrtPriceAtTick(tickCurrent), initiator
+            );
+            bool zeroToOne;
+            uint256 amountIn;
+            (,, zeroToOne, amountIn,, expectedFee) =
+                getRebalanceParams(tokenId, position.tickLower, position.tickUpper, position_, initiator);
+            vm.assume(zeroToOne == true);
+            // And : Assume minimum amountIn so that there's a positive fee.
+            vm.assume(amountIn > 1e6);
+        }
+
+        (uint160 currentSqrtPriceX96,,,) = stateView.getSlot0(v4PoolKey.toId());
+
+        // When : calling rebalance()
+        vm.prank(initiator);
+        rebalancer.rebalance(
+            address(account),
+            address(positionManagerV4),
+            tokenId,
+            uint256(currentSqrtPriceX96),
+            tickLower,
+            tickUpper,
+            ""
+        );
+
+        // Then : It should return the correct values
+        assertGt(token0.balanceOf(initiator), 0);
+        assertLe(token0.balanceOf(initiator), expectedFee);
+    }
+
+    function testFuzz_Success_rebalancePosition_InitiatorFees_Token1_WithFees(
+        uint256 fee,
+        uint128 liquidityPool,
+        uint256 tolerance,
+        address initiator,
+        int24 tickLower,
+        int24 tickUpper,
+        RebalancerUniswapV4.PositionState memory position,
+        address account_
+    ) public {
+        // Given: rebalancer is not the account.
+        vm.assume(account_ != address(rebalancer));
+
+        // And: Reasonable current price.
+        position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
+
+        // And: Pool has reasonable liquidity.
+        // Hardcoded value, the only objective of this test is to validate fee accounting.
+        liquidityPool = 1e27;
+
+        // And: A pool with liquidity with tickSpacing 1 (fee = 100).
+        initPoolAndAddLiquidity(uint160(position.sqrtPriceX96), liquidityPool, POOL_FEE, TICK_SPACING, address(0));
+
+        // And: A valid position with multiple tickSpacing.
+        // And: Position is in range (has both tokens).
+        int24 tickCurrent = TickMath.getTickAtSqrtPrice(uint160(position.sqrtPriceX96));
+        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, tickCurrent - 10));
+        position.tickLower = position.tickLower / TICK_SPACING * TICK_SPACING;
+        position.tickUpper = int24(bound(position.tickUpper, tickCurrent + 10, BOUND_TICK_UPPER));
+        position.tickUpper = position.tickUpper / TICK_SPACING * TICK_SPACING;
+        position.liquidity = uint128(bound(position.liquidity, 1e19, 1e23));
+
+        uint256 tokenId = mintPositionV4(
+            v4PoolKey,
+            position.tickLower,
+            position.tickUpper,
+            position.liquidity,
+            type(uint128).max,
+            type(uint128).max,
+            users.liquidityProvider
+        );
+
+        // And : Move lower tick to the left (should trigger a zeroToOne swap)
+        tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, position.tickLower - 1000));
+        tickUpper = position.tickUpper;
+
+        {
+            // And : Set fees for pool in general (amount below are defined in USD)
+            // We use upper and lower boundSqrtPriceX96 of the position to avoid stack to deep declaring other vars.
+            FeeGrowth memory feeData;
+            feeData.desiredFee0 = bound(position.lowerBoundSqrtPriceX96, 1, 100_000);
+            feeData.desiredFee1 = bound(position.upperBoundSqrtPriceX96, 1, 100_000);
+            feeData = setFeeState(feeData, v4PoolKey, stateView.getLiquidity(v4PoolKey.toId()));
+        }
+
+        {
+            bytes32 positionId = keccak256(
+                abi.encodePacked(address(positionManagerV4), position.tickLower, position.tickUpper, bytes32(tokenId))
+            );
+
+            // And: Position has accumulated fees.
+            (uint256 feeAmount0, uint256 feeAmount1) = getFeeAmounts(
+                tokenId,
+                v4PoolKey.toId(),
+                position.tickLower,
+                position.tickUpper,
+                stateView.getPositionLiquidity(v4PoolKey.toId(), positionId)
+            );
+            vm.assume(feeAmount0 + feeAmount1 > 0);
+        }
 
         // And: The initiator is initiated.
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
