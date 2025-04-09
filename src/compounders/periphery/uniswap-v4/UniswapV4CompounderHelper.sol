@@ -46,8 +46,6 @@ contract UniswapV4CompounderHelper {
     error UnexpectedRevertBytes();
     error PoolManagerOnly();
 
-    event LogUint(uint256);
-
     /* //////////////////////////////////////////////////////////////
                                 CONSTRUCTOR
     ////////////////////////////////////////////////////////////// */
