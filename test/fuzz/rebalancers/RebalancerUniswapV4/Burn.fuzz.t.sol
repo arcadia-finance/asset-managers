@@ -28,28 +28,56 @@ contract Burn_BurnLogic_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_burn(InitVariables memory initVars, LpVariables memory lpVars, FeeGrowth memory feeData)
-        public
-    {
-        // Given: A valid position.
-        uint256 id;
-        (initVars, lpVars, id) = initPoolAndCreatePositionWithFees(initVars, lpVars, feeData);
+    function testFuzz_Success_burn(
+        RebalancerUniswapV4.PositionState memory position,
+        uint128 liquidityPool,
+        FeeGrowth memory feeData
+    ) public {
+        // Given: Reasonable current price.
+        position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
 
-        bytes32 positionId =
-            keccak256(abi.encodePacked(address(positionManagerV4), lpVars.tickLower, lpVars.tickUpper, bytes32(id)));
-        lpVars.liquidity = stateView.getPositionLiquidity(v4PoolKey.toId(), positionId);
+        // And: Pool has reasonable liquidity.
+        liquidityPool =
+            uint128(bound(liquidityPool, UniswapHelpers.maxLiquidity(10) / 1000, UniswapHelpers.maxLiquidity(1) / 10));
+
+        // And: A pool with liquidity with tickSpacing 1 (fee = 100).
+        uint256 id =
+            initPoolAndAddLiquidity(uint160(position.sqrtPriceX96), liquidityPool, POOL_FEE, TICK_SPACING, address(0));
+
+        {
+            bytes32 positionId =
+                keccak256(abi.encodePacked(address(positionManagerV4), BOUND_TICK_LOWER, BOUND_TICK_UPPER, bytes32(id)));
+            position.liquidity = stateView.getPositionLiquidity(v4PoolKey.toId(), positionId);
+
+            (uint160 sqrtPrice,,,) = stateView.getSlot0(v4PoolKey.toId());
+
+            (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
+                sqrtPrice,
+                TickMath.getSqrtPriceAtTick(BOUND_TICK_LOWER),
+                TickMath.getSqrtPriceAtTick(BOUND_TICK_UPPER),
+                position.liquidity
+            );
+            // Ensure a minimum amount of both tokens in the position
+            vm.assume(amount0 > 1e6 && amount1 > 1e6);
+        }
+
+        // And : Set fees for pool in general (amount below are defined in USD)
+        feeData.desiredFee0 = bound(feeData.desiredFee0, 1, 100);
+        feeData.desiredFee1 = bound(feeData.desiredFee1, 1, 100);
+        uint128 liquidity = stateView.getLiquidity(v4PoolKey.toId());
+        feeData = setFeeState(feeData, v4PoolKey, liquidity);
 
         // And: Position has accumulated fees.
         (uint256 feeAmount0, uint256 feeAmount1) =
-            getFeeAmounts(id, v4PoolKey.toId(), lpVars.tickLower, lpVars.tickUpper, lpVars.liquidity);
+            getFeeAmounts(id, v4PoolKey.toId(), BOUND_TICK_LOWER, BOUND_TICK_UPPER, position.liquidity);
         vm.assume(feeAmount0 + feeAmount1 > 0);
 
         (uint160 sqrtPriceX96,,,) = stateView.getSlot0(v4PoolKey.toId());
         (uint256 principal0, uint256 principal1) = LiquidityAmounts.getAmountsForLiquidity(
             sqrtPriceX96,
-            TickMath.getSqrtPriceAtTick(lpVars.tickLower),
-            TickMath.getSqrtPriceAtTick(lpVars.tickUpper),
-            lpVars.liquidity
+            TickMath.getSqrtPriceAtTick(BOUND_TICK_LOWER),
+            TickMath.getSqrtPriceAtTick(BOUND_TICK_UPPER),
+            position.liquidity
         );
 
         // Transfer position to contract.

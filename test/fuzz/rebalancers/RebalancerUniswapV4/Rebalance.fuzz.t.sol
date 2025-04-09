@@ -297,6 +297,8 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
             (,, zeroToOne, amountIn,, expectedFee) =
                 getRebalanceParams(tokenId, position.tickLower, position.tickUpper, position_, initiator);
             vm.assume(zeroToOne == false);
+            // And : Minimum swap amount to generate fees.
+            vm.assume(amountIn > 1e6);
         }
 
         (uint160 currentSqrtPriceX96,,,) = stateView.getSlot0(v4PoolKey.toId());

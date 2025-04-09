@@ -251,73 +251,6 @@ abstract contract RebalancerUniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         vm.etch(0x4200000000000000000000000000000000000006, address(weth9).code);
     }
 
-    function initPool(InitVariables memory initVars) public returns (InitVariables memory initVars_) {
-        // Given : Tokens have min 6 and max 18 decimals
-        initVars.token0Decimals = uint8(bound(initVars.token0Decimals, 6, 18));
-        initVars.token1Decimals = uint8(bound(initVars.token1Decimals, 6, 18));
-
-        // And : add new pool tokens to Arcadia
-        token0 = new ERC20Mock("TokenA", "TOKA", initVars.token0Decimals);
-        token1 = new ERC20Mock("TokenB", "TOKB", initVars.token1Decimals);
-        if (token0 > token1) {
-            (token0, token1) = (token1, token0);
-            (initVars.token0Decimals, initVars.token1Decimals) = (initVars.token0Decimals, initVars.token1Decimals);
-        }
-
-        uint256 sqrtPriceX96;
-        {
-            // And : Avoid too big price diffs, this should not have impact on test objective
-            initVars.priceToken0 = bound(initVars.priceToken0, 1, type(uint256).max / 10 ** 64);
-            initVars.priceToken1 = bound(initVars.priceToken1, 1, type(uint256).max / 10 ** 64);
-
-            // And : Use price for 1e18 wei assets, in order to obtain valid ratio of sqrtPriceX96
-            uint256 priceToken0ScaledForDecimals = initVars.priceToken0 * 10 ** (18 - token0.decimals());
-            uint256 priceToken1ScaledForDecimals = initVars.priceToken1 * 10 ** (18 - token1.decimals());
-
-            // And : Cast to uint160 will overflow, not realistic.
-            vm.assume(priceToken0ScaledForDecimals / priceToken1ScaledForDecimals < 2 ** 128);
-            // And : sqrtPriceX96 must be within ranges, or TickMath reverts.
-            uint256 priceXd28 = priceToken0ScaledForDecimals * 1e28 / priceToken1ScaledForDecimals;
-            uint256 sqrtPriceXd14 = FixedPointMathLib.sqrt(priceXd28);
-            sqrtPriceX96 = sqrtPriceXd14 * 2 ** 96 / 1e14;
-            vm.assume(sqrtPriceX96 > TickMath.MIN_SQRT_PRICE);
-            vm.assume(sqrtPriceX96 < TickMath.MAX_SQRT_PRICE);
-        }
-
-        addAssetToArcadia(address(token0), int256(initVars.priceToken0));
-        addAssetToArcadia(address(token1), int256(initVars.priceToken1));
-
-        // And : Initialize a new uniV4 pool
-        v4PoolKey = initializePoolV4(
-            address(token0), address(token1), uint160(sqrtPriceX96), address(0), POOL_FEE, TICK_SPACING
-        );
-
-        (, int24 tickCurrent,,) = stateView.getSlot0(v4PoolKey.toId());
-
-        // And : Supply an initial LP position around a specific amount of ticks
-        initVars.tickLower = tickCurrent - (INIT_LP_TICK_RANGE / 2);
-        initVars.tickUpper = tickCurrent + (INIT_LP_TICK_RANGE / 2) - 1;
-
-        uint256 maxLiquidity =
-            getLiquidityDeltaFromAmounts(initVars.tickLower, initVars.tickUpper, uint160(sqrtPriceX96));
-        // Here we set a minimum liquidity of 1e20 to avoid having unbalanced pool to quickly after fee swap.
-        initVars.liquidity = uint128(bound(initVars.liquidity, 1e23, maxLiquidity));
-        vm.assume(initVars.liquidity <= poolManager.getTickSpacingToMaxLiquidityPerTick(TICK_SPACING));
-
-        // And : Mint initial position
-        mintPositionV4(
-            v4PoolKey,
-            initVars.tickLower,
-            initVars.tickUpper,
-            initVars.liquidity,
-            type(uint128).max,
-            type(uint128).max,
-            users.liquidityProvider
-        );
-
-        initVars_ = initVars;
-    }
-
     // From UniV4-core tests
     function getLiquidityDeltaFromAmounts(int24 tickLower, int24 tickUpper, uint160 sqrtPriceX96)
         public
@@ -365,82 +298,6 @@ abstract contract RebalancerUniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
 
         return (tolerance, fee);
-    }
-
-    function initPoolAndCreatePositionWithFees(
-        InitVariables memory initVars,
-        LpVariables memory lpVars,
-        FeeGrowth memory feeData
-    ) public returns (InitVariables memory initVars_, LpVariables memory lpVars_, uint256 tokenId) {
-        // Given : Initialize a uniswapV4 pool
-        initVars_ = initPool(initVars);
-
-        // And : An initiator is set
-        (uint256 tolerance, uint256 fee) = setInitiatorInfo(initVars_.initiator, initVars_.tolerance, initVars_.fee);
-        initVars_.tolerance = tolerance;
-        initVars_.fee = fee;
-
-        // And : get valid position vars
-        lpVars_ = givenValidTestVars(v4PoolKey, lpVars, initVars);
-
-        // And : Create new position and generate fees
-        tokenId = createNewPositionAndGenerateFees(lpVars_, v4PoolKey, feeData);
-    }
-
-    function givenValidTestVars(PoolKey memory poolKey, LpVariables memory lpVars, InitVariables memory initVars)
-        public
-        view
-        returns (LpVariables memory lpVars_)
-    {
-        // Given : Liquidity for new position is in limits.
-        uint128 currentLiquidity = stateView.getLiquidity(poolKey.toId());
-        uint256 minLiquidity = currentLiquidity.mulDivDown(MIN_LIQUIDITY, 1e18);
-        // And : Use max liquidity threshold in order to avoid excessive slippage in tests
-        uint256 maxLiquidity = currentLiquidity.mulDivDown(LIQUIDITY_TRESHOLD, 1e18);
-        lpVars.liquidity = uint128(bound(lpVars.liquidity, minLiquidity, maxLiquidity));
-
-        // And : Lower and upper ticks of the position are within the initial liquidity range
-        (, int24 tickCurrent,,) = stateView.getSlot0(poolKey.toId());
-
-        lpVars.tickLower = int24(bound(lpVars.tickLower, initVars.tickLower + 20, tickCurrent - MIN_TICK_SPACING));
-        lpVars.tickUpper = int24(bound(lpVars.tickUpper, tickCurrent + MIN_TICK_SPACING, initVars.tickUpper - 20));
-
-        lpVars_ = lpVars;
-    }
-
-    function createNewPositionAndGenerateFees(
-        LpVariables memory lpVars,
-        PoolKey memory poolKey,
-        FeeGrowth memory feeData
-    ) public returns (uint256 tokenId) {
-        // Given : Mint new position
-        tokenId = mintPositionV4(
-            poolKey,
-            lpVars.tickLower,
-            lpVars.tickUpper,
-            lpVars.liquidity,
-            type(uint128).max,
-            type(uint128).max,
-            users.liquidityProvider
-        );
-
-        {
-            (uint160 sqrtPrice,,,) = stateView.getSlot0(poolKey.toId());
-            (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
-                sqrtPrice,
-                TickMath.getSqrtPriceAtTick(lpVars.tickLower),
-                TickMath.getSqrtPriceAtTick(lpVars.tickUpper),
-                lpVars.liquidity
-            );
-            // Ensure a minimum amount of both tokens in the position
-            vm.assume(amount0 > 1e6 && amount1 > 1e6);
-        }
-
-        // And : Set fees for pool in general (amount below are defined in USD)
-        feeData.desiredFee0 = bound(feeData.desiredFee0, 10, 12);
-        feeData.desiredFee1 = bound(feeData.desiredFee1, 10, 12);
-        uint128 liquidity = stateView.getLiquidity(poolKey.toId());
-        feeData = setFeeState(feeData, poolKey, liquidity);
     }
 
     function setFeeState(FeeGrowth memory feeData, PoolKey memory poolKey, uint128 liquidity)
@@ -546,31 +403,6 @@ abstract contract RebalancerUniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
             amount1 =
                 FullMath.mulDiv(feeGrowthInside1CurrentX128 - feeGrowthInside1LastX128, liquidity, FixedPoint128.Q128);
         }
-    }
-
-    function getValuesInUsd(uint256 amountA0, uint256 amountA1, uint256 amountB0, uint256 amountB1)
-        public
-        view
-        returns (uint256 usdValueA, uint256 usdValueB)
-    {
-        address[] memory assets = new address[](2);
-        assets[0] = address(token0);
-        assets[1] = address(token1);
-        uint256[] memory assetAmounts = new uint256[](2);
-        assetAmounts[0] = amountA0;
-        assetAmounts[1] = amountA1;
-
-        AssetValueAndRiskFactors[] memory valuesAndRiskFactors =
-            registry.getValuesInUsd(address(0), assets, new uint256[](2), assetAmounts);
-
-        usdValueA = valuesAndRiskFactors[0].assetValue + valuesAndRiskFactors[1].assetValue;
-
-        assetAmounts[0] = amountB0;
-        assetAmounts[1] = amountB1;
-
-        valuesAndRiskFactors = registry.getValuesInUsd(address(0), assets, new uint256[](2), assetAmounts);
-
-        usdValueB = valuesAndRiskFactors[0].assetValue + valuesAndRiskFactors[1].assetValue;
     }
 
     function getSqrtPriceX96(uint256 priceToken0, uint256 priceToken1) public pure returns (uint160 sqrtPriceX96) {
