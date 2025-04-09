@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity 0.8.22;
+pragma solidity ^0.8.22;
 
 import { ActionData } from "../../../../lib/accounts-v2/src/interfaces/IActionBase.sol";
 import { ArcadiaLogic_Fuzz_Test } from "./_ArcadiaLogic.fuzz.t.sol";
