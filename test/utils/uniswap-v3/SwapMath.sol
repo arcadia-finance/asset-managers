@@ -1,6 +1,6 @@
 // https://github.com/Uniswap/v3-core/blob/main/contracts/libraries/SwapMath.sol
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity 0.8.22;
+pragma solidity ^0.8.22;
 
 import { FullMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
 import { SqrtPriceMath } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/SqrtPriceMath.sol";

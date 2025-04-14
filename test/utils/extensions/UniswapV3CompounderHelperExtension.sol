@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity 0.8.22;
+pragma solidity ^0.8.22;
 
 import { IUniswapV3Compounder } from "../../../src/compounders/uniswap-v3/interfaces/IUniswapV3Compounder.sol";
 import { PositionState } from "../../../src/compounders/uniswap-v3/interfaces/IUniswapV3Compounder.sol";
