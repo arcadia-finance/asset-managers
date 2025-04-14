@@ -116,7 +116,6 @@ contract RebalancerUniswapV4 is IActionBase {
     error OnlyAccount();
     error OnlyAccountOwner();
     error OnlyPool();
-    error OnlyPoolManager();
     error PoolManagerOnly();
     error Reentered();
     error UnbalancedPool();
