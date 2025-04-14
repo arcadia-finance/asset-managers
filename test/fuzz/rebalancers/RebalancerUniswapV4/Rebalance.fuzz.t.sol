@@ -496,7 +496,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         );
 
         // And : Move lower tick to the left (should trigger a zeroToOne swap)
-        tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, position.tickLower - 1000));
+        tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, position.tickLower - 1));
         tickUpper = position.tickUpper;
 
         // And: The initiator is initiated.
@@ -604,7 +604,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         );
 
         // And : Move lower tick to the left (should trigger a zeroToOne swap)
-        tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, position.tickLower - 1000));
+        tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, position.tickLower - 1));
         tickUpper = position.tickUpper;
 
         {
