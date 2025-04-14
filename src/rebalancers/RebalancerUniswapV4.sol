@@ -18,13 +18,10 @@ import { IPositionManager } from "./interfaces/IPositionManager.sol";
 import { IStrategyHook } from "./interfaces/IStrategyHook.sol";
 import { IWETH } from "./interfaces/IWETH.sol";
 import { LiquidityAmounts } from "./libraries/cl-math/LiquidityAmounts.sol";
-import { MintLogic } from "./libraries/shared-uniswap-v3-slipstream/MintLogic.sol";
 import { PoolKey } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 import { PricingLogic } from "./libraries/cl-math/PricingLogic.sol";
 import { RebalanceLogic } from "./libraries/RebalanceLogic.sol";
 import { SafeApprove } from "./libraries/SafeApprove.sol";
-import { SlipstreamLogic } from "./libraries/slipstream/SlipstreamLogic.sol";
-import { StakedSlipstreamLogic } from "./libraries/slipstream/StakedSlipstreamLogic.sol";
 import { SwapLogicV4 } from "./libraries/uniswap-v4/SwapLogicV4.sol";
 import { SwapParams } from "./interfaces/IPoolManager.sol";
 import { TickMath } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
@@ -166,7 +163,7 @@ contract RebalancerUniswapV4 is IActionBase {
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Rebalances a Uniswap V4 or Slipstream Liquidity Position, owned by an Arcadia Account.
+     * @notice Rebalances a Uniswap V4 Liquidity Position, owned by an Arcadia Account.
      * @param account_ The Arcadia Account owning the position.
      * @param positionManager The contract address of the Position Manager.
      * @param oldId The oldId of the Liquidity Position to rebalance.
