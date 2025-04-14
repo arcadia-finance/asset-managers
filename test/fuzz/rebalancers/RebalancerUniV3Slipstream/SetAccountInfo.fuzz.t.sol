@@ -4,6 +4,7 @@
  */
 pragma solidity ^0.8.26;
 
+import { HookMock } from "../../../utils/mocks/HookMock.sol";
 import { RebalancerUniV3Slipstream } from "../../../../src/rebalancers/RebalancerUniV3Slipstream.sol";
 import { RebalancerUniV3Slipstream_Fuzz_Test } from "./_RebalancerUniV3Slipstream.fuzz.t.sol";
 
@@ -11,6 +12,12 @@ import { RebalancerUniV3Slipstream_Fuzz_Test } from "./_RebalancerUniV3Slipstrea
  * @notice Fuzz tests for the function "setAccountInfo" of contract "RebalancerUniV3Slipstream".
  */
 contract SetAccountInfo_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstream_Fuzz_Test {
+    /* ///////////////////////////////////////////////////////////////
+                              TEST CONTRACTS
+    /////////////////////////////////////////////////////////////// */
+
+    HookMock internal strategyHook;
+
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
@@ -35,7 +42,7 @@ contract SetAccountInfo_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Sl
         // Then: it should revert
         vm.prank(caller);
         vm.expectRevert(RebalancerUniV3Slipstream.NotAnAccount.selector);
-        rebalancer.setAccountInfo(account_, initiator, hook);
+        rebalancer.setAccountInfo(account_, initiator, hook, "");
     }
 
     function testFuzz_Revert_setAccountInfo_OnlyAccountOwner(address caller, address initiator, address hook) public {
@@ -46,19 +53,25 @@ contract SetAccountInfo_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Sl
         // Then: it should revert
         vm.prank(caller);
         vm.expectRevert(RebalancerUniV3Slipstream.OnlyAccountOwner.selector);
-        rebalancer.setAccountInfo(address(account), initiator, hook);
+        rebalancer.setAccountInfo(address(account), initiator, hook, "");
     }
 
-    function testFuzz_Success_setAccountInfo(address initiator, address hook) public {
-        // Given: account is a valid Arcadia Account
+    function testFuzz_Success_setAccountInfo(address initiator, bytes calldata rebalanceInfo) public {
+        // Given: Strategy hook is deployed.
+        strategyHook = new HookMock();
+
+        // And: account is a valid Arcadia Account
         // When: Owner calls setInitiator on the rebalancer
         vm.prank(account.owner());
-        rebalancer.setAccountInfo(address(account), initiator, hook);
+        rebalancer.setAccountInfo(address(account), initiator, address(strategyHook), rebalanceInfo);
 
         // Then: Initiator should be set for that Account
         assertEq(rebalancer.accountToInitiator(address(account)), initiator);
 
         // And: Hook should be set for that Account.
-        assertEq(rebalancer.strategyHook(address(account)), hook);
+        assertEq(rebalancer.strategyHook(address(account)), address(strategyHook));
+
+        // And: Hook storage has been updated.
+        assertEq(strategyHook.rebalanceInfo(address(account)), rebalanceInfo);
     }
 }

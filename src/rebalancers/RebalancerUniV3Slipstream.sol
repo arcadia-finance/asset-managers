@@ -428,19 +428,22 @@ contract RebalancerUniV3Slipstream is ReentrancyGuard, IActionBase {
      * @param account_ The contract address of the Arcadia Account to set the information for.
      * @param initiator The address of the initiator.
      * @param hook The contract address of the hook.
+     * @param rebalanceInfo Account-specific rebalancing info stored in the hook.
      * @dev An initiator will be permissioned to rebalance any
      * Liquidity Position held in the specified Arcadia Account.
      * @dev If the hook is set to address(0), the hook will be disabled.
      * @dev When an Account is transferred to a new owner,
      * the asset manager itself (this contract) and hence its initiator and hook will no longer be allowed by the Account.
      */
-    function setAccountInfo(address account_, address initiator, address hook) external {
+    function setAccountInfo(address account_, address initiator, address hook, bytes calldata rebalanceInfo) external {
         if (account != address(0)) revert Reentered();
         if (!ArcadiaLogic.FACTORY.isAccount(account_)) revert NotAnAccount();
         if (msg.sender != IAccount(account_).owner()) revert OnlyAccountOwner();
 
         accountToInitiator[account_] = initiator;
         strategyHook[account_] = hook;
+
+        if (hook != address(0)) IStrategyHook(hook).setRebalanceInfo(account_, rebalanceInfo);
 
         emit AccountInfoSet(account_, initiator, hook);
     }
