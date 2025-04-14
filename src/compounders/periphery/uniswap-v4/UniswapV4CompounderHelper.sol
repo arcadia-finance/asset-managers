@@ -11,8 +11,8 @@ import {
 import { FixedPoint128 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint128.sol";
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
-import { IPoolManager } from "../../uniswap-V4/interfaces/IPoolManager.sol";
-import { IUniswapV4Compounder, PositionState, Fees } from "../../uniswap-V4/interfaces/IUniswapV4Compounder.sol";
+import { IPoolManager } from "../../uniswap-v4/interfaces/IPoolManager.sol";
+import { IUniswapV4Compounder, PositionState, Fees } from "../../uniswap-v4/interfaces/IUniswapV4Compounder.sol";
 import { LiquidityAmounts } from "../../libraries/LiquidityAmounts.sol";
 import { PoolId } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolId.sol";
 import { PoolKey } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
