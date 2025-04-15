@@ -120,7 +120,9 @@ contract RebalancerUniV3Slipstream is ReentrancyGuard, IActionBase {
                                 EVENTS
     ////////////////////////////////////////////////////////////// */
 
-    event AccountInfoSet(address indexed account, address indexed initiator, address indexed strategyHook);
+    event AccountInfoSet(
+        address indexed account, address indexed initiator, address indexed strategyHook, address token0, address token1
+    );
     event Rebalance(address indexed account, address indexed positionManager, uint256 oldId, uint256 newId);
 
     /* //////////////////////////////////////////////////////////////
@@ -428,6 +430,8 @@ contract RebalancerUniV3Slipstream is ReentrancyGuard, IActionBase {
      * @param account_ The contract address of the Arcadia Account to set the information for.
      * @param initiator The address of the initiator.
      * @param hook The contract address of the hook.
+     * @param token0 The contract address of token0 in the Liquidity Position.
+     * @param token1 The contract address of token1 in the Liquidity Position.
      * @param rebalanceInfo Account-specific rebalancing info stored in the hook.
      * @dev An initiator will be permissioned to rebalance any
      * Liquidity Position held in the specified Arcadia Account.
@@ -435,7 +439,14 @@ contract RebalancerUniV3Slipstream is ReentrancyGuard, IActionBase {
      * @dev When an Account is transferred to a new owner,
      * the asset manager itself (this contract) and hence its initiator and hook will no longer be allowed by the Account.
      */
-    function setAccountInfo(address account_, address initiator, address hook, bytes calldata rebalanceInfo) external {
+    function setAccountInfo(
+        address account_,
+        address initiator,
+        address hook,
+        address token0,
+        address token1,
+        bytes calldata rebalanceInfo
+    ) external {
         if (account != address(0)) revert Reentered();
         if (!ArcadiaLogic.FACTORY.isAccount(account_)) revert NotAnAccount();
         if (msg.sender != IAccount(account_).owner()) revert OnlyAccountOwner();
@@ -443,9 +454,10 @@ contract RebalancerUniV3Slipstream is ReentrancyGuard, IActionBase {
         accountToInitiator[account_] = initiator;
         strategyHook[account_] = hook;
 
-        if (hook != address(0)) IStrategyHook(hook).setRebalanceInfo(account_, rebalanceInfo);
+        (token0, token1) = token0 < token1 ? (token0, token1) : (token1, token0);
+        if (hook != address(0)) IStrategyHook(hook).setRebalanceInfo(account_, token0, token1, rebalanceInfo);
 
-        emit AccountInfoSet(account_, initiator, hook);
+        emit AccountInfoSet(account_, initiator, hook, token0, token1);
     }
 
     /* ///////////////////////////////////////////////////////////////

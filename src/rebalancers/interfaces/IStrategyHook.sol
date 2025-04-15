@@ -15,5 +15,5 @@ interface IStrategyHook {
 
     function afterRebalance(address account, address positionManager, uint256 oldId, uint256 newId) external;
 
-    function setRebalanceInfo(address account, bytes calldata rebalanceInfo) external;
+    function setRebalanceInfo(address account, address token0, address token1, bytes calldata rebalanceInfo) external;
 }
