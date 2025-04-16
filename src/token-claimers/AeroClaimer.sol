@@ -4,11 +4,13 @@
  */
 pragma solidity ^0.8.22;
 
-import { ActionData, IActionBase } from "../../../lib/accounts-v2/src/interfaces/IActionBase.sol";
-import { ArcadiaLogic } from "../libraries/ArcadiaLogic.sol";
-import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
-import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { IAccount } from "../interfaces/IAccount.sol";
+import { ActionData, IActionBase } from "../../lib/accounts-v2/src/interfaces/IActionBase.sol";
+import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
+import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { IAccount } from "./interfaces/IAccount.sol";
+import { IFactory } from "../interfaces/IFactory.sol";
+import { IPermit2 } from "../../lib/accounts-v2/src/interfaces/IPermit2.sol";
+import { IStakedSlipstreamAM } from "./interfaces/IStakedSlipstreamAM.sol";
 
 /**
  * @title Permissioned contract to claim AERO emissions from Staked Slipstream Liquidity Positions.
@@ -20,6 +22,9 @@ contract AeroClaimer is IActionBase {
     /* //////////////////////////////////////////////////////////////
                                 CONSTANTS
     ////////////////////////////////////////////////////////////// */
+
+    // The contract address of the Arcadia Factory.
+    address internal constant FACTORY = 0xDa14Fdd72345c4d2511357214c5B89A919768e59;
 
     // The address of the Staked Slipstream AM.
     address internal constant STAKED_SLIPSTREAM_AM = 0x1Dc7A0f5336F52724B650E39174cfcbbEdD67bF1;
@@ -93,7 +98,7 @@ contract AeroClaimer is IActionBase {
         account = account_;
 
         // Encode data for the flash-action.
-        bytes memory actionData = ArcadiaLogic._encodeActionData(msg.sender, address(STAKED_SLIPSTREAM_AM), id);
+        bytes memory actionData = _encodeActionData(msg.sender, id);
 
         // Call flashAction() with this contract as actionTarget.
         IAccount(account_).flashAction(address(this), actionData);
@@ -148,6 +153,7 @@ contract AeroClaimer is IActionBase {
     /**
      * @notice Sets the information requested for an initiator.
      * @param initiatorFee_ The fee paid to the initiator, with 18 decimals precision.
+     * @dev An initiator can update its fee but can only decrease it.
      */
     function setInitiatorFee(uint256 initiatorFee_) external {
         if (account != address(0)) revert Reentered();
@@ -155,17 +161,12 @@ contract AeroClaimer is IActionBase {
 
         if (!initiatorSet[msg.sender]) {
             initiatorSet[msg.sender] = true;
+        } else {
+            // Fee can only decrease.
+            if (initiatorFee_ > initiatorFee[msg.sender]) revert InvalidValue();
         }
 
-        if (
-            fee > MAX_INITIATOR_FEE || tolerance > MAX_TOLERANCE || minLiquidityRatio < MIN_LIQUIDITY_RATIO
-                || minLiquidityRatio > 1e18
-        ) {
-            revert InvalidValue();
-        }
-
-        // Cache struct
-        initiatorShare[msg.sender] = initiatorShare_;
+        initiatorFee[msg.sender] = initiatorFee_;
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -231,7 +232,7 @@ contract AeroClaimer is IActionBase {
      */
     function setInitiator(address account_, address initiator) external {
         if (account != address(0)) revert Reentered();
-        if (!ArcadiaLogic.FACTORY.isAccount(account_)) revert NotAnAccount();
+        if (!IFactory(FACTORY).isAccount(account_)) revert NotAnAccount();
         if (msg.sender != IAccount(account_).owner()) revert OnlyAccountOwner();
 
         accountToInitiator[account_] = initiator;
