@@ -15,18 +15,20 @@ import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IAccount } from "../interfaces/IAccount.sol";
 import { IPermit2 } from "../interfaces/IPermit2.sol";
-import { IPoolManager } from "./interfaces/IPoolManager.sol";
+import { IPoolManager } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/interfaces/IPoolManager.sol";
 import { LiquidityAmounts } from "../../../lib/accounts-v2/lib/v4-periphery/src/libraries/LiquidityAmounts.sol";
 import { PoolKey } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 import {
     PositionInfoLibrary,
     PositionInfo
 } from "../../../lib/accounts-v2/lib/v4-periphery/src/libraries/PositionInfoLibrary.sol";
-import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
+import { SafeApprove } from "../../libraries/SafeApprove.sol";
+import { StateLibrary } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/StateLibrary.sol";
+import { TickMath } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 import { UniswapV4Logic } from "./libraries/UniswapV4Logic.sol";
 
 /**
- * @title Permissioned Compounder for UniswapV4 Liquidity Positions.
+ * @title Compounder for UniswapV4 Liquidity Positions.
  * @author Pragma Labs
  * @notice The Compounder will act as an Asset Manager for Arcadia Accounts.
  * It will allow third parties (initiators) to trigger the compounding functionality for a Uniswap V4 Liquidity Position in the Account.
@@ -41,7 +43,9 @@ import { UniswapV4Logic } from "./libraries/UniswapV4Logic.sol";
 contract UniswapV4Compounder is IActionBase {
     using BalanceDeltaLibrary for BalanceDelta;
     using FixedPointMathLib for uint256;
+    using SafeApprove for ERC20;
     using SafeTransferLib for ERC20;
+    using StateLibrary for IPoolManager;
     /* //////////////////////////////////////////////////////////////
                                 CONSTANTS
     ////////////////////////////////////////////////////////////// */
@@ -49,11 +53,11 @@ contract UniswapV4Compounder is IActionBase {
     // The Permit2 contract.
     IPermit2 internal constant PERMIT_2 = IPermit2(0x000000000022D473030F116dDEE9F6B43aC78BA3);
 
-    // The maximum deviation of the actual pool price an initiator can set, in % with 18 decimals precision.
+    // The maximum deviation of the actual pool price copared the price given by the initiator, with 18 decimals precision.
     uint256 public immutable MAX_TOLERANCE;
 
     // The maximum fee an initiator can set, with 18 decimals precision.
-    uint256 public immutable MAX_INITIATOR_SHARE;
+    uint256 public immutable MAX_INITIATOR_FEE;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
@@ -61,6 +65,9 @@ contract UniswapV4Compounder is IActionBase {
 
     // The Account to compound the fees for, used as transient storage.
     address internal account;
+
+    // A mapping if permit2 has been approved for a certain token.
+    mapping(address token => bool approved) internal approved;
 
     // A mapping from initiator to rebalancing fee.
     mapping(address initiator => InitiatorInfo) public initiatorInfo;
@@ -137,7 +144,7 @@ contract UniswapV4Compounder is IActionBase {
      * allowed deviation of the sqrtPriceX96 for the lower and upper boundaries.
      */
     constructor(uint256 maxTolerance, uint256 maxInitiatorShare) {
-        MAX_INITIATOR_SHARE = maxInitiatorShare;
+        MAX_INITIATOR_FEE = maxInitiatorShare;
         MAX_TOLERANCE = maxTolerance;
     }
 
@@ -261,12 +268,12 @@ contract UniswapV4Compounder is IActionBase {
 
         // Handle approvals for non-native tokens.
         if (!token0IsNative && amount0 > 0) {
-            _checkAndApprovePermit2(Currency.unwrap(poolKey.currency0), amount0);
+            _checkAndApprovePermit2(Currency.unwrap(poolKey.currency0));
         }
-        if (amount1 > 0) _checkAndApprovePermit2(Currency.unwrap(poolKey.currency1), amount1);
+        if (amount1 > 0) _checkAndApprovePermit2(Currency.unwrap(poolKey.currency1));
 
         // Calculate liquidity to be added based on fee amounts and updated sqrtPriceX96 after swap.
-        (uint160 newSqrtPriceX96,,,) = UniswapV4Logic.STATE_VIEW.getSlot0(poolKey.toId());
+        (uint160 newSqrtPriceX96,,,) = UniswapV4Logic.POOL_MANAGER.getSlot0(poolKey.toId());
         uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
             newSqrtPriceX96, uint160(sqrtRatioLower), uint160(sqrtRatioUpper), amount0, amount1
         );
@@ -445,10 +452,9 @@ contract UniswapV4Compounder is IActionBase {
         (poolKey, info) = UniswapV4Logic.POSITION_MANAGER.getPoolAndPositionInfo(id);
 
         // Get data of the Liquidity Position.
-        position.sqrtRatioLower = TickMath.getSqrtRatioAtTick(info.tickLower());
-        position.sqrtRatioUpper = TickMath.getSqrtRatioAtTick(info.tickUpper());
-        // TODO: try to access via PoolManager instead of StateView, but fails.
-        (position.sqrtPriceX96,,,) = UniswapV4Logic.STATE_VIEW.getSlot0(poolKey.toId());
+        position.sqrtRatioLower = TickMath.getSqrtPriceAtTick(info.tickLower());
+        position.sqrtRatioUpper = TickMath.getSqrtPriceAtTick(info.tickUpper());
+        (position.sqrtPriceX96,,,) = UniswapV4Logic.POOL_MANAGER.getSlot0(poolKey.toId());
 
         // Calculate the upper and lower bounds of sqrtPriceX96 for the Pool to be balanced.
         position.lowerBoundSqrtPriceX96 =
@@ -499,7 +505,7 @@ contract UniswapV4Compounder is IActionBase {
             ) revert InvalidValue();
         } else {
             // If not, the parameters can not exceed certain thresholds.
-            if (initiatorShare > MAX_INITIATOR_SHARE || tolerance > MAX_TOLERANCE) {
+            if (initiatorShare > MAX_INITIATOR_FEE || tolerance > MAX_TOLERANCE) {
                 revert InvalidValue();
             }
         }
@@ -539,23 +545,13 @@ contract UniswapV4Compounder is IActionBase {
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Ensures that the Permit2 contract has sufficient approval to spend a given token
-     *         and grants unlimited approval to the PositionManager via Permit2.
-     * @dev This function performs two key approval steps:
-     *      1. Approves Permit2 to spend the specified token.
-     *      2. Approves the PositionManager to spend the token through Permit2.
-     * @dev If the token requires resetting the approval to zero before setting a new value,
-     *      this function first resets the approval to `0` before setting it to `type(uint256).max`.
-     * @param token The address of the ERC20 token to approve.
-     * @param amount The minimum amount required to be approved.
+     * @notice Ensures that the Permit2 contract has sufficient approval to spend a given token.
+     * @param token The contract address of the token.
      */
-    function _checkAndApprovePermit2(address token, uint256 amount) internal {
-        uint256 currentAllowance =
-            PERMIT_2.allowance(address(this), token, address(UniswapV4Logic.POSITION_MANAGER)).amount;
-
-        if (currentAllowance < amount) {
-            ERC20(token).safeApprove(address(PERMIT_2), 0);
-            ERC20(token).safeApprove(address(PERMIT_2), type(uint256).max);
+    function _checkAndApprovePermit2(address token) internal {
+        if (!approved[token]) {
+            approved[token] = true;
+            ERC20(token).safeApproveWithRetry(address(PERMIT_2), type(uint256).max);
             PERMIT_2.approve(token, address(UniswapV4Logic.POSITION_MANAGER), type(uint160).max, type(uint48).max);
         }
     }

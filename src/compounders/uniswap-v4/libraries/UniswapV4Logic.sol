@@ -9,13 +9,12 @@ import {
     BalanceDeltaLibrary
 } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/BalanceDelta.sol";
 import { Currency } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
-import { FixedPoint96 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
+import { FixedPoint96 } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint96.sol";
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
-import { IPoolManager } from "../interfaces/IPoolManager.sol";
+import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
+import { IPoolManager } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/interfaces/IPoolManager.sol";
 import { IPositionManager } from "../interfaces/IPositionManager.sol";
-import { IStateView } from "../interfaces/IStateView.sol";
-import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
+import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
 library UniswapV4Logic {
     using BalanceDeltaLibrary for BalanceDelta;
@@ -35,9 +34,6 @@ library UniswapV4Logic {
     IPoolManager internal constant POOL_MANAGER = IPoolManager(0x498581fF718922c3f8e6A244956aF099B2652b2b);
     // The Uniswap V4 PositionManager contract.
     IPositionManager internal constant POSITION_MANAGER = IPositionManager(0x7C5f5A4bBd8fD63184577525326123B519429bDc);
-    // The Uniswap V4 StateView contract.
-    // TODO: Check why getSlot0 fails (StateLibrary not implemented on PoolManager).
-    IStateView internal constant STATE_VIEW = IStateView(0xA3c0c9b65baD0b08107Aa264b0f3dB444b867A71);
 
     /**
      * @notice Calculates the amountOut for a given amountIn and sqrtPriceX96 for a hypothetical
@@ -74,7 +70,7 @@ library UniswapV4Logic {
      * price = (amountUsd/usdPriceToken1)/(amountUsd/usdPriceToken0) = usdPriceToken0/usdPriceToken1.
      */
     function _getSqrtPriceX96(uint256 priceToken0, uint256 priceToken1) internal pure returns (uint160 sqrtPriceX96) {
-        if (priceToken1 == 0) return TickMath.MAX_SQRT_RATIO;
+        if (priceToken1 == 0) return TickMath.MAX_SQRT_PRICE;
 
         // Both priceTokens have 18 decimals precision and result of division should have 28 decimals precision.
         // -> multiply by 1e28

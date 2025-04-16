@@ -15,7 +15,7 @@ import { IUniswapV3Pool } from "../uniswap-v3/interfaces/IUniswapV3Pool.sol";
 import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 
 /**
- * @title Permissioned Compounder for Alien Base Liquidity Positions.
+ * @title Compounder for Alien Base Liquidity Positions.
  * @author Pragma Labs
  * @notice The Compounder will act as an Asset Manager for Arcadia Accounts.
  * It will allow third parties (initiators) to trigger the compounding functionality for an Alien Base Liquidity Position in the Account.
@@ -38,7 +38,7 @@ contract AlienBaseCompounder is IActionBase {
     uint256 public immutable MAX_TOLERANCE;
 
     // The maximum fee an initiator can set, with 18 decimals precision.
-    uint256 public immutable MAX_INITIATOR_SHARE;
+    uint256 public immutable MAX_INITIATOR_FEE;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
@@ -113,7 +113,7 @@ contract AlienBaseCompounder is IActionBase {
      * allowed deviation of the sqrtPriceX96 for the lower and upper boundaries.
      */
     constructor(uint256 maxTolerance, uint256 maxInitiatorShare) {
-        MAX_INITIATOR_SHARE = maxInitiatorShare;
+        MAX_INITIATOR_FEE = maxInitiatorShare;
         MAX_TOLERANCE = maxTolerance;
     }
 
@@ -416,7 +416,7 @@ contract AlienBaseCompounder is IActionBase {
             ) revert InvalidValue();
         } else {
             // If not, the parameters can not exceed certain thresholds.
-            if (initiatorShare > MAX_INITIATOR_SHARE || tolerance > MAX_TOLERANCE) {
+            if (initiatorShare > MAX_INITIATOR_FEE || tolerance > MAX_TOLERANCE) {
                 revert InvalidValue();
             }
         }

@@ -15,7 +15,7 @@ import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/l
 import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
 
 /**
- * @title Permissioned Compounder for UniswapV3 Liquidity Positions.
+ * @title Compounder for UniswapV3 Liquidity Positions.
  * @author Pragma Labs
  * @notice The Compounder will act as an Asset Manager for Arcadia Accounts.
  * It will allow third parties (initiators) to trigger the compounding functionality for a Uniswap V3 Liquidity Position in the Account.
@@ -38,7 +38,7 @@ contract UniswapV3Compounder is IActionBase {
     uint256 public immutable MAX_TOLERANCE;
 
     // The maximum fee an initiator can set, with 18 decimals precision.
-    uint256 public immutable MAX_INITIATOR_SHARE;
+    uint256 public immutable MAX_INITIATOR_FEE;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
@@ -47,7 +47,7 @@ contract UniswapV3Compounder is IActionBase {
     // The Account to compound the fees for, used as transient storage.
     address internal account;
 
-    // A mapping from initiator to rebalancing fee.
+    // A mapping from initiator to compounding fee.
     mapping(address initiator => InitiatorInfo) public initiatorInfo;
 
     // A mapping that sets the approved initiator per account.
@@ -113,7 +113,7 @@ contract UniswapV3Compounder is IActionBase {
      * allowed deviation of the sqrtPriceX96 for the lower and upper boundaries.
      */
     constructor(uint256 maxTolerance, uint256 maxInitiatorShare) {
-        MAX_INITIATOR_SHARE = maxInitiatorShare;
+        MAX_INITIATOR_FEE = maxInitiatorShare;
         MAX_TOLERANCE = maxTolerance;
     }
 
@@ -128,7 +128,7 @@ contract UniswapV3Compounder is IActionBase {
      * @param trustedSqrtPriceX96 The pool sqrtPriceX96 provided at the time of calling compoundFees().
      */
     function compoundFees(address account_, uint256 id, uint256 trustedSqrtPriceX96) external {
-        // Store Account address, used to validate the caller of the executeAction() callback.
+        // If the initiator is set, account_ is an actual Arcadia Account.
         if (account != address(0)) revert Reentered();
         if (accountToInitiator[account_] != msg.sender) revert InitiatorNotValid();
 
@@ -416,7 +416,7 @@ contract UniswapV3Compounder is IActionBase {
             ) revert InvalidValue();
         } else {
             // If not, the parameters can not exceed certain thresholds.
-            if (initiatorShare > MAX_INITIATOR_SHARE || tolerance > MAX_TOLERANCE) {
+            if (initiatorShare > MAX_INITIATOR_FEE || tolerance > MAX_TOLERANCE) {
                 revert InvalidValue();
             }
         }
