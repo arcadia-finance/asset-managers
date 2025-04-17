@@ -197,7 +197,7 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
 
     function deployNativeEthPool() public {
         // Create UniswapV4 pool, native ETH has 18 decimals
-        uint256 sqrtPriceX96 = compounder.getSqrtPriceX96(10 ** token1.decimals(), 1e18);
+        uint256 sqrtPriceX96 = compounder.getSqrtPriceX96(10 ** token1.decimals(), 1e6);
         nativeEthPoolKey =
             initializePoolV4(address(0), address(token1), uint160(sqrtPriceX96), address(0), POOL_FEE, TICK_SPACING);
     }
@@ -264,7 +264,7 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
     {
         // And : Amount in $ to wei.
         feeData.desiredFee0 = PoolId.unwrap(poolKey.toId()) == PoolId.unwrap(nativeEthPoolKey.toId())
-            ? feeData.desiredFee0 * 1e18
+            ? feeData.desiredFee0 * 1e6
             : feeData.desiredFee0 * 10 ** token0.decimals();
         feeData.desiredFee1 = feeData.desiredFee1 * 10 ** token1.decimals();
 

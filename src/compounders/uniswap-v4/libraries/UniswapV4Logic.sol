@@ -23,13 +23,6 @@ library UniswapV4Logic {
     // The binary precision of sqrtPriceX96 squared.
     uint256 internal constant Q192 = FixedPoint96.Q96 ** 2;
 
-    // Actions used by the Uniswap V4 PositionManager.
-    uint256 internal constant INCREASE_LIQUIDITY = 0x00;
-    uint256 internal constant DECREASE_LIQUIDITY = 0x01;
-    uint256 internal constant SETTLE_PAIR = 0x0d;
-    uint256 internal constant TAKE_PAIR = 0x11;
-    uint256 internal constant SWEEP = 0x14;
-
     // The Uniswap V4 PoolManager contract.
     IPoolManager internal constant POOL_MANAGER = IPoolManager(0x498581fF718922c3f8e6A244956aF099B2652b2b);
     // The Uniswap V4 PositionManager contract.
@@ -119,15 +112,13 @@ library UniswapV4Logic {
     }
 
     /**
-     * @notice Processes token balance changes resulting from a swap operation
-     * @dev Handles token transfers between the contract and the Pool Manager based on delta values:
-     *      - For tokens owed to the Pool Manager: transfers tokens and calls settle()
-     *      - For tokens owed from the Pool Manager: calls take() to receive tokens
-     * @param delta The BalanceDelta containing the positive/negative changes in token amounts
-     * @param currency0 The address of the first token in the pair
-     * @param currency1 The address of the second token in the pair
+     * @notice Processes token balance changes resulting from a swap.
+     * @param delta The BalanceDelta containing the positive/negative changes in token amounts.
+     * @param currency0 The address of the first token in the pair.
+     * @param currency1 The address of the second token in the pair.
      */
     function _processSwapDelta(BalanceDelta delta, Currency currency0, Currency currency1) internal {
+        // Transfer tokens owed to the Pool Manager.
         if (delta.amount0() < 0) {
             POOL_MANAGER.sync(currency0);
             if (currency0.isAddressZero()) {
@@ -137,19 +128,15 @@ library UniswapV4Logic {
                 POOL_MANAGER.settle();
             }
         }
-
         if (delta.amount1() < 0) {
             POOL_MANAGER.sync(currency1);
-            if (currency1.isAddressZero()) {
-                POOL_MANAGER.settle{ value: uint128(-delta.amount1()) }();
-            } else {
-                currency1.transfer(address(POOL_MANAGER), uint128(-delta.amount1()));
-                POOL_MANAGER.settle();
-            }
+            currency1.transfer(address(POOL_MANAGER), uint128(-delta.amount1()));
+            POOL_MANAGER.settle();
         }
 
+        // Withdraw tokens Pool Manager owes.
         if (delta.amount0() > 0) {
-            POOL_MANAGER.take(currency0, (address(this)), uint128(delta.amount0()));
+            POOL_MANAGER.take(currency0, address(this), uint128(delta.amount0()));
         }
         if (delta.amount1() > 0) {
             POOL_MANAGER.take(currency1, address(this), uint128(delta.amount1()));
