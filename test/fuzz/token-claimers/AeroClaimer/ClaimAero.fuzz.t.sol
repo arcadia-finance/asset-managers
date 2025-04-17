@@ -120,8 +120,11 @@ contract ClaimAero_AeroClaimer_Fuzz_Test is AeroClaimer_Fuzz_Test {
         vm.assume(rewardsExpected < type(uint128).max);
 
         // When : An initiator claims pending Aero from staked slipstream position in Account.
-        vm.prank(initiator);
+        vm.startPrank(initiator);
+        vm.expectEmit();
+        emit AeroClaimer.AeroClaimed(address(account), assetId);
         aeroClaimer.claimAero(address(account), assetId);
+        vm.stopPrank();
 
         // Then : Account should still own the position.
         assertEq(ERC721(address(stakedSlipstreamAM)).ownerOf(assetId), address(account));
