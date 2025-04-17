@@ -108,14 +108,14 @@ contract UniswapV3Compounder is IActionBase {
     /**
      * @param maxTolerance The maximum allowed deviation of the actual pool price for any initiator,
      * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
-     * @param maxInitiatorShare The maximum initiator share an initiator can set.
+     * @param maxInitiatorFee The maximum initiator share an initiator can set.
      * @dev The tolerance for the pool price will be converted to an upper and lower max sqrtPrice deviation,
      * using the square root of the basis (one with 18 decimals precision) +- tolerance (18 decimals precision).
      * The tolerance boundaries are symmetric around the price, but taking the square root will result in a different
      * allowed deviation of the sqrtPriceX96 for the lower and upper boundaries.
      */
-    constructor(uint256 maxTolerance, uint256 maxInitiatorShare) {
-        MAX_INITIATOR_FEE = maxInitiatorShare;
+    constructor(uint256 maxTolerance, uint256 maxInitiatorFee) {
+        MAX_INITIATOR_FEE = maxInitiatorFee;
         MAX_TOLERANCE = maxTolerance;
     }
 
