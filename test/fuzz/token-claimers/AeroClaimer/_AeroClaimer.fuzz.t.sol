@@ -5,6 +5,7 @@
 pragma solidity ^0.8.22;
 
 import { AeroClaimer } from "../../../../src/token-claimers/AeroClaimer.sol";
+import { AeroClaimerExtension } from "../../../../test/utils/extensions/AeroClaimerExtension.sol";
 import { StakedSlipstreamAM_Fuzz_Test } from
     "../../../../lib/accounts-v2/test/fuzz/asset-modules/StakedSlipstreamAM/_StakedSlipstreamAM.fuzz.t.sol";
 import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
@@ -33,7 +34,7 @@ abstract contract AeroClaimer_Fuzz_Test is StakedSlipstreamAM_Fuzz_Test {
                             TEST CONTRACTS
     /////////////////////////////////////////////////////////////// */
 
-    AeroClaimer internal aeroClaimer;
+    AeroClaimerExtension internal aeroClaimer;
 
     /* ///////////////////////////////////////////////////////////////
                               SETUP
@@ -47,6 +48,12 @@ abstract contract AeroClaimer_Fuzz_Test is StakedSlipstreamAM_Fuzz_Test {
 
         // Deploy Arcadia  Accounts Contracts.
         deployArcadiaAccounts();
+
+        // Add the reward token to the Registry
+        addAssetToArcadia(AERO, int256(rates.token1ToUsd));
+
+        // And : Staked Slipstream AM is deployed.
+        deployStakedSlipstreamAM();
 
         // Deploy Aero Claimer.
         deployAeroClaimer(MAX_INITIATOR_SHARE);
@@ -71,7 +78,7 @@ abstract contract AeroClaimer_Fuzz_Test is StakedSlipstreamAM_Fuzz_Test {
 
     function deployAeroClaimer(uint256 maxInitiatorShare) public {
         vm.prank(users.owner);
-        aeroClaimer = new AeroClaimer(maxInitiatorShare);
+        aeroClaimer = new AeroClaimerExtension(maxInitiatorShare);
 
         bytes memory bytecode = address(aeroClaimer).code;
 
@@ -85,7 +92,12 @@ abstract contract AeroClaimer_Fuzz_Test is StakedSlipstreamAM_Fuzz_Test {
         bytecode = Utils.veryBadBytesReplacer(
             bytecode, abi.encodePacked(0x940181a94A35A4569E4529A3CDfB74e38FD98631), abi.encodePacked(AERO), false
         );
-
+        bytecode = Utils.veryBadBytesReplacer(
+            bytecode,
+            abi.encodePacked(0xDa14Fdd72345c4d2511357214c5B89A919768e59),
+            abi.encodePacked(address(factory)),
+            false
+        );
         vm.etch(address(aeroClaimer), bytecode);
     }
 }
