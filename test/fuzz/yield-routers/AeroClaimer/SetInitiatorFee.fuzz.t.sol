@@ -31,7 +31,10 @@ contract SetInitiatorFee_AeroClaimer_Fuzz_Test is AeroClaimer_Fuzz_Test {
     //////////////////////////////////////////////////////////////*/
 
     function testFuzz_Revert_setInitiatorFee_Reentered(address random, uint256 initiatorFee) public {
-        // Given: An account address is defined in storage.
+        // Given: Account is not address(0).
+        vm.assume(random != address(0));
+
+        // And: An account address is defined in storage.
         aeroClaimer.setAccount(random);
 
         // When: Calling setInitiatorFee().
