@@ -4,7 +4,7 @@
  */
 pragma solidity ^0.8.22;
 
-import { AeroClaimer } from "../../../../src/token-claimers/AeroClaimer.sol";
+import { AeroClaimer } from "../../../../src/yield-routers/AeroClaimer.sol";
 import { AeroClaimerExtension } from "../../../../test/utils/extensions/AeroClaimerExtension.sol";
 import { StakedSlipstreamAM_Fuzz_Test } from
     "../../../../lib/accounts-v2/test/fuzz/asset-modules/StakedSlipstreamAM/_StakedSlipstreamAM.fuzz.t.sol";

@@ -4,7 +4,7 @@
  */
 pragma solidity ^0.8.22;
 
-import { AeroClaimer } from "../../../../src/token-claimers/AeroClaimer.sol";
+import { AeroClaimer } from "../../../../src/yield-routers/AeroClaimer.sol";
 import { AeroClaimer_Fuzz_Test } from "./_AeroClaimer.fuzz.t.sol";
 import { ERC20 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC20.sol";
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
@@ -136,5 +136,7 @@ contract ClaimAero_AeroClaimer_Fuzz_Test is AeroClaimer_Fuzz_Test {
         // And : The initiator should have received its share
         assertEq(ERC20(AERO).balanceOf(address(account)), expectedAccountBalance);
         assertGt(ERC20(AERO).balanceOf(address(account)), 0);
+        // And : Account should be set to the zero address.
+        assertEq(aeroClaimer.getAccount(), address(0));
     }
 }
