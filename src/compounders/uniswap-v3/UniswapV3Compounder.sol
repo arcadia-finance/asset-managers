@@ -49,7 +49,7 @@ contract UniswapV3Compounder is IActionBase {
     // The Account to compound the fees for, used as transient storage.
     address internal account;
 
-    // A mapping from initiator to compounding fee.
+    // A mapping from initiator to a struct with initiator-specific tolerance and fee.
     mapping(address initiator => InitiatorInfo) public initiatorInfo;
 
     // A mapping that sets the approved initiator per account.
@@ -108,7 +108,7 @@ contract UniswapV3Compounder is IActionBase {
     /**
      * @param maxTolerance The maximum allowed deviation of the actual pool price for any initiator,
      * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
-     * @param maxInitiatorFee The maximum initiator share an initiator can set.
+     * @param maxInitiatorFee The maximum initiator fee an initiator can set.
      * @dev The tolerance for the pool price will be converted to an upper and lower max sqrtPrice deviation,
      * using the square root of the basis (one with 18 decimals precision) +- tolerance (18 decimals precision).
      * The tolerance boundaries are symmetric around the price, but taking the square root will result in a different
@@ -210,13 +210,8 @@ contract UniswapV3Compounder is IActionBase {
         else fees.amount0 += amountOut;
 
         // Increase liquidity of the position.
-        // The approval for at least one token after increasing liquidity will remain non-zero.
-        // We have to set approval first to 0 for ERC20 tokens that require the approval to be set to zero
-        // before setting it to a non-zero value.
-        ERC20(position.token0).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), 0);
-        ERC20(position.token0).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), fees.amount0);
-        ERC20(position.token1).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), 0);
-        ERC20(position.token1).safeApprove(address(UniswapV3Logic.POSITION_MANAGER), fees.amount1);
+        ERC20(position.token0).safeApproveWithRetry(address(UniswapV3Logic.POSITION_MANAGER), fees.amount0);
+        ERC20(position.token1).safeApproveWithRetry(address(UniswapV3Logic.POSITION_MANAGER), fees.amount1);
         UniswapV3Logic.POSITION_MANAGER.increaseLiquidity(
             IncreaseLiquidityParams({
                 tokenId: id,
@@ -354,7 +349,6 @@ contract UniswapV3Compounder is IActionBase {
     function getPositionState(uint256 id, uint256 trustedSqrtPriceX96, address initiator)
         public
         view
-        virtual
         returns (PositionState memory position)
     {
         // Get data of the Liquidity Position.

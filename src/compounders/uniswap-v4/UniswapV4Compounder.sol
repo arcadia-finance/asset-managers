@@ -70,7 +70,7 @@ contract UniswapV4Compounder is IActionBase {
     // A mapping if permit2 has been approved for a certain token.
     mapping(address token => bool approved) internal approved;
 
-    // A mapping from initiator to rebalancing fee.
+    // A mapping from initiator to a struct with initiator-specific tolerance and fee.
     mapping(address initiator => InitiatorInfo) public initiatorInfo;
 
     // A mapping that sets the approved initiator per account.
@@ -469,7 +469,6 @@ contract UniswapV4Compounder is IActionBase {
     function getPositionState(uint256 id, uint256 trustedSqrtPriceX96, address initiator)
         public
         view
-        virtual
         returns (PositionState memory position, PoolKey memory poolKey)
     {
         PositionInfo info;
