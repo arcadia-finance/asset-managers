@@ -23,9 +23,12 @@ contract ExecuteAction_AeroClaimer_Fuzz_Test is AeroClaimer_Fuzz_Test {
                               TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function testFuzz_Revert_executeAction_OnlyAccount(address notAccount, address account) public {
-        // Given: An account address is defined in storage.
-        aeroClaimer.setAccount(account);
+    function testFuzz_Revert_executeAction_OnlyAccount(address notAccount, address account_) public {
+        // Given: Account_ is not notAccount.
+        vm.assume(notAccount != account_);
+
+        // And: An account address is defined in storage.
+        aeroClaimer.setAccount(account_);
 
         // When: A not valid address calls executeAction();
         // Then: It should revert.

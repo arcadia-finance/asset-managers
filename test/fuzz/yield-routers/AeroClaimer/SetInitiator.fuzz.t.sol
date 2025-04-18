@@ -24,7 +24,10 @@ contract SetInitiator_AeroClaimer_Fuzz_Test is AeroClaimer_Fuzz_Test {
     //////////////////////////////////////////////////////////////*/
 
     function testFuzz_Revert_setInitiator_Reentered(address random, address initiator_) public {
-        // Given: An account address is defined in storage.
+        // Given: Account is not address(0).
+        vm.assume(random != address(0));
+
+        // And: An account address is defined in storage.
         aeroClaimer.setAccount(random);
 
         // When: Calling setInitiator().
