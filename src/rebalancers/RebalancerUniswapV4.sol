@@ -21,7 +21,7 @@ import { LiquidityAmounts } from "./libraries/cl-math/LiquidityAmounts.sol";
 import { PoolKey } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 import { PricingLogic } from "./libraries/cl-math/PricingLogic.sol";
 import { RebalanceLogic } from "./libraries/RebalanceLogic.sol";
-import { SafeApprove } from "./libraries/SafeApprove.sol";
+import { SafeApprove } from "../libraries/SafeApprove.sol";
 import { SwapLogicV4 } from "./libraries/uniswap-v4/SwapLogicV4.sol";
 import { SwapParams } from "./interfaces/IPoolManager.sol";
 import { TickMath } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";

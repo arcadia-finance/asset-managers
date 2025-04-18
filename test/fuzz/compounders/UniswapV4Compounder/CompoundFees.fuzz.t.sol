@@ -315,11 +315,10 @@ contract CompoundFees_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_
         uint256 tokenId = setState(testVars, nativeEthPoolKey);
 
         testVars.liquidity = stateView.getLiquidity(nativeEthPoolKey.toId());
-        vm.assume(testVars.liquidity > 1e23);
 
         // And : Fee amounts above minimum treshold (in $).
-        feeData.desiredFee0 = bound(feeData.desiredFee0, 1, 1000);
-        feeData.desiredFee1 = bound(feeData.desiredFee1, 1, 1000);
+        feeData.desiredFee0 = bound(feeData.desiredFee0, 1, type(uint16).max);
+        feeData.desiredFee1 = bound(feeData.desiredFee1, 1, type(uint16).max);
         feeData = setFeeState(feeData, nativeEthPoolKey, testVars.liquidity);
 
         // And : Transfer position to account owner

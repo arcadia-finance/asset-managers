@@ -6,7 +6,7 @@ pragma solidity ^0.8.22;
 
 import { BalanceDelta } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/BalanceDelta.sol";
 import { Currency } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
-import { ERC20, SafeApprove } from "../SafeApprove.sol";
+import { ERC20, SafeApprove } from "../../../libraries/SafeApprove.sol";
 import { IHooks } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/interfaces/IHooks.sol";
 import { PoolKey } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 import { RebalanceOptimizationMath } from "../RebalanceOptimizationMath.sol";

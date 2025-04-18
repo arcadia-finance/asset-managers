@@ -54,7 +54,7 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
 
     // 0,5% to 11% fee on swaps.
     uint256 MIN_INITIATOR_SHARE = 0.005 * 1e18;
-    uint256 MAX_INITIATOR_SHARE = 0.11 * 1e18;
+    uint256 MAX_INITIATOR_FEE = 0.11 * 1e18;
     // 10 % initiator fee
     uint256 INITIATOR_SHARE = 0.1 * 1e18;
     /*////////////////////////////////////////////////////////////////
@@ -122,7 +122,7 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         UniswapV4Fixture.setUp();
 
         deployUniswapV4AM();
-        deployCompounder(MAX_TOLERANCE, MAX_INITIATOR_SHARE);
+        deployCompounder(MAX_TOLERANCE, MAX_INITIATOR_FEE);
 
         // Add two stable tokens.
         token0 = new ERC20Mock("TokenA", "TOKA", 0);
@@ -197,7 +197,7 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
 
     function deployNativeEthPool() public {
         // Create UniswapV4 pool, native ETH has 18 decimals
-        uint256 sqrtPriceX96 = compounder.getSqrtPriceX96(10 ** token1.decimals(), 1e18);
+        uint256 sqrtPriceX96 = compounder.getSqrtPriceX96(10 ** token1.decimals(), 1e6);
         nativeEthPoolKey =
             initializePoolV4(address(0), address(token1), uint160(sqrtPriceX96), address(0), POOL_FEE, TICK_SPACING);
     }
@@ -264,7 +264,7 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
     {
         // And : Amount in $ to wei.
         feeData.desiredFee0 = PoolId.unwrap(poolKey.toId()) == PoolId.unwrap(nativeEthPoolKey.toId())
-            ? feeData.desiredFee0 * 1e18
+            ? feeData.desiredFee0 * 1e6
             : feeData.desiredFee0 * 10 ** token0.decimals();
         feeData.desiredFee1 = feeData.desiredFee1 * 10 ** token1.decimals();
 

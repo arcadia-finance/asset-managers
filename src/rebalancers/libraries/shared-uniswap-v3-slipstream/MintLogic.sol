@@ -4,7 +4,7 @@
  */
 pragma solidity ^0.8.22;
 
-import { ERC20, SafeApprove } from "../SafeApprove.sol";
+import { ERC20, SafeApprove } from "../../../libraries/SafeApprove.sol";
 import { ICLPositionManager } from "../../interfaces/ICLPositionManager.sol";
 import { IStakedSlipstreamAM } from "../../interfaces/IStakedSlipstreamAM.sol";
 import { IUniswapV3PositionManager } from "../../interfaces/IUniswapV3PositionManager.sol";

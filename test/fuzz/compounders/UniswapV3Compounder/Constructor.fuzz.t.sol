@@ -27,6 +27,6 @@ contract Constructor_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_Fuzz_T
         UniswapV3Compounder compounder_ = new UniswapV3Compounder(maxTolerance, maxInitiatorShare);
 
         assertEq(compounder_.MAX_TOLERANCE(), maxTolerance);
-        assertEq(compounder_.MAX_INITIATOR_SHARE(), maxInitiatorShare);
+        assertEq(compounder_.MAX_INITIATOR_FEE(), maxInitiatorShare);
     }
 }
