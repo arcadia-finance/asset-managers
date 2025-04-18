@@ -11,11 +11,12 @@ import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IAccount } from "../interfaces/IAccount.sol";
 import { ICLPool } from "./interfaces/ICLPool.sol";
+import { SafeApprove } from "../../libraries/SafeApprove.sol";
 import { SlipstreamLogic } from "./libraries/SlipstreamLogic.sol";
 import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 
 /**
- * @title Permissioned Compounder for Slipstream Liquidity Positions.
+ * @title Compounder for Slipstream Liquidity Positions.
  * @author Pragma Labs
  * @notice The Compounder will act as an Asset Manager for Slipstream Liquidity Positions.
  * It will allow third parties (initiators) to trigger the compounding functionality for a Slipstream Liquidity Position in the Account.
@@ -29,6 +30,7 @@ import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/l
  */
 contract SlipstreamCompounder is IActionBase {
     using FixedPointMathLib for uint256;
+    using SafeApprove for ERC20;
     using SafeTransferLib for ERC20;
     /* //////////////////////////////////////////////////////////////
                                 CONSTANTS
@@ -38,7 +40,7 @@ contract SlipstreamCompounder is IActionBase {
     uint256 public immutable MAX_TOLERANCE;
 
     // The maximum fee an initiator can set, with 18 decimals precision.
-    uint256 public immutable MAX_INITIATOR_SHARE;
+    uint256 public immutable MAX_INITIATOR_FEE;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
@@ -47,7 +49,7 @@ contract SlipstreamCompounder is IActionBase {
     // The Account to compound the fees for, used as transient storage.
     address internal account;
 
-    // A mapping from initiator to rebalancing fee.
+    // A mapping from initiator to a struct with initiator-specific tolerance and fee.
     mapping(address initiator => InitiatorInfo) public initiatorInfo;
 
     // A mapping that sets the approved initiator per account.
@@ -76,7 +78,7 @@ contract SlipstreamCompounder is IActionBase {
     struct InitiatorInfo {
         uint64 upperSqrtPriceDeviation;
         uint64 lowerSqrtPriceDeviation;
-        uint64 initiatorShare;
+        uint64 fee;
     }
 
     /* //////////////////////////////////////////////////////////////
@@ -107,14 +109,14 @@ contract SlipstreamCompounder is IActionBase {
     /**
      * @param maxTolerance The maximum allowed deviation of the actual pool price for any initiator,
      * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
-     * @param maxInitiatorShare The maximum initiator share an initiator can set.
+     * @param maxInitiatorShare The maximum initiator fee an initiator can set.
      * @dev The tolerance for the pool price will be converted to an upper and lower max sqrtPrice deviation,
      * using the square root of the basis (one with 18 decimals precision) +- tolerance (18 decimals precision).
      * The tolerance boundaries are symmetric around the price, but taking the square root will result in a different
      * allowed deviation of the sqrtPriceX96 for the lower and upper boundaries.
      */
     constructor(uint256 maxTolerance, uint256 maxInitiatorShare) {
-        MAX_INITIATOR_SHARE = maxInitiatorShare;
+        MAX_INITIATOR_FEE = maxInitiatorShare;
         MAX_TOLERANCE = maxTolerance;
     }
 
@@ -129,7 +131,7 @@ contract SlipstreamCompounder is IActionBase {
      * @param trustedSqrtPriceX96 The pool sqrtPriceX96 provided at the time of calling compoundFees().
      */
     function compoundFees(address account_, uint256 id, uint256 trustedSqrtPriceX96) external {
-        // Store Account address, used to validate the caller of the executeAction() callback.
+        // If the initiator is set, account_ is an actual Arcadia Account.
         if (account != address(0)) revert Reentered();
         if (accountToInitiator[account_] != msg.sender) revert InitiatorNotValid();
 
@@ -192,9 +194,9 @@ contract SlipstreamCompounder is IActionBase {
         );
 
         // Subtract initiator reward from fees, these will be send to the initiator.
-        uint256 initiatorShare = uint256(initiatorInfo[initiator].initiatorShare);
-        fees.amount0 -= fees.amount0.mulDivDown(initiatorShare, 1e18);
-        fees.amount1 -= fees.amount1.mulDivDown(initiatorShare, 1e18);
+        uint256 fee = uint256(initiatorInfo[initiator].fee);
+        fees.amount0 -= fees.amount0.mulDivDown(fee, 1e18);
+        fees.amount1 -= fees.amount1.mulDivDown(fee, 1e18);
 
         // Rebalance the fee amounts so that the maximum amount of liquidity can be added.
         // The Pool must still be balanced after the swap.
@@ -209,13 +211,8 @@ contract SlipstreamCompounder is IActionBase {
         else fees.amount0 += amountOut;
 
         // Increase liquidity of the position.
-        // The approval for at least one token after increasing liquidity will remain non-zero.
-        // We have to set approval first to 0 for ERC20 tokens that require the approval to be set to zero
-        // before setting it to a non-zero value.
-        ERC20(position.token0).safeApprove(address(SlipstreamLogic.POSITION_MANAGER), 0);
-        ERC20(position.token0).safeApprove(address(SlipstreamLogic.POSITION_MANAGER), fees.amount0);
-        ERC20(position.token1).safeApprove(address(SlipstreamLogic.POSITION_MANAGER), 0);
-        ERC20(position.token1).safeApprove(address(SlipstreamLogic.POSITION_MANAGER), fees.amount1);
+        ERC20(position.token0).safeApproveWithRetry(address(SlipstreamLogic.POSITION_MANAGER), fees.amount0);
+        ERC20(position.token1).safeApproveWithRetry(address(SlipstreamLogic.POSITION_MANAGER), fees.amount1);
         SlipstreamLogic.POSITION_MANAGER.increaseLiquidity(
             IncreaseLiquidityParams({
                 tokenId: id,
@@ -392,13 +389,13 @@ contract SlipstreamCompounder is IActionBase {
     /**
      * @notice Sets the information requested for an initiator.
      * @param tolerance The maximum deviation of the actual pool price compared to the trustedSqrtPriceX96 provided by the initiator.
-     * @param initiatorShare The fee paid to the initiator, with 18 decimals precision.
+     * @param fee The fee paid to the initiator, with 18 decimals precision.
      * @dev The tolerance for the pool price will be converted to an upper and lower max sqrtPrice deviation,
      * using the square root of the basis (one with 18 decimals precision) +- tolerance (18 decimals precision).
      * The tolerance boundaries are symmetric around the price, but taking the square root will result in a different
      * allowed deviation of the sqrtPriceX96 for the lower and upper boundaries.
      */
-    function setInitiatorInfo(uint256 tolerance, uint256 initiatorShare) external {
+    function setInitiatorInfo(uint256 tolerance, uint256 fee) external {
         if (account != address(0)) revert Reentered();
 
         // Cache struct
@@ -410,18 +407,17 @@ contract SlipstreamCompounder is IActionBase {
         // Check if initiator is already set.
         if (initiatorInfo_.upperSqrtPriceDeviation > 0) {
             // If so, the initiator can only change parameters to more favourable values for users.
-            if (
-                initiatorShare > initiatorInfo_.initiatorShare
-                    || upperSqrtPriceDeviation > initiatorInfo_.upperSqrtPriceDeviation
-            ) revert InvalidValue();
+            if (fee > initiatorInfo_.fee || upperSqrtPriceDeviation > initiatorInfo_.upperSqrtPriceDeviation) {
+                revert InvalidValue();
+            }
         } else {
             // If not, the parameters can not exceed certain thresholds.
-            if (initiatorShare > MAX_INITIATOR_SHARE || tolerance > MAX_TOLERANCE) {
+            if (fee > MAX_INITIATOR_FEE || tolerance > MAX_TOLERANCE) {
                 revert InvalidValue();
             }
         }
 
-        initiatorInfo_.initiatorShare = uint64(initiatorShare);
+        initiatorInfo_.fee = uint64(fee);
         initiatorInfo_.lowerSqrtPriceDeviation = uint64(FixedPointMathLib.sqrt((1e18 - tolerance) * 1e18));
         initiatorInfo_.upperSqrtPriceDeviation = upperSqrtPriceDeviation;
 

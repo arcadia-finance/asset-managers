@@ -18,7 +18,7 @@ import { IStrategyHook } from "./interfaces/IStrategyHook.sol";
 import { MintLogic } from "./libraries/MintLogic.sol";
 import { PricingLogic } from "./libraries/PricingLogic.sol";
 import { RebalanceLogic } from "./libraries/RebalanceLogic.sol";
-import { SafeApprove } from "./libraries/SafeApprove.sol";
+import { SafeApprove } from "../libraries/SafeApprove.sol";
 import { SlipstreamLogic } from "./libraries/SlipstreamLogic.sol";
 import { StakedSlipstreamLogic } from "./libraries/StakedSlipstreamLogic.sol";
 import { SwapLogic } from "./libraries/SwapLogic.sol";
@@ -45,7 +45,6 @@ contract Rebalancer is IActionBase {
                                 CONSTANTS
     ////////////////////////////////////////////////////////////// */
 
-    // The maximum lower deviation of the pools actual sqrtPriceX96,
     // The maximum deviation of the actual pool price, in % with 18 decimals precision.
     uint256 public immutable MAX_TOLERANCE;
 
@@ -62,7 +61,7 @@ contract Rebalancer is IActionBase {
                                 STORAGE
     ////////////////////////////////////////////////////////////// */
 
-    // The Account to compound the fees for, used as transient storage.
+    // The Account to rebalance the fees for, used as transient storage.
     address internal account;
 
     // A mapping from initiator to rebalancing fee.
