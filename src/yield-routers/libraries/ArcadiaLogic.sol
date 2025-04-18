@@ -58,7 +58,7 @@ library ArcadiaLogic {
     }
 
     /**
-     * @notice Encodes the deposit data after the flash-action used to rebalance the Liquidity Position.
+     * @notice Encodes the deposit data after the flash-action.
      * @param positionManager The contract address of the Position Manager.
      * @param id The id of the Liquidity Position.
      * @param reward_token The contract address of the reward token.
@@ -86,6 +86,55 @@ library ArcadiaLogic {
             depositData.assets[1] = reward_token;
             depositData.assetAmounts[1] = reward;
             depositData.assetTypes[1] = 1;
+        }
+    }
+
+    /**
+     * @notice Encodes the deposit data after the flash-action.
+     * @param positionManager The contract address of the Position Manager.
+     * @param id The id of the Liquidity Position.
+     * @param token0 The contract address of token0.
+     * @param token1 The contract address of token1.
+     * @param amount0 The fee amount collected in token0.
+     * @param amount1 The fee amount collected in token1.
+     * @return depositData Bytes string with the encoded data.
+     */
+    function _encodeDeposit(
+        address positionManager,
+        uint256 id,
+        address token0,
+        address token1,
+        uint256 amount0,
+        uint256 amount1
+    ) internal pure returns (ActionData memory depositData) {
+        uint256 count = 1;
+        if (amount0 > 0) count++;
+        if (amount1 > 0) count++;
+
+        depositData.assets = new address[](count);
+        depositData.assetIds = new uint256[](count);
+        depositData.assetAmounts = new uint256[](count);
+        depositData.assetTypes = new uint256[](count);
+
+        // Add newly minted Liquidity Position.
+        depositData.assets[0] = positionManager;
+        depositData.assetIds[0] = id;
+        depositData.assetAmounts[0] = 1;
+        depositData.assetTypes[0] = 2;
+
+        uint256 i = 1;
+
+        if (amount0 > 0) {
+            depositData.assets[i] = token0;
+            depositData.assetAmounts[i] = amount0;
+            depositData.assetTypes[i] = 1;
+            i++;
+        }
+
+        if (amount1 > 0) {
+            depositData.assets[i] = token1;
+            depositData.assetAmounts[i] = amount1;
+            depositData.assetTypes[i] = 1;
         }
     }
 }
