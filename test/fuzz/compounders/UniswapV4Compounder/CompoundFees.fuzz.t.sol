@@ -34,7 +34,8 @@ contract CompoundFees_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_
     //////////////////////////////////////////////////////////////*/
 
     function testFuzz_Revert_compoundFees_Reentered(address random, uint256 tokenId, uint160 sqrtPriceX96) public {
-        // Given: An account address is defined in storage.
+        // Given: A rebalance is ongoing.
+        vm.assume(random != address(0));
         compounder.setAccount(random);
 
         // When: Calling compoundFees().
