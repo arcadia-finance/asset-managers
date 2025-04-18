@@ -10,15 +10,14 @@ import { Currency } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { ERC721 } from "../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { FullMath } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { IAccount } from "./interfaces/IAccount.sol";
 import { IPositionManagerV3, CollectParams } from "./interfaces/IPositionManagerV3.sol";
 import { IPositionManagerV4 } from "./interfaces/IPositionManagerV4.sol";
+import { IWETH } from "./interfaces/IWETH.sol";
 import { PoolKey } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 import { ReentrancyGuard } from "../../lib/accounts-v2/lib/solmate/src/utils/ReentrancyGuard.sol";
 import { SafeApprove } from "./libraries/SafeApprove.sol";
 import { SlipstreamLogic } from "./libraries/SlipstreamLogic.sol";
-import { TickMath } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
 import { UniswapV4Logic } from "./libraries/UniswapV4Logic.sol";
 
@@ -35,6 +34,9 @@ contract FeeCollector is ReentrancyGuard, IActionBase {
     /* //////////////////////////////////////////////////////////////
                                 CONSTANTS
     ////////////////////////////////////////////////////////////// */
+
+    // The contract address of WETH.
+    address internal immutable WETH = 0x4200000000000000000000000000000000000006;
 
     // The maximum fee an initiator can set, with 18 decimals precision.
     uint256 public immutable MAX_INITIATOR_FEE;
@@ -157,6 +159,12 @@ contract FeeCollector is ReentrancyGuard, IActionBase {
             (feeAmount0, feeAmount1) = UniswapV4Logic._collectFees(id, poolKey);
             token0 = Currency.unwrap(poolKey.currency0);
             token1 = Currency.unwrap(poolKey.currency1);
+
+            // If token0 is native ETH, we convert ETH to WETH.
+            if (token0 == address(0)) {
+                IWETH(payable(WETH)).deposit{ value: feeAmount0 }();
+                token0 = WETH;
+            }
         } else {
             // Case for Uniswap V3 and Slipstream positions.
             (feeAmount0, feeAmount1) = IPositionManagerV3(positionManager).collect(
