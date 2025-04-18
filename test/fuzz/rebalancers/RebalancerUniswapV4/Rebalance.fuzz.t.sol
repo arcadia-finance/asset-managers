@@ -913,6 +913,9 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         // Given: rebalancer is not the account.
         vm.assume(account_ != address(rebalancer));
 
+        // And: Initiator can receive eth.
+        vm.assume(initiator.code.length == 0);
+
         // And: Pool has reasonable liquidity.
         liquidityPool =
             uint128(bound(liquidityPool, UniswapHelpers.maxLiquidity(10) / 1000, UniswapHelpers.maxLiquidity(1) / 10));
@@ -1018,6 +1021,9 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
     ) public {
         // Given: rebalancer is not the account.
         vm.assume(account_ != address(rebalancer));
+
+        // And: Initiator can receive eth.
+        vm.assume(initiator.code.length == 0);
 
         // And: Pool has reasonable liquidity.
         liquidityPool =
@@ -1135,6 +1141,9 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         // Given: rebalancer is not the account.
         vm.assume(account_ != address(rebalancer));
 
+        // And: Initiator can receive eth.
+        vm.assume(initiator.code.length == 0);
+
         // And: Pool has reasonable liquidity.
         liquidityPool =
             uint128(bound(liquidityPool, UniswapHelpers.maxLiquidity(10) / 1000, UniswapHelpers.maxLiquidity(1) / 10));
@@ -1249,6 +1258,9 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         // Given: rebalancer is not the account.
         vm.assume(account_ != address(rebalancer));
 
+        // And: Initiator can receive eth.
+        vm.assume(initiator.code.length == 0);
+
         // And: Pool has reasonable liquidity.
         liquidityPool =
             uint128(bound(liquidityPool, UniswapHelpers.maxLiquidity(10) / 1000, UniswapHelpers.maxLiquidity(1) / 10));
@@ -1356,6 +1368,9 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
     ) public {
         // Given: rebalancer is not the account.
         vm.assume(account_ != address(rebalancer));
+
+        // And: Initiator can receive eth.
+        vm.assume(initiator.code.length == 0);
 
         // And: Pool has reasonable liquidity.
         liquidityPool =
@@ -1465,6 +1480,9 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
     ) public {
         // Given: rebalancer is not the account.
         vm.assume(account_ != address(rebalancer));
+
+        // And: Initiator can receive eth.
+        vm.assume(initiator.code.length == 0);
 
         // And: Pool has reasonable liquidity.
         liquidityPool =
