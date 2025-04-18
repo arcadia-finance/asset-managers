@@ -60,6 +60,8 @@ library SwapLogicV4 {
                 amountIn,
                 amountOut
             );
+            // Don't do swaps with zero amount.
+            if (amountOut == 0) return (balance0, balance1);
             (balance0_, balance1_) = _swapViaPool(poolKey, position, zeroToOne, amountOut, balance0, balance1);
         } else {
             (balance0_, balance1_) = _swapViaRouter(poolKey, position, zeroToOne, swapData);

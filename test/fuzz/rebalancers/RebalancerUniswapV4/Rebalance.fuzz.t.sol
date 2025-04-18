@@ -116,6 +116,28 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         uint256 tolerance,
         address account_
     ) public {
+        fee = 859_733_999_249_839_098_429_146_316_349_194_334_905_007_254_463_063_589_349_440_328;
+        position = RebalancerUniswapV4.PositionState({
+            hook: 0x16459296E639a643502c540623b575adFAC7550e,
+            token0: 0x97C62edb89Ab19e3D974C922414B14CD30dFf535,
+            token1: 0xf4A2d73f0C24239682a492a64aA1Ce92d5201b56,
+            fee: 0,
+            tickSpacing: 1,
+            tickUpper: 0,
+            tickLower: 3,
+            liquidity: 2,
+            sqrtRatioLower: 1_161_270_295_187_776_463_346_194_056_649_093,
+            sqrtRatioUpper: 62_810_067_688_047_615_177_570,
+            sqrtPriceX96: 39_860_180_646_362_084_246_675_986_006_356_087_960_813_539_596_920_388_478_324_053_334_119,
+            lowerBoundSqrtPriceX96: 62_021_237_131_739_621_981_051_807_168_279_550_955_379_566,
+            upperBoundSqrtPriceX96: 8_385_024_368
+        });
+        liquidityPool = 3730;
+        tickLower = 47;
+        tickUpper = 0;
+        initiator = 0x903b0Fe0EDd48f07E07fA6150adb17732f952e71;
+        tolerance = 65_893_890_879_954_295;
+        account_ = 0x3E75720Df042953b1B87D98a519297cD94Cf2833;
         // Given: rebalancer is not the account.
         vm.assume(account_ != address(rebalancer));
 
@@ -914,7 +936,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         vm.assume(account_ != address(rebalancer));
 
         // And: Initiator can receive eth.
-        vm.assume(initiator.code.length == 0);
+        assumePayable(initiator);
 
         // And: Pool has reasonable liquidity.
         liquidityPool =
@@ -1023,7 +1045,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         vm.assume(account_ != address(rebalancer));
 
         // And: Initiator can receive eth.
-        vm.assume(initiator.code.length == 0);
+        assumePayable(initiator);
 
         // And: Pool has reasonable liquidity.
         liquidityPool =
@@ -1142,7 +1164,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         vm.assume(account_ != address(rebalancer));
 
         // And: Initiator can receive eth.
-        vm.assume(initiator.code.length == 0);
+        assumePayable(initiator);
 
         // And: Pool has reasonable liquidity.
         liquidityPool =
@@ -1259,7 +1281,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         vm.assume(account_ != address(rebalancer));
 
         // And: Initiator can receive eth.
-        vm.assume(initiator.code.length == 0);
+        assumePayable(initiator);
 
         // And: Pool has reasonable liquidity.
         liquidityPool =
@@ -1370,7 +1392,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         vm.assume(account_ != address(rebalancer));
 
         // And: Initiator can receive eth.
-        vm.assume(initiator.code.length == 0);
+        assumePayable(initiator);
 
         // And: Pool has reasonable liquidity.
         liquidityPool =
@@ -1482,7 +1504,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         vm.assume(account_ != address(rebalancer));
 
         // And: Initiator can receive eth.
-        vm.assume(initiator.code.length == 0);
+        assumePayable(initiator);
 
         // And: Pool has reasonable liquidity.
         liquidityPool =
