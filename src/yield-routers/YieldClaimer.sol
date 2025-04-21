@@ -172,7 +172,7 @@ abstract contract AbstractClaimer is IActionBase {
 
             amounts[i] -= fee;
             if (amounts[i] > 0) {
-                // If a fee recipient has not been set, send the fees back to the Account.
+                // If feeRecipient is the Account itself, deposit fees back into the Account
                 if (feeRecipient == msg.sender) {
                     ERC20(tokens[i]).safeApproveWithRetry(msg.sender, amounts[i]);
                     count++;
