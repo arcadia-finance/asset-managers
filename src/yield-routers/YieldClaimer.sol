@@ -13,21 +13,17 @@ import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/F
 import { IAccount } from "./interfaces/IAccount.sol";
 import { IPositionManagerV3, CollectParams } from "./interfaces/IPositionManagerV3.sol";
 import { IPositionManagerV4 } from "./interfaces/IPositionManagerV4.sol";
+import { IStakedSlipstream } from "./interfaces/IStakedSlipstream.sol";
 import { IWETH } from "./interfaces/IWETH.sol";
 import { PoolKey } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
-import { ReentrancyGuard } from "../../lib/accounts-v2/lib/solmate/src/utils/ReentrancyGuard.sol";
 import { SafeApprove } from "./libraries/SafeApprove.sol";
-import { SlipstreamLogic } from "./libraries/SlipstreamLogic.sol";
-import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
 import { UniswapV4Logic } from "./libraries/UniswapV4Logic.sol";
 
 /**
- * @title Fee collector for concentrated liquidity positions.
- * @notice This contract will claim fees accrued by a Liquidity Position held in an Arcadia Account.
- * The fees can be sent to a user-defined address.
+ * @title Yield Claimer for concentrated Liquidity Positions.
  * @author Pragma Labs
  */
-contract FeeCollector is ReentrancyGuard, IActionBase {
+abstract contract AbstractClaimer is IActionBase {
     using FixedPointMathLib for uint256;
     using SafeApprove for ERC20;
     using SafeTransferLib for ERC20;
@@ -35,17 +31,35 @@ contract FeeCollector is ReentrancyGuard, IActionBase {
                                 CONSTANTS
     ////////////////////////////////////////////////////////////// */
 
-    // The contract address of WETH.
-    address internal immutable WETH = 0x4200000000000000000000000000000000000006;
-
     // The maximum fee an initiator can set, with 18 decimals precision.
     uint256 public immutable MAX_INITIATOR_FEE;
+
+    // The address of reward token (AERO).
+    address internal constant REWARD_TOKEN = 0x940181a94A35A4569E4529A3CDfB74e38FD98631;
+
+    // The address of the Slipstream Position Manager.
+    address internal constant SLIPSTREAM_POSITION_MANAGER = 0x827922686190790b37229fd06084350E74485b72;
+
+    // The address of the Staked Slipstream AM.
+    address internal constant STAKED_SLIPSTREAM_AM = 0x1Dc7A0f5336F52724B650E39174cfcbbEdD67bF1;
+
+    // The Wrapped Staked Slipstream Asset Module contract.
+    address internal constant STAKED_SLIPSTREAM_WRAPPER = 0xD74339e0F10fcE96894916B93E5Cc7dE89C98272;
+
+    // The address of the Uniswap V3 Position Manager.
+    address internal constant UNISWAP_V3_POSITION_MANAGER = 0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1;
+
+    // The address of the Uniswap V4 Position Manager.
+    address internal constant UNISWAP_V4_POSITION_MANAGER = 0x7C5f5A4bBd8fD63184577525326123B519429bDc;
+
+    // The contract address of WETH.
+    address internal immutable WETH = 0x4200000000000000000000000000000000000006;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
     ////////////////////////////////////////////////////////////// */
 
-    // The Account to collect fees for, used as transient storage.
+    // The Account to claim AERO emissions for, used as transient storage.
     address internal account;
 
     // A mapping that sets the approved initiator per account.
@@ -66,12 +80,11 @@ contract FeeCollector is ReentrancyGuard, IActionBase {
 
     error InvalidInitiator();
     error InvalidPositionManager();
+    error InvalidRecipient();
     error InvalidValue();
     error NotAnAccount();
     error OnlyAccount();
     error OnlyAccountOwner();
-    error OnlyPool();
-    error OnlyPositionManager();
     error Reentered();
 
     /* //////////////////////////////////////////////////////////////
@@ -79,7 +92,8 @@ contract FeeCollector is ReentrancyGuard, IActionBase {
     ////////////////////////////////////////////////////////////// */
 
     event AccountInfoSet(address indexed account, address initiator, address feeRecipient);
-    event FeesCollected(address indexed account, address indexed positionManager, uint256 id);
+    event Claimed(address indexed account, address indexed positionManager, uint256 id);
+    event InitiatorSet(address indexed account, address indexed initiator);
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -93,26 +107,19 @@ contract FeeCollector is ReentrancyGuard, IActionBase {
     }
 
     /* ///////////////////////////////////////////////////////////////
-                             REBALANCING LOGIC
+                             COMPOUNDING LOGIC
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Collects the fees accrued by a Liquidity Position owned by an Arcadia Account.
+     * @notice Claims the pending AERO emissions earned by a Staked Slipstream Liquidity Position owned by an Arcadia Account.
      * @param account_ The Arcadia Account owning the position.
      * @param positionManager The contract address of the Position Manager.
      * @param id The id of the Liquidity Position.
      */
-    function collectFees(address account_, address positionManager, uint256 id) external {
+    function claim(address account_, address positionManager, uint256 id) external {
         // If the initiator is set, account_ is an actual Arcadia Account.
         if (account != address(0)) revert Reentered();
         if (accountToInitiator[account_] != msg.sender) revert InvalidInitiator();
-        if (
-            positionManager != address(UniswapV3Logic.POSITION_MANAGER)
-                && positionManager != address(UniswapV4Logic.POSITION_MANAGER)
-                && positionManager != address(SlipstreamLogic.POSITION_MANAGER)
-        ) {
-            revert InvalidPositionManager();
-        }
 
         // Store Account address, used to validate the caller of the executeAction() callback and serves as a reentrancy guard.
         account = account_;
@@ -121,52 +128,82 @@ contract FeeCollector is ReentrancyGuard, IActionBase {
         bytes memory actionData = ArcadiaLogic._encodeAction(positionManager, id, msg.sender);
 
         // Call flashAction() with this contract as actionTarget.
-        IAccount(account).flashAction(address(this), actionData);
+        IAccount(account_).flashAction(address(this), actionData);
 
         // Reset account.
         account = address(0);
 
-        emit FeesCollected(account_, positionManager, id);
+        emit Claimed(account_, positionManager, id);
     }
 
     /**
      * @notice Callback function called by the Arcadia Account during a flashAction.
-     * @param collectData A bytes object containing a struct with the assetData of the position and the address of the initiator.
+     * @param claimData A bytes object containing a struct with the assetData of the position and the address of the initiator.
      * @return depositData A struct with the deposit data of the Liquidity Position.
      * @dev The Liquidity Position is already transferred to this contract before executeAction() is called.
      * @dev This function will trigger the following actions:
      * - Collects the fees earned by the position.
      * - Transfers a reward to the initiator.
-     * - Send the collected fees (after deducting the initiator fee) to either a user-specified recipient or the Arcadia Account.
      */
-    function executeAction(bytes calldata collectData) external override returns (ActionData memory depositData) {
+    function executeAction(bytes calldata claimData) external override returns (ActionData memory depositData) {
         // Caller should be the Account, provided as input in claimAero().
         if (msg.sender != account) revert OnlyAccount();
 
-        // Decode collectData.
-        (address positionManager, uint256 id, address initiator) = abi.decode(collectData, (address, uint256, address));
+        // Decode claimData.
+        (address positionManager, uint256 id, address initiator) = abi.decode(claimData, (address, uint256, address));
 
-        // Collect fees.
-        uint256 fee0;
-        uint256 fee1;
-        address token0;
-        address token1;
+        // Execute action.
+        (address[] memory tokens, uint256[] memory amounts) = _executeAction(positionManager, id);
 
-        // Case for Uniswap V4 positions.
-        if (positionManager == address(UniswapV4Logic.POSITION_MANAGER)) {
-            (PoolKey memory poolKey,) = IPositionManagerV4(positionManager).getPoolAndPositionInfo(id);
-            (fee0, fee1) = UniswapV4Logic._collectFees(id, poolKey);
-            token0 = Currency.unwrap(poolKey.currency0);
-            token1 = Currency.unwrap(poolKey.currency1);
+        // Cache fee recipient and Intitator fee.
+        address feeRecipient = accountToFeeRecipient[msg.sender];
+        uint256 initiatorFee_ = initiatorFee[initiator];
 
-            // If token0 is native ETH, we convert ETH to WETH.
-            if (token0 == address(0)) {
-                IWETH(payable(WETH)).deposit{ value: fee0 }();
-                token0 = WETH;
+        // Approve Account to deposit Liquidity Position back into the Account.
+        ERC721(positionManager).approve(msg.sender, id);
+
+        // Approve or transfer the ERC20 yield tokens.
+        uint256 fee;
+        uint256 count = 1;
+        for (uint256 i; i < amounts.length; i++) {
+            // Initiator rewards are transferred to the initiator.
+            fee = amounts[i].mulDivDown(initiatorFee_, 1e18);
+            if (fee > 0) ERC20(tokens[i]).safeTransfer(initiator, fee);
+
+            amounts[i] -= fee;
+            if (amounts[i] > 0) {
+                // If a fee recipient has not been set, send the fees back to the Account.
+                if (feeRecipient == msg.sender) {
+                    ERC20(tokens[i]).safeApproveWithRetry(msg.sender, amounts[i]);
+                    count++;
+                }
+                // Else, send the fees to the fee recipient.
+                else {
+                    ERC20(tokens[i]).safeTransfer(feeRecipient, amounts[i]);
+                }
             }
-        } else {
+        }
+
+        // Encode the deposit data.
+        depositData = ArcadiaLogic._encodeDeposit(positionManager, id, tokens, amounts, count);
+    }
+
+    function _executeAction(address positionManager, uint256 id)
+        internal
+        returns (address[] memory tokens, uint256[] memory amounts)
+    {
+        if (positionManager == STAKED_SLIPSTREAM_AM || positionManager == STAKED_SLIPSTREAM_WRAPPER) {
+            // Case for staked Slipstream positions.
+            tokens = new address[](1);
+            amounts = new uint256[](1);
+            tokens[0] = REWARD_TOKEN;
+            amounts[0] = IStakedSlipstream(positionManager).claimReward(id);
+        } else if (positionManager == SLIPSTREAM_POSITION_MANAGER || positionManager == UNISWAP_V3_POSITION_MANAGER) {
             // Case for Uniswap V3 and Slipstream positions.
-            (fee0, fee1) = IPositionManagerV3(positionManager).collect(
+            tokens = new address[](2);
+            amounts = new uint256[](2);
+            (,, tokens[0], tokens[1],,,,,,,,) = IPositionManagerV3(positionManager).positions(id);
+            (amounts[0], amounts[1]) = IPositionManagerV3(positionManager).collect(
                 CollectParams({
                     tokenId: id,
                     recipient: address(this),
@@ -174,60 +211,23 @@ contract FeeCollector is ReentrancyGuard, IActionBase {
                     amount1Max: type(uint128).max
                 })
             );
-            (,, token0, token1,,,,,,,,) = IPositionManagerV3(positionManager).positions(id);
-        }
+        } else if (positionManager == UNISWAP_V4_POSITION_MANAGER) {
+            // Case for Uniswap V4 positions.
+            tokens = new address[](2);
+            amounts = new uint256[](2);
+            (PoolKey memory poolKey,) = IPositionManagerV4(UNISWAP_V4_POSITION_MANAGER).getPoolAndPositionInfo(id);
+            tokens[0] = Currency.unwrap(poolKey.currency0);
+            tokens[1] = Currency.unwrap(poolKey.currency1);
+            (amounts[0], amounts[1]) = UniswapV4Logic._collectFees(id, poolKey);
 
-        // Subtract initiator fee, these will be send to the initiator.
-        uint256 initiatorFee0 = fee0.mulDivDown(initiatorFee[initiator], 1e18);
-        uint256 initiatorFee1 = fee1.mulDivDown(initiatorFee[initiator], 1e18);
-        fee0 -= initiatorFee0;
-        fee1 -= initiatorFee1;
-
-        // Initiator rewards are transferred to the initiator.
-        if (initiatorFee0 > 0) ERC20(token0).safeTransfer(initiator, initiatorFee0);
-        if (initiatorFee1 > 0) ERC20(token1).safeTransfer(initiator, initiatorFee1);
-
-        // Approve Account to deposit Liquidity Position back into the Account.
-        ERC721(positionManager).approve(msg.sender, id);
-
-        // If a fee recipient has not been set, send the fees back to the Account.
-        address feeRecipient = accountToFeeRecipient[msg.sender];
-        if (feeRecipient == address(0)) {
-            // Approve Account to deposit fees to the Account.
-            if (fee0 > 0) ERC20(token0).safeApproveWithRetry(msg.sender, fee0);
-            if (fee1 > 0) ERC20(token1).safeApproveWithRetry(msg.sender, fee1);
-            depositData = ArcadiaLogic._encodeDeposit(positionManager, id, token0, token1, fee0, fee1);
+            // If token0 is native ETH, we convert ETH to WETH.
+            if (tokens[0] == address(0)) {
+                IWETH(payable(WETH)).deposit{ value: amounts[0] }();
+                tokens[0] = WETH;
+            }
         } else {
-            // Send the fees to the fee recipient set by the user.
-            depositData = ArcadiaLogic._encodeDeposit(positionManager, id, address(0), 0);
-            if (fee0 > 0) ERC20(token0).safeTransfer(feeRecipient, fee0);
-            if (fee1 > 0) ERC20(token1).safeTransfer(feeRecipient, fee1);
+            revert InvalidPositionManager();
         }
-    }
-
-    /* ///////////////////////////////////////////////////////////////
-                            ACCOUNT LOGIC
-    /////////////////////////////////////////////////////////////// */
-
-    /**
-     * @notice Sets the required information for an Account.
-     * @param account_ The contract address of the Arcadia Account to set the information for.
-     * @param initiator The address of the initiator.
-     * @param feeRecipient The address to which the collected fees will be sent.
-     * @dev An initiator will be permissioned to compound any
-     * Liquidity Position held in the specified Arcadia Account.
-     * @dev When an Account is transferred to a new owner,
-     * the asset manager itself (this contract) and hence its initiator will no longer be allowed by the Account.
-     */
-    function setAccountInfo(address account_, address initiator, address feeRecipient) external {
-        if (account != address(0)) revert Reentered();
-        if (!ArcadiaLogic.FACTORY.isAccount(account_)) revert NotAnAccount();
-        if (msg.sender != IAccount(account_).owner()) revert OnlyAccountOwner();
-
-        accountToInitiator[account_] = initiator;
-        if (feeRecipient != account_) accountToFeeRecipient[account_] = feeRecipient;
-
-        emit AccountInfoSet(account_, initiator, feeRecipient);
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -253,6 +253,32 @@ contract FeeCollector is ReentrancyGuard, IActionBase {
         }
 
         initiatorFee[msg.sender] = initiatorFee_;
+    }
+
+    /* ///////////////////////////////////////////////////////////////
+                            ACCOUNT LOGIC
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Sets an initiator for an Account.
+     * @param account_ The contract address of the Arcadia Account to set the information for.
+     * @param initiator The address of the initiator.
+     * @param feeRecipient The address to which the collected fees will be sent.
+     * @dev An initiator will be permissioned to compound any
+     * Liquidity Position held in the specified Arcadia Account.
+     * @dev When an Account is transferred to a new owner,
+     * the asset manager itself (this contract) and hence its initiator will no longer be allowed by the Account.
+     */
+    function setAccountInfo(address account_, address initiator, address feeRecipient) external {
+        if (account != address(0)) revert Reentered();
+        if (!ArcadiaLogic.FACTORY.isAccount(account_)) revert NotAnAccount();
+        if (msg.sender != IAccount(account_).owner()) revert OnlyAccountOwner();
+        if (feeRecipient == address(0)) revert InvalidRecipient();
+
+        accountToInitiator[account_] = initiator;
+        accountToFeeRecipient[account_] = feeRecipient;
+
+        emit AccountInfoSet(account_, initiator, feeRecipient);
     }
 
     /* ///////////////////////////////////////////////////////////////
