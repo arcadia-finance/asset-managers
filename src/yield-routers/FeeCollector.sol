@@ -186,7 +186,7 @@ contract FeeCollector is ReentrancyGuard, IActionBase {
 
         // Initiator rewards are transferred to the initiator.
         if (initiatorFeeToken0 > 0) ERC20(token0).safeTransfer(initiator, initiatorFeeToken0);
-        if (initiatorFeeToken1 > 0) ERC20(token1).safeTransfer(initiator, initiatorFeeToken0);
+        if (initiatorFeeToken1 > 0) ERC20(token1).safeTransfer(initiator, initiatorFeeToken1);
 
         // Approve Account to deposit Liquidity Position back into the Account.
         ERC721(positionManager).approve(msg.sender, id);
