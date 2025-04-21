@@ -19,7 +19,7 @@ import { MintLogic } from "./libraries/shared-uniswap-v3-slipstream/MintLogic.so
 import { PricingLogic } from "./libraries/cl-math/PricingLogic.sol";
 import { RebalanceLogic } from "./libraries/RebalanceLogic.sol";
 import { ReentrancyGuard } from "../../lib/accounts-v2/lib/solmate/src/utils/ReentrancyGuard.sol";
-import { SafeApprove } from "./libraries/SafeApprove.sol";
+import { SafeApprove } from "../libraries/SafeApprove.sol";
 import { SlipstreamLogic } from "./libraries/slipstream/SlipstreamLogic.sol";
 import { StakedSlipstreamLogic } from "./libraries/slipstream/StakedSlipstreamLogic.sol";
 import { SwapLogic } from "./libraries/shared-uniswap-v3-slipstream/SwapLogic.sol";
@@ -47,9 +47,6 @@ contract RebalancerUniV3Slipstream is ReentrancyGuard, IActionBase {
                                 CONSTANTS
     ////////////////////////////////////////////////////////////// */
 
-    // The Account to compound the fees for, used as transient storage.
-    address internal account;
-
     // The maximum lower deviation of the pools actual sqrtPriceX96,
     // The maximum deviation of the actual pool price, in % with 18 decimals precision.
     uint256 public immutable MAX_TOLERANCE;
@@ -66,6 +63,9 @@ contract RebalancerUniV3Slipstream is ReentrancyGuard, IActionBase {
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
     ////////////////////////////////////////////////////////////// */
+
+    // The Account to rebalance the fees for, used as transient storage.
+    address internal account;
 
     // A mapping from initiator to rebalancing fee.
     mapping(address initiator => InitiatorInfo) public initiatorInfo;

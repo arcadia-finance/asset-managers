@@ -11,7 +11,7 @@ import {
 import { FixedPoint128 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint128.sol";
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
-import { IPoolManager } from "../../uniswap-v4/interfaces/IPoolManager.sol";
+import { IPoolManager } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/interfaces/IPoolManager.sol";
 import { IUniswapV4Compounder, PositionState, Fees } from "../../uniswap-v4/interfaces/IUniswapV4Compounder.sol";
 import { LiquidityAmounts } from "../../libraries/LiquidityAmounts.sol";
 import { PoolId } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolId.sol";
@@ -20,6 +20,7 @@ import {
     PositionInfo,
     PositionInfoLibrary
 } from "../../../../lib/accounts-v2/lib/v4-periphery/src/libraries/PositionInfoLibrary.sol";
+import { StateLibrary } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/StateLibrary.sol";
 import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 import { UniswapV4Logic } from "../../uniswap-v4/libraries/UniswapV4Logic.sol";
 
@@ -31,6 +32,7 @@ import { UniswapV4Logic } from "../../uniswap-v4/libraries/UniswapV4Logic.sol";
 contract UniswapV4CompounderHelper {
     using BalanceDeltaLibrary for BalanceDelta;
     using FixedPointMathLib for uint256;
+    using StateLibrary for IPoolManager;
     /* //////////////////////////////////////////////////////////////
                             CONSTANTS
     ////////////////////////////////////////////////////////////// */
@@ -70,7 +72,7 @@ contract UniswapV4CompounderHelper {
     {
         // Get current sqrtPriceX96 of the pool.
         (PoolKey memory poolKey, PositionInfo info) = UniswapV4Logic.POSITION_MANAGER.getPoolAndPositionInfo(id);
-        (sqrtPriceX96,,,) = UniswapV4Logic.STATE_VIEW.getSlot0(poolKey.toId());
+        (sqrtPriceX96,,,) = UniswapV4Logic.POOL_MANAGER.getSlot0(poolKey.toId());
 
         // Get the initiator.
         address initiator = COMPOUNDER.accountToInitiator(account);
@@ -90,7 +92,7 @@ contract UniswapV4CompounderHelper {
                     address(UniswapV4Logic.POSITION_MANAGER), info.tickLower(), info.tickUpper(), bytes32(id)
                 )
             );
-            uint128 liquidity = UniswapV4Logic.STATE_VIEW.getPositionLiquidity(poolKey.toId(), positionId);
+            uint128 liquidity = UniswapV4Logic.POOL_MANAGER.getPositionLiquidity(poolKey.toId(), positionId);
             (balances.amount0, balances.amount1) = _getFeeAmounts(poolKey.toId(), info, liquidity, positionId);
         }
 
@@ -206,7 +208,7 @@ contract UniswapV4CompounderHelper {
 
         // The input delta of a swap is negative so we must flip it.
         uint128 amountIn = params.zeroForOne ? uint128(-swapDelta.amount0()) : uint128(-swapDelta.amount1());
-        (uint160 sqrtPriceX96,,,) = UniswapV4Logic.STATE_VIEW.getSlot0(poolKey.toId());
+        (uint160 sqrtPriceX96,,,) = UniswapV4Logic.POOL_MANAGER.getSlot0(poolKey.toId());
 
         revert QuoteSwap(amountIn, sqrtPriceX96);
     }
@@ -226,10 +228,10 @@ contract UniswapV4CompounderHelper {
         returns (uint256 amount0, uint256 amount1)
     {
         (uint256 feeGrowthInside0CurrentX128, uint256 feeGrowthInside1CurrentX128) =
-            UniswapV4Logic.STATE_VIEW.getFeeGrowthInside(poolId, info.tickLower(), info.tickUpper());
+            UniswapV4Logic.POOL_MANAGER.getFeeGrowthInside(poolId, info.tickLower(), info.tickUpper());
 
         (, uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128) =
-            UniswapV4Logic.STATE_VIEW.getPositionInfo(poolId, positionId);
+            UniswapV4Logic.POOL_MANAGER.getPositionInfo(poolId, positionId);
 
         // Calculate accumulated fees since the last time the position was updated:
         // (feeGrowthInsideCurrentX128 - feeGrowthInsideLastX128) * liquidity.

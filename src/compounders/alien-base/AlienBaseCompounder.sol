@@ -15,7 +15,7 @@ import { IUniswapV3Pool } from "../uniswap-v3/interfaces/IUniswapV3Pool.sol";
 import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 
 /**
- * @title Permissioned Compounder for Alien Base Liquidity Positions.
+ * @title Compounder for Alien Base Liquidity Positions.
  * @author Pragma Labs
  * @notice The Compounder will act as an Asset Manager for Arcadia Accounts.
  * It will allow third parties (initiators) to trigger the compounding functionality for an Alien Base Liquidity Position in the Account.
@@ -38,7 +38,7 @@ contract AlienBaseCompounder is IActionBase {
     uint256 public immutable MAX_TOLERANCE;
 
     // The maximum fee an initiator can set, with 18 decimals precision.
-    uint256 public immutable MAX_INITIATOR_SHARE;
+    uint256 public immutable MAX_INITIATOR_FEE;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
@@ -76,7 +76,7 @@ contract AlienBaseCompounder is IActionBase {
     struct InitiatorInfo {
         uint64 upperSqrtPriceDeviation;
         uint64 lowerSqrtPriceDeviation;
-        uint64 initiatorShare;
+        uint64 fee;
     }
 
     /* //////////////////////////////////////////////////////////////
@@ -106,14 +106,14 @@ contract AlienBaseCompounder is IActionBase {
     /**
      * @param maxTolerance The maximum allowed deviation of the actual pool price for any initiator,
      * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
-     * @param maxInitiatorShare The maximum initiator share an initiator can set.
+     * @param maxInitiatorFee The maximum initiator fee an initiator can set.
      * @dev The tolerance for the pool price will be converted to an upper and lower max sqrtPrice deviation,
      * using the square root of the basis (one with 18 decimals precision) +- tolerance (18 decimals precision).
      * The tolerance boundaries are symmetric around the price, but taking the square root will result in a different
      * allowed deviation of the sqrtPriceX96 for the lower and upper boundaries.
      */
-    constructor(uint256 maxTolerance, uint256 maxInitiatorShare) {
-        MAX_INITIATOR_SHARE = maxInitiatorShare;
+    constructor(uint256 maxTolerance, uint256 maxInitiatorFee) {
+        MAX_INITIATOR_FEE = maxInitiatorFee;
         MAX_TOLERANCE = maxTolerance;
     }
 
@@ -125,10 +125,10 @@ contract AlienBaseCompounder is IActionBase {
      * @notice Compounds the fees earned by an Alien Base Liquidity Position owned by an Arcadia Account.
      * @param account_ The Arcadia Account owning the position.
      * @param id The id of the Liquidity Position.
-     * @param trustedSqrtPriceX96 The pool sqrtPriceX96 provided at the time of calling compoundFees().
+     * @param trustedSqrtPriceX96 The trusted sqrtPriceX96 of the pool, provided by the initiator.
      */
     function compoundFees(address account_, uint256 id, uint256 trustedSqrtPriceX96) external {
-        // Store Account address, used to validate the caller of the executeAction() callback.
+        // If the initiator is set, account_ is an actual Arcadia Account.
         if (account != address(0)) revert Reentered();
         if (accountToInitiator[account_] != msg.sender) revert InitiatorNotValid();
 
@@ -191,9 +191,9 @@ contract AlienBaseCompounder is IActionBase {
         );
 
         // Subtract initiator reward from fees, these will be send to the initiator.
-        uint256 initiatorShare = uint256(initiatorInfo[initiator].initiatorShare);
-        fees.amount0 -= fees.amount0.mulDivDown(initiatorShare, 1e18);
-        fees.amount1 -= fees.amount1.mulDivDown(initiatorShare, 1e18);
+        uint256 fee = uint256(initiatorInfo[initiator].fee);
+        fees.amount0 -= fees.amount0.mulDivDown(fee, 1e18);
+        fees.amount1 -= fees.amount1.mulDivDown(fee, 1e18);
 
         // Rebalance the fee amounts so that the maximum amount of liquidity can be added.
         // The Pool must still be balanced after the swap.
@@ -392,13 +392,13 @@ contract AlienBaseCompounder is IActionBase {
     /**
      * @notice Sets the information requested for an initiator.
      * @param tolerance The maximum deviation of the actual pool price compared to the trustedSqrtPriceX96 provided by the initiator.
-     * @param initiatorShare The fee paid to the initiator, with 18 decimals precision.
+     * @param fee The fee paid to the initiator, with 18 decimals precision.
      * @dev The tolerance for the pool price will be converted to an upper and lower max sqrtPrice deviation,
      * using the square root of the basis (one with 18 decimals precision) +- tolerance (18 decimals precision).
      * The tolerance boundaries are symmetric around the price, but taking the square root will result in a different
      * allowed deviation of the sqrtPriceX96 for the lower and upper boundaries.
      */
-    function setInitiatorInfo(uint256 tolerance, uint256 initiatorShare) external {
+    function setInitiatorInfo(uint256 tolerance, uint256 fee) external {
         if (account != address(0)) revert Reentered();
 
         // Cache struct
@@ -410,18 +410,17 @@ contract AlienBaseCompounder is IActionBase {
         // Check if initiator is already set.
         if (initiatorInfo_.upperSqrtPriceDeviation > 0) {
             // If so, the initiator can only change parameters to more favourable values for users.
-            if (
-                initiatorShare > initiatorInfo_.initiatorShare
-                    || upperSqrtPriceDeviation > initiatorInfo_.upperSqrtPriceDeviation
-            ) revert InvalidValue();
+            if (fee > initiatorInfo_.fee || upperSqrtPriceDeviation > initiatorInfo_.upperSqrtPriceDeviation) {
+                revert InvalidValue();
+            }
         } else {
             // If not, the parameters can not exceed certain thresholds.
-            if (initiatorShare > MAX_INITIATOR_SHARE || tolerance > MAX_TOLERANCE) {
+            if (fee > MAX_INITIATOR_FEE || tolerance > MAX_TOLERANCE) {
                 revert InvalidValue();
             }
         }
 
-        initiatorInfo_.initiatorShare = uint64(initiatorShare);
+        initiatorInfo_.fee = uint64(fee);
         initiatorInfo_.lowerSqrtPriceDeviation = uint64(FixedPointMathLib.sqrt((1e18 - tolerance) * 1e18));
         initiatorInfo_.upperSqrtPriceDeviation = upperSqrtPriceDeviation;
 
