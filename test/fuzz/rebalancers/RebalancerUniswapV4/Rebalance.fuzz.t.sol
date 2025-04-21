@@ -1110,7 +1110,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         }
 
         (uint160 currentSqrtPriceX96,,,) = stateView.getSlot0(nativeEthPoolKey.toId());
-        uint256 initialBalance = initiator.balance;
+        uint256 initialBalance = token1.balanceOf(initiator);
 
         // When : calling rebalance()
         vm.prank(initiator);

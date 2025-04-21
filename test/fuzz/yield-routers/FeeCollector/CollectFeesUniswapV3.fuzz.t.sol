@@ -47,6 +47,7 @@ contract CollectFees_FeeCollector_Fuzz_Test is UniswapV3Compounder_Fuzz_Test, Fe
 
     function testFuzz_Revert_collectFees_Reentered(address random, uint256 tokenId) public {
         // Given: An account address is defined in storage.
+        vm.assume(random != address(0));
         feeCollector.setAccount(random);
 
         // When: Calling collectFees().
