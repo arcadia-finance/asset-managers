@@ -224,7 +224,7 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
 
         // And : Set initiator for account
         vm.prank(account.owner());
-        rebalancer.setAccountInfo(address(account), initVars.initiator, address(0));
+        rebalancer.setAccountInfo(address(account), initVars.initiator, address(0), address(0), address(0), "");
 
         // And : Transfer position to account owner
         vm.prank(users.liquidityProvider);
@@ -306,7 +306,7 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
 
         // And : Set initiator for account
         vm.prank(account.owner());
-        rebalancer.setAccountInfo(address(account), initVars.initiator, address(0));
+        rebalancer.setAccountInfo(address(account), initVars.initiator, address(0), address(0), address(0), "");
 
         // And : Transfer position to account owner
         vm.prank(users.liquidityProvider);
@@ -385,7 +385,7 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
 
         // And : Set initiator for account
         vm.prank(account.owner());
-        rebalancer.setAccountInfo(address(account), initVars.initiator, address(0));
+        rebalancer.setAccountInfo(address(account), initVars.initiator, address(0), address(0), address(0), "");
 
         // And : Transfer position to account owner
         vm.prank(users.liquidityProvider);
@@ -467,7 +467,7 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
 
         // And : Set initiator for account
         vm.prank(account.owner());
-        rebalancer.setAccountInfo(address(account), initVars.initiator, address(0));
+        rebalancer.setAccountInfo(address(account), initVars.initiator, address(0), address(0), address(0), "");
 
         // And : Transfer position to account owner
         vm.prank(users.liquidityProvider);
@@ -538,7 +538,7 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
 
         // And : Set initiator for account
         vm.prank(account.owner());
-        rebalancer.setAccountInfo(address(account), initVars.initiator, address(0));
+        rebalancer.setAccountInfo(address(account), initVars.initiator, address(0), address(0), address(0), "");
 
         // And : Transfer position to account owner
         vm.prank(users.liquidityProvider);
@@ -625,7 +625,7 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
 
         // And : Set initiator for account
         vm.prank(account.owner());
-        rebalancer.setAccountInfo(address(account), initVars.initiator, address(0));
+        rebalancer.setAccountInfo(address(account), initVars.initiator, address(0), address(0), address(0), "");
 
         // And : Transfer position to account owner
         vm.prank(users.liquidityProvider);
@@ -757,7 +757,7 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
 
         // And : Set initiator for account
         vm.prank(account.owner());
-        rebalancer.setAccountInfo(address(account), initVars.initiator, address(0));
+        rebalancer.setAccountInfo(address(account), initVars.initiator, address(0), address(0), address(0), "");
 
         // And : Transfer position to account owner
         vm.prank(users.liquidityProvider);
@@ -881,7 +881,7 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
 
         // And : Set initiator for account
         vm.prank(account.owner());
-        rebalancer.setAccountInfo(address(account), initVars.initiator, address(0));
+        rebalancer.setAccountInfo(address(account), initVars.initiator, address(0), address(0), address(0), "");
 
         // And : Transfer position to account owner
         vm.prank(users.liquidityProvider);
@@ -1017,7 +1017,7 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
 
         // And : Set initiator for account
         vm.prank(account.owner());
-        rebalancer.setAccountInfo(address(account), initVars.initiator, address(0));
+        rebalancer.setAccountInfo(address(account), initVars.initiator, address(0), address(0), address(0), "");
 
         // And : Transfer position to account owner
         vm.prank(users.liquidityProvider);

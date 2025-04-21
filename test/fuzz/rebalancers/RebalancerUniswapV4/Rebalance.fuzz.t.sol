@@ -168,7 +168,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
 
         // And : Set initiator for account
         vm.prank(account.owner());
-        rebalancer.setAccountInfo(address(account), initiator, address(0));
+        rebalancer.setAccountInfo(address(account), initiator, address(0), address(0), address(0), "");
 
         // And : Transfer position to account owner
         vm.prank(users.liquidityProvider);
@@ -266,7 +266,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
 
         // And : Set initiator for account
         vm.prank(account.owner());
-        rebalancer.setAccountInfo(address(account), initiator, address(0));
+        rebalancer.setAccountInfo(address(account), initiator, address(0), address(0), address(0), "");
 
         // And : Transfer position to account owner
         vm.prank(users.liquidityProvider);
@@ -399,7 +399,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
 
         // And : Set initiator for account
         vm.prank(account.owner());
-        rebalancer.setAccountInfo(address(account), initiator, address(0));
+        rebalancer.setAccountInfo(address(account), initiator, address(0), address(0), address(0), "");
 
         // And : Transfer position to account owner
         vm.prank(users.liquidityProvider);
@@ -507,7 +507,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
 
         // And : Set initiator for account
         vm.prank(account.owner());
-        rebalancer.setAccountInfo(address(account), initiator, address(0));
+        rebalancer.setAccountInfo(address(account), initiator, address(0), address(0), address(0), "");
 
         // And : Transfer position to account owner
         vm.prank(users.liquidityProvider);
@@ -640,7 +640,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
 
         // And : Set initiator for account
         vm.prank(account.owner());
-        rebalancer.setAccountInfo(address(account), initiator, address(0));
+        rebalancer.setAccountInfo(address(account), initiator, address(0), address(0), address(0), "");
 
         // And : Transfer position to account owner
         vm.prank(users.liquidityProvider);
@@ -747,7 +747,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
 
         // And : Set initiator for account
         vm.prank(account.owner());
-        rebalancer.setAccountInfo(address(account), initiator, address(0));
+        rebalancer.setAccountInfo(address(account), initiator, address(0), address(0), address(0), "");
 
         // And : Transfer position to account owner
         vm.prank(users.liquidityProvider);
@@ -848,7 +848,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
 
         // And : Set initiator for account.
         vm.prank(account.owner());
-        rebalancer.setAccountInfo(address(account), initiator, address(0));
+        rebalancer.setAccountInfo(address(account), initiator, address(0), address(0), address(0), "");
 
         // And : Transfer position to account owner.
         vm.prank(users.liquidityProvider);
@@ -965,7 +965,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
 
         // And : Set initiator for account
         vm.prank(account.owner());
-        rebalancer.setAccountInfo(address(account), initiator, address(0));
+        rebalancer.setAccountInfo(address(account), initiator, address(0), address(0), address(0), "");
 
         // And : Transfer position to account owner
         vm.prank(users.liquidityProvider);
@@ -1073,7 +1073,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
 
         // And : Set initiator for account
         vm.prank(account.owner());
-        rebalancer.setAccountInfo(address(account), initiator, address(0));
+        rebalancer.setAccountInfo(address(account), initiator, address(0), address(0), address(0), "");
 
         // And : Transfer position to account owner
         vm.prank(users.liquidityProvider);
@@ -1193,7 +1193,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
 
         // And : Set initiator for account
         vm.prank(account.owner());
-        rebalancer.setAccountInfo(address(account), initiator, address(0));
+        rebalancer.setAccountInfo(address(account), initiator, address(0), address(0), address(0), "");
 
         // And : Transfer position to account owner
         vm.prank(users.liquidityProvider);
@@ -1311,7 +1311,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
 
         // And : Set initiator for account
         vm.prank(account.owner());
-        rebalancer.setAccountInfo(address(account), initiator, address(0));
+        rebalancer.setAccountInfo(address(account), initiator, address(0), address(0), address(0), "");
 
         // And : Transfer position to account owner
         vm.prank(users.liquidityProvider);
@@ -1422,7 +1422,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
 
         // And : Set initiator for account.
         vm.prank(account.owner());
-        rebalancer.setAccountInfo(address(account), initiator, address(0));
+        rebalancer.setAccountInfo(address(account), initiator, address(0), address(0), address(0), "");
 
         // And : Transfer position to account owner.
         vm.prank(users.liquidityProvider);
@@ -1534,7 +1534,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
 
         // And : Set initiator for account
         vm.prank(account.owner());
-        rebalancer.setAccountInfo(address(account), initiator, address(0));
+        rebalancer.setAccountInfo(address(account), initiator, address(0), address(0), address(0), "");
 
         // And : Transfer position to account owner
         vm.prank(users.liquidityProvider);
