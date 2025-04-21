@@ -137,6 +137,72 @@ contract CollectFees_FeeCollector_Fuzz_Test is UniswapV3Compounder_Fuzz_Test, Fe
         assertApproxEqAbs(token1.balanceOf(feeRecipient), totalFee1 - initiatorFeeToken1Calculated, 1);
     }
 
+    function testFuzz_Success_collectFees_recipientIsAccount(TestVariables memory testVars, uint256 initiatorFee)
+        public
+    {
+        // Given: Set account info, the account is set as fee recipient.
+        vm.prank(users.accountOwner);
+        feeCollector.setAccountInfo(address(account), initiator, address(account));
+
+        // And: Set initiator fee.
+        initiatorFee = bound(initiatorFee, MIN_INITIATOR_SHARE, MAX_INITIATOR_SHARE);
+        vm.prank(initiator);
+        feeCollector.setInitiatorFee(initiatorFee);
+
+        // And : Valid pool state
+        (testVars,) = givenValidBalancedState(testVars);
+
+        // And : State is persisted
+        uint256 tokenId = setState(testVars, usdStablePool);
+
+        // And : Transfer position to account owner
+        vm.prank(users.liquidityProvider);
+        ERC721(address(nonfungiblePositionManager)).transferFrom(users.liquidityProvider, users.accountOwner, tokenId);
+
+        {
+            address[] memory assets_ = new address[](1);
+            assets_[0] = address(nonfungiblePositionManager);
+            uint256[] memory assetIds_ = new uint256[](1);
+            assetIds_[0] = tokenId;
+            uint256[] memory assetAmounts_ = new uint256[](1);
+            assetAmounts_[0] = 1;
+
+            // And : Deposit position in Account
+            vm.startPrank(users.accountOwner);
+            ERC721(address(nonfungiblePositionManager)).approve(address(account), tokenId);
+            account.deposit(assets_, assetIds_, assetAmounts_);
+            vm.stopPrank();
+        }
+
+        // When : Calling collectFees()
+        vm.prank(initiator);
+        feeCollector.collectFees(address(account), address(nonfungiblePositionManager), tokenId);
+
+        // Then: Fees should have accrued in Account.
+        // And: The initiator should have received its fee.
+        uint256 initiatorFeesToken0 = token0.balanceOf(initiator);
+        uint256 initiatorFeesToken1 = token1.balanceOf(initiator);
+
+        uint256 totalFee0 = testVars.feeAmount0 * 10 ** token0.decimals();
+        uint256 totalFee1 = testVars.feeAmount1 * 10 ** token1.decimals();
+
+        vm.assume(totalFee0 > 0);
+        vm.assume(totalFee1 > 0);
+
+        uint256 initiatorFeeToken0Calculated = totalFee0.mulDivDown(initiatorFee, 1e18);
+        uint256 initiatorFeeToken1Calculated = totalFee1.mulDivDown(initiatorFee, 1e18);
+
+        assertApproxEqAbs(initiatorFeesToken0, initiatorFeeToken0Calculated, 1);
+        assertApproxEqAbs(initiatorFeesToken1, initiatorFeeToken1Calculated, 1);
+
+        (address[] memory assetAddresses,, uint256[] memory assetAmounts) = account.generateAssetData();
+        assertEq(assetAddresses[0], address(token0));
+        assertEq(assetAddresses[1], address(token1));
+        assertEq(assetAddresses[2], address(nonfungiblePositionManager));
+        assertApproxEqAbs(assetAmounts[0], totalFee0 - initiatorFeeToken0Calculated, 1);
+        assertApproxEqAbs(assetAmounts[1], totalFee1 - initiatorFeeToken1Calculated, 1);
+    }
+
     /*////////////////////////////////////////////////////////////////
                             HELPERS
     /////////////////////////////////////////////////////////////// */
