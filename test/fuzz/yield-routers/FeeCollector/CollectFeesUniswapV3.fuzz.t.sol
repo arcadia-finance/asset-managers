@@ -116,25 +116,21 @@ contract CollectFees_FeeCollector_Fuzz_Test is UniswapV3Compounder_Fuzz_Test, Fe
             vm.stopPrank();
         }
 
+        (uint256 totalFee0, uint256 totalFee1) = uniV3AM.getFeeAmounts(tokenId);
+
         // When : Calling collectFees()
         vm.prank(initiator);
         feeCollector.collectFees(address(account), address(nonfungiblePositionManager), tokenId);
 
         // Then: Fees should have been sent to recipient.
         // And: The initiator should have received its fee.
-        uint256 initiatorFeesToken0 = token0.balanceOf(initiator);
-        uint256 initiatorFeesToken1 = token1.balanceOf(initiator);
+        uint256 initiatorFee0 = totalFee0.mulDivDown(initiatorFee, 1e18);
+        uint256 initiatorFee1 = totalFee1.mulDivDown(initiatorFee, 1e18);
 
-        uint256 totalFee0 = testVars.feeAmount0 * 10 ** token0.decimals();
-        uint256 totalFee1 = testVars.feeAmount1 * 10 ** token1.decimals();
-
-        uint256 initiatorFeeToken0Calculated = totalFee0.mulDivDown(initiatorFee, 1e18);
-        uint256 initiatorFeeToken1Calculated = totalFee1.mulDivDown(initiatorFee, 1e18);
-
-        assertApproxEqAbs(initiatorFeesToken0, initiatorFeeToken0Calculated, 1);
-        assertApproxEqAbs(initiatorFeesToken1, initiatorFeeToken1Calculated, 1);
-        assertApproxEqAbs(token0.balanceOf(feeRecipient), totalFee0 - initiatorFeeToken0Calculated, 1);
-        assertApproxEqAbs(token1.balanceOf(feeRecipient), totalFee1 - initiatorFeeToken1Calculated, 1);
+        assertEq(token0.balanceOf(initiator), initiatorFee0);
+        assertEq(token1.balanceOf(initiator), initiatorFee1);
+        assertEq(token0.balanceOf(feeRecipient), totalFee0 - initiatorFee0);
+        assertEq(token1.balanceOf(feeRecipient), totalFee1 - initiatorFee1);
     }
 
     function testFuzz_Success_collectFees_recipientIsAccount(TestVariables memory testVars, uint256 initiatorFee)
@@ -174,33 +170,28 @@ contract CollectFees_FeeCollector_Fuzz_Test is UniswapV3Compounder_Fuzz_Test, Fe
             vm.stopPrank();
         }
 
+        (uint256 totalFee0, uint256 totalFee1) = uniV3AM.getFeeAmounts(tokenId);
+
         // When : Calling collectFees()
         vm.prank(initiator);
         feeCollector.collectFees(address(account), address(nonfungiblePositionManager), tokenId);
-
-        // Then: Fees should have accrued in Account.
-        // And: The initiator should have received its fee.
-        uint256 initiatorFeesToken0 = token0.balanceOf(initiator);
-        uint256 initiatorFeesToken1 = token1.balanceOf(initiator);
-
-        uint256 totalFee0 = testVars.feeAmount0 * 10 ** token0.decimals();
-        uint256 totalFee1 = testVars.feeAmount1 * 10 ** token1.decimals();
-
         vm.assume(totalFee0 > 0);
         vm.assume(totalFee1 > 0);
 
-        uint256 initiatorFeeToken0Calculated = totalFee0.mulDivDown(initiatorFee, 1e18);
-        uint256 initiatorFeeToken1Calculated = totalFee1.mulDivDown(initiatorFee, 1e18);
+        // Then: Fees should have accrued in Account.
+        // And: The initiator should have received its fee.
+        uint256 initiatorFee0 = totalFee0.mulDivDown(initiatorFee, 1e18);
+        uint256 initiatorFee1 = totalFee1.mulDivDown(initiatorFee, 1e18);
 
-        assertApproxEqAbs(initiatorFeesToken0, initiatorFeeToken0Calculated, 1);
-        assertApproxEqAbs(initiatorFeesToken1, initiatorFeeToken1Calculated, 1);
+        assertEq(token0.balanceOf(initiator), initiatorFee0);
+        assertEq(token1.balanceOf(initiator), initiatorFee1);
 
         (address[] memory assetAddresses,, uint256[] memory assetAmounts) = account.generateAssetData();
         assertEq(assetAddresses[0], address(token0));
         assertEq(assetAddresses[1], address(token1));
         assertEq(assetAddresses[2], address(nonfungiblePositionManager));
-        assertApproxEqAbs(assetAmounts[0], totalFee0 - initiatorFeeToken0Calculated, 1);
-        assertApproxEqAbs(assetAmounts[1], totalFee1 - initiatorFeeToken1Calculated, 1);
+        assertEq(assetAmounts[0], totalFee0 - initiatorFee0);
+        assertEq(assetAmounts[1], totalFee1 - initiatorFee1);
     }
 
     /*////////////////////////////////////////////////////////////////
