@@ -87,7 +87,7 @@ contract CollectFees_FeeCollector_Fuzz_Test is UniswapV3Compounder_Fuzz_Test, Fe
         feeCollector.setAccountInfo(address(account), initiator, feeRecipient);
 
         // And: Set initiator fee.
-        initiatorFee = bound(initiatorFee, MIN_INITIATOR_SHARE, MAX_INITIATOR_SHARE);
+        initiatorFee = bound(initiatorFee, MIN_INITIATOR_SHARE, MAX_INITIATOR_FEE);
         vm.prank(initiator);
         feeCollector.setInitiatorFee(initiatorFee);
 
@@ -145,7 +145,7 @@ contract CollectFees_FeeCollector_Fuzz_Test is UniswapV3Compounder_Fuzz_Test, Fe
         feeCollector.setAccountInfo(address(account), initiator, address(account));
 
         // And: Set initiator fee.
-        initiatorFee = bound(initiatorFee, MIN_INITIATOR_SHARE, MAX_INITIATOR_SHARE);
+        initiatorFee = bound(initiatorFee, MIN_INITIATOR_SHARE, MAX_INITIATOR_FEE);
         vm.prank(initiator);
         feeCollector.setInitiatorFee(initiatorFee);
 

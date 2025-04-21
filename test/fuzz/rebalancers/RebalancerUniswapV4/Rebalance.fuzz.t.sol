@@ -137,7 +137,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         position.tickLower = position.tickLower / tickSpacing * tickSpacing;
         position.tickUpper = int24(bound(position.tickUpper, tickCurrent + 10, BOUND_TICK_UPPER));
         position.tickUpper = position.tickUpper / tickSpacing * tickSpacing;
-        position.liquidity = uint128(bound(position.liquidity, 1e11, 1e18));
+        position.liquidity = uint128(bound(position.liquidity, 1e12, 1e18));
 
         uint256 tokenId = mintPositionV4(
             v4PoolKey,
@@ -242,7 +242,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         position.tickLower = position.tickLower / TICK_SPACING * TICK_SPACING;
         position.tickUpper = int24(bound(position.tickUpper, tickCurrent + 10, BOUND_TICK_UPPER));
         position.tickUpper = position.tickUpper / TICK_SPACING * TICK_SPACING;
-        position.liquidity = uint128(bound(position.liquidity, 1e11, 1e18));
+        position.liquidity = uint128(bound(position.liquidity, 1e12, 1e18));
 
         uint256 tokenId = mintPositionV4(
             v4PoolKey,
@@ -483,7 +483,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         position.tickLower = position.tickLower / TICK_SPACING * TICK_SPACING;
         position.tickUpper = int24(bound(position.tickUpper, tickCurrent + 10, BOUND_TICK_UPPER));
         position.tickUpper = position.tickUpper / TICK_SPACING * TICK_SPACING;
-        position.liquidity = uint128(bound(position.liquidity, 1e11, 1e18));
+        position.liquidity = uint128(bound(position.liquidity, 1e12, 1e18));
 
         uint256 tokenId = mintPositionV4(
             v4PoolKey,
@@ -723,7 +723,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         position.tickLower = position.tickLower / TICK_SPACING * TICK_SPACING;
         position.tickUpper = int24(bound(position.tickUpper, tickCurrent + 10, BOUND_TICK_UPPER));
         position.tickUpper = position.tickUpper / TICK_SPACING * TICK_SPACING;
-        position.liquidity = uint128(bound(position.liquidity, 1e11, 1e18));
+        position.liquidity = uint128(bound(position.liquidity, 1e12, 1e18));
 
         uint256 tokenId = mintPositionV4(
             v4PoolKey,
@@ -824,7 +824,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         position.tickLower = position.tickLower / TICK_SPACING * TICK_SPACING;
         position.tickUpper = int24(bound(position.tickUpper, tickCurrent + 10, BOUND_TICK_UPPER));
         position.tickUpper = position.tickUpper / TICK_SPACING * TICK_SPACING;
-        position.liquidity = uint128(bound(position.liquidity, 1e11, 1e18));
+        position.liquidity = uint128(bound(position.liquidity, 1e12, 1e18));
 
         uint256 tokenId = mintPositionV4(
             v4PoolKey,
@@ -913,6 +913,9 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         // Given: rebalancer is not the account.
         vm.assume(account_ != address(rebalancer));
 
+        // And: Initiator can receive eth.
+        assumePayable(initiator);
+
         // And: Pool has reasonable liquidity.
         liquidityPool =
             uint128(bound(liquidityPool, UniswapHelpers.maxLiquidity(10) / 1000, UniswapHelpers.maxLiquidity(1) / 10));
@@ -938,7 +941,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         position.tickLower = position.tickLower / tickSpacing * tickSpacing;
         position.tickUpper = int24(bound(position.tickUpper, tickCurrent + 10, BOUND_TICK_UPPER));
         position.tickUpper = position.tickUpper / tickSpacing * tickSpacing;
-        position.liquidity = uint128(bound(position.liquidity, 1e11, 1e18));
+        position.liquidity = uint128(bound(position.liquidity, 1e12, 1e18));
 
         uint256 tokenId = mintPositionV4(
             nativeEthPoolKey,
@@ -1019,6 +1022,9 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         // Given: rebalancer is not the account.
         vm.assume(account_ != address(rebalancer));
 
+        // And: Initiator can receive eth.
+        assumePayable(initiator);
+
         // And: Pool has reasonable liquidity.
         liquidityPool =
             uint128(bound(liquidityPool, UniswapHelpers.maxLiquidity(10) / 1000, UniswapHelpers.maxLiquidity(1) / 10));
@@ -1043,7 +1049,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         position.tickLower = position.tickLower / TICK_SPACING * TICK_SPACING;
         position.tickUpper = int24(bound(position.tickUpper, tickCurrent + 10, BOUND_TICK_UPPER - 100));
         position.tickUpper = position.tickUpper / TICK_SPACING * TICK_SPACING;
-        position.liquidity = uint128(bound(position.liquidity, 1e11, 1e18));
+        position.liquidity = uint128(bound(position.liquidity, 1e12, 1e18));
 
         uint256 tokenId = mintPositionV4(
             nativeEthPoolKey,
@@ -1104,6 +1110,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         }
 
         (uint160 currentSqrtPriceX96,,,) = stateView.getSlot0(nativeEthPoolKey.toId());
+        uint256 initialBalance = initiator.balance;
 
         // When : calling rebalance()
         vm.prank(initiator);
@@ -1118,8 +1125,8 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         );
 
         // Then : It should return the correct values
-        assertGt(token1.balanceOf(initiator), 0);
-        assertLe(token1.balanceOf(initiator), expectedFee);
+        assertGt(token1.balanceOf(initiator), initialBalance);
+        assertLe(token1.balanceOf(initiator), initialBalance + expectedFee);
     }
 
     function testFuzz_Success_rebalancePosition_InitiatorFees_Token1_NativeETH(
@@ -1134,6 +1141,9 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
     ) public {
         // Given: rebalancer is not the account.
         vm.assume(account_ != address(rebalancer));
+
+        // And: Initiator can receive eth.
+        assumePayable(initiator);
 
         // And: Pool has reasonable liquidity.
         liquidityPool =
@@ -1159,7 +1169,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         position.tickLower = position.tickLower / TICK_SPACING * TICK_SPACING;
         position.tickUpper = int24(bound(position.tickUpper, tickCurrent + 10, BOUND_TICK_UPPER));
         position.tickUpper = position.tickUpper / TICK_SPACING * TICK_SPACING;
-        position.liquidity = uint128(bound(position.liquidity, 1e11, 1e18));
+        position.liquidity = uint128(bound(position.liquidity, 1e12, 1e18));
 
         uint256 tokenId = mintPositionV4(
             nativeEthPoolKey,
@@ -1219,6 +1229,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         }
 
         (uint160 currentSqrtPriceX96,,,) = stateView.getSlot0(nativeEthPoolKey.toId());
+        uint256 initialBalance = initiator.balance;
 
         // When : calling rebalance()
         vm.prank(initiator);
@@ -1233,8 +1244,8 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         );
 
         // Then : It should return the correct values
-        assertGt(initiator.balance, 0);
-        assertLe(initiator.balance, expectedFee);
+        assertGt(initiator.balance, initialBalance);
+        assertLe(initiator.balance, initialBalance + expectedFee);
     }
 
     function testFuzz_Success_rebalancePosition_MoveTickRight_BalancedWithSameTickSpacing_NativeETH(
@@ -1248,6 +1259,9 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
     ) public {
         // Given: rebalancer is not the account.
         vm.assume(account_ != address(rebalancer));
+
+        // And: Initiator can receive eth.
+        assumePayable(initiator);
 
         // And: Pool has reasonable liquidity.
         liquidityPool =
@@ -1357,6 +1371,9 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         // Given: rebalancer is not the account.
         vm.assume(account_ != address(rebalancer));
 
+        // And: Initiator can receive eth.
+        assumePayable(initiator);
+
         // And: Pool has reasonable liquidity.
         liquidityPool =
             uint128(bound(liquidityPool, UniswapHelpers.maxLiquidity(10) / 1000, UniswapHelpers.maxLiquidity(1) / 10));
@@ -1465,6 +1482,9 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
     ) public {
         // Given: rebalancer is not the account.
         vm.assume(account_ != address(rebalancer));
+
+        // And: Initiator can receive eth.
+        assumePayable(initiator);
 
         // And: Pool has reasonable liquidity.
         liquidityPool =

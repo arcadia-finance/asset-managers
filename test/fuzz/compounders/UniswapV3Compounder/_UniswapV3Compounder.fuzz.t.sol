@@ -46,7 +46,7 @@ abstract contract UniswapV3Compounder_Fuzz_Test is
 
     // 0,5% to 11% fee on swaps.
     uint256 MIN_INITIATOR_SHARE = 0.005 * 1e18;
-    uint256 MAX_INITIATOR_SHARE = 0.11 * 1e18;
+    uint256 MAX_INITIATOR_FEE = 0.11 * 1e18;
     // 10 % initiator fee
     uint256 INITIATOR_SHARE = 0.1 * 1e18;
 
@@ -97,7 +97,7 @@ abstract contract UniswapV3Compounder_Fuzz_Test is
         QuoterV2Fixture.deployQuoterV2(address(uniswapV3Factory), address(weth9));
 
         deployUniswapV3AM();
-        deployCompounder(MAX_TOLERANCE, MAX_INITIATOR_SHARE);
+        deployCompounder(MAX_TOLERANCE, MAX_INITIATOR_FEE);
 
         // Add two stable tokens with 6 and 18 decimals.
         token0 = new ERC20Mock("Token 6d", "TOK6", 6);

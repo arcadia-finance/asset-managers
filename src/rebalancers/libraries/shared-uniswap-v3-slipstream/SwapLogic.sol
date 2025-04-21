@@ -4,7 +4,7 @@
  */
 pragma solidity ^0.8.22;
 
-import { ERC20, SafeApprove } from "../SafeApprove.sol";
+import { ERC20, SafeApprove } from "../../../libraries/SafeApprove.sol";
 import { ICLPool } from "../../interfaces/ICLPool.sol";
 import { IPool } from "../../interfaces/IPool.sol";
 import { IUniswapV3Pool } from "../../interfaces/IUniswapV3Pool.sol";
@@ -59,6 +59,8 @@ library SwapLogic {
                 amountIn,
                 amountOut
             );
+            // Don't do swaps with zero amount.
+            if (amountOut == 0) return (balance0, balance1);
             (balance0_, balance1_) = _swapViaPool(positionManager, position, zeroToOne, amountOut, balance0, balance1);
         } else {
             (balance0_, balance1_) = _swapViaRouter(positionManager, position, zeroToOne, swapData);

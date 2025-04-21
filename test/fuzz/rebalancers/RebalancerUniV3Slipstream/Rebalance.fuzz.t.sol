@@ -150,7 +150,8 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
             bool zeroToOne,
             uint256 amountIn,
             uint256 amountOut,
-            uint256 amountInitiatorFee
+            uint256 amountInitiatorFee,
+            uint256 minLiquidity
         )
     {
         (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
@@ -168,7 +169,7 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
 
         (,, uint256 initiatorFee,) = rebalancer.initiatorInfo(initiator);
 
-        (, zeroToOne, amountInitiatorFee, amountIn, amountOut) =
+        (minLiquidity, zeroToOne, amountInitiatorFee, amountIn, amountOut) =
             rebalancer.getRebalanceParams(position, amount0, amount1, initiatorFee);
     }
 
@@ -339,7 +340,7 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
             );
             bool zeroToOne;
             uint256 amountIn;
-            (,, zeroToOne, amountIn,, expectedFee) =
+            (,, zeroToOne, amountIn,, expectedFee,) =
                 getRebalanceParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initVars.initiator);
             vm.assume(zeroToOne == false);
         }
@@ -418,7 +419,7 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
             );
             bool zeroToOne;
             uint256 amountIn;
-            (,, zeroToOne, amountIn,, expectedFee) =
+            (,, zeroToOne, amountIn,, expectedFee,) =
                 getRebalanceParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initVars.initiator);
             vm.assume(zeroToOne == true);
         }
@@ -584,11 +585,21 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
         assertEq(tickLowerExpected, tickLower);
     }
 
-    function testFuzz_Success_rebalancePosition_MoveTickRight_CustomTicks(
+    struct FuckStackTooDeep {
+        uint256 amount0;
+        uint256 amount1;
+        bool zeroToOne;
+        uint256 amountIn;
+        uint256 amountOut;
+        uint256 amountInitiatorFee;
+        uint256 minLiquidity;
+    }
+
+    function testFuzz_Success_rebalancePosition_MoveTickRight_CustomTicks_b(
         uint256 amount1ToSwap,
-        LpVariables memory lpVars,
         int24 tickLower,
         int24 tickUpper,
+        LpVariables memory lpVars,
         InitVariables memory initVars
     ) public {
         // Given : deploy new rebalancer with a high maxTolerance to avoid unbalancedPool due to external usd prices not aligned
@@ -638,22 +649,24 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
         // Ticks have moved to the right
         moveTicksRightWithIncreasedTolerance(initVars.initiator, amount1ToSwap, false);
 
-        uint256 amount0;
-        uint256 amount1;
-        uint160 sqrtPrice;
+        (uint160 sqrtPrice,,,,,,) = uniV3Pool.slot0();
         {
-            (sqrtPrice,,,,,,) = uniV3Pool.slot0();
             RebalancerUniV3Slipstream.PositionState memory position_ = rebalancer.getPositionState(
                 address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, sqrtPrice, initVars.initiator
             );
-
-            uint256 amountIn;
-            uint256 amountOut;
-            bool zeroToOne;
+            // Assume that liquidity will be bigger than 0
+            FuckStackTooDeep memory temp;
             {
                 uint256 amountInitiatorFee;
-                (amount0, amount1, zeroToOne, amountIn, amountOut, amountInitiatorFee) =
-                    getRebalanceParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initVars.initiator);
+                (
+                    temp.amount0,
+                    temp.amount1,
+                    temp.zeroToOne,
+                    temp.amountIn,
+                    temp.amountOut,
+                    amountInitiatorFee,
+                    temp.minLiquidity
+                ) = getRebalanceParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initVars.initiator);
                 // Initiator fee should be greater than one to at least compensate for rounding errors.
                 vm.assume(amountInitiatorFee > 0);
             }
@@ -663,7 +676,7 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
                 TickMath.getSqrtPriceAtTick(tickLower) < sqrtPrice && sqrtPrice < TickMath.getSqrtPriceAtTick(tickUpper)
             ) {
                 sqrtPrice = RebalanceOptimizationMath._approximateSqrtPriceNew(
-                    zeroToOne, position_.fee, uniV3Pool.liquidity(), sqrtPrice, amountIn, amountOut
+                    temp.zeroToOne, position_.fee, uniV3Pool.liquidity(), sqrtPrice, temp.amountIn, temp.amountOut
                 );
                 vm.assume(
                     TickMath.getSqrtPriceAtTick(tickLower) < sqrtPrice - 100
@@ -672,46 +685,40 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
             }
 
             IQuoterV2.QuoteExactInputSingleParams memory params = IQuoterV2.QuoteExactInputSingleParams({
-                tokenIn: zeroToOne ? address(token0) : address(token1),
-                tokenOut: zeroToOne ? address(token1) : address(token0),
-                amountIn: amountIn,
+                tokenIn: temp.zeroToOne ? address(token0) : address(token1),
+                tokenOut: temp.zeroToOne ? address(token1) : address(token0),
+                amountIn: temp.amountIn,
                 fee: position_.fee,
                 sqrtPriceLimitX96: 0
             });
 
-            (amountOut, sqrtPrice,,) = quoter.quoteExactInputSingle(params);
+            uint160 newSqrtPrice;
+            (temp.amountOut, newSqrtPrice,,) = quoter.quoteExactInputSingle(params);
 
-            if (zeroToOne) {
-                amount0 -= amountIn;
-                amount1 += amountOut;
+            if (temp.zeroToOne) {
+                temp.amount0 -= temp.amountIn;
+                temp.amount1 += temp.amountOut;
             } else {
-                amount0 += amountOut;
-                amount1 -= amountIn;
+                temp.amount0 += temp.amountOut;
+                temp.amount1 -= temp.amountIn;
             }
 
             uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
-                sqrtPrice,
+                newSqrtPrice,
                 TickMath.getSqrtPriceAtTick(position_.tickLower),
                 TickMath.getSqrtPriceAtTick(position_.tickUpper),
-                amount0,
-                amount1
+                temp.amount0,
+                temp.amount1
             );
 
             vm.assume(liquidity > 0);
+            vm.assume(liquidity > temp.minLiquidity);
         }
-
-        (uint160 currentSqrtPriceX96,,,,,,) = uniV3Pool.slot0();
 
         // When : calling rebalance()
         vm.prank(initVars.initiator);
         rebalancer.rebalance(
-            address(account),
-            address(nonfungiblePositionManager),
-            tokenId,
-            uint256(currentSqrtPriceX96),
-            tickLower,
-            tickUpper,
-            ""
+            address(account), address(nonfungiblePositionManager), tokenId, uint256(sqrtPrice), tickLower, tickUpper, ""
         );
 
         // Then : It should return the correct values
@@ -774,23 +781,24 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
         // Ticks have moved to the right
         moveTicksLeftWithIncreasedTolerance(initVars.tickLower, amount0ToSwap, false);
 
-        uint256 amount0;
-        uint256 amount1;
-        uint160 sqrtPrice;
+        (uint160 sqrtPrice,,,,,,) = uniV3Pool.slot0();
         {
-            (sqrtPrice,,,,,,) = uniV3Pool.slot0();
-            // Assume that liquidity will be bigger than 0
             RebalancerUniV3Slipstream.PositionState memory position_ = rebalancer.getPositionState(
                 address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, sqrtPrice, initVars.initiator
             );
-
-            uint256 amountIn;
-            uint256 amountOut;
-            bool zeroToOne;
+            // Assume that liquidity will be bigger than 0
+            FuckStackTooDeep memory temp;
             {
                 uint256 amountInitiatorFee;
-                (amount0, amount1, zeroToOne, amountIn, amountOut, amountInitiatorFee) =
-                    getRebalanceParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initVars.initiator);
+                (
+                    temp.amount0,
+                    temp.amount1,
+                    temp.zeroToOne,
+                    temp.amountIn,
+                    temp.amountOut,
+                    amountInitiatorFee,
+                    temp.minLiquidity
+                ) = getRebalanceParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initVars.initiator);
                 // Initiator fee should be greater than one to at least compensate for rounding errors.
                 vm.assume(amountInitiatorFee > 0);
             }
@@ -800,7 +808,7 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
                 TickMath.getSqrtPriceAtTick(tickLower) < sqrtPrice && sqrtPrice < TickMath.getSqrtPriceAtTick(tickUpper)
             ) {
                 sqrtPrice = RebalanceOptimizationMath._approximateSqrtPriceNew(
-                    zeroToOne, position_.fee, uniV3Pool.liquidity(), sqrtPrice, amountIn, amountOut
+                    temp.zeroToOne, position_.fee, uniV3Pool.liquidity(), sqrtPrice, temp.amountIn, temp.amountOut
                 );
                 vm.assume(
                     TickMath.getSqrtPriceAtTick(tickLower) < sqrtPrice - 100
@@ -809,46 +817,40 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
             }
 
             IQuoterV2.QuoteExactInputSingleParams memory params = IQuoterV2.QuoteExactInputSingleParams({
-                tokenIn: zeroToOne ? address(token0) : address(token1),
-                tokenOut: zeroToOne ? address(token1) : address(token0),
-                amountIn: amountIn,
+                tokenIn: temp.zeroToOne ? address(token0) : address(token1),
+                tokenOut: temp.zeroToOne ? address(token1) : address(token0),
+                amountIn: temp.amountIn,
                 fee: position_.fee,
                 sqrtPriceLimitX96: 0
             });
 
-            (amountOut, sqrtPrice,,) = quoter.quoteExactInputSingle(params);
+            uint160 newSqrtPrice;
+            (temp.amountOut, newSqrtPrice,,) = quoter.quoteExactInputSingle(params);
 
-            if (zeroToOne) {
-                amount0 -= amountIn;
-                amount1 += amountOut;
+            if (temp.zeroToOne) {
+                temp.amount0 -= temp.amountIn;
+                temp.amount1 += temp.amountOut;
             } else {
-                amount0 += amountOut;
-                amount1 -= amountIn;
+                temp.amount0 += temp.amountOut;
+                temp.amount1 -= temp.amountIn;
             }
 
             uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
-                sqrtPrice,
+                newSqrtPrice,
                 TickMath.getSqrtPriceAtTick(position_.tickLower),
                 TickMath.getSqrtPriceAtTick(position_.tickUpper),
-                amount0,
-                amount1
+                temp.amount0,
+                temp.amount1
             );
 
             vm.assume(liquidity > 0);
+            vm.assume(liquidity > temp.minLiquidity);
         }
-
-        (uint160 currentSqrtPriceX96,,,,,,) = uniV3Pool.slot0();
 
         // When : calling rebalance()
         vm.prank(initVars.initiator);
         rebalancer.rebalance(
-            address(account),
-            address(nonfungiblePositionManager),
-            tokenId,
-            uint256(currentSqrtPriceX96),
-            tickLower,
-            tickUpper,
-            ""
+            address(account), address(nonfungiblePositionManager), tokenId, uint256(sqrtPrice), tickLower, tickUpper, ""
         );
 
         // Then : It should return the correct values
@@ -923,7 +925,8 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
             uint256 amount0;
             uint256 amount1;
             bool zeroToOne;
-            (amount0, amount1, zeroToOne, amountIn, amountOut,) =
+            uint256 minLiquidity;
+            (amount0, amount1, zeroToOne, amountIn, amountOut,, minLiquidity) =
                 getRebalanceParams(tokenId, lpVarsStack.tickLower, lpVarsStack.tickUpper, position_, initiatorStack);
 
             // And : Should be a zeroToOneSwap
@@ -953,6 +956,7 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
 
             // And : Liquidity should be > 0
             vm.assume(liquidity > 0);
+            vm.assume(liquidity > minLiquidity);
         }
 
         bytes memory swapData;
@@ -1007,6 +1011,10 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
         uint256 tokenId;
         (initVars, lpVars, tokenId) = initPoolAndCreatePositionWithFees(initVars, lpVars);
 
+        // Given : new ticks are within boundaries (otherwise swap too big => unbalanced pool)
+        tickLower = int24(bound(tickLower, initVars.tickLower + 1, initVars.tickUpper - (2 * MIN_TICK_SPACING)));
+        tickUpper = int24(bound(tickUpper, tickLower + MIN_TICK_SPACING, initVars.tickUpper - 1));
+
         // And : Set initiator for account
         vm.prank(account.owner());
         rebalancer.setAccountInfo(address(account), initVars.initiator, address(0), address(0), address(0), "");
@@ -1033,55 +1041,46 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
         // And : Move ticks left to enable oneToZero swap
         moveTicksLeftWithIncreasedTolerance(initVars.tickLower, amount0ToSwap, true);
 
-        // Given : new ticks are within boundaries (otherwise swap too big => unbalanced pool)
-        tickLower = int24(bound(tickLower, initVars.tickLower + 1, initVars.tickUpper - (2 * MIN_TICK_SPACING)));
-        tickUpper = int24(bound(tickUpper, tickLower + MIN_TICK_SPACING, initVars.tickUpper - 1));
-
-        uint256 amountIn;
-        uint256 amountOut;
-
-        // Avoid stack too deep
-        address initiatorStack = initVars.initiator;
+        (uint160 sqrtPrice,,,,,,) = uniV3Pool.slot0();
+        FuckStackTooDeep memory temp;
         {
-            uint256 amount0;
-            uint256 amount1;
-            (uint160 trustedSqrtPriceX96_,,,,,,) = uniV3Pool.slot0();
             // Assume that liquidity will be bigger than 0
             RebalancerUniV3Slipstream.PositionState memory position_ = rebalancer.getPositionState(
-                address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, trustedSqrtPriceX96_, initiatorStack
+                address(nonfungiblePositionManager), tokenId, tickLower, tickUpper, sqrtPrice, initVars.initiator
             );
 
-            bool zeroToOne;
-            (amount0, amount1, zeroToOne, amountIn, amountOut,) =
-                getRebalanceParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initiatorStack);
+            // Assume that liquidity will be bigger than 0
+            (temp.amount0, temp.amount1, temp.zeroToOne, temp.amountIn, temp.amountOut,, temp.minLiquidity) =
+                getRebalanceParams(tokenId, lpVars.tickLower, lpVars.tickUpper, position_, initVars.initiator);
 
             // And : We want to test for a oneToZero swap
-            vm.assume(zeroToOne == false);
+            vm.assume(temp.zeroToOne == false);
 
             IQuoterV2.QuoteExactInputSingleParams memory params = IQuoterV2.QuoteExactInputSingleParams({
-                tokenIn: zeroToOne ? address(token0) : address(token1),
-                tokenOut: zeroToOne ? address(token1) : address(token0),
-                amountIn: amountIn,
+                tokenIn: temp.zeroToOne ? address(token0) : address(token1),
+                tokenOut: temp.zeroToOne ? address(token1) : address(token0),
+                amountIn: temp.amountIn,
                 fee: position_.fee,
                 sqrtPriceLimitX96: 0
             });
 
             uint160 sqrtPriceNew;
-            (amountOut, sqrtPriceNew,,) = quoter.quoteExactInputSingle(params);
+            (temp.amountOut, sqrtPriceNew,,) = quoter.quoteExactInputSingle(params);
 
-            amount0 += amountOut;
-            amount1 -= amountIn;
+            temp.amount0 += temp.amountOut;
+            temp.amount1 -= temp.amountIn;
 
             uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
                 sqrtPriceNew,
                 TickMath.getSqrtPriceAtTick(position_.tickLower),
                 TickMath.getSqrtPriceAtTick(position_.tickUpper),
-                amount0,
-                amount1
+                temp.amount0,
+                temp.amount1
             );
 
             // And : Liquidity minted should be bigger than zero
             vm.assume(liquidity > 0);
+            vm.assume(liquidity > temp.minLiquidity);
         }
 
         int24 tickLowerStack = tickLower;
@@ -1091,16 +1090,17 @@ contract Rebalance_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Slipstr
             // Send token0 (amountOut) to router for swap
             deal(address(token0), address(routerMock), type(uint128).max);
 
-            bytes memory routerData =
-                abi.encodeWithSelector(RouterMock.swap.selector, address(token1), address(token0), amountIn, amountOut);
-            swapData = abi.encode(address(routerMock), amountIn, routerData);
+            bytes memory routerData = abi.encodeWithSelector(
+                RouterMock.swap.selector, address(token1), address(token0), temp.amountIn, temp.amountOut
+            );
+            swapData = abi.encode(address(routerMock), temp.amountIn, routerData);
         }
 
         (uint160 currentSqrtPriceX96,,,,,,) = uniV3Pool.slot0();
 
         // When : calling rebalance()
         // Then : It should process to an arbitrary swap
-        vm.prank(initiatorStack);
+        vm.prank(initVars.initiator);
         vm.expectEmit();
         emit RouterMock.ArbitrarySwap(true);
         rebalancer.rebalance(

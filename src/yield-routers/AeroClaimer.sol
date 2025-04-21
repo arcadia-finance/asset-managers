@@ -10,7 +10,7 @@ import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/ut
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IAccount } from "./interfaces/IAccount.sol";
 import { IStakedSlipstream } from "./interfaces/IStakedSlipstream.sol";
-import { SafeApprove } from "../rebalancers/libraries/SafeApprove.sol";
+import { SafeApprove } from "../libraries/SafeApprove.sol";
 
 /**
  * @title Claimer for AERO emissions from Staked Slipstream Liquidity Positions.
