@@ -6,26 +6,18 @@ pragma solidity ^0.8.22;
 
 import { Actions } from "../../../lib/accounts-v2/lib/v4-periphery/src/libraries/Actions.sol";
 import { Currency } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
-import { IPositionManagerV4 } from "../interfaces/IPositionManagerV4.sol";
-import { IWETH } from "../interfaces/IWETH.sol";
+import { ImmutableState } from "./ImmutableState.sol";
 import { PoolKey } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
-import { YieldClaimer } from "../YieldClaimer.sol";
 
-library UniswapV4Logic {
-    // The Uniswap V4 PositionManager contract.
-    IPositionManagerV4 internal constant POSITION_MANAGER =
-        IPositionManagerV4(0x7C5f5A4bBd8fD63184577525326123B519429bDc);
-
-    // The contract address of WETH.
-    IWETH internal constant WETH = IWETH(0x4200000000000000000000000000000000000006);
-
+abstract contract UniswapV4Logic is ImmutableState {
     function claimFees(uint256 id) internal returns (address[] memory tokens, uint256[] memory amounts) {
+        (PoolKey memory poolKey,) = UNISWAP_V4_POSITION_MANAGER.getPoolAndPositionInfo(id);
+
         tokens = new address[](2);
-        amounts = new uint256[](2);
-        (PoolKey memory poolKey,) = POSITION_MANAGER.getPoolAndPositionInfo(id);
         tokens[0] = Currency.unwrap(poolKey.currency0);
         tokens[1] = Currency.unwrap(poolKey.currency1);
-        (amounts[0], amounts[1]) = UniswapV4Logic._collectFees(id, poolKey);
+
+        amounts = _claimFees(id, poolKey);
 
         // If token0 is native ETH, we convert ETH to WETH.
         if (tokens[0] == address(0)) {
@@ -35,16 +27,12 @@ library UniswapV4Logic {
     }
 
     /**
-     * @notice Collects fees for a specific liquidity position in a Uniswap V4 pool.
+     * @notice Claims fees for a specific liquidity position in a Uniswap V4 pool.
      * @param tokenId The id of the liquidity position in UniswapV4 PositionManager.
      * @param poolKey The key containing pool parameters.
-     * @return feeAmount0 The amount of fees collected in terms of token0.
-     * @return feeAmount1 The amount of fees collected in terms of token1.
+     * @return amounts The amounts of fees claimed.
      */
-    function _collectFees(uint256 tokenId, PoolKey memory poolKey)
-        internal
-        returns (uint256 feeAmount0, uint256 feeAmount1)
-    {
+    function _claimFees(uint256 tokenId, PoolKey memory poolKey) internal returns (uint256[] memory amounts) {
         // Generate calldata to collect fees (decrease liquidity with liquidityDelta = 0).
         bytes memory actions = new bytes(2);
         actions[0] = bytes1(uint8(Actions.DECREASE_LIQUIDITY));
@@ -54,9 +42,10 @@ library UniswapV4Logic {
         params[1] = abi.encode(poolKey.currency0, poolKey.currency1, address(this));
 
         bytes memory decreaseLiquidityParams = abi.encode(actions, params);
-        POSITION_MANAGER.modifyLiquidities(decreaseLiquidityParams, block.timestamp);
+        UNISWAP_V4_POSITION_MANAGER.modifyLiquidities(decreaseLiquidityParams, block.timestamp);
 
-        feeAmount0 = poolKey.currency0.balanceOfSelf();
-        feeAmount1 = poolKey.currency1.balanceOfSelf();
+        amounts = new uint256[](2);
+        amounts[0] = poolKey.currency0.balanceOfSelf();
+        amounts[1] = poolKey.currency1.balanceOfSelf();
     }
 }

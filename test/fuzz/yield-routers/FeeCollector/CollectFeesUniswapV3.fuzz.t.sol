@@ -12,7 +12,6 @@ import { FeeCollector_Fuzz_Test } from "./_FeeCollector.fuzz.t.sol";
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { ISwapRouter02 } from "../../compounders/UniswapV3Compounder/_UniswapV3Compounder.fuzz.t.sol";
 import { IUniswapV3PoolExtension } from "../../compounders/UniswapV3Compounder/_UniswapV3Compounder.fuzz.t.sol";
-import { SlipstreamLogic } from "../../../../src/yield-routers/libraries/SlipstreamLogic.sol";
 import { UniswapV3Compounder_Fuzz_Test } from "../../compounders/UniswapV3Compounder/_UniswapV3Compounder.fuzz.t.sol";
 import { UniswapV4Logic } from "../../../../src/yield-routers/libraries/UniswapV4Logic.sol";
 import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
@@ -47,6 +46,7 @@ contract CollectFees_FeeCollector_Fuzz_Test is UniswapV3Compounder_Fuzz_Test, Fe
 
     function testFuzz_Revert_collectFees_Reentered(address random, uint256 tokenId) public {
         // Given: An account address is defined in storage.
+        vm.assume(random != address(0));
         feeCollector.setAccount(random);
 
         // When: Calling collectFees().

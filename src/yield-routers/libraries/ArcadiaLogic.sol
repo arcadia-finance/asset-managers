@@ -76,7 +76,7 @@ library ArcadiaLogic {
         depositData.assetAmounts = new uint256[](count);
         depositData.assetTypes = new uint256[](count);
 
-        // Add newly minted Liquidity Position.
+        // Add Liquidity Position.
         depositData.assets[0] = positionManager;
         depositData.assetIds[0] = id;
         depositData.assetAmounts[0] = 1;
@@ -116,7 +116,7 @@ library ArcadiaLogic {
         depositData.assetAmounts = new uint256[](count);
         depositData.assetTypes = new uint256[](count);
 
-        // Add newly minted Liquidity Position.
+        // Add Liquidity Position.
         depositData.assets[0] = positionManager;
         depositData.assetIds[0] = id;
         depositData.assetAmounts[0] = 1;
@@ -125,16 +125,55 @@ library ArcadiaLogic {
         uint256 i = 1;
 
         if (amount0 > 0) {
-            depositData.assets[i] = token0;
-            depositData.assetAmounts[i] = amount0;
+            depositData.assets[1] = token0;
+            depositData.assetAmounts[1] = amount0;
             depositData.assetTypes[i] = 1;
-            i++;
+            i = 2;
         }
 
         if (amount1 > 0) {
             depositData.assets[i] = token1;
             depositData.assetAmounts[i] = amount1;
             depositData.assetTypes[i] = 1;
+        }
+    }
+
+    /**
+     * @notice Encodes the deposit data after the flash-action.
+     * @param positionManager The contract address of the Position Manager.
+     * @param id The id of the Liquidity Position.
+     * @param tokens Array with the contract addresses of ERC20 tokens to deposit.
+     * @param amounts Array with the amounts of ERC20 tokens to deposit.
+     * @param count The number of ERC20 tokens to deposit.
+     * @return depositData Bytes string with the encoded data.
+     */
+    function _encodeDeposit(
+        address positionManager,
+        uint256 id,
+        address[] memory tokens,
+        uint256[] memory amounts,
+        uint256 count
+    ) internal pure returns (ActionData memory depositData) {
+        depositData.assets = new address[](count);
+        depositData.assetIds = new uint256[](count);
+        depositData.assetAmounts = new uint256[](count);
+        depositData.assetTypes = new uint256[](count);
+
+        // Add Liquidity Position.
+        depositData.assets[0] = positionManager;
+        depositData.assetIds[0] = id;
+        depositData.assetAmounts[0] = 1;
+        depositData.assetTypes[0] = 2;
+        if (count == 1) return depositData;
+
+        uint256 i = 1;
+        for (uint256 j; j < amounts.length; j++) {
+            if (amounts[j] > 0) {
+                depositData.assets[i] = tokens[j];
+                depositData.assetAmounts[i] = amounts[j];
+                depositData.assetTypes[i] = 1;
+                i++;
+            }
         }
     }
 }

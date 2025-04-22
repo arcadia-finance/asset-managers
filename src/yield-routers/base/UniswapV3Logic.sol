@@ -6,11 +6,7 @@ pragma solidity ^0.8.22;
 
 import { CollectParams, IPositionManagerV3 } from "../interfaces/IPositionManagerV3.sol";
 
-library UniswapV3Logic {
-    // The Uniswap V3 NonfungiblePositionManager contract.
-    IPositionManagerV3 internal constant POSITION_MANAGER =
-        IPositionManagerV3(0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1);
-
+abstract contract UniswapV3Logic {
     function claimFees(address positionManager, uint256 id)
         internal
         returns (address[] memory tokens, uint256[] memory amounts)
