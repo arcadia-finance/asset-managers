@@ -88,6 +88,9 @@ contract Claim_Slipstream_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test, Slip
 
         (uint256 totalFee0, uint256 totalFee1) = slipstreamAM.getFeeAmounts(tokenId);
 
+        uint256 initialBalance0 = token0.balanceOf(feeRecipient);
+        uint256 initialBalance1 = token1.balanceOf(feeRecipient);
+
         // When : Calling collectFees()
         vm.prank(initiatorYieldClaimer);
         yieldClaimer.claim(address(account), address(slipstreamPositionManager), tokenId);
@@ -99,8 +102,8 @@ contract Claim_Slipstream_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test, Slip
 
         assertEq(token0.balanceOf(initiatorYieldClaimer), initiatorFee0);
         assertEq(token1.balanceOf(initiatorYieldClaimer), initiatorFee1);
-        assertEq(token0.balanceOf(feeRecipient), totalFee0 - initiatorFee0);
-        assertEq(token1.balanceOf(feeRecipient), totalFee1 - initiatorFee1);
+        assertEq(token0.balanceOf(feeRecipient), initialBalance0 + totalFee0 - initiatorFee0);
+        assertEq(token1.balanceOf(feeRecipient), initialBalance1 + totalFee1 - initiatorFee1);
     }
 
     function testFuzz_Success_claim_Slipstream_Token0Only(
@@ -151,6 +154,9 @@ contract Claim_Slipstream_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test, Slip
         (uint256 totalFee0, uint256 totalFee1) = slipstreamAM.getFeeAmounts(tokenId);
         assertEq(totalFee1, 0);
 
+        uint256 initialBalance0 = token0.balanceOf(feeRecipient);
+        uint256 initialBalance1 = token1.balanceOf(feeRecipient);
+
         // When : Calling collectFees()
         vm.prank(initiatorYieldClaimer);
         yieldClaimer.claim(address(account), address(slipstreamPositionManager), tokenId);
@@ -161,8 +167,8 @@ contract Claim_Slipstream_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test, Slip
 
         assertEq(token0.balanceOf(initiatorYieldClaimer), initiatorFee0);
         assertEq(token1.balanceOf(initiatorYieldClaimer), 0);
-        assertEq(token0.balanceOf(feeRecipient), totalFee0 - initiatorFee0);
-        assertEq(token1.balanceOf(feeRecipient), 0);
+        assertEq(token0.balanceOf(feeRecipient), initialBalance0 + totalFee0 - initiatorFee0);
+        assertEq(token1.balanceOf(feeRecipient), initialBalance1);
     }
 
     function testFuzz_Success_claim_Slipstream_Token1Only(
@@ -213,6 +219,9 @@ contract Claim_Slipstream_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test, Slip
         (uint256 totalFee0, uint256 totalFee1) = slipstreamAM.getFeeAmounts(tokenId);
         assertEq(totalFee0, 0);
 
+        uint256 initialBalance0 = token0.balanceOf(feeRecipient);
+        uint256 initialBalance1 = token1.balanceOf(feeRecipient);
+
         // When : Calling collectFees()
         vm.prank(initiatorYieldClaimer);
         yieldClaimer.claim(address(account), address(slipstreamPositionManager), tokenId);
@@ -223,8 +232,8 @@ contract Claim_Slipstream_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test, Slip
 
         assertEq(token0.balanceOf(initiatorYieldClaimer), 0);
         assertEq(token1.balanceOf(initiatorYieldClaimer), initiatorFee1);
-        assertEq(token0.balanceOf(feeRecipient), 0);
-        assertEq(token1.balanceOf(feeRecipient), totalFee1 - initiatorFee1);
+        assertEq(token0.balanceOf(feeRecipient), initialBalance0);
+        assertEq(token1.balanceOf(feeRecipient), initialBalance1 + totalFee1 - initiatorFee1);
     }
 
     function testFuzz_Success_claim_Slipstream_NoFees(
@@ -277,6 +286,9 @@ contract Claim_Slipstream_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test, Slip
         assertEq(totalFee0, 0);
         assertEq(totalFee1, 0);
 
+        uint256 initialBalance0 = token0.balanceOf(feeRecipient);
+        uint256 initialBalance1 = token1.balanceOf(feeRecipient);
+
         // When : Calling collectFees()
         vm.prank(initiatorYieldClaimer);
         yieldClaimer.claim(address(account), address(slipstreamPositionManager), tokenId);
@@ -284,8 +296,8 @@ contract Claim_Slipstream_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test, Slip
         // Then: No fees should have accrued.
         assertEq(token0.balanceOf(initiatorYieldClaimer), 0);
         assertEq(token1.balanceOf(initiatorYieldClaimer), 0);
-        assertEq(token0.balanceOf(feeRecipient), 0);
-        assertEq(token1.balanceOf(feeRecipient), 0);
+        assertEq(token0.balanceOf(feeRecipient), initialBalance0);
+        assertEq(token1.balanceOf(feeRecipient), initialBalance1);
     }
 
     function testFuzz_Success_claim_Slipstream_recipientIsAccount(TestVariables memory testVars, uint256 initiatorFee)

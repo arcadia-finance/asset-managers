@@ -208,6 +208,8 @@ contract ClaimWrappedStakedSlipstream_YieldClaimer_Fuzz_Test is
         vm.prank(users.accountOwner);
         yieldClaimer.setAccountInfo(address(account), initiatorYieldClaimer, recipient);
 
+        uint256 initialBalance = ERC20(AERO).balanceOf(recipient);
+
         // When : An initiator claims pending Aero from staked slipstream position in Account.
         vm.startPrank(initiatorYieldClaimer);
         vm.expectEmit();
@@ -224,7 +226,7 @@ contract ClaimWrappedStakedSlipstream_YieldClaimer_Fuzz_Test is
         assertEq(ERC20(AERO).balanceOf(address(account)), 0);
         // And: Recipient should have received AERO.
         uint256 expectedAccountBalance = rewardsExpected - expectedInitiatorShare;
-        assertEq(ERC20(AERO).balanceOf(recipient), expectedAccountBalance);
+        assertEq(ERC20(AERO).balanceOf(recipient), initialBalance + expectedAccountBalance);
         // And : Account should be set to the zero address.
         assertEq(yieldClaimer.getAccount(), address(0));
     }

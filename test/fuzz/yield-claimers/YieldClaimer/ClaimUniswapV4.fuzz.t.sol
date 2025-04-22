@@ -120,6 +120,9 @@ contract Claim_UniswapV4_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test, Unisw
             vm.assume(totalFee1 > 0);
         }
 
+        uint256 initialBalance0 = token0.balanceOf(feeRecipient);
+        uint256 initialBalance1 = token1.balanceOf(feeRecipient);
+
         // When : Calling claim()
         vm.prank(initiatorYieldClaimer);
         yieldClaimer.claim(address(account), address(positionManagerV4), tokenId);
@@ -131,8 +134,8 @@ contract Claim_UniswapV4_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test, Unisw
 
         assertEq(token0.balanceOf(initiatorYieldClaimer), initiatorFee0);
         assertEq(token1.balanceOf(initiatorYieldClaimer), initiatorFee1);
-        assertEq(token0.balanceOf(feeRecipient), totalFee0 - initiatorFee0);
-        assertEq(token1.balanceOf(feeRecipient), totalFee1 - initiatorFee1);
+        assertEq(token0.balanceOf(feeRecipient), initialBalance0 + totalFee0 - initiatorFee0);
+        assertEq(token1.balanceOf(feeRecipient), initialBalance1 + totalFee1 - initiatorFee1);
     }
 
     function testFuzz_Success_claim_UniswapV4_NoFees(
@@ -194,6 +197,9 @@ contract Claim_UniswapV4_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test, Unisw
             assertEq(totalFee1, 0);
         }
 
+        uint256 initialBalance0 = token0.balanceOf(feeRecipient);
+        uint256 initialBalance1 = token1.balanceOf(feeRecipient);
+
         // When : Calling claim()
         vm.prank(initiatorYieldClaimer);
         yieldClaimer.claim(address(account), address(positionManagerV4), tokenId);
@@ -202,8 +208,8 @@ contract Claim_UniswapV4_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test, Unisw
         // And: The initiator should have received its fee.
         assertEq(token0.balanceOf(initiatorYieldClaimer), 0);
         assertEq(token1.balanceOf(initiatorYieldClaimer), 0);
-        assertEq(token0.balanceOf(feeRecipient), 0);
-        assertEq(token1.balanceOf(feeRecipient), 0);
+        assertEq(token0.balanceOf(feeRecipient), initialBalance0);
+        assertEq(token1.balanceOf(feeRecipient), initialBalance1);
     }
 
     function testFuzz_Success_claim_UniswapV4_nativeETH(
@@ -280,6 +286,9 @@ contract Claim_UniswapV4_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test, Unisw
             erc20AM.addAsset(address(weth9), BitPackingLib.pack(BA_TO_QA_SINGLE, oracleEthToUsdArr));
         }
 
+        uint256 initialBalance0 = ERC20(address(weth9)).balanceOf(feeRecipient);
+        uint256 initialBalance1 = token1.balanceOf(feeRecipient);
+
         // When : Calling claim()
         vm.prank(initiatorYieldClaimer);
         yieldClaimer.claim(address(account), address(positionManagerV4), tokenId);
@@ -291,8 +300,8 @@ contract Claim_UniswapV4_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test, Unisw
 
         assertEq(ERC20(address(weth9)).balanceOf(initiatorYieldClaimer), initiatorFee0);
         assertEq(token1.balanceOf(initiatorYieldClaimer), initiatorFee1);
-        assertEq(ERC20(address(weth9)).balanceOf(feeRecipient), totalFee0 - initiatorFee0);
-        assertEq(token1.balanceOf(feeRecipient), totalFee1 - initiatorFee1);
+        assertEq(ERC20(address(weth9)).balanceOf(feeRecipient), initialBalance0 + totalFee0 - initiatorFee0);
+        assertEq(token1.balanceOf(feeRecipient), initialBalance1 + totalFee1 - initiatorFee1);
     }
 
     function testFuzz_Success_claim_UniswapV4_RecipientIsAccount(
