@@ -302,6 +302,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         }
 
         (uint160 currentSqrtPriceX96,,,) = stateView.getSlot0(v4PoolKey.toId());
+        uint256 initialBalance = token1.balanceOf(initiator);
 
         // When : calling rebalance()
         vm.prank(initiator);
@@ -316,8 +317,8 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         );
 
         // Then : It should return the correct values
-        assertGt(token1.balanceOf(initiator), 0);
-        assertLe(token1.balanceOf(initiator), expectedFee);
+        assertGt(token1.balanceOf(initiator), initialBalance);
+        assertLe(token1.balanceOf(initiator), initialBalance + expectedFee);
     }
 
     function testFuzz_Success_rebalancePosition_InitiatorFees_Token0_WithFees(
@@ -435,6 +436,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         }
 
         (uint160 currentSqrtPriceX96,,,) = stateView.getSlot0(v4PoolKey.toId());
+        uint256 initialBalance = token1.balanceOf(initiator);
 
         // When : calling rebalance()
         vm.prank(initiator);
@@ -449,8 +451,8 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         );
 
         // Then : It should return the correct values
-        assertGt(token1.balanceOf(initiator), 0);
-        assertLe(token1.balanceOf(initiator), expectedFee);
+        assertGt(token1.balanceOf(initiator), initialBalance);
+        assertLe(token1.balanceOf(initiator), initialBalance + expectedFee);
     }
 
     function testFuzz_Success_rebalancePosition_InitiatorFees_Token1(
@@ -543,6 +545,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         }
 
         (uint160 currentSqrtPriceX96,,,) = stateView.getSlot0(v4PoolKey.toId());
+        uint256 initialBalance = token0.balanceOf(initiator);
 
         // When : calling rebalance()
         vm.prank(initiator);
@@ -557,8 +560,8 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         );
 
         // Then : It should return the correct values
-        assertGt(token0.balanceOf(initiator), 0);
-        assertLe(token0.balanceOf(initiator), expectedFee);
+        assertGt(token0.balanceOf(initiator), initialBalance);
+        assertLe(token0.balanceOf(initiator), initialBalance + expectedFee);
     }
 
     function testFuzz_Success_rebalancePosition_InitiatorFees_Token1_WithFees(

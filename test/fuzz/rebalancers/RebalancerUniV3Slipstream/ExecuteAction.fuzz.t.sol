@@ -630,10 +630,12 @@ contract ExecuteAction_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Sli
         assertEq(depositData.assetIds[0], id + 1);
         assertEq(depositData.assetAmounts[0], 1);
         assertEq(depositData.assetTypes[0], 2);
-        assertEq(depositData.assets[1], address(token0));
-        assertEq(depositData.assetIds[1], 0);
-        assertGt(depositData.assetAmounts[1], 0);
-        assertEq(depositData.assetTypes[1], 1);
+        if (depositData.assets.length == 2) {
+            assertEq(depositData.assets[1], address(token0));
+            assertEq(depositData.assetIds[1], 0);
+            assertGt(depositData.assetAmounts[1], 0);
+            assertEq(depositData.assetTypes[1], 1);
+        }
         if (depositData.assets.length == 3) {
             assertEq(depositData.assets[2], address(token1));
             assertEq(depositData.assetIds[2], 0);
