@@ -40,9 +40,9 @@ contract ClaimAero_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         public
     {
         // Given: The caller is not the initiator.
-        vm.assume(initiator != notInitiator);
+        vm.assume(initiatorYieldClaimer != notInitiator);
         vm.prank(users.accountOwner);
-        yieldClaimer.setAccountInfo(address(account), initiator, address(account));
+        yieldClaimer.setAccountInfo(address(account), initiatorYieldClaimer, address(account));
 
         // When: Calling claim().
         // Then: It should revert.

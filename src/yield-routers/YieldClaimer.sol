@@ -269,4 +269,14 @@ contract YieldClaimer is IActionBase, ImmutableState, StakedSlipstreamLogic, Uni
     function onERC721Received(address, address, uint256, bytes calldata) public pure returns (bytes4) {
         return this.onERC721Received.selector;
     }
+
+    /* ///////////////////////////////////////////////////////////////
+                      NATIVE ETH HANDLER
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Receives native ether.
+     * @dev Required for native ETH fee collected from UniswapV4 pools.
+     */
+    receive() external payable { }
 }

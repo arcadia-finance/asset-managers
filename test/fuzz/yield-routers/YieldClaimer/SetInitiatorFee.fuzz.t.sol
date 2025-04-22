@@ -45,7 +45,7 @@ contract SetInitiatorFee_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
 
     function testFuzz_Revert_setInitiatorFee_InvalidValue_MaxInitiatorFee(uint256 initiatorFee) public {
         // Given: initiatorFee is higher than maxInitiatorFee.
-        initiatorFee = bound(initiatorFee, MAX_INITIATOR_FEE + 1, type(uint256).max);
+        initiatorFee = bound(initiatorFee, MAX_INITIATOR_FEE_YIELD_CLAIMER + 1, type(uint256).max);
 
         // When: Calling setInitatorFee().
         // Then: It should revert.
@@ -55,8 +55,8 @@ contract SetInitiatorFee_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
 
     function testFuzz_Revert_setInitiatorFee_InvalidValue_DecreaseOnly(uint256 initialFee, uint256 newFee) public {
         // Given: initiatorFee is higher than maxInitiatorFee.
-        initialFee = bound(initialFee, 0, MAX_INITIATOR_FEE - 1);
-        newFee = bound(newFee, initialFee + 1, MAX_INITIATOR_FEE);
+        initialFee = bound(initialFee, 0, MAX_INITIATOR_FEE_YIELD_CLAIMER - 1);
+        newFee = bound(newFee, initialFee + 1, MAX_INITIATOR_FEE_YIELD_CLAIMER);
 
         // And: Initiator fee has already been set.
         yieldClaimer.setInitiatorFee(initialFee);
@@ -69,10 +69,10 @@ contract SetInitiatorFee_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
 
     function testFuzz_Success_setInitiatorFee_First(uint256 initiatorFee, address initiator_) public {
         // Given: initiatorFee is below or equal to maxInitiatorFee.
-        initiatorFee = bound(initiatorFee, 0, MAX_INITIATOR_FEE);
+        initiatorFee = bound(initiatorFee, 0, MAX_INITIATOR_FEE_YIELD_CLAIMER);
 
         // And: Initiator is not equal to initiator that is already set.
-        vm.assume(initiator_ != initiator);
+        vm.assume(initiator_ != initiatorYieldClaimer);
 
         // And: Initiator is not yet set.
         assertEq(yieldClaimer.initiatorSet(initiator_), false);
@@ -91,12 +91,12 @@ contract SetInitiatorFee_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         public
     {
         // Given: initialFee is below or equal to maxInitiatorFee.
-        initialFee = bound(initialFee, 1, MAX_INITIATOR_FEE - 1);
+        initialFee = bound(initialFee, 1, MAX_INITIATOR_FEE_YIELD_CLAIMER - 1);
         // And: updated fee is lower thab initialFee.
         newFee = bound(newFee, 0, initialFee);
 
         // And: Initiator is not equal to initiator that is already set.
-        vm.assume(initiator_ != initiator);
+        vm.assume(initiator_ != initiatorYieldClaimer);
 
         // And: Initiator is not yet set.
         assertEq(yieldClaimer.initiatorSet(initiator_), false);

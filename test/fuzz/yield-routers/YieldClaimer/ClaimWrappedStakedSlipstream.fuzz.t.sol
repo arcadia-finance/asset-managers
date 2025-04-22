@@ -63,7 +63,7 @@ contract ClaimWrappedStakedSlipstream_YieldClaimer_Fuzz_Test is
             address(0),
             address(0),
             address(0),
-            MAX_INITIATOR_FEE
+            MAX_INITIATOR_FEE_YIELD_CLAIMER
         );
     }
 
@@ -128,10 +128,10 @@ contract ClaimWrappedStakedSlipstream_YieldClaimer_Fuzz_Test is
 
         // And : Set the initiator and recipient for the account.
         vm.prank(users.accountOwner);
-        yieldClaimer.setAccountInfo(address(account), initiator, address(account));
+        yieldClaimer.setAccountInfo(address(account), initiatorYieldClaimer, address(account));
 
         // When : An initiator claims pending Aero from staked slipstream position in Account.
-        vm.startPrank(initiator);
+        vm.startPrank(initiatorYieldClaimer);
         vm.expectEmit();
         emit YieldClaimer.Claimed(address(account), address(wrappedStakedSlipstream), assetId);
         yieldClaimer.claim(address(account), address(wrappedStakedSlipstream), assetId);
@@ -140,8 +140,8 @@ contract ClaimWrappedStakedSlipstream_YieldClaimer_Fuzz_Test is
         // Then : Account should still own the position.
         assertEq(ERC721(address(wrappedStakedSlipstream)).ownerOf(assetId), address(account));
         // And : The initiator should have received its share
-        uint256 expectedInitiatorShare = rewardsExpected.mulDivDown(INITIATOR_FEE, 1e18);
-        assertEq(ERC20(AERO).balanceOf(initiator), expectedInitiatorShare);
+        uint256 expectedInitiatorShare = rewardsExpected.mulDivDown(INITIATOR_FEE_YIELD_CLAIMER, 1e18);
+        assertEq(ERC20(AERO).balanceOf(initiatorYieldClaimer), expectedInitiatorShare);
         // And : Account should have received AERO.
         uint256 expectedAccountBalance = rewardsExpected - expectedInitiatorShare;
         assertEq(ERC20(AERO).balanceOf(address(account)), expectedAccountBalance);
@@ -207,10 +207,10 @@ contract ClaimWrappedStakedSlipstream_YieldClaimer_Fuzz_Test is
 
         // And : Set the initiator and recipient for the account.
         vm.prank(users.accountOwner);
-        yieldClaimer.setAccountInfo(address(account), initiator, recipient);
+        yieldClaimer.setAccountInfo(address(account), initiatorYieldClaimer, recipient);
 
         // When : An initiator claims pending Aero from staked slipstream position in Account.
-        vm.startPrank(initiator);
+        vm.startPrank(initiatorYieldClaimer);
         vm.expectEmit();
         emit YieldClaimer.Claimed(address(account), address(wrappedStakedSlipstream), assetId);
         yieldClaimer.claim(address(account), address(wrappedStakedSlipstream), assetId);
@@ -219,8 +219,8 @@ contract ClaimWrappedStakedSlipstream_YieldClaimer_Fuzz_Test is
         // Then : Account should still own the position.
         assertEq(ERC721(address(wrappedStakedSlipstream)).ownerOf(assetId), address(account));
         // And : The initiator should have received its share
-        uint256 expectedInitiatorShare = rewardsExpected.mulDivDown(INITIATOR_FEE, 1e18);
-        assertEq(ERC20(AERO).balanceOf(initiator), expectedInitiatorShare);
+        uint256 expectedInitiatorShare = rewardsExpected.mulDivDown(INITIATOR_FEE_YIELD_CLAIMER, 1e18);
+        assertEq(ERC20(AERO).balanceOf(initiatorYieldClaimer), expectedInitiatorShare);
         // And : Account should not have received AERO.
         assertEq(ERC20(AERO).balanceOf(address(account)), 0);
         // And: Recipient should have received AERO.

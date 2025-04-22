@@ -63,19 +63,19 @@ contract ExecuteAction_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
             uniswapV3PositionManager_,
             uniswapV4PositionManager_,
             address(0),
-            MAX_INITIATOR_FEE
+            MAX_INITIATOR_FEE_YIELD_CLAIMER
         );
 
         // And: An account address is defined in storage.
         yieldClaimer.setAccount(account_);
 
         // When: Calling claim().
-        bytes memory claimData = abi.encode(positionManager, tokenId, initiator);
+        bytes memory claimData = abi.encode(positionManager, tokenId, initiatorYieldClaimer);
         // Then: It should revert.
         vm.prank(account_);
         vm.expectRevert(YieldClaimer.InvalidPositionManager.selector);
         yieldClaimer.executeAction(claimData);
     }
 
-    // All others cases are covered by our full flow testing in ClaimAero.fuzz.t.sol
+    // All others cases are covered in Claim*.fuzz.t.sol
 }

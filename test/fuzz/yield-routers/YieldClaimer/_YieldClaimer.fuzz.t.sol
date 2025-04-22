@@ -22,16 +22,16 @@ abstract contract YieldClaimer_Fuzz_Test is Fuzz_Test {
     /////////////////////////////////////////////////////////////// */
 
     // 0,5% to 11% fee on swaps.
-    uint256 MIN_INITIATOR_FEE = 0.005 * 1e18;
-    uint256 MAX_INITIATOR_FEE = 0.11 * 1e18;
+    uint256 MIN_INITIATOR_FEE_YIELD_CLAIMER = 0.005 * 1e18;
+    uint256 MAX_INITIATOR_FEE_YIELD_CLAIMER = 0.11 * 1e18;
     // 10 % initiator fee
-    uint256 INITIATOR_FEE = 0.1 * 1e18;
+    uint256 INITIATOR_FEE_YIELD_CLAIMER = 0.1 * 1e18;
 
     /*////////////////////////////////////////////////////////////////
                             STORAGE
     /////////////////////////////////////////////////////////////// */
 
-    address internal initiator;
+    address internal initiatorYieldClaimer;
 
     /*////////////////////////////////////////////////////////////////
                             TEST CONTRACTS
@@ -53,10 +53,10 @@ abstract contract YieldClaimer_Fuzz_Test is Fuzz_Test {
         deployArcadiaAccounts();
 
         // Create initiator.
-        initiator = createUser("initiator");
+        initiatorYieldClaimer = createUser("initiatorYieldClaimer");
 
         // Deploy Yield Claimer.
-        deployYieldClaimer(MAX_INITIATOR_FEE);
+        deployYieldClaimer(MAX_INITIATOR_FEE_YIELD_CLAIMER);
     }
 
     /*////////////////////////////////////////////////////////////////
@@ -115,7 +115,7 @@ abstract contract YieldClaimer_Fuzz_Test is Fuzz_Test {
         account.setAssetManager(address(yieldClaimer), true);
 
         // And : Create and set initiator details.
-        vm.prank(initiator);
-        yieldClaimer.setInitiatorFee(INITIATOR_FEE);
+        vm.prank(initiatorYieldClaimer);
+        yieldClaimer.setInitiatorFee(INITIATOR_FEE_YIELD_CLAIMER);
     }
 }
