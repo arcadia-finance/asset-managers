@@ -6,15 +6,11 @@ pragma solidity ^0.8.26;
 
 import { ActionData, IActionBase } from "../../lib/accounts-v2/src/interfaces/IActionBase.sol";
 import { ArcadiaLogic } from "./libraries/ArcadiaLogic.sol";
-import { Currency } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { ERC721 } from "../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IAccount } from "./interfaces/IAccount.sol";
 import { ImmutableState } from "./base/ImmutableState.sol";
-import { IPositionManagerV3, CollectParams } from "./interfaces/IPositionManagerV3.sol";
-import { IPositionManagerV4 } from "./interfaces/IPositionManagerV4.sol";
-import { PoolKey } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 import { SafeApprove } from "../libraries/SafeApprove.sol";
 import { StakedSlipstreamLogic } from "./base/StakedSlipstreamLogic.sol";
 import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
