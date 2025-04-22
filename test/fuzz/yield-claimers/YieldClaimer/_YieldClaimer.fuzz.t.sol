@@ -8,7 +8,7 @@ import { AccountV1 } from "../../../../lib/accounts-v2/src/accounts/AccountV1.so
 import { AccountSpot } from "../../../../lib/accounts-v2/src/accounts/AccountSpot.sol";
 import { Fuzz_Test } from "../../Fuzz.t.sol";
 import { StdStorage, stdStorage } from "../../../../lib/accounts-v2/lib/forge-std/src/Test.sol";
-import { YieldClaimer } from "../../../../src/yield-routers/YieldClaimer.sol";
+import { YieldClaimer } from "../../../../src/yield-claimers/YieldClaimer.sol";
 import { YieldClaimerExtension } from "../../../../test/utils/extensions/YieldClaimerExtension.sol";
 import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
 

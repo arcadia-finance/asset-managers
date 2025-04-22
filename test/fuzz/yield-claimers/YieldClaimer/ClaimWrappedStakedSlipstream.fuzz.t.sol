@@ -19,7 +19,7 @@ import { StakedSlipstreamAM_Fuzz_Test } from
 import { StdStorage, stdStorage } from "../../../../lib/accounts-v2/lib/forge-std/src/Test.sol";
 import { WrappedStakedSlipstreamFixture } from
     "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/WrappedStakedSlipstream.f.sol";
-import { YieldClaimer } from "../../../../src/yield-routers/YieldClaimer.sol";
+import { YieldClaimer } from "../../../../src/yield-claimers/YieldClaimer.sol";
 import { YieldClaimer_Fuzz_Test } from "./_YieldClaimer.fuzz.t.sol";
 
 /**

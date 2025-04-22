@@ -17,7 +17,7 @@ import { StakedSlipstreamAM } from "../../../../lib/accounts-v2/src/asset-module
 import { StakedSlipstreamAM_Fuzz_Test } from
     "../../../../lib/accounts-v2/test/fuzz/asset-modules/StakedSlipstreamAM/_StakedSlipstreamAM.fuzz.t.sol";
 import { StdStorage, stdStorage } from "../../../../lib/accounts-v2/lib/forge-std/src/Test.sol";
-import { YieldClaimer } from "../../../../src/yield-routers/YieldClaimer.sol";
+import { YieldClaimer } from "../../../../src/yield-claimers/YieldClaimer.sol";
 import { YieldClaimer_Fuzz_Test } from "./_YieldClaimer.fuzz.t.sol";
 
 /**

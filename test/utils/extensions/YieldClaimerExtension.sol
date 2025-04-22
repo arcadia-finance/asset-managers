@@ -4,7 +4,7 @@
  */
 pragma solidity ^0.8.22;
 
-import { YieldClaimer } from "../../../src/yield-routers/YieldClaimer.sol";
+import { YieldClaimer } from "../../../src/yield-claimers/YieldClaimer.sol";
 
 contract YieldClaimerExtension is YieldClaimer {
     constructor(

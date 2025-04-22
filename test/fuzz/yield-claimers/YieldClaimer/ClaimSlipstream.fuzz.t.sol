@@ -247,7 +247,7 @@ contract Claim_Slipstream_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test, Slip
 
         // And : Valid pool state.
         (testVars,) = givenValidBalancedState(testVars);
-        // And: Fees should only have accrued in token1.
+        // And: No fees have accrued.
         testVars.feeAmount0 = 0;
         testVars.feeAmount1 = 0;
 
@@ -406,7 +406,7 @@ contract Claim_Slipstream_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test, Slip
         assertEq(assetAmounts[0], totalFee0 - initiatorFee0);
     }
 
-    function testFuzz_Success_claim_Slipstream_Token1Only_RecipientIsAccount(
+    function testFuzz_Success_claim_Slipstream_NoFees_RecipientIsAccount(
         TestVariables memory testVars,
         uint256 initiatorFee
     ) public {
@@ -461,5 +461,61 @@ contract Claim_Slipstream_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test, Slip
         assertEq(assetAddresses[0], address(token1));
         assertEq(assetAddresses[1], address(slipstreamPositionManager));
         assertEq(assetAmounts[0], totalFee1 - initiatorFee1);
+    }
+
+    function testFuzz_Success_claim_Slipstream_Token1Only_RecipientIsAccount(
+        TestVariables memory testVars,
+        uint256 initiatorFee
+    ) public {
+        // Given: Set account info.
+        vm.prank(users.accountOwner);
+        yieldClaimer.setAccountInfo(address(account), initiatorYieldClaimer, address(account));
+
+        // And: Set initiator fee.
+        initiatorFee = bound(initiatorFee, MIN_INITIATOR_FEE_YIELD_CLAIMER, INITIATOR_FEE_YIELD_CLAIMER);
+        vm.prank(initiatorYieldClaimer);
+        yieldClaimer.setInitiatorFee(initiatorFee);
+
+        // And : Valid pool state.
+        (testVars,) = givenValidBalancedState(testVars);
+        // And: No fees have accrued.
+        testVars.feeAmount0 = 0;
+        testVars.feeAmount1 = 0;
+
+        // And : State is persisted
+        uint256 tokenId = setState(testVars, usdStablePool);
+
+        // And : Transfer position to account owner
+        vm.prank(users.liquidityProvider);
+        ERC721(address(slipstreamPositionManager)).transferFrom(users.liquidityProvider, users.accountOwner, tokenId);
+
+        {
+            address[] memory assets_ = new address[](1);
+            assets_[0] = address(slipstreamPositionManager);
+            uint256[] memory assetIds_ = new uint256[](1);
+            assetIds_[0] = tokenId;
+            uint256[] memory assetAmounts_ = new uint256[](1);
+            assetAmounts_[0] = 1;
+
+            // And : Deposit position in Account
+            vm.startPrank(users.accountOwner);
+            ERC721(address(slipstreamPositionManager)).approve(address(account), tokenId);
+            account.deposit(assets_, assetIds_, assetAmounts_);
+            vm.stopPrank();
+        }
+
+        (uint256 totalFee0, uint256 totalFee1) = slipstreamAM.getFeeAmounts(tokenId);
+        assertEq(totalFee0, 0);
+        assertEq(totalFee1, 0);
+
+        // When : Calling collectFees()
+        vm.prank(initiatorYieldClaimer);
+        yieldClaimer.claim(address(account), address(slipstreamPositionManager), tokenId);
+
+        // Then: No fees should have accrued.
+        assertEq(token0.balanceOf(initiatorYieldClaimer), 0);
+        assertEq(token1.balanceOf(initiatorYieldClaimer), 0);
+        assertEq(token0.balanceOf(address(account)), 0);
+        assertEq(token1.balanceOf(address(account)), 0);
     }
 }
