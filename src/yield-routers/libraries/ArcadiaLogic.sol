@@ -5,7 +5,6 @@
 pragma solidity ^0.8.26;
 
 import { ActionData } from "../../../lib/accounts-v2/src/interfaces/IActionBase.sol";
-import { AeroClaimer } from "../AeroClaimer.sol";
 import { IFactory } from "../../interfaces/IFactory.sol";
 import { IPermit2 } from "../../../lib/accounts-v2/src/interfaces/IPermit2.sol";
 

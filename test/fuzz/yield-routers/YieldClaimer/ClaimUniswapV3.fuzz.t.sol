@@ -105,6 +105,66 @@ contract Claim_UniswapV3_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test, Unisw
         assertEq(token1.balanceOf(feeRecipient), totalFee1 - initiatorFee1);
     }
 
+    function testFuzz_Success_claim_UniswapV3_NoFees(
+        TestVariables memory testVars,
+        uint256 initiatorFee,
+        address feeRecipient
+    ) public {
+        // Given: feeRecipient is not the Account.
+        vm.assume(feeRecipient != address(account));
+
+        // And: Set account info.
+        vm.prank(users.accountOwner);
+        yieldClaimer.setAccountInfo(address(account), initiatorYieldClaimer, feeRecipient);
+
+        // And: Set initiator fee.
+        initiatorFee = bound(initiatorFee, MIN_INITIATOR_FEE_YIELD_CLAIMER, INITIATOR_FEE_YIELD_CLAIMER);
+        vm.prank(initiatorYieldClaimer);
+        yieldClaimer.setInitiatorFee(initiatorFee);
+
+        // And : Valid pool state
+        (testVars,) = givenValidBalancedState(testVars);
+
+        testVars.feeAmount0 = 0;
+        testVars.feeAmount1 = 0;
+
+        // And : State is persisted
+        uint256 tokenId = setState(testVars, usdStablePool);
+
+        // And : Transfer position to account owner
+        vm.prank(users.liquidityProvider);
+        ERC721(address(nonfungiblePositionManager)).transferFrom(users.liquidityProvider, users.accountOwner, tokenId);
+
+        {
+            address[] memory assets_ = new address[](1);
+            assets_[0] = address(nonfungiblePositionManager);
+            uint256[] memory assetIds_ = new uint256[](1);
+            assetIds_[0] = tokenId;
+            uint256[] memory assetAmounts_ = new uint256[](1);
+            assetAmounts_[0] = 1;
+
+            // And : Deposit position in Account
+            vm.startPrank(users.accountOwner);
+            ERC721(address(nonfungiblePositionManager)).approve(address(account), tokenId);
+            account.deposit(assets_, assetIds_, assetAmounts_);
+            vm.stopPrank();
+        }
+
+        (uint256 totalFee0, uint256 totalFee1) = uniV3AM.getFeeAmounts(tokenId);
+        assertEq(totalFee0, 0);
+        assertEq(totalFee1, 0);
+
+        // When : Calling collectFees()
+        vm.prank(initiatorYieldClaimer);
+        yieldClaimer.claim(address(account), address(nonfungiblePositionManager), tokenId);
+
+        // Then: No fees should have accrued.
+        assertEq(token0.balanceOf(initiatorYieldClaimer), 0);
+        assertEq(token1.balanceOf(initiatorYieldClaimer), 0);
+        assertEq(token0.balanceOf(feeRecipient), 0);
+        assertEq(token1.balanceOf(feeRecipient), 0);
+    }
+
     function testFuzz_Success_claim_UniswapV3_recipientIsAccount(TestVariables memory testVars, uint256 initiatorFee)
         public
     {

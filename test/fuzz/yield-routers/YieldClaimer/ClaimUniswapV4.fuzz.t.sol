@@ -139,6 +139,76 @@ contract Claim_UniswapV4_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test, Unisw
         assertEq(token1.balanceOf(feeRecipient), totalFee1 - initiatorFee1);
     }
 
+    function testFuzz_Success_claim_UniswapV4_NoFees(
+        TestVariables memory testVars,
+        uint256 initiatorFee,
+        address feeRecipient
+    ) public {
+        // Given: feeRecipient is not the Account.
+        vm.assume(feeRecipient != address(account));
+
+        // And: Set account info.
+        vm.prank(users.accountOwner);
+        yieldClaimer.setAccountInfo(address(account), initiatorYieldClaimer, feeRecipient);
+
+        // And: Set initiator fee.
+        initiatorFee = bound(initiatorFee, MIN_INITIATOR_FEE_YIELD_CLAIMER, INITIATOR_FEE_YIELD_CLAIMER);
+        vm.prank(initiatorYieldClaimer);
+        yieldClaimer.setInitiatorFee(initiatorFee);
+
+        // And: Valid state
+        (testVars,) = givenValidBalancedState(testVars, stablePoolKey);
+
+        // And : State is persisted
+        uint256 tokenId = setState(testVars, stablePoolKey);
+
+        testVars.liquidity = stateView.getLiquidity(stablePoolKey.toId());
+
+        // And : Transfer position to account owner
+        vm.prank(users.liquidityProvider);
+        ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, users.accountOwner, tokenId);
+
+        {
+            address[] memory assets_ = new address[](1);
+            assets_[0] = address(positionManagerV4);
+            uint256[] memory assetIds_ = new uint256[](1);
+            assetIds_[0] = tokenId;
+            uint256[] memory assetAmounts_ = new uint256[](1);
+            assetAmounts_[0] = 1;
+
+            // And : Deposit position in Account
+            vm.startPrank(users.accountOwner);
+            ERC721(address(positionManagerV4)).approve(address(account), tokenId);
+            account.deposit(assets_, assetIds_, assetAmounts_);
+            vm.stopPrank();
+        }
+
+        // And : Assert that no fees have accrued.
+        uint256 totalFee0;
+        uint256 totalFee1;
+        {
+            bytes32 positionId = keccak256(
+                abi.encodePacked(address(positionManagerV4), testVars.tickLower, testVars.tickUpper, bytes32(tokenId))
+            );
+            (, PositionInfo info) = positionManagerV4.getPoolAndPositionInfo(tokenId);
+            uint128 liquidity = stateView.getPositionLiquidity(stablePoolKey.toId(), positionId);
+            (totalFee0, totalFee1) = getFeeAmounts(tokenId, stablePoolKey.toId(), info, liquidity);
+            assertEq(totalFee0, 0);
+            assertEq(totalFee1, 0);
+        }
+
+        // When : Calling claim()
+        vm.prank(initiatorYieldClaimer);
+        yieldClaimer.claim(address(account), address(positionManagerV4), tokenId);
+
+        // Then: Fees should have been sent to recipient.
+        // And: The initiator should have received its fee.
+        assertEq(token0.balanceOf(initiatorYieldClaimer), 0);
+        assertEq(token1.balanceOf(initiatorYieldClaimer), 0);
+        assertEq(token0.balanceOf(feeRecipient), 0);
+        assertEq(token1.balanceOf(feeRecipient), 0);
+    }
+
     function testFuzz_Success_claim_UniswapV4_nativeETH(
         TestVariables memory testVars,
         FeeGrowth memory feeData,
