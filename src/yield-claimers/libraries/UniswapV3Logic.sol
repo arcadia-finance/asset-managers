@@ -1,16 +1,16 @@
 /**
  * Created by Pragma Labs
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.26;
 
 import { CollectParams, IPositionManagerV3 } from "../interfaces/IPositionManagerV3.sol";
 
-abstract contract UniswapV3Logic {
+library UniswapV3Logic {
     /**
      * @notice Claims fees from a Uniswap V3 Liquidity Position.
-     * @param positionManager The address of the position manager contract.
-     * @param id The id of the liquidity position NFT.
+     * @param positionManager The contract address of the Uniswap V3 Position Manager.
+     * @param id The id of the Uniswap V3 Liquidity Position.
      * @return tokens The addresses of the fee tokens.
      * @return amounts The corresponding amounts of each token collected as fees.
      */

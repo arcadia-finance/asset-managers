@@ -89,6 +89,7 @@ abstract contract YieldClaimer_Fuzz_Test is Fuzz_Test {
     ) internal {
         vm.prank(users.owner);
         yieldClaimer = new YieldClaimerExtension(
+            address(factory),
             rewardToken_,
             slipstreamPositionManager_,
             stakedSlipstreamAM_,
@@ -98,17 +99,6 @@ abstract contract YieldClaimer_Fuzz_Test is Fuzz_Test {
             weth_,
             maxInitiatorFee
         );
-
-        bytes memory bytecode = address(yieldClaimer).code;
-
-        // Overwrite contract addresses stored as constants in YieldClaimer.
-        bytecode = Utils.veryBadBytesReplacer(
-            bytecode,
-            abi.encodePacked(0xDa14Fdd72345c4d2511357214c5B89A919768e59),
-            abi.encodePacked(address(factory)),
-            false
-        );
-        vm.etch(address(yieldClaimer), bytecode);
 
         // And : YieldClaimer is allowed as Asset Manager
         vm.prank(users.accountOwner);

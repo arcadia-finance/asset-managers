@@ -1,5 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity ^0.8.22;
+/**
+ * Created by Pragma Labs
+ * SPDX-License-Identifier: MIT
+ */
+pragma solidity ^0.8.26;
 
 struct CollectParams {
     uint256 tokenId;
@@ -9,7 +12,6 @@ struct CollectParams {
 }
 
 interface IPositionManagerV3 {
-    function approve(address spender, uint256 tokenId) external;
     function positions(uint256 tokenId)
         external
         view

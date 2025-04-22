@@ -21,6 +21,7 @@ contract Constructor_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
                               TESTS
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Success_Constructor(
+        address factory_,
         address rewardToken,
         address slipstreamPositionManager_,
         address stakedSlipstreamAM_,
@@ -32,6 +33,7 @@ contract Constructor_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
     ) public {
         vm.prank(users.owner);
         YieldClaimer yieldClaimer_ = new YieldClaimer(
+            factory_,
             rewardToken,
             slipstreamPositionManager_,
             stakedSlipstreamAM_,

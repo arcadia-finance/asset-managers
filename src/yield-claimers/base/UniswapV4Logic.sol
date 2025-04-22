@@ -1,8 +1,8 @@
 /**
  * Created by Pragma Labs
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.26;
 
 import { Actions } from "../../../lib/accounts-v2/lib/v4-periphery/src/libraries/Actions.sol";
 import { Currency } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
@@ -35,17 +35,17 @@ abstract contract UniswapV4Logic is ImmutableState {
 
     /**
      * @notice Claims fees for a specific liquidity position in a Uniswap V4 pool.
-     * @param tokenId The id of the liquidity position in UniswapV4 PositionManager.
+     * @param id The id of the Uniswap V4 Liquidity Position.
      * @param poolKey The key containing pool parameters.
      * @return amounts The amounts of fees claimed.
      */
-    function _claimFees(uint256 tokenId, PoolKey memory poolKey) internal returns (uint256[] memory amounts) {
+    function _claimFees(uint256 id, PoolKey memory poolKey) internal returns (uint256[] memory amounts) {
         // Generate calldata to collect fees (decrease liquidity with liquidityDelta = 0).
         bytes memory actions = new bytes(2);
         actions[0] = bytes1(uint8(Actions.DECREASE_LIQUIDITY));
         actions[1] = bytes1(uint8(Actions.TAKE_PAIR));
         bytes[] memory params = new bytes[](2);
-        params[0] = abi.encode(tokenId, 0, 0, 0, "");
+        params[0] = abi.encode(id, 0, 0, 0, "");
         params[1] = abi.encode(poolKey.currency0, poolKey.currency1, address(this));
 
         bytes memory decreaseLiquidityParams = abi.encode(actions, params);

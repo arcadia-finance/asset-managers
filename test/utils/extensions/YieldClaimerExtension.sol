@@ -8,6 +8,7 @@ import { YieldClaimer } from "../../../src/yield-claimers/YieldClaimer.sol";
 
 contract YieldClaimerExtension is YieldClaimer {
     constructor(
+        address factory,
         address rewardToken,
         address slipstreamPositionManager,
         address stakedSlipstreamAM,
@@ -18,6 +19,7 @@ contract YieldClaimerExtension is YieldClaimer {
         uint256 maxInitiatorFee
     )
         YieldClaimer(
+            factory,
             rewardToken,
             slipstreamPositionManager,
             stakedSlipstreamAM,

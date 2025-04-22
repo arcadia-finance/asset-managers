@@ -17,14 +17,14 @@ import { IPositionManagerV4 } from "./interfaces/IPositionManagerV4.sol";
 import { PoolKey } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 import { SafeApprove } from "../libraries/SafeApprove.sol";
 import { StakedSlipstreamLogic } from "./base/StakedSlipstreamLogic.sol";
-import { UniswapV3Logic } from "./base/UniswapV3Logic.sol";
+import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
 import { UniswapV4Logic } from "./base/UniswapV4Logic.sol";
 
 /**
  * @title Yield Claimer for concentrated Liquidity Positions.
  * @author Pragma Labs
  */
-contract YieldClaimer is IActionBase, ImmutableState, StakedSlipstreamLogic, UniswapV3Logic, UniswapV4Logic {
+contract YieldClaimer is IActionBase, ImmutableState, StakedSlipstreamLogic, UniswapV4Logic {
     using FixedPointMathLib for uint256;
     using SafeApprove for ERC20;
     using SafeTransferLib for ERC20;
@@ -71,7 +71,7 @@ contract YieldClaimer is IActionBase, ImmutableState, StakedSlipstreamLogic, Uni
                                 EVENTS
     ////////////////////////////////////////////////////////////// */
 
-    event AccountInfoSet(address indexed account, address initiator, address feeRecipient);
+    event AccountInfoSet(address indexed account, address indexed initiator, address feeRecipient);
     event Claimed(address indexed account, address indexed positionManager, uint256 id);
 
     /* //////////////////////////////////////////////////////////////
@@ -79,16 +79,18 @@ contract YieldClaimer is IActionBase, ImmutableState, StakedSlipstreamLogic, Uni
     ////////////////////////////////////////////////////////////// */
 
     /**
-     * @param rewardToken The address of the reward token for staked Slipstream positions (AERO).
-     * @param slipstreamPositionManager The address of the Slipstream Position Manager contract.
-     * @param stakedSlipstreamAM The address of the Staked Slipstream Asset Manager contract.
-     * @param stakedSlipstreamWrapper The address of the wrapper contract for staked Slipstream assets.
-     * @param uniswapV3PositionManager The address of the Uniswap V3 Position Manager contract.
-     * @param uniswapV4PositionManager The address of the Uniswap V4 Position Manager contract.
-     * @param weth The address of the WETH token contract.
+     * @param factory The contract address of the Arcadia Factory.
+     * @param rewardToken The contract address of the reward token for staked Slipstream positions (AERO).
+     * @param slipstreamPositionManager The contract address of the Slipstream Position Manager.
+     * @param stakedSlipstreamAM The contract address of the Staked Slipstream Asset Manager.
+     * @param stakedSlipstreamWrapper The contract address of the Staked Slipstream Wrapper.
+     * @param uniswapV3PositionManager The contract address of the Uniswap V3 Position Manager.
+     * @param uniswapV4PositionManager The contract address of the Uniswap V4 Position Manager.
+     * @param weth The contract address of WETH.
      * @param maxInitiatorFee The maximum fee (with 18 decimals precision) that an initiator can set.
      */
     constructor(
+        address factory,
         address rewardToken,
         address slipstreamPositionManager,
         address stakedSlipstreamAM,
@@ -99,6 +101,7 @@ contract YieldClaimer is IActionBase, ImmutableState, StakedSlipstreamLogic, Uni
         uint256 maxInitiatorFee
     )
         ImmutableState(
+            factory,
             rewardToken,
             slipstreamPositionManager,
             stakedSlipstreamAM,
@@ -199,7 +202,7 @@ contract YieldClaimer is IActionBase, ImmutableState, StakedSlipstreamLogic, Uni
     /**
      * @notice Claims fees or rewards from the given Liquidity Position.
      * @param positionManager The contract address of the Position Manager.
-     * @param id The ID of the liquidity position.
+     * @param id The id of the Liquidity Position.
      * @return tokens The fee/reward tokens.
      * @return amounts The corresponding token amounts.
      */
@@ -241,7 +244,7 @@ contract YieldClaimer is IActionBase, ImmutableState, StakedSlipstreamLogic, Uni
             // If so, the initiator can only decrease the fee.
             if (initiatorFee_ > initiatorFee[msg.sender]) revert InvalidValue();
         } else {
-            // If not, the fee can not exceed certain thresholds.
+            // If not, the fee can not exceed a certain threshold.
             if (initiatorFee_ > MAX_INITIATOR_FEE) revert InvalidValue();
             initiatorSet[msg.sender] = true;
         }
@@ -265,7 +268,7 @@ contract YieldClaimer is IActionBase, ImmutableState, StakedSlipstreamLogic, Uni
      */
     function setAccountInfo(address account_, address initiator, address feeRecipient) external {
         if (account != address(0)) revert Reentered();
-        if (!ArcadiaLogic.FACTORY.isAccount(account_)) revert NotAnAccount();
+        if (!FACTORY.isAccount(account_)) revert NotAnAccount();
         if (msg.sender != IAccount(account_).owner()) revert OnlyAccountOwner();
         if (feeRecipient == address(0)) revert InvalidRecipient();
 
@@ -293,7 +296,6 @@ contract YieldClaimer is IActionBase, ImmutableState, StakedSlipstreamLogic, Uni
 
     /**
      * @notice Receives native ether.
-     * @dev Required for native ETH fee collected from UniswapV4 pools.
      */
     receive() external payable { }
 }
