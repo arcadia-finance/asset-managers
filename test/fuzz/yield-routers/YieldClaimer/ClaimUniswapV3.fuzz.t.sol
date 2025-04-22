@@ -46,8 +46,9 @@ contract Claim_UniswapV3_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test, Unisw
     function testFuzz_Success_claim_UniswapV3(TestVariables memory testVars, uint256 initiatorFee, address feeRecipient)
         public
     {
-        // Given: feeRecipient is not the Account.
+        // Given: feeRecipient is not the Account or address(0).
         vm.assume(feeRecipient != address(account));
+        vm.assume(feeRecipient != address(0));
 
         // And: Set account info.
         vm.prank(users.accountOwner);
@@ -105,8 +106,9 @@ contract Claim_UniswapV3_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test, Unisw
         uint256 initiatorFee,
         address feeRecipient
     ) public {
-        // Given: feeRecipient is not the Account.
+        // Given: feeRecipient is not the Account or address(0).
         vm.assume(feeRecipient != address(account));
+        vm.assume(feeRecipient != address(0));
 
         // And: Set account info.
         vm.prank(users.accountOwner);

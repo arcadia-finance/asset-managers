@@ -48,8 +48,9 @@ contract Claim_Slipstream_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test, Slip
         uint256 initiatorFee,
         address feeRecipient
     ) public {
-        // Given: feeRecipient is not the Account.
+        // Given: feeRecipient is not the Account or address(0).
         vm.assume(feeRecipient != address(account));
+        vm.assume(feeRecipient != address(0));
 
         // And: Set account info.
         vm.prank(users.accountOwner);
@@ -107,8 +108,9 @@ contract Claim_Slipstream_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test, Slip
         uint256 initiatorFee,
         address feeRecipient
     ) public {
-        // Given: feeRecipient is not the Account.
+        // Given: feeRecipient is not the Account or address(0).
         vm.assume(feeRecipient != address(account));
+        vm.assume(feeRecipient != address(0));
 
         // And: Set account info.
         vm.prank(users.accountOwner);
@@ -168,8 +170,9 @@ contract Claim_Slipstream_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test, Slip
         uint256 initiatorFee,
         address feeRecipient
     ) public {
-        // Given: feeRecipient is not the Account.
+        // Given: feeRecipient is not the Account or address(0).
         vm.assume(feeRecipient != address(account));
+        vm.assume(feeRecipient != address(0));
 
         // And: Set account info.
         vm.prank(users.accountOwner);
@@ -229,8 +232,9 @@ contract Claim_Slipstream_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test, Slip
         uint256 initiatorFee,
         address feeRecipient
     ) public {
-        // Given: feeRecipient is not the Account.
+        // Given: feeRecipient is not the Account or address(0).
         vm.assume(feeRecipient != address(account));
+        vm.assume(feeRecipient != address(0));
 
         // And: Set account info.
         vm.prank(users.accountOwner);
