@@ -39,7 +39,7 @@ contract YieldClaimer is IActionBase, ImmutableState, StakedSlipstreamLogic, Uni
                                 STORAGE
     ////////////////////////////////////////////////////////////// */
 
-    // The Account to claim AERO emissions for, used as transient storage.
+    // The Account to claim for, used as transient storage.
     address internal account;
 
     // A mapping that sets the approved initiator per account.
@@ -79,7 +79,14 @@ contract YieldClaimer is IActionBase, ImmutableState, StakedSlipstreamLogic, Uni
     ////////////////////////////////////////////////////////////// */
 
     /**
-     * @param maxInitiatorFee The maximum initiator fee an initiator can set, with 18 decimals precision.
+     * @param rewardToken The address of the reward token for staked Slipstream positions (AERO).
+     * @param slipstreamPositionManager The address of the Slipstream Position Manager contract.
+     * @param stakedSlipstreamAM The address of the Staked Slipstream Asset Manager contract.
+     * @param stakedSlipstreamWrapper The address of the wrapper contract for staked Slipstream assets.
+     * @param uniswapV3PositionManager The address of the Uniswap V3 Position Manager contract.
+     * @param uniswapV4PositionManager The address of the Uniswap V4 Position Manager contract.
+     * @param weth The address of the WETH token contract.
+     * @param maxInitiatorFee The maximum fee (with 18 decimals precision) that an initiator can set.
      */
     constructor(
         address rewardToken,
@@ -109,7 +116,9 @@ contract YieldClaimer is IActionBase, ImmutableState, StakedSlipstreamLogic, Uni
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Claims the pending AERO emissions earned by a Staked Slipstream Liquidity Position owned by an Arcadia Account.
+     * @notice Claims accrued fees from a Liquidity Position associated with an Arcadia Account,
+     * and transfers them to the designated fee recipient, as configured by the Account owner.
+     * The recipient may be the Account itself.
      * @param account_ The Arcadia Account owning the position.
      * @param positionManager The contract address of the Position Manager.
      * @param id The id of the Liquidity Position.
@@ -142,6 +151,7 @@ contract YieldClaimer is IActionBase, ImmutableState, StakedSlipstreamLogic, Uni
      * @dev This function will trigger the following actions:
      * - Collects the fees earned by the position.
      * - Transfers a reward to the initiator.
+     * - Transfers the fees to the user-defined fee recipient.
      */
     function executeAction(bytes calldata claimData) external override returns (ActionData memory depositData) {
         // Caller should be the Account, provided as input in claimAero().
@@ -186,6 +196,13 @@ contract YieldClaimer is IActionBase, ImmutableState, StakedSlipstreamLogic, Uni
         depositData = ArcadiaLogic._encodeDeposit(positionManager, id, tokens, amounts, count);
     }
 
+    /**
+     * @notice Claims fees or rewards from the given Liquidity Position.
+     * @param positionManager The contract address of the Position Manager.
+     * @param id The ID of the liquidity position.
+     * @return tokens The fee/reward tokens.
+     * @return amounts The corresponding token amounts.
+     */
     function _executeAction(address positionManager, uint256 id)
         internal
         returns (address[] memory tokens, uint256[] memory amounts)
@@ -212,7 +229,7 @@ contract YieldClaimer is IActionBase, ImmutableState, StakedSlipstreamLogic, Uni
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Sets the information requested for an initiator.
+     * @notice Sets the fee requested by an initiator on the amount of yield claimed.
      * @param initiatorFee_ The fee paid to the initiator, with 18 decimals precision.
      * @dev An initiator can update its fee but can only decrease it.
      */
@@ -241,7 +258,7 @@ contract YieldClaimer is IActionBase, ImmutableState, StakedSlipstreamLogic, Uni
      * @param account_ The contract address of the Arcadia Account to set the information for.
      * @param initiator The address of the initiator.
      * @param feeRecipient The address to which the collected fees will be sent.
-     * @dev An initiator will be permissioned to compound any
+     * @dev An initiator will be permissioned to claim fees for any
      * Liquidity Position held in the specified Arcadia Account.
      * @dev When an Account is transferred to a new owner,
      * the asset manager itself (this contract) and hence its initiator will no longer be allowed by the Account.

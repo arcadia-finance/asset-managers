@@ -5,15 +5,10 @@
 pragma solidity ^0.8.22;
 
 import { AccountV1 } from "../../../../lib/accounts-v2/src/accounts/AccountV1.sol";
-import { ArcadiaAccountsFixture } from
-    "../../../../lib/accounts-v2/test/utils/fixtures/arcadia-accounts/ArcadiaAccountsFixture.f.sol";
 import { ERC20 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC20.sol";
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { FixedPoint128 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint128.sol";
-import { FullMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FullMath.sol";
 import { SlipstreamCompounder_Fuzz_Test } from "../../compounders/SlipstreamCompounder/_SlipstreamCompounder.fuzz.t.sol";
-import { YieldClaimer } from "../../../../src/yield-routers/YieldClaimer.sol";
 import { YieldClaimer_Fuzz_Test } from "./_YieldClaimer.fuzz.t.sol";
 
 /**

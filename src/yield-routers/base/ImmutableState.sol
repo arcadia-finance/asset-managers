@@ -31,6 +31,15 @@ abstract contract ImmutableState {
     // The address of WETH.
     IWETH internal immutable WETH;
 
+    /**
+     * @param rewardToken The address of the reward token for staked Slipstream positions (AERO).
+     * @param slipstreamPositionManager The address of the Slipstream Position Manager contract.
+     * @param stakedSlipstreamAM The address of the Staked Slipstream Asset Manager contract.
+     * @param stakedSlipstreamWrapper The address of the wrapper contract for staked Slipstream assets.
+     * @param uniswapV3PositionManager The address of the Uniswap V3 Position Manager contract.
+     * @param uniswapV4PositionManager The address of the Uniswap V4 Position Manager contract.
+     * @param weth The address of the WETH token contract.
+     */
     constructor(
         address rewardToken,
         address slipstreamPositionManager,

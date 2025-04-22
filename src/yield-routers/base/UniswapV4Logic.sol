@@ -10,6 +10,13 @@ import { ImmutableState } from "./ImmutableState.sol";
 import { PoolKey } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 
 abstract contract UniswapV4Logic is ImmutableState {
+    /**
+     * @notice Claims fees from a Uniswap V4 Liquidity Position.
+     * @param id The id of the Uniswap V4 Liquidity Position.
+     * @return tokens The addresses of the fee tokens.
+     * @return amounts The corresponding amounts of each token collected as fees.
+     * @dev If token0 is native ETH, it is automatically wrapped into WETH.
+     */
     function claimFees(uint256 id) internal returns (address[] memory tokens, uint256[] memory amounts) {
         (PoolKey memory poolKey,) = UNISWAP_V4_POSITION_MANAGER.getPoolAndPositionInfo(id);
 

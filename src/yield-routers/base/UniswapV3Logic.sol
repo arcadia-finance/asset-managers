@@ -7,6 +7,13 @@ pragma solidity ^0.8.22;
 import { CollectParams, IPositionManagerV3 } from "../interfaces/IPositionManagerV3.sol";
 
 abstract contract UniswapV3Logic {
+    /**
+     * @notice Claims fees from a Uniswap V3 Liquidity Position.
+     * @param positionManager The address of the position manager contract.
+     * @param id The id of the liquidity position NFT.
+     * @return tokens The addresses of the fee tokens.
+     * @return amounts The corresponding amounts of each token collected as fees.
+     */
     function claimFees(address positionManager, uint256 id)
         internal
         returns (address[] memory tokens, uint256[] memory amounts)

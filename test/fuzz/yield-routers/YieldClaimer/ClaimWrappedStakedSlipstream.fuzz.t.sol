@@ -5,7 +5,6 @@
 pragma solidity ^0.8.22;
 
 import { AccountV1 } from "../../../../lib/accounts-v2/src/accounts/AccountV1.sol";
-import { AccountSpot } from "../../../../lib/accounts-v2/src/accounts/AccountSpot.sol";
 import { ArcadiaAccountsFixture } from
     "../../../../lib/accounts-v2/test/utils/fixtures/arcadia-accounts/ArcadiaAccountsFixture.f.sol";
 import { ERC20 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC20.sol";
