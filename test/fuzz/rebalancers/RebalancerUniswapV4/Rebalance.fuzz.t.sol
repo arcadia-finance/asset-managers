@@ -113,11 +113,11 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         int24 tickLower,
         int24 tickUpper,
         address initiator,
-        uint256 tolerance,
-        address account_
+        uint256 tolerance
     ) public {
-        // Given: rebalancer is not the account.
-        vm.assume(account_ != address(rebalancer));
+        // Given: Account is not the rebalancer or initiator.
+        vm.assume(address(account) != address(rebalancer));
+        vm.assume(address(account) != initiator);
 
         // And: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
@@ -219,11 +219,11 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         address initiator,
         int24 tickLower,
         int24 tickUpper,
-        RebalancerUniswapV4.PositionState memory position,
-        address account_
+        RebalancerUniswapV4.PositionState memory position
     ) public {
-        // Given: rebalancer is not the account.
-        vm.assume(account_ != address(rebalancer));
+        // Given: Account is not the rebalancer or initiator.
+        vm.assume(address(account) != address(rebalancer));
+        vm.assume(address(account) != initiator);
 
         // And: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
@@ -327,11 +327,11 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         address initiator,
         int24 tickLower,
         int24 tickUpper,
-        RebalancerUniswapV4.PositionState memory position,
-        address account_
+        RebalancerUniswapV4.PositionState memory position
     ) public {
-        // Given: rebalancer is not the account.
-        vm.assume(account_ != address(rebalancer));
+        // Given: Account is not the rebalancer or initiator.
+        vm.assume(address(account) != address(rebalancer));
+        vm.assume(address(account) != initiator);
 
         // And: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
@@ -460,11 +460,11 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         address initiator,
         int24 tickLower,
         int24 tickUpper,
-        RebalancerUniswapV4.PositionState memory position,
-        address account_
+        RebalancerUniswapV4.PositionState memory position
     ) public {
-        // Given: rebalancer is not the account.
-        vm.assume(account_ != address(rebalancer));
+        // Given: Account is not the rebalancer or initiator.
+        vm.assume(address(account) != address(rebalancer));
+        vm.assume(address(account) != initiator);
 
         // And: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
@@ -568,11 +568,11 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         address initiator,
         int24 tickLower,
         int24 tickUpper,
-        RebalancerUniswapV4.PositionState memory position,
-        address account_
+        RebalancerUniswapV4.PositionState memory position
     ) public {
-        // Given: rebalancer is not the account.
-        vm.assume(account_ != address(rebalancer));
+        // Given: Account is not the rebalancer or initiator.
+        vm.assume(address(account) != address(rebalancer));
+        vm.assume(address(account) != initiator);
 
         // And: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
@@ -700,11 +700,11 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         uint256 tolerance,
         address initiator,
         int24 newTick,
-        RebalancerUniswapV4.PositionState memory position,
-        address account_
+        RebalancerUniswapV4.PositionState memory position
     ) public {
-        // Given: rebalancer is not the account.
-        vm.assume(account_ != address(rebalancer));
+        // Given: Account is not the rebalancer or initiator.
+        vm.assume(address(account) != address(rebalancer));
+        vm.assume(address(account) != initiator);
 
         // And: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
@@ -801,11 +801,11 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         uint256 tolerance,
         address initiator,
         int24 newTick,
-        RebalancerUniswapV4.PositionState memory position,
-        address account_
+        RebalancerUniswapV4.PositionState memory position
     ) public {
-        // Given: rebalancer is not the account.
-        vm.assume(account_ != address(rebalancer));
+        // Given: Account is not the rebalancer or initiator.
+        vm.assume(address(account) != address(rebalancer));
+        vm.assume(address(account) != initiator);
 
         // And: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
@@ -907,11 +907,11 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         int24 tickLower,
         int24 tickUpper,
         address initiator,
-        uint256 tolerance,
-        address account_
+        uint256 tolerance
     ) public {
-        // Given: rebalancer is not the account.
-        vm.assume(account_ != address(rebalancer));
+        // Given: Account is not the rebalancer or initiator.
+        vm.assume(address(account) != address(rebalancer));
+        vm.assume(address(account) != initiator);
 
         // And: Initiator can receive eth.
         assumePayable(initiator);
@@ -1016,11 +1016,11 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         address initiator,
         int24 tickLower,
         int24 tickUpper,
-        RebalancerUniswapV4.PositionState memory position,
-        address account_
+        RebalancerUniswapV4.PositionState memory position
     ) public {
-        // Given: rebalancer is not the account.
-        vm.assume(account_ != address(rebalancer));
+        // Given: Account is not the rebalancer or initiator.
+        vm.assume(address(account) != address(rebalancer));
+        vm.assume(address(account) != initiator);
 
         // And: Initiator can receive eth.
         assumePayable(initiator);
@@ -1136,11 +1136,11 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         address initiator,
         int24 tickLower,
         int24 tickUpper,
-        RebalancerUniswapV4.PositionState memory position,
-        address account_
+        RebalancerUniswapV4.PositionState memory position
     ) public {
-        // Given: rebalancer is not the account.
-        vm.assume(account_ != address(rebalancer));
+        // Given: Account is not the rebalancer or initiator.
+        vm.assume(address(account) != address(rebalancer));
+        vm.assume(address(account) != initiator);
 
         // And: Initiator can receive eth.
         assumePayable(initiator);
@@ -1254,11 +1254,11 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         uint256 tolerance,
         address initiator,
         int24 newTick,
-        RebalancerUniswapV4.PositionState memory position,
-        address account_
+        RebalancerUniswapV4.PositionState memory position
     ) public {
-        // Given: rebalancer is not the account.
-        vm.assume(account_ != address(rebalancer));
+        // Given: Account is not the rebalancer or initiator.
+        vm.assume(address(account) != address(rebalancer));
+        vm.assume(address(account) != initiator);
 
         // And: Initiator can receive eth.
         assumePayable(initiator);
@@ -1365,11 +1365,11 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         uint256 tolerance,
         address initiator,
         int24 newTick,
-        RebalancerUniswapV4.PositionState memory position,
-        address account_
+        RebalancerUniswapV4.PositionState memory position
     ) public {
-        // Given: rebalancer is not the account.
-        vm.assume(account_ != address(rebalancer));
+        // Given: Account is not the rebalancer or initiator.
+        vm.assume(address(account) != address(rebalancer));
+        vm.assume(address(account) != initiator);
 
         // And: Initiator can receive eth.
         assumePayable(initiator);
@@ -1477,11 +1477,11 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         address initiator,
         int24 tickLower,
         int24 tickUpper,
-        RebalancerUniswapV4.PositionState memory position,
-        address account_
+        RebalancerUniswapV4.PositionState memory position
     ) public {
-        // Given: rebalancer is not the account.
-        vm.assume(account_ != address(rebalancer));
+        // Given: Account is not the rebalancer or initiator.
+        vm.assume(address(account) != address(rebalancer));
+        vm.assume(address(account) != initiator);
 
         // And: Initiator can receive eth.
         assumePayable(initiator);

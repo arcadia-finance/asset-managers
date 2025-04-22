@@ -16,7 +16,7 @@ import { IPositionManagerV4 } from "./interfaces/IPositionManagerV4.sol";
 import { IWETH } from "./interfaces/IWETH.sol";
 import { PoolKey } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 import { ReentrancyGuard } from "../../lib/accounts-v2/lib/solmate/src/utils/ReentrancyGuard.sol";
-import { SafeApprove } from "./libraries/SafeApprove.sol";
+import { SafeApprove } from "../libraries/SafeApprove.sol";
 import { SlipstreamLogic } from "./libraries/SlipstreamLogic.sol";
 import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
 import { UniswapV4Logic } from "./libraries/UniswapV4Logic.sol";

@@ -11,19 +11,20 @@ import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/ut
 import { ERC721 } from "../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IAccount } from "./interfaces/IAccount.sol";
+import { ImmutableState } from "./base/ImmutableState.sol";
 import { IPositionManagerV3, CollectParams } from "./interfaces/IPositionManagerV3.sol";
 import { IPositionManagerV4 } from "./interfaces/IPositionManagerV4.sol";
-import { IStakedSlipstream } from "./interfaces/IStakedSlipstream.sol";
-import { IWETH } from "./interfaces/IWETH.sol";
 import { PoolKey } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
-import { SafeApprove } from "./libraries/SafeApprove.sol";
-import { UniswapV4Logic } from "./libraries/UniswapV4Logic.sol";
+import { SafeApprove } from "../libraries/SafeApprove.sol";
+import { StakedSlipstreamLogic } from "./base/StakedSlipstreamLogic.sol";
+import { UniswapV3Logic } from "./base/UniswapV3Logic.sol";
+import { UniswapV4Logic } from "./base/UniswapV4Logic.sol";
 
 /**
  * @title Yield Claimer for concentrated Liquidity Positions.
  * @author Pragma Labs
  */
-abstract contract AbstractClaimer is IActionBase {
+contract YieldClaimer is IActionBase, ImmutableState, StakedSlipstreamLogic, UniswapV3Logic, UniswapV4Logic {
     using FixedPointMathLib for uint256;
     using SafeApprove for ERC20;
     using SafeTransferLib for ERC20;
@@ -33,27 +34,6 @@ abstract contract AbstractClaimer is IActionBase {
 
     // The maximum fee an initiator can set, with 18 decimals precision.
     uint256 public immutable MAX_INITIATOR_FEE;
-
-    // The address of reward token (AERO).
-    address internal constant REWARD_TOKEN = 0x940181a94A35A4569E4529A3CDfB74e38FD98631;
-
-    // The address of the Slipstream Position Manager.
-    address internal constant SLIPSTREAM_POSITION_MANAGER = 0x827922686190790b37229fd06084350E74485b72;
-
-    // The address of the Staked Slipstream AM.
-    address internal constant STAKED_SLIPSTREAM_AM = 0x1Dc7A0f5336F52724B650E39174cfcbbEdD67bF1;
-
-    // The Wrapped Staked Slipstream Asset Module contract.
-    address internal constant STAKED_SLIPSTREAM_WRAPPER = 0xD74339e0F10fcE96894916B93E5Cc7dE89C98272;
-
-    // The address of the Uniswap V3 Position Manager.
-    address internal constant UNISWAP_V3_POSITION_MANAGER = 0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1;
-
-    // The address of the Uniswap V4 Position Manager.
-    address internal constant UNISWAP_V4_POSITION_MANAGER = 0x7C5f5A4bBd8fD63184577525326123B519429bDc;
-
-    // The contract address of WETH.
-    address internal immutable WETH = 0x4200000000000000000000000000000000000006;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
@@ -93,7 +73,6 @@ abstract contract AbstractClaimer is IActionBase {
 
     event AccountInfoSet(address indexed account, address initiator, address feeRecipient);
     event Claimed(address indexed account, address indexed positionManager, uint256 id);
-    event InitiatorSet(address indexed account, address indexed initiator);
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -102,12 +81,31 @@ abstract contract AbstractClaimer is IActionBase {
     /**
      * @param maxInitiatorFee The maximum initiator fee an initiator can set, with 18 decimals precision.
      */
-    constructor(uint256 maxInitiatorFee) {
+    constructor(
+        address rewardToken,
+        address slipstreamPositionManager,
+        address stakedSlipstreamAM,
+        address stakedSlipstreamWrapper,
+        address uniswapV3PositionManager,
+        address uniswapV4PositionManager,
+        address weth,
+        uint256 maxInitiatorFee
+    )
+        ImmutableState(
+            rewardToken,
+            slipstreamPositionManager,
+            stakedSlipstreamAM,
+            stakedSlipstreamWrapper,
+            uniswapV3PositionManager,
+            uniswapV4PositionManager,
+            weth
+        )
+    {
         MAX_INITIATOR_FEE = maxInitiatorFee;
     }
 
     /* ///////////////////////////////////////////////////////////////
-                             COMPOUNDING LOGIC
+                             CLAIMING LOGIC
     /////////////////////////////////////////////////////////////// */
 
     /**
@@ -192,39 +190,18 @@ abstract contract AbstractClaimer is IActionBase {
         internal
         returns (address[] memory tokens, uint256[] memory amounts)
     {
-        if (positionManager == STAKED_SLIPSTREAM_AM || positionManager == STAKED_SLIPSTREAM_WRAPPER) {
-            // Case for staked Slipstream positions.
-            tokens = new address[](1);
-            amounts = new uint256[](1);
-            tokens[0] = REWARD_TOKEN;
-            amounts[0] = IStakedSlipstream(positionManager).claimReward(id);
-        } else if (positionManager == SLIPSTREAM_POSITION_MANAGER || positionManager == UNISWAP_V3_POSITION_MANAGER) {
+        if (positionManager == address(STAKED_SLIPSTREAM_AM) || positionManager == address(STAKED_SLIPSTREAM_WRAPPER)) {
+            // Case for Staked Slipstream positions.
+            (tokens, amounts) = StakedSlipstreamLogic.claimReward(positionManager, id);
+        } else if (
+            positionManager == address(SLIPSTREAM_POSITION_MANAGER)
+                || positionManager == address(UNISWAP_V3_POSITION_MANAGER)
+        ) {
             // Case for Uniswap V3 and Slipstream positions.
-            tokens = new address[](2);
-            amounts = new uint256[](2);
-            (,, tokens[0], tokens[1],,,,,,,,) = IPositionManagerV3(positionManager).positions(id);
-            (amounts[0], amounts[1]) = IPositionManagerV3(positionManager).collect(
-                CollectParams({
-                    tokenId: id,
-                    recipient: address(this),
-                    amount0Max: type(uint128).max,
-                    amount1Max: type(uint128).max
-                })
-            );
-        } else if (positionManager == UNISWAP_V4_POSITION_MANAGER) {
+            (tokens, amounts) = UniswapV3Logic.claimFees(positionManager, id);
+        } else if (positionManager == address(UNISWAP_V4_POSITION_MANAGER)) {
             // Case for Uniswap V4 positions.
-            tokens = new address[](2);
-            amounts = new uint256[](2);
-            (PoolKey memory poolKey,) = IPositionManagerV4(UNISWAP_V4_POSITION_MANAGER).getPoolAndPositionInfo(id);
-            tokens[0] = Currency.unwrap(poolKey.currency0);
-            tokens[1] = Currency.unwrap(poolKey.currency1);
-            (amounts[0], amounts[1]) = UniswapV4Logic._collectFees(id, poolKey);
-
-            // If token0 is native ETH, we convert ETH to WETH.
-            if (tokens[0] == address(0)) {
-                IWETH(payable(WETH)).deposit{ value: amounts[0] }();
-                tokens[0] = WETH;
-            }
+            (tokens, amounts) = UniswapV4Logic.claimFees(id);
         } else {
             revert InvalidPositionManager();
         }
