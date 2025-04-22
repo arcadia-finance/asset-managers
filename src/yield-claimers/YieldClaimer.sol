@@ -7,31 +7,26 @@ pragma solidity ^0.8.26;
 import { ActionData, IActionBase } from "../../lib/accounts-v2/src/interfaces/IActionBase.sol";
 import { ArcadiaLogic } from "./libraries/ArcadiaLogic.sol";
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
+import { ERC721 } from "../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IAccount } from "./interfaces/IAccount.sol";
-import { IStakedSlipstream } from "./interfaces/IStakedSlipstream.sol";
+import { ImmutableState } from "./base/ImmutableState.sol";
 import { SafeApprove } from "../libraries/SafeApprove.sol";
+import { StakedSlipstreamLogic } from "./base/StakedSlipstreamLogic.sol";
+import { UniswapV3Logic } from "./libraries/UniswapV3Logic.sol";
+import { UniswapV4Logic } from "./base/UniswapV4Logic.sol";
 
 /**
- * @title Claimer for AERO emissions from Staked Slipstream Liquidity Positions.
+ * @title Yield Claimer for concentrated Liquidity Positions.
  * @author Pragma Labs
  */
-contract AeroClaimer is IActionBase {
+contract YieldClaimer is IActionBase, ImmutableState, StakedSlipstreamLogic, UniswapV4Logic {
     using FixedPointMathLib for uint256;
     using SafeApprove for ERC20;
     using SafeTransferLib for ERC20;
     /* //////////////////////////////////////////////////////////////
                                 CONSTANTS
     ////////////////////////////////////////////////////////////// */
-
-    // The address of the Staked Slipstream AM.
-    address internal constant STAKED_SLIPSTREAM_AM = 0x1Dc7A0f5336F52724B650E39174cfcbbEdD67bF1;
-
-    // The Wrapped Staked Slipstream Asset Module contract.
-    address internal constant STAKED_SLIPSTREAM_WRAPPER = 0xD74339e0F10fcE96894916B93E5Cc7dE89C98272;
-
-    // The address of reward token (AERO).
-    address internal constant REWARD_TOKEN = 0x940181a94A35A4569E4529A3CDfB74e38FD98631;
 
     // The maximum fee an initiator can set, with 18 decimals precision.
     uint256 public immutable MAX_INITIATOR_FEE;
@@ -40,11 +35,14 @@ contract AeroClaimer is IActionBase {
                                 STORAGE
     ////////////////////////////////////////////////////////////// */
 
-    // The Account to claim AERO emissions for, used as transient storage.
+    // The Account to claim for, used as transient storage.
     address internal account;
 
     // A mapping that sets the approved initiator per account.
     mapping(address account => address initiator) public accountToInitiator;
+
+    // A mapping that sets a user-defined address as recipient of the fees.
+    mapping(address account => address feeRecipient) public accountToFeeRecipient;
 
     // A mapping from initiator to the initiator fee.
     mapping(address initiator => uint256 initiatorFee) public initiatorFee;
@@ -58,6 +56,7 @@ contract AeroClaimer is IActionBase {
 
     error InvalidInitiator();
     error InvalidPositionManager();
+    error InvalidRecipient();
     error InvalidValue();
     error NotAnAccount();
     error OnlyAccount();
@@ -68,37 +67,65 @@ contract AeroClaimer is IActionBase {
                                 EVENTS
     ////////////////////////////////////////////////////////////// */
 
-    event AeroClaimed(address indexed account, address indexed positionManager, uint256 id);
-    event InitiatorSet(address indexed account, address indexed initiator);
+    event AccountInfoSet(address indexed account, address indexed initiator, address feeRecipient);
+    event Claimed(address indexed account, address indexed positionManager, uint256 id);
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
     ////////////////////////////////////////////////////////////// */
 
     /**
-     * @param maxInitiatorFee The maximum initiator fee an initiator can set, with 18 decimals precision.
+     * @param factory The contract address of the Arcadia Factory.
+     * @param rewardToken The contract address of the reward token for staked Slipstream positions (AERO).
+     * @param slipstreamPositionManager The contract address of the Slipstream Position Manager.
+     * @param stakedSlipstreamAM The contract address of the Staked Slipstream Asset Manager.
+     * @param stakedSlipstreamWrapper The contract address of the Staked Slipstream Wrapper.
+     * @param uniswapV3PositionManager The contract address of the Uniswap V3 Position Manager.
+     * @param uniswapV4PositionManager The contract address of the Uniswap V4 Position Manager.
+     * @param weth The contract address of WETH.
+     * @param maxInitiatorFee The maximum fee (with 18 decimals precision) that an initiator can set.
      */
-    constructor(uint256 maxInitiatorFee) {
+    constructor(
+        address factory,
+        address rewardToken,
+        address slipstreamPositionManager,
+        address stakedSlipstreamAM,
+        address stakedSlipstreamWrapper,
+        address uniswapV3PositionManager,
+        address uniswapV4PositionManager,
+        address weth,
+        uint256 maxInitiatorFee
+    )
+        ImmutableState(
+            factory,
+            rewardToken,
+            slipstreamPositionManager,
+            stakedSlipstreamAM,
+            stakedSlipstreamWrapper,
+            uniswapV3PositionManager,
+            uniswapV4PositionManager,
+            weth
+        )
+    {
         MAX_INITIATOR_FEE = maxInitiatorFee;
     }
 
     /* ///////////////////////////////////////////////////////////////
-                             COMPOUNDING LOGIC
+                             CLAIMING LOGIC
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Claims the pending AERO emissions earned by a Staked Slipstream Liquidity Position owned by an Arcadia Account.
+     * @notice Claims accrued fees from a Liquidity Position associated with an Arcadia Account,
+     * and transfers them to the designated fee recipient, as configured by the Account owner.
+     * The recipient may be the Account itself.
      * @param account_ The Arcadia Account owning the position.
      * @param positionManager The contract address of the Position Manager.
      * @param id The id of the Liquidity Position.
      */
-    function claimAero(address account_, address positionManager, uint256 id) external {
+    function claim(address account_, address positionManager, uint256 id) external {
         // If the initiator is set, account_ is an actual Arcadia Account.
         if (account != address(0)) revert Reentered();
         if (accountToInitiator[account_] != msg.sender) revert InvalidInitiator();
-        if (positionManager != STAKED_SLIPSTREAM_AM && positionManager != STAKED_SLIPSTREAM_WRAPPER) {
-            revert InvalidPositionManager();
-        }
 
         // Store Account address, used to validate the caller of the executeAction() callback and serves as a reentrancy guard.
         account = account_;
@@ -112,7 +139,7 @@ contract AeroClaimer is IActionBase {
         // Reset account.
         account = address(0);
 
-        emit AeroClaimed(account_, positionManager, id);
+        emit Claimed(account_, positionManager, id);
     }
 
     /**
@@ -123,6 +150,7 @@ contract AeroClaimer is IActionBase {
      * @dev This function will trigger the following actions:
      * - Collects the fees earned by the position.
      * - Transfers a reward to the initiator.
+     * - Transfers the fees to the user-defined fee recipient.
      */
     function executeAction(bytes calldata claimData) external override returns (ActionData memory depositData) {
         // Caller should be the Account, provided as input in claimAero().
@@ -131,22 +159,68 @@ contract AeroClaimer is IActionBase {
         // Decode claimData.
         (address positionManager, uint256 id, address initiator) = abi.decode(claimData, (address, uint256, address));
 
-        // Collect AERO.
-        uint256 reward = IStakedSlipstream(positionManager).claimReward(id);
+        // Execute action.
+        (address[] memory tokens, uint256[] memory amounts) = _executeAction(positionManager, id);
 
-        // Subtract initiator fee, these will be send to the initiator.
-        uint256 fee = reward.mulDivDown(initiatorFee[initiator], 1e18);
-        reward = reward - fee;
-
-        // Initiator rewards are transferred to the initiator.
-        if (fee > 0) ERC20(REWARD_TOKEN).safeTransfer(initiator, fee);
+        // Cache fee recipient and Intitator fee.
+        address feeRecipient = accountToFeeRecipient[msg.sender];
+        uint256 initiatorFee_ = initiatorFee[initiator];
 
         // Approve Account to deposit Liquidity Position back into the Account.
-        IStakedSlipstream(positionManager).approve(msg.sender, id);
-        // Approve Account to deposit rewards to the Account.
-        if (reward > 0) ERC20(REWARD_TOKEN).safeApproveWithRetry(msg.sender, reward);
+        ERC721(positionManager).approve(msg.sender, id);
 
-        depositData = ArcadiaLogic._encodeDeposit(positionManager, id, REWARD_TOKEN, reward);
+        // Approve or transfer the ERC20 yield tokens.
+        uint256 fee;
+        uint256 count = 1;
+        for (uint256 i; i < amounts.length; i++) {
+            // Initiator rewards are transferred to the initiator.
+            fee = amounts[i].mulDivDown(initiatorFee_, 1e18);
+            if (fee > 0) ERC20(tokens[i]).safeTransfer(initiator, fee);
+
+            amounts[i] -= fee;
+            if (amounts[i] > 0) {
+                // If feeRecipient is the Account itself, deposit fees back into the Account
+                if (feeRecipient == msg.sender) {
+                    ERC20(tokens[i]).safeApproveWithRetry(msg.sender, amounts[i]);
+                    count++;
+                }
+                // Else, send the fees to the fee recipient.
+                else {
+                    ERC20(tokens[i]).safeTransfer(feeRecipient, amounts[i]);
+                }
+            }
+        }
+
+        // Encode the deposit data.
+        depositData = ArcadiaLogic._encodeDeposit(positionManager, id, tokens, amounts, count);
+    }
+
+    /**
+     * @notice Claims fees or rewards from the given Liquidity Position.
+     * @param positionManager The contract address of the Position Manager.
+     * @param id The id of the Liquidity Position.
+     * @return tokens The fee/reward tokens.
+     * @return amounts The corresponding token amounts.
+     */
+    function _executeAction(address positionManager, uint256 id)
+        internal
+        returns (address[] memory tokens, uint256[] memory amounts)
+    {
+        if (positionManager == address(STAKED_SLIPSTREAM_AM) || positionManager == address(STAKED_SLIPSTREAM_WRAPPER)) {
+            // Case for Staked Slipstream positions.
+            (tokens, amounts) = StakedSlipstreamLogic.claimReward(positionManager, id);
+        } else if (
+            positionManager == address(SLIPSTREAM_POSITION_MANAGER)
+                || positionManager == address(UNISWAP_V3_POSITION_MANAGER)
+        ) {
+            // Case for Uniswap V3 and Slipstream positions.
+            (tokens, amounts) = UniswapV3Logic.claimFees(positionManager, id);
+        } else if (positionManager == address(UNISWAP_V4_POSITION_MANAGER)) {
+            // Case for Uniswap V4 positions.
+            (tokens, amounts) = UniswapV4Logic.claimFees(id);
+        } else {
+            revert InvalidPositionManager();
+        }
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -154,7 +228,7 @@ contract AeroClaimer is IActionBase {
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Sets the information requested for an initiator.
+     * @notice Sets the fee requested by an initiator on the amount of yield claimed.
      * @param initiatorFee_ The fee paid to the initiator, with 18 decimals precision.
      * @dev An initiator can update its fee but can only decrease it.
      */
@@ -166,7 +240,7 @@ contract AeroClaimer is IActionBase {
             // If so, the initiator can only decrease the fee.
             if (initiatorFee_ > initiatorFee[msg.sender]) revert InvalidValue();
         } else {
-            // If not, the fee can not exceed certain thresholds.
+            // If not, the fee can not exceed a certain threshold.
             if (initiatorFee_ > MAX_INITIATOR_FEE) revert InvalidValue();
             initiatorSet[msg.sender] = true;
         }
@@ -182,19 +256,22 @@ contract AeroClaimer is IActionBase {
      * @notice Sets an initiator for an Account.
      * @param account_ The contract address of the Arcadia Account to set the information for.
      * @param initiator The address of the initiator.
-     * @dev An initiator will be permissioned to compound any
+     * @param feeRecipient The address to which the collected fees will be sent.
+     * @dev An initiator will be permissioned to claim fees for any
      * Liquidity Position held in the specified Arcadia Account.
      * @dev When an Account is transferred to a new owner,
      * the asset manager itself (this contract) and hence its initiator will no longer be allowed by the Account.
      */
-    function setInitiator(address account_, address initiator) external {
+    function setAccountInfo(address account_, address initiator, address feeRecipient) external {
         if (account != address(0)) revert Reentered();
-        if (!ArcadiaLogic.FACTORY.isAccount(account_)) revert NotAnAccount();
+        if (!FACTORY.isAccount(account_)) revert NotAnAccount();
         if (msg.sender != IAccount(account_).owner()) revert OnlyAccountOwner();
+        if (feeRecipient == address(0)) revert InvalidRecipient();
 
         accountToInitiator[account_] = initiator;
+        accountToFeeRecipient[account_] = feeRecipient;
 
-        emit InitiatorSet(account_, initiator);
+        emit AccountInfoSet(account_, initiator, feeRecipient);
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -208,4 +285,13 @@ contract AeroClaimer is IActionBase {
     function onERC721Received(address, address, uint256, bytes calldata) public pure returns (bytes4) {
         return this.onERC721Received.selector;
     }
+
+    /* ///////////////////////////////////////////////////////////////
+                      NATIVE ETH HANDLER
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Receives native ether.
+     */
+    receive() external payable { }
 }
