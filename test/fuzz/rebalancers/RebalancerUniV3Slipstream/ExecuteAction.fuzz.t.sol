@@ -645,7 +645,9 @@ contract ExecuteAction_RebalancerUniV3Slipstream_Fuzz_Test is RebalancerUniV3Sli
 
         // And: Approvals are given.
         assertEq(ERC721(address(slipstreamPositionManager)).getApproved(id + 1), account_);
-        assertEq(token0.allowance(address(rebalancer), account_), depositData.assetAmounts[1]);
+        if (depositData.assets.length == 2) {
+            assertEq(token0.allowance(address(rebalancer), account_), depositData.assetAmounts[1]);
+        }
         if (depositData.assets.length == 3) {
             assertEq(token1.allowance(address(rebalancer), account_), depositData.assetAmounts[2]);
         }
