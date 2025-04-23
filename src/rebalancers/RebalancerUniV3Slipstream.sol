@@ -18,7 +18,6 @@ import { IStrategyHook } from "./interfaces/IStrategyHook.sol";
 import { MintLogic } from "./libraries/shared-uniswap-v3-slipstream/MintLogic.sol";
 import { PricingLogic } from "./libraries/cl-math/PricingLogic.sol";
 import { RebalanceLogic } from "./libraries/RebalanceLogic.sol";
-import { ReentrancyGuard } from "../../lib/accounts-v2/lib/solmate/src/utils/ReentrancyGuard.sol";
 import { SafeApprove } from "../libraries/SafeApprove.sol";
 import { SlipstreamLogic } from "./libraries/slipstream/SlipstreamLogic.sol";
 import { StakedSlipstreamLogic } from "./libraries/slipstream/StakedSlipstreamLogic.sol";
@@ -39,7 +38,7 @@ import { UniswapV3Logic } from "./libraries/uniswap-v3/UniswapV3Logic.sol";
  * based on a hypothetical optimal swap through the pool itself without slippage.
  * This protects the Account owners from incompetent or malicious initiators who route swaps poorly, or try to skim off liquidity from the position.
  */
-contract RebalancerUniV3Slipstream is ReentrancyGuard, IActionBase {
+contract RebalancerUniV3Slipstream is IActionBase {
     using FixedPointMathLib for uint256;
     using SafeApprove for ERC20;
     using SafeTransferLib for ERC20;
@@ -47,7 +46,6 @@ contract RebalancerUniV3Slipstream is ReentrancyGuard, IActionBase {
                                 CONSTANTS
     ////////////////////////////////////////////////////////////// */
 
-    // The maximum lower deviation of the pools actual sqrtPriceX96,
     // The maximum deviation of the actual pool price, in % with 18 decimals precision.
     uint256 public immutable MAX_TOLERANCE;
 
@@ -120,9 +118,7 @@ contract RebalancerUniV3Slipstream is ReentrancyGuard, IActionBase {
                                 EVENTS
     ////////////////////////////////////////////////////////////// */
 
-    event AccountInfoSet(
-        address indexed account, address indexed initiator, address indexed strategyHook, address token0, address token1
-    );
+    event AccountInfoSet(address indexed account, address indexed initiator, address indexed strategyHook);
     event Rebalance(address indexed account, address indexed positionManager, uint256 oldId, uint256 newId);
 
     /* //////////////////////////////////////////////////////////////
@@ -166,7 +162,7 @@ contract RebalancerUniV3Slipstream is ReentrancyGuard, IActionBase {
         int24 tickLower,
         int24 tickUpper,
         bytes calldata swapData
-    ) external nonReentrant {
+    ) external {
         // If the initiator is set, account_ is an actual Arcadia Account.
         if (account != address(0)) revert Reentered();
         if (accountToInitiator[account_] != msg.sender) revert InitiatorNotValid();
@@ -180,7 +176,7 @@ contract RebalancerUniV3Slipstream is ReentrancyGuard, IActionBase {
         );
 
         // Call flashAction() with this contract as actionTarget.
-        IAccount(account).flashAction(address(this), actionData);
+        IAccount(account_).flashAction(address(this), actionData);
 
         // Reset account.
         account = address(0);
@@ -457,7 +453,7 @@ contract RebalancerUniV3Slipstream is ReentrancyGuard, IActionBase {
         (token0, token1) = token0 < token1 ? (token0, token1) : (token1, token0);
         if (hook != address(0)) IStrategyHook(hook).setRebalanceInfo(account_, token0, token1, rebalanceInfo);
 
-        emit AccountInfoSet(account_, initiator, hook, token0, token1);
+        emit AccountInfoSet(account_, initiator, hook);
     }
 
     /* ///////////////////////////////////////////////////////////////
