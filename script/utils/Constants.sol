@@ -66,6 +66,10 @@ library RebalancerParameters {
     uint256 constant MIN_LIQUIDITY_RATIO = 0.98 * 1e18; // 98%
 }
 
+library YieldClaimers {
+    address constant V1 = 0xc1E9b21CC7fa970BF1983d02Ec2825BDb5d551fc;
+}
+
 library YieldClaimerParameters {
     uint256 constant MAX_INITIATOR_FEE = 0.2 * 1e18; // 20%
 }
