@@ -22,33 +22,11 @@ contract Constructor_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder_Fuzz
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Revert_Constructor_UnderflowTolerance(
-        uint256 compoundThreshold,
-        uint256 initiatorShare,
-        uint256 tolerance
-    ) public {
-        tolerance = bound(tolerance, 1e18 + 1, type(uint256).max);
-
+    function testFuzz_Revert_Constructor_UnderflowTolerance(uint256 maxTolerance, uint256 maxInitiatorShare) public {
         vm.prank(users.owner);
-        vm.expectRevert(stdError.arithmeticError);
-        new SlipstreamCompounder(compoundThreshold, initiatorShare, tolerance);
-    }
+        SlipstreamCompounder compounder_ = new SlipstreamCompounder(maxTolerance, maxInitiatorShare);
 
-    function testFuzz_Success_Constructor(uint256 compoundThreshold, uint256 initiatorShare, uint256 tolerance)
-        public
-    {
-        tolerance = bound(tolerance, 0, 1e18);
-
-        vm.prank(users.owner);
-        SlipstreamCompounder compounder_ = new SlipstreamCompounder(compoundThreshold, initiatorShare, tolerance);
-
-        assertEq(compounder_.COMPOUND_THRESHOLD(), compoundThreshold);
-        assertEq(compounder_.INITIATOR_SHARE(), initiatorShare);
-
-        uint256 lowerDeviation = FixedPointMathLib.sqrt((1e18 - tolerance) * 1e18);
-        uint256 upperDeviation = FixedPointMathLib.sqrt((1e18 + tolerance) * 1e18);
-
-        assertEq(compounder_.LOWER_SQRT_PRICE_DEVIATION(), lowerDeviation);
-        assertEq(compounder_.UPPER_SQRT_PRICE_DEVIATION(), upperDeviation);
+        assertEq(compounder_.MAX_TOLERANCE(), maxTolerance);
+        assertEq(compounder_.MAX_INITIATOR_FEE(), maxInitiatorShare);
     }
 }

@@ -2,16 +2,16 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity 0.8.22;
+pragma solidity ^0.8.22;
 
 import { Base_AssetManagers_Script } from "../Base.s.sol";
 
-import { AlienBaseCompounder } from "../../src/compounders/alien-base/AlienBaseCompounder.sol";
+/* import { AlienBaseCompounder } from "../../src/compounders/alien-base/AlienBaseCompounder.sol";
 import { CompounderParameters, Quoters } from "../utils/Constants.sol";
 import { SlipstreamCompounderHelperV2 } from
-    "../../src/compounders/periphery/libraries/margin-accounts/slipstream/SlipstreamCompounderHelperV2.sol";
+    "../../src/compounders/periphery/libraries/slipstream/SlipstreamCompounderHelperV2.sol";
 import { UniswapV3CompounderHelperV2 } from
-    "../../src/compounders/periphery/libraries/margin-accounts/uniswap-v3/UniswapV3CompounderHelperV2.sol";
+    "../../src/compounders/periphery/libraries/uniswap-v3/UniswapV3CompounderHelperV2.sol";
 
 contract DeployAlienBaseStep2 is Base_AssetManagers_Script {
     UniswapV3CompounderHelperV2 internal alienBaseCompounderHelper;
@@ -32,4 +32,4 @@ contract DeployAlienBaseStep2 is Base_AssetManagers_Script {
         uniswapV3CompounderHelper = new UniswapV3CompounderHelperV2(address(uniswapV3Compounder), Quoters.UNISWAP_V3);
         vm.stopBroadcast();
     }
-}
+} */

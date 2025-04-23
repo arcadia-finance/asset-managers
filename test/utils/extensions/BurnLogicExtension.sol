@@ -4,11 +4,11 @@
  */
 pragma solidity ^0.8.22;
 
-import { BurnLogic } from "../../../src/rebalancers/libraries/BurnLogic.sol";
-import { Rebalancer } from "../../../src/rebalancers/Rebalancer.sol";
+import { BurnLogic } from "../../../src/rebalancers/libraries/shared-uniswap-v3-slipstream/BurnLogic.sol";
+import { RebalancerUniV3Slipstream } from "../../../src/rebalancers/RebalancerUniV3Slipstream.sol";
 
 contract BurnLogicExtension {
-    function burn(address positionManager, uint256 id, Rebalancer.PositionState memory position)
+    function burn(address positionManager, uint256 id, RebalancerUniV3Slipstream.PositionState memory position)
         external
         returns (uint256 balance0, uint256 balance1, uint256 rewards)
     {

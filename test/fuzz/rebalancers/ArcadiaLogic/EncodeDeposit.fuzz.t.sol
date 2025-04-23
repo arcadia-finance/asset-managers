@@ -6,7 +6,7 @@ pragma solidity ^0.8.22;
 
 import { ActionData } from "../../../../lib/accounts-v2/src/interfaces/IActionBase.sol";
 import { ArcadiaLogic_Fuzz_Test } from "./_ArcadiaLogic.fuzz.t.sol";
-import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
+import { RebalancerUniV3Slipstream } from "../../../../src/rebalancers/RebalancerUniV3Slipstream.sol";
 
 /**
  * @notice Fuzz tests for the function "_encodeDeposit" of contract "ArcadiaLogic".
@@ -26,7 +26,7 @@ contract EncodeDeposit_ArcadiaLogic_Fuzz_Test is ArcadiaLogic_Fuzz_Test {
     function testFuzz_Success_encodeDeposit(
         address positionManager,
         uint256 id,
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         uint256 balance0,
         uint256 balance1,
         uint256 reward
@@ -38,8 +38,9 @@ contract EncodeDeposit_ArcadiaLogic_Fuzz_Test is ArcadiaLogic_Fuzz_Test {
         if (reward > 0) ++count;
 
         // When: calling _encodeDeposit().
-        ActionData memory depositData =
-            arcadiaLogic.encodeDeposit(positionManager, id, position, count, balance0, balance1, reward);
+        ActionData memory depositData = arcadiaLogic.encodeDeposit(
+            positionManager, id, position.token0, position.token1, count, balance0, balance1, reward
+        );
 
         // Then: It should return the correct arrays.
         assertEq(depositData.assets.length, count);

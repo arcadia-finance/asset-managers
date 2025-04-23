@@ -4,14 +4,16 @@
  */
 pragma solidity ^0.8.22;
 
-import { MintLogic } from "../../../src/rebalancers/libraries/MintLogic.sol";
-import { Rebalancer } from "../../../src/rebalancers/Rebalancer.sol";
+import { MintLogic } from "../../../src/rebalancers/libraries/shared-uniswap-v3-slipstream/MintLogic.sol";
+import { RebalancerUniV3Slipstream } from "../../../src/rebalancers/RebalancerUniV3Slipstream.sol";
 
 contract MintLogicExtension {
-    function mint(address positionManager, Rebalancer.PositionState memory position, uint256 balance0, uint256 balance1)
-        external
-        returns (uint256 newTokenId, uint256 liquidity, uint256 balance0_, uint256 balance1_)
-    {
+    function mint(
+        address positionManager,
+        RebalancerUniV3Slipstream.PositionState memory position,
+        uint256 balance0,
+        uint256 balance1
+    ) external returns (uint256 newTokenId, uint256 liquidity, uint256 balance0_, uint256 balance1_) {
         return MintLogic._mint(positionManager, position, balance0, balance1);
     }
 

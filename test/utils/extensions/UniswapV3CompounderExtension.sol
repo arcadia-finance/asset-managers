@@ -8,9 +8,7 @@ import { UniswapV3Compounder } from "../../../src/compounders/uniswap-v3/Uniswap
 import { UniswapV3Logic } from "../../../src/compounders/uniswap-v3/libraries/UniswapV3Logic.sol";
 
 contract UniswapV3CompounderExtension is UniswapV3Compounder {
-    constructor(uint256 compoundThreshold, uint256 initiatorShare, uint256 tolerance)
-        UniswapV3Compounder(compoundThreshold, initiatorShare, tolerance)
-    { }
+    constructor(uint256 maxTolerance, uint256 maxInitiatorShare) UniswapV3Compounder(maxTolerance, maxInitiatorShare) { }
 
     function getSqrtPriceX96(uint256 priceToken0, uint256 priceToken1) public pure returns (uint256) {
         return UniswapV3Logic._getSqrtPriceX96(priceToken0, priceToken1);
@@ -18,5 +16,9 @@ contract UniswapV3CompounderExtension is UniswapV3Compounder {
 
     function swap(PositionState memory position, bool zeroToOne, uint256 amountOut) public returns (bool) {
         return _swap(position, zeroToOne, amountOut);
+    }
+
+    function setAccount(address account_) public {
+        account = account_;
     }
 }
