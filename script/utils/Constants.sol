@@ -4,6 +4,15 @@
  */
 pragma solidity ^0.8.22;
 
+library Arcadia {
+    address constant FACTORY = 0xDa14Fdd72345c4d2511357214c5B89A919768e59;
+}
+
+library Assets {
+    address constant AERO = 0x940181a94A35A4569E4529A3CDfB74e38FD98631;
+    address constant WETH = 0x4200000000000000000000000000000000000006;
+}
+
 library Compounders {
     address constant ALIEN_BASE = address(0x15E755f17E3712F561d25538cCc0488445398c8D);
     address payable constant SLIPSTREAM = payable(address(0xccc601cFd309894ED7B8F15Cb35057E5A6a18B79));
@@ -30,6 +39,14 @@ library CompounderParameters {
     uint256 constant TOLERANCE = 0.005 * 1e18; // 0.5%
 }
 
+library PositionManagers {
+    address constant SLIPSTREAM = 0x827922686190790b37229fd06084350E74485b72;
+    address constant STAKED_SLIPSTREAM = 0x1Dc7A0f5336F52724B650E39174cfcbbEdD67bF1;
+    address constant UNISWAP_V3 = 0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1;
+    address constant UNISWAP_V4 = 0x7C5f5A4bBd8fD63184577525326123B519429bDc;
+    address constant WRAPPED_STAKED_SLIPSTREAM = 0xD74339e0F10fcE96894916B93E5Cc7dE89C98272;
+}
+
 library Quoters {
     address constant ALIEN_BASE = address(0x2ba1d35920DB74a1dB97679BC27d2cBa81bB96ea);
     address constant SLIPSTREAM = address(0x254cF9E1E6e233aa1AC962CB9B05b2cfeAaE15b0);
@@ -47,4 +64,12 @@ library RebalancerParameters {
     uint256 constant MAX_TOLERANCE = 0.01 * 1e18; // 1%
     uint256 constant MAX_INITIATOR_FEE = 0.2 * 1e18; // 20%
     uint256 constant MIN_LIQUIDITY_RATIO = 0.98 * 1e18; // 98%
+}
+
+library YieldClaimers {
+    address constant V1 = 0xc1E9b21CC7fa970BF1983d02Ec2825BDb5d551fc;
+}
+
+library YieldClaimerParameters {
+    uint256 constant MAX_INITIATOR_FEE = 0.2 * 1e18; // 20%
 }
