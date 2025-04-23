@@ -5,7 +5,6 @@
 pragma solidity ^0.8.22;
 
 import { FeeLogic } from "../../../src/rebalancers/libraries/FeeLogic.sol";
-import { Rebalancer } from "../../../src/rebalancers/Rebalancer.sol";
 
 contract FeeLogicExtension {
     function transfer(

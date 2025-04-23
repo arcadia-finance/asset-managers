@@ -124,9 +124,9 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         deployUniswapV4AM();
         deployCompounder(MAX_TOLERANCE, MAX_INITIATOR_FEE);
 
-        // Add two stable tokens with 6 and 18 decimals.
-        token0 = new ERC20Mock("Token 6d", "TOK6", 6);
-        token1 = new ERC20Mock("Token 18d", "TOK18", 18);
+        // Add two stable tokens.
+        token0 = new ERC20Mock("TokenA", "TOKA", 6);
+        token1 = new ERC20Mock("TokenB", "TOKB", 18);
         (token0, token1) = token0 < token1 ? (token0, token1) : (token1, token0);
 
         vm.label({ account: address(token0), newLabel: "TOKEN0" });

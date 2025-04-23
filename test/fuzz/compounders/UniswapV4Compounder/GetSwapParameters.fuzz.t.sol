@@ -45,7 +45,6 @@ contract GetSwapParameters_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_
         // And : newTick = tickUpper.
         int24 newTick = testVars.tickUpper;
         uint160 newSqrtPriceX96 = TickMath.getSqrtPriceAtTick(newTick);
-        poolManager.setCurrentPrice(stablePoolKey.toId(), newTick, newSqrtPriceX96);
 
         UniswapV4Compounder.PositionState memory position;
         position.sqrtRatioLower = TickMath.getSqrtPriceAtTick(testVars.tickLower);
@@ -84,7 +83,6 @@ contract GetSwapParameters_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_
         // And : newTick < tickLower.
         int24 newTick = testVars.tickLower - 1;
         uint160 newSqrtPriceX96 = TickMath.getSqrtPriceAtTick(newTick);
-        poolManager.setCurrentPrice(stablePoolKey.toId(), newTick, newSqrtPriceX96);
 
         UniswapV4Compounder.PositionState memory position;
         position.sqrtRatioLower = TickMath.getSqrtPriceAtTick(testVars.tickLower);

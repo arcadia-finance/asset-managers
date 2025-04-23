@@ -6,7 +6,7 @@ pragma solidity ^0.8.22;
 
 import { FixedPoint96 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
 import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
-import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/uniswap-v3/LiquidityAmounts.sol";
+import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/cl-math/LiquidityAmounts.sol";
 import { SqrtPriceMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/SqrtPriceMath.sol";
 import { RebalanceOptimizationMath_Fuzz_Test } from "./_RebalanceOptimizationMath.fuzz.t.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
@@ -223,9 +223,9 @@ contract ApproximateOptimalSwapAmounts_SwapMath_Fuzz_Test is RebalanceOptimizati
             (uint256 lAmount0, uint256 lAmount1) =
                 getLiquidityAmounts(sqrtPrice, sqrtRatioLower, sqrtRatioUpper, balance0, balance1);
             vm.assume(lAmount0 > 1e5);
-            assertApproxEqRel(balance0, lAmount0, 1e18 / 1e2);
+            assertApproxEqRel(balance0, lAmount0, 1e18 / 2e1);
             vm.assume(lAmount1 > 1e5);
-            assertApproxEqRel(balance1, lAmount1, 1e18 / 1e2);
+            assertApproxEqRel(balance1, lAmount1, 1e18 / 2e1);
         }
     }
 

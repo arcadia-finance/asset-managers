@@ -5,10 +5,10 @@
 pragma solidity ^0.8.22;
 
 import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
-import { Rebalancer } from "../../../src/rebalancers/Rebalancer.sol";
-import { SlipstreamLogic } from "../../../src/rebalancers/libraries/SlipstreamLogic.sol";
-import { SwapLogic } from "../../../src/rebalancers/libraries/SwapLogic.sol";
-import { UniswapV3Logic } from "../../../src/rebalancers/libraries/UniswapV3Logic.sol";
+import { RebalancerUniV3Slipstream } from "../../../src/rebalancers/RebalancerUniV3Slipstream.sol";
+import { SlipstreamLogic } from "../../../src/rebalancers/libraries/slipstream/SlipstreamLogic.sol";
+import { SwapLogic } from "../../../src/rebalancers/libraries/shared-uniswap-v3-slipstream/SwapLogic.sol";
+import { UniswapV3Logic } from "../../../src/rebalancers/libraries/uniswap-v3/UniswapV3Logic.sol";
 
 contract SwapLogicExtension {
     using SafeTransferLib for ERC20;
@@ -16,14 +16,17 @@ contract SwapLogicExtension {
     function swap(
         bytes memory swapData,
         address positionManager,
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         bool zeroToOne,
         uint256 amountInitiatorFee,
         uint256 amountIn,
         uint256 amountOut,
         uint256 balance0,
         uint256 balance1
-    ) external returns (uint256 balance0_, uint256 balance1_, Rebalancer.PositionState memory position_) {
+    )
+        external
+        returns (uint256 balance0_, uint256 balance1_, RebalancerUniV3Slipstream.PositionState memory position_)
+    {
         (balance0_, balance1_) = SwapLogic._swap(
             swapData, positionManager, position, zeroToOne, amountInitiatorFee, amountIn, amountOut, balance0, balance1
         );
@@ -33,12 +36,15 @@ contract SwapLogicExtension {
 
     function swapViaPool(
         address positionManager,
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         bool zeroToOne,
         uint256 amountOut,
         uint256 balance0,
         uint256 balance1
-    ) external returns (uint256 balance0_, uint256 balance1_, Rebalancer.PositionState memory position_) {
+    )
+        external
+        returns (uint256 balance0_, uint256 balance1_, RebalancerUniV3Slipstream.PositionState memory position_)
+    {
         (balance0_, balance1_) =
             SwapLogic._swapViaPool(positionManager, position, zeroToOne, amountOut, balance0, balance1);
 
@@ -47,10 +53,13 @@ contract SwapLogicExtension {
 
     function swapViaRouter(
         address positionManager,
-        Rebalancer.PositionState memory position,
+        RebalancerUniV3Slipstream.PositionState memory position,
         bool zeroToOne,
         bytes memory swapData
-    ) external returns (uint256 balance0_, uint256 balance1_, Rebalancer.PositionState memory position_) {
+    )
+        external
+        returns (uint256 balance0_, uint256 balance1_, RebalancerUniV3Slipstream.PositionState memory position_)
+    {
         (balance0_, balance1_) = SwapLogic._swapViaRouter(positionManager, position, zeroToOne, swapData);
 
         position_ = position;
@@ -62,12 +71,12 @@ contract SwapLogicExtension {
             abi.decode(data, (address, address, address, uint24));
         if (positionManager == address(UniswapV3Logic.POSITION_MANAGER)) {
             if (UniswapV3Logic._computePoolAddress(token0, token1, feeOrTickSpacing) != msg.sender) {
-                revert Rebalancer.OnlyPool();
+                revert RebalancerUniV3Slipstream.OnlyPool();
             }
         } else {
             // Logic holds for both Slipstream and staked Slipstream positions.
             if (SlipstreamLogic._computePoolAddress(token0, token1, int24(feeOrTickSpacing)) != msg.sender) {
-                revert Rebalancer.OnlyPool();
+                revert RebalancerUniV3Slipstream.OnlyPool();
             }
         }
 

@@ -4,7 +4,7 @@
  */
 pragma solidity ^0.8.22;
 
-import { PricingLogic } from "../../../src/rebalancers/libraries/PricingLogic.sol";
+import { PricingLogic } from "../../../src/rebalancers/libraries/cl-math/PricingLogic.sol";
 
 contract PricingLogicExtension {
     function getSpotValue(uint256 sqrtPriceX96, bool zeroToOne, uint256 amountIn)
