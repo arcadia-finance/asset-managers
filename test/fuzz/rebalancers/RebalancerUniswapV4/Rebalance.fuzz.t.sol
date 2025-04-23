@@ -119,6 +119,9 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         vm.assume(address(account) != address(rebalancer));
         vm.assume(address(account) != initiator);
 
+        // And: Initiator is not the PoolManager.
+        vm.assume(address(initiator) != address(poolManager));
+
         // And: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
 
@@ -224,6 +227,9 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         // Given: Account is not the rebalancer or initiator.
         vm.assume(address(account) != address(rebalancer));
         vm.assume(address(account) != initiator);
+
+        // And: Initiator is not the PoolManager.
+        vm.assume(address(initiator) != address(poolManager));
 
         // And: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
@@ -333,6 +339,9 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         // Given: Account is not the rebalancer or initiator.
         vm.assume(address(account) != address(rebalancer));
         vm.assume(address(account) != initiator);
+
+        // And: Initiator is not the PoolManager.
+        vm.assume(address(initiator) != address(poolManager));
 
         // And: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
@@ -468,6 +477,9 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         vm.assume(address(account) != address(rebalancer));
         vm.assume(address(account) != initiator);
 
+        // And: Initiator is not the PoolManager.
+        vm.assume(address(initiator) != address(poolManager));
+
         // And: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
 
@@ -577,6 +589,9 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         vm.assume(address(account) != address(rebalancer));
         vm.assume(address(account) != initiator);
 
+        // And: Initiator is not the PoolManager.
+        vm.assume(address(initiator) != address(poolManager));
+
         // And: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
 
@@ -679,6 +694,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         }
 
         (uint160 currentSqrtPriceX96,,,) = stateView.getSlot0(v4PoolKey.toId());
+        uint256 initialBalance = token0.balanceOf(initiator);
 
         // When : calling rebalance()
         vm.prank(initiator);
@@ -693,8 +709,8 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         );
 
         // Then : It should return the correct values
-        assertGt(token0.balanceOf(initiator), 0);
-        assertLe(token0.balanceOf(initiator), expectedFee);
+        assertGt(token0.balanceOf(initiator), initialBalance);
+        assertLe(token0.balanceOf(initiator), initialBalance + expectedFee);
     }
 
     function testFuzz_Success_rebalancePosition_MoveTickRight_BalancedWithSameTickSpacing(
@@ -708,6 +724,9 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         // Given: Account is not the rebalancer or initiator.
         vm.assume(address(account) != address(rebalancer));
         vm.assume(address(account) != initiator);
+
+        // And: Initiator is not the PoolManager.
+        vm.assume(address(initiator) != address(poolManager));
 
         // And: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
@@ -809,6 +828,9 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         // Given: Account is not the rebalancer or initiator.
         vm.assume(address(account) != address(rebalancer));
         vm.assume(address(account) != initiator);
+
+        // And: Initiator is not the PoolManager.
+        vm.assume(address(initiator) != address(poolManager));
 
         // And: Reasonable current price.
         position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
@@ -915,6 +937,9 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         // Given: Account is not the rebalancer or initiator.
         vm.assume(address(account) != address(rebalancer));
         vm.assume(address(account) != initiator);
+
+        // And: Initiator is not the PoolManager.
+        vm.assume(address(initiator) != address(poolManager));
 
         // And: Initiator can receive eth.
         assumePayable(initiator);
@@ -1024,6 +1049,9 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         // Given: Account is not the rebalancer or initiator.
         vm.assume(address(account) != address(rebalancer));
         vm.assume(address(account) != initiator);
+
+        // And: Initiator is not the PoolManager.
+        vm.assume(address(initiator) != address(poolManager));
 
         // And: Initiator can receive eth.
         assumePayable(initiator);
@@ -1145,6 +1173,9 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         vm.assume(address(account) != address(rebalancer));
         vm.assume(address(account) != initiator);
 
+        // And: Initiator is not the PoolManager.
+        vm.assume(address(initiator) != address(poolManager));
+
         // And: Initiator can receive eth.
         assumePayable(initiator);
 
@@ -1263,6 +1294,9 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         vm.assume(address(account) != address(rebalancer));
         vm.assume(address(account) != initiator);
 
+        // And: Initiator is not the PoolManager.
+        vm.assume(address(initiator) != address(poolManager));
+
         // And: Initiator can receive eth.
         assumePayable(initiator);
 
@@ -1373,6 +1407,9 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         // Given: Account is not the rebalancer or initiator.
         vm.assume(address(account) != address(rebalancer));
         vm.assume(address(account) != initiator);
+
+        // And: Initiator is not the PoolManager.
+        vm.assume(address(initiator) != address(poolManager));
 
         // And: Initiator can receive eth.
         assumePayable(initiator);
@@ -1485,6 +1522,9 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         // Given: Account is not the rebalancer or initiator.
         vm.assume(address(account) != address(rebalancer));
         vm.assume(address(account) != initiator);
+
+        // And: Initiator is not the PoolManager.
+        vm.assume(address(initiator) != address(poolManager));
 
         // And: Initiator can receive eth.
         assumePayable(initiator);

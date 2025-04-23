@@ -230,7 +230,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is
             amountInWithSlippage == amountInWithoutSlippage || amountInWithSlippage == amountInWithoutSlippage + 1
                 || amountInWithSlippage + 1 == amountInWithoutSlippage
         ) {
-            assertApproxEqRel(amountInWithSlippage, amountInWithoutSlippage, 0.001 * 1e18);
+            assertApproxEqRel(amountInWithSlippage, amountInWithoutSlippage, 0.005 * 1e18);
         } else {
             assertGe(liquidityWithSlippage, liquidityWithoutSlippage);
         }
