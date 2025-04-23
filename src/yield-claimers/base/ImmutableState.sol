@@ -5,7 +5,6 @@
 pragma solidity ^0.8.26;
 
 import { IFactory } from "../../interfaces/IFactory.sol";
-import { IPositionManagerV3 } from "../interfaces/IPositionManagerV3.sol";
 import { IPositionManagerV4 } from "../interfaces/IPositionManagerV4.sol";
 import { IWETH } from "../interfaces/IWETH.sol";
 
