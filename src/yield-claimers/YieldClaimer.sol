@@ -162,7 +162,7 @@ contract YieldClaimer is IActionBase, ImmutableState, StakedSlipstreamLogic, Uni
         // Execute action.
         (address[] memory tokens, uint256[] memory amounts) = _executeAction(positionManager, id);
 
-        // Cache fee recipient and Intitator fee.
+        // Cache fee recipient and Initiator fee.
         address feeRecipient = accountToFeeRecipient[msg.sender];
         uint256 initiatorFee_ = initiatorFee[initiator];
 
