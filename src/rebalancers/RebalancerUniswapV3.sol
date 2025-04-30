@@ -119,6 +119,7 @@ contract RebalancerUniswapV3 is Rebalancer {
         // Get data of the Liquidity Pool.
         position.pool =
             PoolAddress.computeAddress(UNISWAP_V3_FACTORY, position.tokens[0], position.tokens[1], position.fee);
+        position.id = initiatorParams.oldId;
         (position.sqrtPriceX96, position.tickCurrent,,,,,) = IUniswapV3Pool(position.pool).slot0();
         position.tickSpacing = IUniswapV3Pool(position.pool).tickSpacing();
     }
