@@ -8,38 +8,10 @@ import { ActionData } from "../../../lib/accounts-v2/src/interfaces/IActionBase.
 import { AssetValueAndRiskFactors } from "../../../lib/accounts-v2/src/libraries/AssetValuationLib.sol";
 import { IFactory } from "../interfaces/IFactory.sol";
 import { IPermit2 } from "../../../lib/accounts-v2/src/interfaces/IPermit2.sol";
-import { IRegistry } from "../interfaces/IRegistry.sol";
 
 library ArcadiaLogic {
     // The contract address of the Arcadia Factory.
     IFactory internal constant FACTORY = IFactory(0xDa14Fdd72345c4d2511357214c5B89A919768e59);
-    // The contract address of the Arcadia Registry.
-    IRegistry internal constant REGISTRY = IRegistry(0xd0690557600eb8Be8391D1d97346e2aab5300d5f);
-
-    /**
-     * @notice Returns the trusted USD prices for 1e18 gwei of token0 and token1.
-     * @param token0 The contract address of token0.
-     * @param token1 The contract address of token1.
-     * @param usdPriceToken0 The USD price of 1e18 gwei of token0, with 18 decimals precision.
-     * @param usdPriceToken1 The USD price of 1e18 gwei of token1, with 18 decimals precision.
-     */
-    function _getValuesInUsd(address token0, address token1)
-        internal
-        view
-        returns (uint256 usdPriceToken0, uint256 usdPriceToken1)
-    {
-        address[] memory assets = new address[](2);
-        assets[0] = token0;
-        assets[1] = token1;
-        uint256[] memory assetAmounts = new uint256[](2);
-        assetAmounts[0] = 1e18;
-        assetAmounts[1] = 1e18;
-
-        AssetValueAndRiskFactors[] memory valuesAndRiskFactors =
-            REGISTRY.getValuesInUsd(address(0), assets, new uint256[](2), assetAmounts);
-
-        (usdPriceToken0, usdPriceToken1) = (valuesAndRiskFactors[0].assetValue, valuesAndRiskFactors[1].assetValue);
-    }
 
     /**
      * @notice Encodes the action data for the flash-action used to compound a Uniswap V3 Liquidity Position.

@@ -32,7 +32,7 @@ library MintLogic {
         RebalancerUniV3Slipstream.PositionState memory position,
         uint256 balance0,
         uint256 balance1
-    ) internal returns (uint256 newTokenId, uint256 liquidity, uint256 balance0_, uint256 balance1_) {
+    ) internal returns (uint256 newTokenId, uint128 liquidity, uint256 balance0_, uint256 balance1_) {
         // Before position can be staked, we have to create a slipstream position.
         address stakedPositionManager;
         if (

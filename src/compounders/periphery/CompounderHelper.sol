@@ -4,7 +4,6 @@
  */
 pragma solidity ^0.8.22;
 
-import { AlienBaseLogic } from "../alien-base/libraries/AlienBaseLogic.sol";
 import { IAccount } from "../../interfaces/IAccount.sol";
 import { IFactory } from "../../interfaces/IFactory.sol";
 import { SlipstreamLogic } from "../slipstream/libraries/SlipstreamLogic.sol";
@@ -72,9 +71,6 @@ contract CompounderHelper {
                 UniswapV3CompounderHelperLogic._isCompoundable(id, positionManager, account);
         } else if (isUniswapV4) {
             (isCompoundable_, compounder, sqrtPriceX96) = UNISWAPV4_COMPOUNDER_HELPER.isCompoundable(id, account);
-        } else if (positionManager == address(AlienBaseLogic.POSITION_MANAGER)) {
-            (isCompoundable_, compounder, sqrtPriceX96) =
-                UniswapV3CompounderHelperLogic._isCompoundable(id, positionManager, account);
         }
     }
 }

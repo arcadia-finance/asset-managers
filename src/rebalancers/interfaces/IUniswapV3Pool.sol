@@ -15,5 +15,7 @@ interface IUniswapV3Pool {
             bool unlocked
         );
 
+    function liquidity() external view returns (uint128 liquidity);
+
     function tickSpacing() external view returns (int24 tickSpacing);
 }

@@ -25,6 +25,8 @@ contract HookMock {
 
     function afterRebalance(address account, address positionManager, uint256 oldId, uint256 newId) external { }
 
+    function setStrategy(address account, bytes calldata strategyData) external { }
+
     function setRebalanceInfo(address account, address token0_, address token1_, bytes calldata customInfo) external {
         rebalanceInfo[account] = RebalanceInfo({ token0: token0_, token1: token1_, customInfo: customInfo });
     }
