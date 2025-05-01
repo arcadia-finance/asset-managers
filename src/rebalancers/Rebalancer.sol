@@ -118,7 +118,6 @@ abstract contract Rebalancer is IActionBase {
     error NotAnAccount();
     error OnlyAccount();
     error OnlyAccountOwner();
-    error OnlyPool();
     error OnlyPositionManager();
     error Reentered();
     error UnbalancedPool();

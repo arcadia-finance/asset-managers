@@ -23,13 +23,14 @@ contract GetPoolLiquidity_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_F
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_getPoolLiquidity(
-        uint128 liquidityPool,
-        Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position
-    ) public {
+    function testFuzz_Success_getPoolLiquidity(uint128 liquidityPool, Rebalancer.PositionState memory position)
+        public
+    {
         // Given: A valid position.
-        givenValidPosition(liquidityPool, initiatorParams, position);
+        liquidityPool = givenValidPoolState(liquidityPool, position);
+        setPoolState(liquidityPool, position);
+        givenValidPositionState(position);
+        setPositionState(position);
 
         // When: Calling getPoolLiquidity.
         uint128 liquidity = rebalancer.getPoolLiquidity(position);

@@ -93,6 +93,10 @@ abstract contract RebalancerUniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture {
         addAssetToArcadia(address(token1), int256(price1));
     }
 
+    function deployAndInitUniswapV3() internal returns (uint256 id) {
+        id = deployAndInitUniswapV3(2 ** 96, type(uint64).max, POOL_FEE);
+    }
+
     function deployAndInitUniswapV3(uint160 sqrtPriceX96, uint128 liquidityPool, uint24 poolFee)
         internal
         returns (uint256 id)
@@ -122,40 +126,45 @@ abstract contract RebalancerUniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture {
         );
     }
 
-    function givenValidPosition(
-        uint128 liquidityPool,
-        Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position
-    ) internal {
+    function givenValidPoolState(uint128 liquidityPool, Rebalancer.PositionState memory position)
+        internal
+        view
+        returns (uint128 liquidityPool_)
+    {
         // Given: Reasonable current price.
         position.sqrtPriceX96 =
             uint160(bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3));
 
-        // And: A valid pool.
         // And: Pool has reasonable liquidity.
-        liquidityPool =
+        liquidityPool_ =
             uint128(bound(liquidityPool, UniswapHelpers.maxLiquidity(1) / 1000, UniswapHelpers.maxLiquidity(1) / 10));
-        deployAndInitUniswapV3(uint160(position.sqrtPriceX96), liquidityPool, POOL_FEE);
         position.sqrtPriceX96 = uint160(position.sqrtPriceX96);
         position.tickCurrent = TickMath.getTickAtSqrtPrice(uint160(position.sqrtPriceX96));
-        position.pool = address(poolUniswap);
         position.fee = POOL_FEE;
-        int24 tickSpacing = poolUniswap.tickSpacing();
-        position.tickSpacing = tickSpacing;
+    }
+
+    function setPoolState(uint128 liquidityPool, Rebalancer.PositionState memory position) internal {
+        deployAndInitUniswapV3(uint160(position.sqrtPriceX96), liquidityPool, position.fee);
+        position.pool = address(poolUniswap);
+        position.tickSpacing = poolUniswap.tickSpacing();
         position.tokens = new address[](2);
         position.tokens[0] = address(token0);
         position.tokens[1] = address(token1);
+    }
 
-        // And: A valid position.
+    function givenValidPositionState(Rebalancer.PositionState memory position) internal {
+        int24 tickSpacing = position.tickSpacing;
         position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, BOUND_TICK_UPPER - 2 * tickSpacing));
         position.tickLower = position.tickLower / tickSpacing * tickSpacing;
         position.tickUpper = int24(bound(position.tickUpper, position.tickLower + 2 * tickSpacing, BOUND_TICK_UPPER));
         position.tickUpper = position.tickUpper / tickSpacing * tickSpacing;
         position.liquidity = uint128(bound(position.liquidity, 1e6, poolUniswap.liquidity() / 1e3));
+    }
+
+    function setPositionState(Rebalancer.PositionState memory position) internal {
         (position.id,,) = addLiquidityUniV3(
             poolUniswap, position.liquidity, users.liquidityProvider, position.tickLower, position.tickUpper, false
         );
-        initiatorParams.oldId = uint96(position.id);
-        (,,,,,,, position.liquidity,,,,) = nonfungiblePositionManager.positions(initiatorParams.oldId);
+        (,,,,,,, position.liquidity,,,,) = nonfungiblePositionManager.positions(position.id);
     }
 }

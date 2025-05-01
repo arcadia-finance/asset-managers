@@ -29,7 +29,11 @@ contract GetUnderlyingTokens_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV
         Rebalancer.PositionState memory position
     ) public {
         // Given: A valid position.
-        givenValidPosition(liquidityPool, initiatorParams, position);
+        liquidityPool = givenValidPoolState(liquidityPool, position);
+        setPoolState(liquidityPool, position);
+        givenValidPositionState(position);
+        setPositionState(position);
+        initiatorParams.oldId = uint96(position.id);
 
         // When: Calling getPositionState.
         (uint256[] memory balances, Rebalancer.PositionState memory position_) =

@@ -22,13 +22,12 @@ contract GetSqrtPriceX96_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fu
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_getSqrtPriceX96(
-        uint128 liquidityPool,
-        Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position
-    ) public {
+    function testFuzz_Success_getSqrtPriceX96(uint128 liquidityPool, Rebalancer.PositionState memory position) public {
         // Given: A valid position.
-        givenValidPosition(liquidityPool, initiatorParams, position);
+        liquidityPool = givenValidPoolState(liquidityPool, position);
+        setPoolState(liquidityPool, position);
+        givenValidPositionState(position);
+        setPositionState(position);
 
         // When: Calling getSqrtPriceX96.
         uint160 sqrtPriceX96 = rebalancer.getSqrtPriceX96(position);

@@ -41,6 +41,12 @@ contract RebalancerUniswapV3 is Rebalancer {
     address internal immutable UNISWAP_V3_FACTORY;
 
     /* //////////////////////////////////////////////////////////////
+                                ERRORS
+    ////////////////////////////////////////////////////////////// */
+
+    error OnlyPool();
+
+    /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
     ////////////////////////////////////////////////////////////// */
 
@@ -234,9 +240,9 @@ contract RebalancerUniswapV3 is Rebalancer {
      */
     function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external {
         // Check that callback came from an actual Uniswap V3 or Slipstream position.
-        (address token0, address token1, uint24 feeOrTickSpacing) = abi.decode(data, (address, address, uint24));
+        (address token0, address token1, uint24 fee) = abi.decode(data, (address, address, uint24));
 
-        if (UniswapV3Logic._computePoolAddress(token0, token1, feeOrTickSpacing) != msg.sender) revert OnlyPool();
+        if (UniswapV3Logic._computePoolAddress(token0, token1, fee) != msg.sender) revert OnlyPool();
 
         if (amount0Delta > 0) {
             ERC20(token0).safeTransfer(msg.sender, uint256(amount0Delta));

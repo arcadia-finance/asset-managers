@@ -62,9 +62,10 @@ contract RebalancerUniswapV3Extension is RebalancerUniswapV3 {
         RebalanceParams memory rebalanceParams,
         Cache memory cache,
         uint256 amountOut
-    ) external returns (uint256[] memory balances_) {
+    ) external returns (uint256[] memory balances_, PositionState memory position_) {
         _swapViaPool(balances, position, rebalanceParams, cache, amountOut);
         balances_ = balances;
+        position_ = position;
     }
 
     function mint(
@@ -72,9 +73,10 @@ contract RebalancerUniswapV3Extension is RebalancerUniswapV3 {
         InitiatorParams memory initiatorParams,
         PositionState memory position,
         Cache memory cache
-    ) external returns (uint256[] memory balances_) {
+    ) external returns (uint256[] memory balances_, PositionState memory position_) {
         _mint(balances, initiatorParams, position, cache);
         balances_ = balances;
+        position_ = position;
     }
 
     function setHook(address account_, address hook) public {

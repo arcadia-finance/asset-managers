@@ -27,8 +27,11 @@ contract GetUnderlyingTokens_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV
         Rebalancer.InitiatorParams memory initiatorParams,
         Rebalancer.PositionState memory position
     ) public {
-        // Given: A valid position.
-        givenValidPosition(liquidityPool, initiatorParams, position);
+        liquidityPool = givenValidPoolState(liquidityPool, position);
+        setPoolState(liquidityPool, position);
+        givenValidPositionState(position);
+        setPositionState(position);
+        initiatorParams.oldId = uint96(position.id);
 
         // When: Calling getUnderlyingTokens.
         (address token0_, address token1_) = rebalancer.getUnderlyingTokens(initiatorParams);
