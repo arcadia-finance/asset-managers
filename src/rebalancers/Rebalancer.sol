@@ -281,13 +281,6 @@ abstract contract Rebalancer is IActionBase {
         // Get all pool and position related state.
         (uint256[] memory balances, PositionState memory position) = _getPositionState(initiatorParams);
 
-        // Cache variables that are gas expensive to calcultate and used multiple times.
-        Cache memory cache = _getCache(initiator, initiatorParams, position);
-
-        // Check that pool is initially balanced.
-        // Prevents sandwiching attacks when swapping and/or adding liquidity.
-        if (isPoolUnbalanced(position, cache)) revert UnbalancedPool();
-
         // Call the strategy hook before the rebalance (view function, cannot modify state of pool or old position).
         // The strategy hook will return the new ticks of the position
         // (we override ticks of the memory pointer of the old position as these are no longer needed after this call).
@@ -299,6 +292,13 @@ abstract contract Rebalancer is IActionBase {
         IStrategyHook hook = IStrategyHook(strategyHook[msg.sender]);
         (position.tickLower, position.tickUpper) =
             hook.beforeRebalance(msg.sender, initiatorParams.positionManager, position, initiatorParams.strategyData);
+
+        // Cache variables that are gas expensive to calcultate and used multiple times.
+        Cache memory cache = _getCache(initiator, initiatorParams, position);
+
+        // Check that pool is initially balanced.
+        // Prevents sandwiching attacks when swapping and/or adding liquidity.
+        if (isPoolUnbalanced(position, cache)) revert UnbalancedPool();
 
         // Remove liquidity of the position, claim outstanding fees/rewards and update balances.
         _burn(balances, initiatorParams, position, cache);
@@ -354,9 +354,8 @@ abstract contract Rebalancer is IActionBase {
         uint256 count = _approve(balances, initiatorParams, position);
 
         // Encode deposit data for the flash-action.
-        depositData = ArcadiaLogic._encodeDeposit(
-            initiatorParams.positionManager, initiatorParams.oldId, count, position.tokens, balances
-        );
+        depositData =
+            ArcadiaLogic._encodeDeposit(initiatorParams.positionManager, position.id, count, position.tokens, balances);
 
         emit Rebalance(msg.sender, initiatorParams.positionManager, initiatorParams.oldId, position.id);
     }
