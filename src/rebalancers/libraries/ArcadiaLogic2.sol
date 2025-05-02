@@ -85,19 +85,19 @@ library ArcadiaLogic {
         ids[0] = id;
         amounts[0] = 1;
         types[0] = 2;
-        if (count == 1) return depositData;
 
         // Add ERC20 tokens.
-        uint256 i = 1;
-        for (uint256 j; j < balances.length; j++) {
-            if (balances[j] > 0) {
-                assets[i] = tokens[j];
-                amounts[i] = balances[j];
-                types[i] = 1;
-                i++;
+        if (count > 1) {
+            uint256 i = 1;
+            for (uint256 j; j < balances.length; j++) {
+                if (balances[j] > 0) {
+                    assets[i] = tokens[j];
+                    amounts[i] = balances[j];
+                    types[i] = 1;
+                    i++;
+                }
             }
         }
-
         depositData = ActionData({ assets: assets, assetIds: ids, assetAmounts: amounts, assetTypes: types });
     }
 }

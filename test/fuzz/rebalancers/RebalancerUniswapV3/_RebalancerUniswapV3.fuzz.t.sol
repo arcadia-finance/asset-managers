@@ -4,23 +4,29 @@
  */
 pragma solidity ^0.8.26;
 
+import { Base_Test } from "../../../../lib/accounts-v2/test/Base.t.sol";
 import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { FixedPoint96 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
 import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { Fuzz_Test } from "../../Fuzz.t.sol";
+import { INonfungiblePositionManagerExtension } from
+    "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/INonfungiblePositionManagerExtension.sol";
 import { IUniswapV3PoolExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/IUniswapV3PoolExtension.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RebalancerUniswapV3Extension } from "../../../utils/extensions/RebalancerUniswapV3Extension.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
+import { UniswapV3AMExtension } from "../../../../lib/accounts-v2/test/utils/extensions/UniswapV3AMExtension.sol";
+import { UniswapV3AMFixture } from
+    "../../../../lib/accounts-v2/test/utils/fixtures/arcadia-accounts/UniswapV3AMFixture.f.sol";
 import { UniswapV3Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";
 import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
 
 /**
  * @notice Common logic needed by all "RebalancerUniswapV3" fuzz tests.
  */
-abstract contract RebalancerUniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture {
+abstract contract RebalancerUniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, UniswapV3AMFixture {
     /*////////////////////////////////////////////////////////////////
                             CONSTANTS
     /////////////////////////////////////////////////////////////// */
@@ -50,7 +56,7 @@ abstract contract RebalancerUniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture {
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
-    function setUp() public virtual override(Fuzz_Test, UniswapV3Fixture) {
+    function setUp() public virtual override(Fuzz_Test, UniswapV3Fixture, Base_Test) {
         Fuzz_Test.setUp();
 
         // Warp to have a timestamp of at least two days old.
@@ -85,6 +91,26 @@ abstract contract RebalancerUniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture {
                         HELPER FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
+    function deployUniswapV3AM() internal {
+        // Deploy Add the Asset Module to the Registry.
+        vm.startPrank(users.owner);
+        uniV3AM = new UniswapV3AMExtension(address(registry), address(nonfungiblePositionManager));
+        registry.addAssetModule(address(uniV3AM));
+        uniV3AM.setProtocol();
+        vm.stopPrank();
+
+        // Get the bytecode of the UniswapV3PoolExtension.
+        bytes memory args = abi.encode();
+        bytes memory bytecode = abi.encodePacked(vm.getCode("UniswapV3PoolExtension.sol"), args);
+        bytes32 poolExtensionInitCodeHash = keccak256(bytecode);
+        bytes32 POOL_INIT_CODE_HASH = 0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54;
+
+        // Overwrite code hash of the UniswapV3AMExtension.
+        bytecode = address(uniV3AM).code;
+        bytecode = Utils.veryBadBytesReplacer(bytecode, POOL_INIT_CODE_HASH, poolExtensionInitCodeHash);
+        vm.etch(address(uniV3AM), bytecode);
+    }
+
     function addAssetsToArcadia(uint256 sqrtPriceX96) internal {
         uint256 price0 = FullMath.mulDiv(1e18, sqrtPriceX96 ** 2, FixedPoint96.Q96 ** 2);
         uint256 price1 = 1e18;
@@ -103,6 +129,8 @@ abstract contract RebalancerUniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture {
     {
         // Deploy fixture for Uniswap V3.
         UniswapV3Fixture.setUp();
+        vm.etch(0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1, address(nonfungiblePositionManager).code);
+        nonfungiblePositionManager = INonfungiblePositionManagerExtension(0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1);
 
         // Create tokens.
         token0 = new ERC20Mock("TokenA", "TOKA", 0);
