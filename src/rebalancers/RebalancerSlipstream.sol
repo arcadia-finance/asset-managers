@@ -4,16 +4,19 @@
  */
 pragma solidity ^0.8.26;
 
-import { CollectParams, DecreaseLiquidityParams, IPositionManager, MintParams } from "./interfaces/IPositionManager.sol";
+import {
+    CollectParams, DecreaseLiquidityParams, ICLPositionManager, MintParams
+} from "./interfaces/ICLPositionManager.sol";
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
-import { IUniswapV3Pool } from "./interfaces/IUniswapV3Pool.sol";
-import { PoolAddress } from "../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/PoolAddress.sol";
+import { ICLPool } from "./interfaces/ICLPool.sol";
+import { IStakedSlipstreamAM } from "./interfaces/IStakedSlipstreamAM.sol";
+import { PoolAddress } from "./libraries/slipstream/PoolAddress.sol";
 import { Rebalancer } from "./Rebalancer.sol";
 import { RebalanceParams } from "./libraries/RebalanceLogic2.sol";
 import { SafeApprove } from "../libraries/SafeApprove.sol";
 
 /**
- * @title Rebalancer for Uniswap V3 Liquidity Positions.
+ * @title Rebalancer for Slipstream Liquidity Positions.
  * @notice The Rebalancer is an Asset Manager for Arcadia Accounts.
  * It will allow third parties to trigger the rebalancing functionality for a Liquidity Position in the Account.
  * The owner of an Arcadia Account should set an initiator via setAccountInfo() that will be permisionned to rebalance
@@ -25,18 +28,30 @@ import { SafeApprove } from "../libraries/SafeApprove.sol";
  * based on a hypothetical optimal swap through the pool itself without slippage.
  * This protects the Account owners from incompetent or malicious initiators who route swaps poorly, or try to skim off liquidity from the position.
  */
-contract RebalancerUniswapV3 is Rebalancer {
+contract RebalancerSlipstream is Rebalancer {
     using SafeApprove for ERC20;
     using SafeTransferLib for ERC20;
     /* //////////////////////////////////////////////////////////////
                                 CONSTANTS
     ////////////////////////////////////////////////////////////// */
 
-    // The contract address of the Uniswap v3 Position Manager.
-    IPositionManager internal immutable POSITION_MANAGER;
+    // The contract address of the Slipstream Factory.
+    address internal immutable CL_FACTORY;
 
-    // The contract address of the Uniswap v3 Factory.
-    address internal immutable UNISWAP_V3_FACTORY;
+    // The contract address of the Slipstream Position Manager.
+    ICLPositionManager internal immutable POSITION_MANAGER;
+
+    // The contract address of the Slipstream Pool Implementation.
+    address internal immutable POOL_IMPLEMENTATION;
+
+    // The contract address of the Reward Token (Aero).
+    address internal immutable REWARD_TOKEN;
+
+    // The contract address of the Staked Slipstream Asset Module.
+    address internal immutable STAKED_SLIPSTREAM_AM;
+
+    // The contract address of the Staked Slipstream Wrapper.
+    address internal immutable STAKED_SLIPSTREAM_WRAPPER;
 
     /* //////////////////////////////////////////////////////////////
                                 ERRORS
@@ -56,8 +71,12 @@ contract RebalancerUniswapV3 is Rebalancer {
      * relative to the ideal amountIn, with 18 decimals precision.
      * @param minLiquidityRatio The ratio of the minimum amount of liquidity that must be minted,
      * relative to the hypothetical amount of liquidity when we rebalance without slippage, with 18 decimals precision.
-     * @param positionManager The contract address of the Uniswap v3 Position Manager.
-     * @param uniswapV3Factory The contract address of the Uniswap v3 Factory.
+     * @param positionManager The contract address of the Slipstream Position Manager.
+     * @param cLFactory The contract address of the Slipstream Factory.
+     * @param poolImplementation The contract address of the Slipstream Pool Implementation.
+     * @param rewardToken The contract address of the Reward Token (Aero).
+     * @param stakedSlipstreamAm The contract address of the Staked Slipstream Asset Module.
+     * @param stakedSlipstreamWrapper The contract address of the Staked Slipstream Wrapper.
      */
     constructor(
         address arcadiaFactory,
@@ -65,10 +84,18 @@ contract RebalancerUniswapV3 is Rebalancer {
         uint256 maxInitiatorFee,
         uint256 minLiquidityRatio,
         address positionManager,
-        address uniswapV3Factory
+        address cLFactory,
+        address poolImplementation,
+        address rewardToken,
+        address stakedSlipstreamAm,
+        address stakedSlipstreamWrapper
     ) Rebalancer(arcadiaFactory, maxTolerance, maxInitiatorFee, minLiquidityRatio) {
-        POSITION_MANAGER = IPositionManager(positionManager);
-        UNISWAP_V3_FACTORY = uniswapV3Factory;
+        POSITION_MANAGER = ICLPositionManager(positionManager);
+        CL_FACTORY = cLFactory;
+        POOL_IMPLEMENTATION = poolImplementation;
+        REWARD_TOKEN = rewardToken;
+        STAKED_SLIPSTREAM_AM = stakedSlipstreamAm;
+        STAKED_SLIPSTREAM_WRAPPER = stakedSlipstreamWrapper;
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -80,7 +107,10 @@ contract RebalancerUniswapV3 is Rebalancer {
      * @param positionManager the contract address of the position manager to check.
      */
     function isPositionManager(address positionManager) public view override returns (bool) {
-        return positionManager == address(POSITION_MANAGER);
+        return (
+            positionManager == address(STAKED_SLIPSTREAM_AM) || positionManager == address(STAKED_SLIPSTREAM_WRAPPER)
+                || positionManager == address(POSITION_MANAGER)
+        );
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -114,35 +144,41 @@ contract RebalancerUniswapV3 is Rebalancer {
         override
         returns (uint256[] memory balances, PositionState memory position)
     {
-        // Positions have two underlying tokens.
-        position.tokens = new address[](2);
-        balances = new uint256[](2);
+        // Get data of the Liquidity Position.
+        address token0;
+        address token1;
+        (,, token0, token1, position.tickSpacing, position.tickLower, position.tickUpper, position.liquidity,,,,) =
+            POSITION_MANAGER.positions(initiatorParams.oldId);
+
+        // If it is a non staked position, or the position is staked and the reward token is the same as one of the underlying tokens,
+        // there are two underlying assets, otherwise there are three.
+        if (
+            initiatorParams.positionManager == address(POSITION_MANAGER) || token0 == REWARD_TOKEN
+                || token1 == REWARD_TOKEN
+        ) {
+            // Positions have two underlying tokens.
+            balances = new uint256[](2);
+            position.tokens = new address[](2);
+        } else {
+            // Positions have three underlying tokens.
+            balances = new uint256[](3);
+            position.tokens = new address[](3);
+            position.tokens[2] = REWARD_TOKEN;
+        }
+        position.tokens[0] = token0;
+        position.tokens[1] = token1;
 
         // Rebalancer has withdrawn the underlying tokens from the Account.
         balances[0] = initiatorParams.amount0;
         balances[1] = initiatorParams.amount1;
 
-        // Get data of the Liquidity Position.
-        position.id = initiatorParams.oldId;
-        (
-            ,
-            ,
-            position.tokens[0],
-            position.tokens[1],
-            position.fee,
-            position.tickLower,
-            position.tickUpper,
-            position.liquidity,
-            ,
-            ,
-            ,
-        ) = POSITION_MANAGER.positions(initiatorParams.oldId);
-
         // Get data of the Liquidity Pool.
-        position.pool =
-            PoolAddress.computeAddress(UNISWAP_V3_FACTORY, position.tokens[0], position.tokens[1], position.fee);
-        (position.sqrtPriceX96, position.tickCurrent,,,,,) = IUniswapV3Pool(position.pool).slot0();
-        position.tickSpacing = IUniswapV3Pool(position.pool).tickSpacing();
+        position.pool = PoolAddress.computeAddress(
+            POOL_IMPLEMENTATION, CL_FACTORY, position.tokens[0], position.tokens[1], position.tickSpacing
+        );
+        position.id = initiatorParams.oldId;
+        (position.sqrtPriceX96, position.tickCurrent,,,,) = ICLPool(position.pool).slot0();
+        position.fee = ICLPool(position.pool).fee();
     }
 
     /**
@@ -156,7 +192,7 @@ contract RebalancerUniswapV3 is Rebalancer {
         override
         returns (uint128 liquidity)
     {
-        liquidity = IUniswapV3Pool(position.pool).liquidity();
+        liquidity = ICLPool(position.pool).liquidity();
     }
 
     /**
@@ -170,7 +206,7 @@ contract RebalancerUniswapV3 is Rebalancer {
         override
         returns (uint160 sqrtPriceX96)
     {
-        (sqrtPriceX96,,,,,,) = IUniswapV3Pool(position.pool).slot0();
+        (sqrtPriceX96,,,,,) = ICLPool(position.pool).slot0();
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -180,14 +216,24 @@ contract RebalancerUniswapV3 is Rebalancer {
     /**
      * @notice Burns the Liquidity Position.
      * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param initiatorParams A struct with the initiator parameters.
      * @param position A struct with position and pool related variables.
      */
     function _burn(
         uint256[] memory balances,
-        Rebalancer.InitiatorParams memory,
+        Rebalancer.InitiatorParams memory initiatorParams,
         Rebalancer.PositionState memory position,
         Rebalancer.Cache memory
     ) internal override {
+        // If position is a staked slipstream position, first unstake the position.
+        if (initiatorParams.positionManager != address(POSITION_MANAGER)) {
+            // If rewardToken is an underlying token of the position, add it to the balances
+            uint256 rewards = IStakedSlipstreamAM(initiatorParams.positionManager).burn(position.id);
+            if (balances.length == 3) balances[2] = rewards;
+            else if (position.tokens[0] == REWARD_TOKEN) balances[0] += rewards;
+            else balances[1] += rewards;
+        }
+
         // Remove liquidity of the position and claim outstanding fees to get full amounts of token0 and token1
         // for rebalance.
         POSITION_MANAGER.decreaseLiquidity(
@@ -240,11 +286,11 @@ contract RebalancerUniswapV3 is Rebalancer {
             uint160(rebalanceParams.zeroToOne ? cache.lowerBoundSqrtPriceX96 : cache.upperBoundSqrtPriceX96);
 
         // Encode the swap data.
-        bytes memory data = abi.encode(position.tokens[0], position.tokens[1], position.fee);
+        bytes memory data = abi.encode(position.tokens[0], position.tokens[1], position.tickSpacing);
 
         // Do the swap.
         // Callback (external function) must be implemented in the main contract.
-        (int256 deltaAmount0, int256 deltaAmount1) = IUniswapV3Pool(position.pool).swap(
+        (int256 deltaAmount0, int256 deltaAmount1) = ICLPool(position.pool).swap(
             address(this), rebalanceParams.zeroToOne, -int256(amountOut), sqrtPriceLimitX96, data
         );
 
@@ -263,18 +309,20 @@ contract RebalancerUniswapV3 is Rebalancer {
     }
 
     /**
-     * @notice Callback after executing a swap via IPool.swap.
+     * @notice Callback after executing a swap via ICLPool.swap.
      * @param amount0Delta The amount of token0 that was sent (negative) or must be received (positive) by the pool by
      * the end of the swap. If positive, the callback must send that amount of token0 to the position.
      * @param amount1Delta The amount of token1 that was sent (negative) or must be received (positive) by the pool by
      * the end of the swap. If positive, the callback must send that amount of token1 to the position.
-     * @param data Any data passed by this contract via the IPool.swap() call.
+     * @param data Any data passed by this contract via the ICLPool.swap() call.
      */
     function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external {
-        // Check that callback came from an actual Uniswap V3 Pool.
-        (address token0, address token1, uint24 fee) = abi.decode(data, (address, address, uint24));
+        // Check that callback came from an actual Slipstream Pool.
+        (address token0, address token1, int24 tickSpacing) = abi.decode(data, (address, address, int24));
 
-        if (PoolAddress.computeAddress(UNISWAP_V3_FACTORY, token0, token1, fee) != msg.sender) revert OnlyPool();
+        if (PoolAddress.computeAddress(POOL_IMPLEMENTATION, CL_FACTORY, token0, token1, tickSpacing) != msg.sender) {
+            revert OnlyPool();
+        }
 
         if (amount0Delta > 0) {
             ERC20(token0).safeTransfer(msg.sender, uint256(amount0Delta));
@@ -290,11 +338,12 @@ contract RebalancerUniswapV3 is Rebalancer {
     /**
      * @notice Mints a new Liquidity Position.
      * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param initiatorParams A struct with the initiator parameters.
      * @param position A struct with position and pool related variables.
      */
     function _mint(
         uint256[] memory balances,
-        Rebalancer.InitiatorParams memory,
+        Rebalancer.InitiatorParams memory initiatorParams,
         Rebalancer.PositionState memory position,
         Rebalancer.Cache memory
     ) internal override {
@@ -307,7 +356,7 @@ contract RebalancerUniswapV3 is Rebalancer {
             MintParams({
                 token0: position.tokens[0],
                 token1: position.tokens[1],
-                fee: position.fee,
+                tickSpacing: position.tickSpacing,
                 tickLower: position.tickLower,
                 tickUpper: position.tickUpper,
                 amount0Desired: balances[0],
@@ -315,11 +364,18 @@ contract RebalancerUniswapV3 is Rebalancer {
                 amount0Min: 0,
                 amount1Min: 0,
                 recipient: address(this),
-                deadline: block.timestamp
+                deadline: block.timestamp,
+                sqrtPriceX96: 0
             })
         );
 
         balances[0] = balances[0] - amount0;
         balances[1] = balances[1] - amount1;
+
+        // If position is a staked slipstream position, stake the position.
+        if (initiatorParams.positionManager != address(POSITION_MANAGER)) {
+            POSITION_MANAGER.approve(initiatorParams.positionManager, position.id);
+            IStakedSlipstreamAM(initiatorParams.positionManager).mint(position.id);
+        }
     }
 }

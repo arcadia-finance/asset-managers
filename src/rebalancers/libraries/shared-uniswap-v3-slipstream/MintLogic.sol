@@ -5,7 +5,7 @@
 pragma solidity ^0.8.22;
 
 import { ERC20, SafeApprove } from "../../../libraries/SafeApprove.sol";
-import { ICLPositionManager } from "../../interfaces/ICLPositionManager.sol";
+import { ICLPositionManager, MintParams } from "../../interfaces/ICLPositionManager.sol";
 import { IStakedSlipstreamAM } from "../../interfaces/IStakedSlipstreamAM.sol";
 import { IUniswapV3PositionManager } from "../../interfaces/IUniswapV3PositionManager.sol";
 import { RebalancerUniV3Slipstream } from "../../RebalancerUniV3Slipstream.sol";
@@ -65,7 +65,7 @@ library MintLogic {
                 })
             )
             : SlipstreamLogic.POSITION_MANAGER.mint(
-                ICLPositionManager.MintParams({
+                MintParams({
                     token0: position.token0,
                     token1: position.token1,
                     tickSpacing: position.tickSpacing,
