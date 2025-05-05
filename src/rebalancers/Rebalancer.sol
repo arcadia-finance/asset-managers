@@ -18,8 +18,8 @@ import { SafeApprove } from "../libraries/SafeApprove.sol";
 import { TickMath } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
 /**
- * @title Permissioned rebalancer for Uniswap V3 and Slipstream Liquidity Positions.
- * @notice The Rebalancer will act as an Asset Manager for Arcadia Accounts.
+ * @title Abstract Rebalancer for Concentrated Liquidity Positions.
+ * @notice The Rebalancer is an Asset Manager for Arcadia Accounts.
  * It will allow third parties to trigger the rebalancing functionality for a Liquidity Position in the Account.
  * The owner of an Arcadia Account should set an initiator via setAccountInfo() that will be permisionned to rebalance
  * all Liquidity Positions held in that Account.
@@ -69,41 +69,69 @@ abstract contract Rebalancer is IActionBase {
     // A mapping that sets a strategy hook per account.
     mapping(address account => address hook) public strategyHook;
 
+    // A struct with the initiator parameters.
     struct InitiatorParams {
+        // The contract address of the position manager.
         address positionManager;
+        // The id of the position.
         uint96 oldId;
+        // The amount of token0 withdrawn from the account.
         uint128 amount0;
+        // The amount of token1 withdrawn from the account.
         uint128 amount1;
+        // The sqrtPriceX96 th epool should have, given by the initiator.
         uint256 trustedSqrtPriceX96;
+        // Calldata provided by the initiator to execute the swap.
         bytes swapData;
+        // Strategy specific Calldata provided by the initiator.
         bytes strategyData;
     }
 
+    // A struct with the position and pool state.
     struct PositionState {
+        // The contract address of the pool.
         address pool;
+        // The id of the position.
         uint256 id;
+        // The fee of the pool
         uint24 fee;
+        // The tickspacing of the pool.
         int24 tickSpacing;
+        // The current tick of the pool.
         int24 tickCurrent;
+        // The lower tick of the position.
         int24 tickUpper;
+        // The upper tick of the position.
         int24 tickLower;
+        // The liquidity of the position.
         uint128 liquidity;
+        // The sqrtpriceX96 of the pool.
         uint256 sqrtPriceX96;
+        // The underlying tokens of the pool.
         address[] tokens;
     }
 
+    // A struct with cached variables.
     struct Cache {
+        // The lower bound the sqrtpriceX96 can have for the pool to be balanced.
         uint256 lowerBoundSqrtPriceX96;
+        // The lower bound the sqrtpriceX96 can have for the pool to be balanced.
         uint256 upperBoundSqrtPriceX96;
+        // The sqrtRatio of the lower tick.
         uint160 sqrtRatioLower;
+        // The sqrtRatio of the upper tick.
         uint160 sqrtRatioUpper;
     }
 
     // A struct with information for each specific initiator.
     struct InitiatorInfo {
+        // The maximum relative deviation the pool can have from the trustedSqrtPriceX96, with 18 decimals precision.
         uint64 upperSqrtPriceDeviation;
+        // The miminumù relative deviation the pool can have from the trustedSqrtPriceX96, with 18 decimals precision.
         uint64 lowerSqrtPriceDeviation;
+        // The fee charged on the ideal (without slippage) amountIn by the initiator, with 18 decimals precision.
         uint64 fee;
+        // The ratio that limits the amount of slippage of the swap, with 18 decimals precision.
         uint64 minLiquidityRatio;
     }
 
@@ -118,7 +146,6 @@ abstract contract Rebalancer is IActionBase {
     error NotAnAccount();
     error OnlyAccount();
     error OnlyAccountOwner();
-    error OnlyPositionManager();
     error Reentered();
     error UnbalancedPool();
 
@@ -159,9 +186,6 @@ abstract contract Rebalancer is IActionBase {
      * @param initiator The address of the initiator.
      * @param hook The contract address of the hook.
      * @param strategyData Strategy specific data stored in the hook.
-     * @dev An initiator will be permissioned to rebalance any
-     * Liquidity Position held in the specified Arcadia Account.
-     * @dev If the hook is set to address(0), the hook will be disabled.
      * @dev When an Account is transferred to a new owner,
      * the asset manager itself (this contract) and hence its initiator and hook will no longer be allowed by the Account.
      */
@@ -234,8 +258,8 @@ abstract contract Rebalancer is IActionBase {
 
     /**
      * @notice Rebalances a UniswapV3 or Slipstream Liquidity Position, owned by an Arcadia Account.
-     * @dev When tickLower and tickUpper are equal, ticks will be updated with same tick-spacing as current position
-     * and with a balanced, 50/50 ratio around current tick.
+     * @param account_ The contract address of the account.
+     * @param initiatorParams A struct with the initiator parameters.
      */
     function rebalance(address account_, InitiatorParams calldata initiatorParams) external {
         // If the initiator is set, account_ is an actual Arcadia Account.
@@ -364,10 +388,16 @@ abstract contract Rebalancer is IActionBase {
                             POSITION VALIDATION
     /////////////////////////////////////////////////////////////// */
 
+    /**
+     * @notice Returns if a position manager matches the position manager(s) of the rebalancer.
+     * @param positionManager the contract address of the position manager to check.
+     */
     function isPositionManager(address positionManager) public view virtual returns (bool);
 
     /**
-     * @notice returns if the pool of a Liquidity Position is unbalanced.
+     * @notice Returns if the pool of a Liquidity Position is unbalanced.
+     * @param position A struct with position and pool related variables.
+     * @param cache A struct with cached variables.
      * @return isPoolUnbalanced_ Bool indicating if the pool is unbalanced.
      */
     function isPoolUnbalanced(PositionState memory position, Cache memory cache)
@@ -384,6 +414,37 @@ abstract contract Rebalancer is IActionBase {
                               GETTERS
     /////////////////////////////////////////////////////////////// */
 
+    /**
+     * @notice Returns the underlying assets of the pool.
+     * @param initiatorParams A struct with the initiator parameters.
+     * @return token0 The contract address of token0.
+     * @return token1 The contract address of token1.
+     */
+    function _getUnderlyingTokens(InitiatorParams memory initiatorParams)
+        internal
+        view
+        virtual
+        returns (address token0, address token1);
+
+    /**
+     * @notice Returns the position and pool related state.
+     * @param initiatorParams A struct with the initiator parameters.
+     * @return balances The balances of the underlying tokens of the position.
+     * @return position A struct with position and pool related variables.
+     */
+    function _getPositionState(InitiatorParams memory initiatorParams)
+        internal
+        view
+        virtual
+        returns (uint256[] memory balances, PositionState memory position);
+
+    /**
+     * @notice Returns the cached variables.
+     * @param initiator The address of the initiator.
+     * @param initiatorParams A struct with the initiator parameters.
+     * @param position A struct with position and pool related variables.
+     * @return cache A struct with cached variables.
+     */
     function _getCache(address initiator, InitiatorParams memory initiatorParams, PositionState memory position)
         internal
         view
@@ -404,26 +465,32 @@ abstract contract Rebalancer is IActionBase {
         });
     }
 
-    function _getUnderlyingTokens(InitiatorParams memory initiatorParams)
-        internal
-        view
-        virtual
-        returns (address token0, address token1);
+    /**
+     * @notice Returns the liquidity of the Pool.
+     * @param position A struct with position and pool related variables.
+     * @return liquidity The liquidity of the Pool.
+     */
+    function _getPoolLiquidity(PositionState memory position) internal view virtual returns (uint128 liquidity);
 
-    function _getPositionState(InitiatorParams memory initiatorParams)
-        internal
-        view
-        virtual
-        returns (uint256[] memory balances, PositionState memory);
-
-    function _getPoolLiquidity(PositionState memory position) internal view virtual returns (uint128);
-
-    function _getSqrtPriceX96(PositionState memory position) internal view virtual returns (uint160);
+    /**
+     * @notice Returns the sqrtPriceX96 of the Pool.
+     * @param position A struct with position and pool related variables.
+     * @return sqrtPriceX96 The sqrtPriceX96 of the Pool.
+     */
+    function _getSqrtPriceX96(PositionState memory position) internal view virtual returns (uint160 sqrtPriceX96);
 
     /* ///////////////////////////////////////////////////////////////
                              BURN LOGIC
     /////////////////////////////////////////////////////////////// */
 
+    /**
+     * @notice Burns the Liquidity Position.
+     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param initiatorParams A struct with the initiator parameters.
+     * @param position A struct with position and pool related variables.
+     * @param cache A struct with cached variables.
+     * @dev Must update the balances after the burn.
+     */
     function _burn(
         uint256[] memory balances,
         InitiatorParams memory initiatorParams,
@@ -435,6 +502,15 @@ abstract contract Rebalancer is IActionBase {
                              SWAP LOGIC
     /////////////////////////////////////////////////////////////// */
 
+    /**
+     * @notice Swaps one token for another to rebalance the Liquidity Position.
+     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param initiatorParams A struct with the initiator parameters.
+     * @param position A struct with position and pool related variables.
+     * @param rebalanceParams A struct with the rebalance parameters.
+     * @param cache A struct with cached variables.
+     * @dev Must update the balances and sqrtPriceX96 after the swap.
+     */
     function _swap(
         uint256[] memory balances,
         InitiatorParams memory initiatorParams,
@@ -471,6 +547,12 @@ abstract contract Rebalancer is IActionBase {
 
     /**
      * @notice Swaps one token for another, directly through the pool itself.
+     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param position A struct with position and pool related variables.
+     * @param rebalanceParams A struct with the rebalance parameters.
+     * @param cache A struct with cached variables.
+     * @param amountOut The amount of tokenOut that must be swapped to.
+     * @dev Must update the balances and sqrtPriceX96 after the swap.
      */
     function _swapViaPool(
         uint256[] memory balances,
@@ -481,7 +563,9 @@ abstract contract Rebalancer is IActionBase {
     ) internal virtual;
 
     /**
-     * @notice Swaps one token for another, directly through the pool itself.
+     * @notice Swaps one token for another, via a router with custom swap data.
+     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param position A struct with position and pool related variables.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param swapData Arbitrary calldata provided by an initiator for the swap.
      * @dev Initiator has to route swap in such a way that at least minLiquidity of liquidity is added to the position after the swap.
@@ -519,6 +603,14 @@ abstract contract Rebalancer is IActionBase {
                              MINT LOGIC
     /////////////////////////////////////////////////////////////// */
 
+    /**
+     * @notice Mints a new Liquidity Position.
+     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param initiatorParams A struct with the initiator parameters.
+     * @param position A struct with position and pool related variables.
+     * @param cache A struct with cached variables.
+     * @dev Must update the balances and liquidity and id after the mint.
+     */
     function _mint(
         uint256[] memory balances,
         InitiatorParams memory initiatorParams,
@@ -530,6 +622,15 @@ abstract contract Rebalancer is IActionBase {
                         INITIATOR FEE LOGIC
     /////////////////////////////////////////////////////////////// */
 
+    /**
+     * @notice Transfers the initiator fee to the initiator.
+     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param position A struct with position and pool related variables.
+     * @param zeroToOne Bool indicating if token0 was swapped to token1 or opposite.
+     * @param amountInitiatorFee The amount of initiator fee.
+     * @param initiator The address of the initiator.
+     * @dev Must update the balances after the transfer.
+     */
     function _transferInitiatorFee(
         uint256[] memory balances,
         PositionState memory position,
@@ -558,6 +659,13 @@ abstract contract Rebalancer is IActionBase {
                         APPROVE LOGIC
     /////////////////////////////////////////////////////////////// */
 
+    /**
+     * @notice Approves the Account to deposit the assets held by the Rebalancer back into the Account.
+     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param initiatorParams A struct with the initiator parameters.
+     * @param position A struct with position and pool related variables.
+     * @return count The number of assets approved.
+     */
     function _approve(uint256[] memory balances, InitiatorParams memory initiatorParams, PositionState memory position)
         internal
         returns (uint256 count)

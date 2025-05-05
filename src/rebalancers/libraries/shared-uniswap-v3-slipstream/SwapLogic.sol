@@ -114,7 +114,7 @@ library SwapLogic {
     }
 
     /**
-     * @notice Swaps one token for another, directly through the pool itself.
+     * @notice Swaps one token for another, via a router with custom swap data.
      * @param positionManager The contract address of the Position Manager.
      * @param position Struct with the position data.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.

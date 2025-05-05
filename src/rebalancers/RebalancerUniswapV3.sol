@@ -15,8 +15,8 @@ import { SafeApprove } from "../libraries/SafeApprove.sol";
 import { UniswapV3Logic } from "./libraries/uniswap-v3/UniswapV3Logic.sol";
 
 /**
- * @title Permissioned rebalancer for Uniswap V3 and Slipstream Liquidity Positions.
- * @notice The Rebalancer will act as an Asset Manager for Arcadia Accounts.
+ * @title Rebalancer for Uniswap V3 Liquidity Positions.
+ * @notice The Rebalancer is an Asset Manager for Arcadia Accounts.
  * It will allow third parties to trigger the rebalancing functionality for a Liquidity Position in the Account.
  * The owner of an Arcadia Account should set an initiator via setAccountInfo() that will be permisionned to rebalance
  * all Liquidity Positions held in that Account.
@@ -59,6 +59,7 @@ contract RebalancerUniswapV3 is Rebalancer {
      * @param minLiquidityRatio The ratio of the minimum amount of liquidity that must be minted,
      * relative to the hypothetical amount of liquidity when we rebalance without slippage, with 18 decimals precision.
      * @param positionManager The contract address of the uniswap v3 Position Manager.
+     * @param uniswapV3Factory The contract address of the Uniswap v3 Factory.
      */
     constructor(
         address arcadiaFactory,
@@ -76,6 +77,10 @@ contract RebalancerUniswapV3 is Rebalancer {
                             POSITION VALIDATION
     /////////////////////////////////////////////////////////////// */
 
+    /**
+     * @notice Returns if a position manager matches the position manager(s) of the rebalancer.
+     * @param positionManager the contract address of the position manager to check.
+     */
     function isPositionManager(address positionManager) public view override returns (bool) {
         return positionManager == address(POSITION_MANAGER);
     }
@@ -84,6 +89,12 @@ contract RebalancerUniswapV3 is Rebalancer {
                               GETTERS
     /////////////////////////////////////////////////////////////// */
 
+    /**
+     * @notice Returns the underlying assets of the pool.
+     * @param initiatorParams A struct with the initiator parameters.
+     * @return token0 The contract address of token0.
+     * @return token1 The contract address of token1.
+     */
     function _getUnderlyingTokens(InitiatorParams memory initiatorParams)
         internal
         view
@@ -93,6 +104,12 @@ contract RebalancerUniswapV3 is Rebalancer {
         (,, token0, token1,,,,,,,,) = POSITION_MANAGER.positions(initiatorParams.oldId);
     }
 
+    /**
+     * @notice Returns the position and pool related state.
+     * @param initiatorParams A struct with the initiator parameters.
+     * @return balances The balances of the underlying tokens of the position.
+     * @return position A struct with position and pool related variables.
+     */
     function _getPositionState(InitiatorParams memory initiatorParams)
         internal
         view
@@ -130,6 +147,11 @@ contract RebalancerUniswapV3 is Rebalancer {
         position.tickSpacing = IUniswapV3Pool(position.pool).tickSpacing();
     }
 
+    /**
+     * @notice Returns the liquidity of the Pool.
+     * @param position A struct with position and pool related variables.
+     * @return liquidity The liquidity of the Pool.
+     */
     function _getPoolLiquidity(Rebalancer.PositionState memory position)
         internal
         view
@@ -139,6 +161,11 @@ contract RebalancerUniswapV3 is Rebalancer {
         liquidity = IUniswapV3Pool(position.pool).liquidity();
     }
 
+    /**
+     * @notice Returns the sqrtPriceX96 of the Pool.
+     * @param position A struct with position and pool related variables.
+     * @return sqrtPriceX96 The sqrtPriceX96 of the Pool.
+     */
     function _getSqrtPriceX96(Rebalancer.PositionState memory position)
         internal
         view
@@ -152,6 +179,11 @@ contract RebalancerUniswapV3 is Rebalancer {
                              BURN LOGIC
     /////////////////////////////////////////////////////////////// */
 
+    /**
+     * @notice Burns the Liquidity Position.
+     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param position A struct with position and pool related variables.
+     */
     function _burn(
         uint256[] memory balances,
         Rebalancer.InitiatorParams memory,
@@ -192,8 +224,10 @@ contract RebalancerUniswapV3 is Rebalancer {
 
     /**
      * @notice Swaps one token for another, directly through the pool itself.
-     * param positionManager The contract address of the Position Manager.
-     * @param balances The balances of token0 and token1 of the Rebalancer
+     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param position A struct with position and pool related variables.
+     * @param rebalanceParams A struct with the rebalance parameters.
+     * @param cache A struct with cached variables.
      * @param amountOut The amount of tokenOut that must be swapped to.
      */
     function _swapViaPool(
@@ -255,6 +289,11 @@ contract RebalancerUniswapV3 is Rebalancer {
                              MINT LOGIC
     /////////////////////////////////////////////////////////////// */
 
+    /**
+     * @notice Mints a new Liquidity Position.
+     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param position A struct with position and pool related variables.
+     */
     function _mint(
         uint256[] memory balances,
         Rebalancer.InitiatorParams memory,
