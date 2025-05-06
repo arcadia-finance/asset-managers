@@ -11,7 +11,7 @@ import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-co
 /**
  * @notice Fuzz tests for the function "_getPositionState" of contract "RebalancerUniswapV3".
  */
-contract GetUnderlyingTokens_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Test {
+contract GetPositionState_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */

@@ -18,7 +18,7 @@ contract SwapViaPool_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_T
     function setUp() public override {
         RebalancerUniswapV3_Fuzz_Test.setUp();
 
-        deployAndInitUniswapV3();
+        initUniswapV3();
     }
 
     /*//////////////////////////////////////////////////////////////

@@ -4,32 +4,32 @@
  */
 pragma solidity ^0.8.26;
 
-import { Base_Test } from "../../../../lib/accounts-v2/test/Base.t.sol";
 import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { FixedPoint96 } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint96.sol";
 import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { Fuzz_Test } from "../../Fuzz.t.sol";
-import { IUniswapV3PoolExtension } from
-    "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/IUniswapV3PoolExtension.sol";
+import { ICLGauge } from "../../../../lib/accounts-v2/src/asset-modules/Slipstream/interfaces/ICLGauge.sol";
+import { ICLPoolExtension } from
+    "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/extensions/interfaces/ICLPoolExtension.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
-import { RebalancerUniswapV3Extension } from "../../../utils/extensions/RebalancerUniswapV3Extension.sol";
+import { RebalancerSlipstreamExtension } from "../../../utils/extensions/RebalancerSlipstreamExtension.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
-import { UniswapV3AMExtension } from "../../../../lib/accounts-v2/test/utils/extensions/UniswapV3AMExtension.sol";
-import { UniswapV3AMFixture } from
-    "../../../../lib/accounts-v2/test/utils/fixtures/arcadia-accounts/UniswapV3AMFixture.f.sol";
-import { UniswapV3Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";
-import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
+import { SlipstreamAMExtension } from "../../../../lib/accounts-v2/test/utils/extensions/SlipstreamAMExtension.sol";
+import { SlipstreamFixture } from "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/Slipstream.f.sol";
+import { StakedSlipstreamAM } from "../../../../lib/accounts-v2/src/asset-modules/Slipstream/StakedSlipstreamAM.sol";
+import { WrappedStakedSlipstreamFixture } from
+    "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/WrappedStakedSlipstream.f.sol";
 
 /**
- * @notice Common logic needed by all "RebalancerUniswapV3" fuzz tests.
+ * @notice Common logic needed by all "RebalancerSlipstream" fuzz tests.
  */
-abstract contract RebalancerUniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, UniswapV3AMFixture {
+abstract contract RebalancerSlipstream_Fuzz_Test is Fuzz_Test, SlipstreamFixture, WrappedStakedSlipstreamFixture {
     /*////////////////////////////////////////////////////////////////
                             CONSTANTS
     /////////////////////////////////////////////////////////////// */
 
-    uint24 internal constant POOL_FEE = 100;
+    int24 internal constant TICK_SPACING = 1;
 
     uint256 internal constant MAX_TOLERANCE = 0.02 * 1e18;
     uint256 internal constant MAX_INITIATOR_FEE = 0.01 * 1e18;
@@ -42,19 +42,22 @@ abstract contract RebalancerUniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, 
     ERC20Mock internal token0;
     ERC20Mock internal token1;
 
-    IUniswapV3PoolExtension internal poolUniswap;
+    ICLPoolExtension internal poolCl;
+
+    StakedSlipstreamAM internal stakedSlipstreamAM;
+    ICLGauge internal gauge;
 
     /*////////////////////////////////////////////////////////////////
                             TEST CONTRACTS
     /////////////////////////////////////////////////////////////// */
 
-    RebalancerUniswapV3Extension internal rebalancer;
+    RebalancerSlipstreamExtension internal rebalancer;
 
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
-    function setUp() public virtual override(Fuzz_Test, UniswapV3Fixture, Base_Test) {
+    function setUp() public virtual override(Fuzz_Test, SlipstreamFixture, WrappedStakedSlipstreamFixture) {
         Fuzz_Test.setUp();
 
         // Warp to have a timestamp of at least two days old.
@@ -63,54 +66,60 @@ abstract contract RebalancerUniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, 
         // Deploy Arcadia Accounts Contracts.
         deployArcadiaAccounts();
 
-        // Deploy fixture for Uniswap V3.
-        UniswapV3Fixture.setUp();
+        // Deploy fixtures for Slipstream.
+        SlipstreamFixture.setUp();
+        deployAerodromePeriphery();
+        deploySlipstream();
+        deployCLGaugeFactory();
+
+        // Deploy Staked Position Managers.
+        deploySlipstreamAM();
+        WrappedStakedSlipstreamFixture.setUp();
+
+        // Create tokens.
+        token0 = new ERC20Mock("TokenA", "TOKA", 0);
+        token1 = new ERC20Mock("TokenB", "TOKB", 0);
+        (token0, token1) = (token0 < token1) ? (token0, token1) : (token1, token0);
 
         // Deploy test contract.
-        rebalancer = new RebalancerUniswapV3Extension(
+        rebalancer = new RebalancerSlipstreamExtension(
             address(factory),
             MAX_TOLERANCE,
             MAX_INITIATOR_FEE,
             MIN_LIQUIDITY_RATIO,
-            address(nonfungiblePositionManager),
-            address(uniswapV3Factory)
+            address(slipstreamPositionManager),
+            address(cLFactory),
+            address(poolImplementation),
+            AERO,
+            address(stakedSlipstreamAM),
+            address(wrappedStakedSlipstream)
         );
-
-        // Overwrite code hash of the UniswapV3Pool.
-        bytes memory args = abi.encode();
-        bytes memory bytecode = abi.encodePacked(vm.getCode("UniswapV3PoolExtension.sol"), args);
-        bytes32 poolExtensionInitCodeHash = keccak256(bytecode);
-        bytes32 POOL_INIT_CODE_HASH = 0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54;
-        bytecode = address(rebalancer).code;
-        bytecode = Utils.veryBadBytesReplacer(bytecode, POOL_INIT_CODE_HASH, poolExtensionInitCodeHash);
-
-        // Store overwritten bytecode.
-        vm.etch(address(rebalancer), bytecode);
     }
 
     /*////////////////////////////////////////////////////////////////
                         HELPER FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
-    function initUniswapV3() internal returns (uint256 id) {
-        id = initUniswapV3(2 ** 96, type(uint64).max, POOL_FEE);
+    function initSlipstream() internal returns (uint256 id) {
+        id = initSlipstream(2 ** 96, type(uint64).max, TICK_SPACING);
     }
 
-    function initUniswapV3(uint160 sqrtPriceX96, uint128 liquidityPool, uint24 poolFee) internal returns (uint256 id) {
-        // Create tokens.
-        token0 = new ERC20Mock("TokenA", "TOKA", 0);
-        token1 = new ERC20Mock("TokenB", "TOKB", 0);
-        (token0, token1) = (token0 < token1) ? (token0, token1) : (token1, token0);
+    function initSlipstream(uint160 sqrtPriceX96, uint128 liquidityPool, int24 tickSpacing)
+        internal
+        returns (uint256 id)
+    {
+        // Deploy fixtures for Slipstream.
+        SlipstreamFixture.setUp();
 
+        // Add assets to Arcadia.
         addAssetsToArcadia(sqrtPriceX96);
 
         // Create pool.
-        poolUniswap = createPoolUniV3(address(token0), address(token1), poolFee, sqrtPriceX96, 300);
+        poolCl = createPoolCL(address(token0), address(token1), tickSpacing, sqrtPriceX96, 300);
 
         // Create initial position.
-        int24 tickSpacing = poolUniswap.tickSpacing();
-        (id,,) = addLiquidityUniV3(
-            poolUniswap,
+        (id,,) = addLiquidityCL(
+            poolCl,
             liquidityPool,
             users.liquidityProvider,
             BOUND_TICK_LOWER / tickSpacing * tickSpacing,
@@ -141,13 +150,13 @@ abstract contract RebalancerUniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, 
             uint128(bound(liquidityPool, UniswapHelpers.maxLiquidity(1) / 1000, UniswapHelpers.maxLiquidity(1) / 10));
         position.sqrtPriceX96 = uint160(position.sqrtPriceX96);
         position.tickCurrent = TickMath.getTickAtSqrtPrice(uint160(position.sqrtPriceX96));
-        position.fee = POOL_FEE;
+        position.tickSpacing = TICK_SPACING;
     }
 
     function setPoolState(uint128 liquidityPool, Rebalancer.PositionState memory position) internal {
-        initUniswapV3(uint160(position.sqrtPriceX96), liquidityPool, position.fee);
-        position.pool = address(poolUniswap);
-        position.tickSpacing = poolUniswap.tickSpacing();
+        initSlipstream(uint160(position.sqrtPriceX96), liquidityPool, position.tickSpacing);
+        position.pool = address(poolCl);
+        position.fee = poolCl.fee();
         position.tokens = new address[](2);
         position.tokens[0] = address(token0);
         position.tokens[1] = address(token1);
@@ -159,33 +168,25 @@ abstract contract RebalancerUniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, 
         position.tickLower = position.tickLower / tickSpacing * tickSpacing;
         position.tickUpper = int24(bound(position.tickUpper, position.tickLower + 2 * tickSpacing, BOUND_TICK_UPPER));
         position.tickUpper = position.tickUpper / tickSpacing * tickSpacing;
-        position.liquidity = uint128(bound(position.liquidity, 1e6, poolUniswap.liquidity() / 1e3));
+        position.liquidity = uint128(bound(position.liquidity, 1e6, poolCl.liquidity() / 1e3));
     }
 
     function setPositionState(Rebalancer.PositionState memory position) internal {
-        (position.id,,) = addLiquidityUniV3(
-            poolUniswap, position.liquidity, users.liquidityProvider, position.tickLower, position.tickUpper, false
+        (position.id,,) = addLiquidityCL(
+            poolCl, position.liquidity, users.liquidityProvider, position.tickLower, position.tickUpper, false
         );
-        (,,,,,,, position.liquidity,,,,) = nonfungiblePositionManager.positions(position.id);
+        (,,,,,,, position.liquidity,,,,) = slipstreamPositionManager.positions(position.id);
     }
 
-    function deployUniswapV3AM() internal {
+    function deploySlipstreamAM() internal {
+        addAssetToArcadia(AERO, 1e18);
+
         // Deploy Add the Asset Module to the Registry.
         vm.startPrank(users.owner);
-        uniV3AM = new UniswapV3AMExtension(address(registry), address(nonfungiblePositionManager));
-        registry.addAssetModule(address(uniV3AM));
-        uniV3AM.setProtocol();
+        stakedSlipstreamAM =
+            new StakedSlipstreamAM(address(registry), address(slipstreamPositionManager), address(voter), AERO);
+        registry.addAssetModule(address(stakedSlipstreamAM));
+        stakedSlipstreamAM.initialize();
         vm.stopPrank();
-
-        // Get the bytecode of the UniswapV3PoolExtension.
-        bytes memory args = abi.encode();
-        bytes memory bytecode = abi.encodePacked(vm.getCode("UniswapV3PoolExtension.sol"), args);
-        bytes32 poolExtensionInitCodeHash = keccak256(bytecode);
-        bytes32 POOL_INIT_CODE_HASH = 0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54;
-
-        // Overwrite code hash of the UniswapV3AMExtension.
-        bytecode = address(uniV3AM).code;
-        bytecode = Utils.veryBadBytesReplacer(bytecode, POOL_INIT_CODE_HASH, poolExtensionInitCodeHash);
-        vm.etch(address(uniV3AM), bytecode);
     }
 }
