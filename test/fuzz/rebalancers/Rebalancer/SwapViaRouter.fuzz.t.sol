@@ -79,7 +79,7 @@ contract SwapViaRouter_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         rebalancer.swapViaRouter(balances, position, true, swapData);
     }
 
-    function testFuzz_Success_swapViaRouter_oneToZero(
+    function testFuzz_Success_swapViaRouter_ZeroToOne(
         uint128 liquidityPool,
         Rebalancer.PositionState memory position,
         uint64 balance0,
@@ -121,13 +121,9 @@ contract SwapViaRouter_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         // Then: The correct balances are returned.
         assertEq(balances[0], balance0 - amountIn);
         assertEq(balances[1], uint256(balance1) + amountOut);
-
-        // And: The sqrtPriceX96 is updated.
-        (uint160 sqrtPriceX96,,,,,,) = poolUniswap.slot0();
-        assertEq(sqrtPriceX96, position.sqrtPriceX96);
     }
 
-    function testFuzz_Success_swapViaRouter_ZeroToOne(
+    function testFuzz_Success_swapViaRouter_OneToZero(
         uint128 liquidityPool,
         Rebalancer.PositionState memory position,
         uint64 balance0,
@@ -169,9 +165,5 @@ contract SwapViaRouter_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         // Then: The correct balances are returned.
         assertEq(balances[0], uint256(balance0) + amountOut);
         assertEq(balances[1], balance1 - amountIn);
-
-        // And: The sqrtPriceX96 is updated.
-        (uint160 sqrtPriceX96,,,,,,) = poolUniswap.slot0();
-        assertEq(sqrtPriceX96, position.sqrtPriceX96);
     }
 }

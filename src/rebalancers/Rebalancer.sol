@@ -577,7 +577,7 @@ abstract contract Rebalancer is IActionBase {
         PositionState memory position,
         bool zeroToOne,
         bytes memory swapData
-    ) internal {
+    ) internal virtual {
         // Decode the swap data.
         (address router, uint256 amountIn, bytes memory data) = abi.decode(swapData, (address, uint256, bytes));
 

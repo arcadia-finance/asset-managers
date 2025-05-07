@@ -153,7 +153,7 @@ contract SwapViaPool_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz
 
         // And: Pool has sufficient tokenOut liquidity.
         vm.assume(token0.balanceOf(address(poolCl)) > 1e6);
-        amountOut = uint64(bound(amountOut, 1e5, token1.balanceOf(address(poolCl)) / 10));
+        amountOut = uint64(bound(amountOut, 1e5, token0.balanceOf(address(poolCl)) / 10));
 
         // Get the new sqrtPriceX96 and amountIn.
         uint160 sqrtPriceNew = SqrtPriceMath.getNextSqrtPriceFromOutput(
@@ -210,7 +210,7 @@ contract SwapViaPool_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz
 
         // And: Pool has sufficient tokenOut liquidity.
         vm.assume(token0.balanceOf(address(poolCl)) > 1e6);
-        amountOut = uint64(bound(amountOut, 1e5, token1.balanceOf(address(poolCl)) / 10));
+        amountOut = uint64(bound(amountOut, 1e5, token0.balanceOf(address(poolCl)) / 10));
 
         // Get the new sqrtPriceX96 and amountIn.
         uint160 sqrtPriceNew = SqrtPriceMath.getNextSqrtPriceFromOutput(

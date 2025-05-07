@@ -153,7 +153,7 @@ contract SwapViaPool_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_T
 
         // And: Pool has sufficient tokenOut liquidity.
         vm.assume(token0.balanceOf(address(poolUniswap)) > 1e6);
-        amountOut = uint64(bound(amountOut, 1e5, token1.balanceOf(address(poolUniswap)) / 10));
+        amountOut = uint64(bound(amountOut, 1e5, token0.balanceOf(address(poolUniswap)) / 10));
 
         // Get the new sqrtPriceX96 and amountIn.
         uint160 sqrtPriceNew = SqrtPriceMath.getNextSqrtPriceFromOutput(
@@ -188,6 +188,8 @@ contract SwapViaPool_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_T
         if (amountIn > 1e5) assertApproxEqRel(amountIn, balance1 - balances[1], 0.01 * 1e18);
         assertEq(balances[0], token0.balanceOf(address(rebalancer)));
         assertEq(balances[1], token1.balanceOf(address(rebalancer)));
+        assertEq(balances[0], token0.balanceOf(address(rebalancer)));
+        assertEq(balances[1], token1.balanceOf(address(rebalancer)));
 
         // And: The sqrtPriceX96 remains equal.
         assertEq(position_.sqrtPriceX96, position.sqrtPriceX96);
@@ -210,7 +212,7 @@ contract SwapViaPool_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_T
 
         // And: Pool has sufficient tokenOut liquidity.
         vm.assume(token0.balanceOf(address(poolUniswap)) > 1e6);
-        amountOut = uint64(bound(amountOut, 1e5, token1.balanceOf(address(poolUniswap)) / 10));
+        amountOut = uint64(bound(amountOut, 1e5, token0.balanceOf(address(poolUniswap)) / 10));
 
         // Get the new sqrtPriceX96 and amountIn.
         uint160 sqrtPriceNew = SqrtPriceMath.getNextSqrtPriceFromOutput(
@@ -242,6 +244,8 @@ contract SwapViaPool_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_T
         (balances, position_) = rebalancer.swapViaPool(balances, position, rebalanceParams, cache, amountOut);
 
         // Then: The correct balances are returned.
+        assertEq(balances[0], token0.balanceOf(address(rebalancer)));
+        assertEq(balances[1], token1.balanceOf(address(rebalancer)));
         assertEq(balances[0], token0.balanceOf(address(rebalancer)));
         assertEq(balances[1], token1.balanceOf(address(rebalancer)));
 
