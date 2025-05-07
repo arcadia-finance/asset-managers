@@ -33,7 +33,7 @@ contract GetPositionState_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream
     ) public {
         // Given: A valid position.
         liquidityPool = givenValidPoolState(liquidityPool, position);
-        setPoolState(liquidityPool, position);
+        setPoolState(liquidityPool, position, false);
         givenValidPositionState(position);
         setPositionState(position);
         initiatorParams.oldId = uint96(position.id);
@@ -70,7 +70,7 @@ contract GetPositionState_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream
     ) public {
         // Given: A valid position.
         liquidityPool = givenValidPoolState(liquidityPool, position);
-        setPoolState(liquidityPool, position);
+        setPoolState(liquidityPool, position, true);
         givenValidPositionState(position);
         setPositionState(position);
         initiatorParams.oldId = uint96(position.id);
@@ -114,9 +114,9 @@ contract GetPositionState_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream
         (token0, token1) = (token0 < token1) ? (token0, token1) : (token1, token0);
         stdstore.target(address(registry)).sig(registry.inRegistry.selector).with_key(AERO).checked_write(false);
 
-        // Given: A valid position.
+        // And: A valid position.
         liquidityPool = givenValidPoolState(liquidityPool, position);
-        setPoolState(liquidityPool, position);
+        setPoolState(liquidityPool, position, true);
         givenValidPositionState(position);
         setPositionState(position);
         initiatorParams.oldId = uint96(position.id);
@@ -153,7 +153,7 @@ contract GetPositionState_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream
     ) public {
         // Given: A valid position.
         liquidityPool = givenValidPoolState(liquidityPool, position);
-        setPoolState(liquidityPool, position);
+        setPoolState(liquidityPool, position, true);
         givenValidPositionState(position);
         setPositionState(position);
         initiatorParams.oldId = uint96(position.id);
@@ -197,9 +197,9 @@ contract GetPositionState_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream
         (token0, token1) = (token0 < token1) ? (token0, token1) : (token1, token0);
         stdstore.target(address(registry)).sig(registry.inRegistry.selector).with_key(AERO).checked_write(false);
 
-        // Given: A valid position.
+        // And: A valid position.
         liquidityPool = givenValidPoolState(liquidityPool, position);
-        setPoolState(liquidityPool, position);
+        setPoolState(liquidityPool, position, true);
         givenValidPositionState(position);
         setPositionState(position);
         initiatorParams.oldId = uint96(position.id);

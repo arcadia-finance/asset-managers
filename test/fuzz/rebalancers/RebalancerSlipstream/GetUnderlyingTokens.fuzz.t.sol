@@ -28,7 +28,7 @@ contract GetUnderlyingTokens_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstr
         Rebalancer.PositionState memory position
     ) public {
         liquidityPool = givenValidPoolState(liquidityPool, position);
-        setPoolState(liquidityPool, position);
+        setPoolState(liquidityPool, position, false);
         givenValidPositionState(position);
         setPositionState(position);
         initiatorParams.oldId = uint96(position.id);

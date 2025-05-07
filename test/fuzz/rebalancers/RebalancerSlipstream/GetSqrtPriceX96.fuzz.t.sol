@@ -25,7 +25,7 @@ contract GetSqrtPriceX96_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_
     function testFuzz_Success_getSqrtPriceX96(uint128 liquidityPool, Rebalancer.PositionState memory position) public {
         // Given: A valid position.
         liquidityPool = givenValidPoolState(liquidityPool, position);
-        setPoolState(liquidityPool, position);
+        setPoolState(liquidityPool, position, false);
         givenValidPositionState(position);
         setPositionState(position);
 

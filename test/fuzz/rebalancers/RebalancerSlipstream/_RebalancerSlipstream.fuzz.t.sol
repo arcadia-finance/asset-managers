@@ -73,7 +73,7 @@ abstract contract RebalancerSlipstream_Fuzz_Test is Fuzz_Test, SlipstreamFixture
         deployCLGaugeFactory();
 
         // Deploy Staked Position Managers.
-        deploySlipstreamAM();
+        deployStakedSlipstreamAM();
         WrappedStakedSlipstreamFixture.setUp();
 
         // Create tokens.
@@ -153,13 +153,24 @@ abstract contract RebalancerSlipstream_Fuzz_Test is Fuzz_Test, SlipstreamFixture
         position.tickSpacing = TICK_SPACING;
     }
 
-    function setPoolState(uint128 liquidityPool, Rebalancer.PositionState memory position) internal {
+    function setPoolState(uint128 liquidityPool, Rebalancer.PositionState memory position, bool staked) internal {
+        // Create pool.
         initSlipstream(uint160(position.sqrtPriceX96), liquidityPool, position.tickSpacing);
         position.pool = address(poolCl);
         position.fee = poolCl.fee();
         position.tokens = new address[](2);
         position.tokens[0] = address(token0);
         position.tokens[1] = address(token1);
+
+        if (staked) {
+            // Create gauge.
+            vm.prank(address(voter));
+            gauge = ICLGauge(cLGaugeFactory.createGauge(address(0), address(poolCl), address(0), AERO, true));
+            voter.setGauge(address(poolCl), address(gauge));
+            voter.setAlive(address(gauge), true);
+            vm.prank(users.owner);
+            stakedSlipstreamAM.addGauge(address(gauge));
+        }
     }
 
     function givenValidPositionState(Rebalancer.PositionState memory position) internal {
@@ -179,6 +190,16 @@ abstract contract RebalancerSlipstream_Fuzz_Test is Fuzz_Test, SlipstreamFixture
     }
 
     function deploySlipstreamAM() internal {
+        // Deploy Add the Asset Module to the Registry.
+        vm.startPrank(users.owner);
+        SlipstreamAMExtension slipstreamAM =
+            new SlipstreamAMExtension(address(registry), address(slipstreamPositionManager));
+        registry.addAssetModule(address(slipstreamAM));
+        slipstreamAM.setProtocol();
+        vm.stopPrank();
+    }
+
+    function deployStakedSlipstreamAM() internal {
         addAssetToArcadia(AERO, 1e18);
 
         // Deploy Add the Asset Module to the Registry.

@@ -28,7 +28,7 @@ contract GetPoolLiquidity_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream
     {
         // Given: A valid position.
         liquidityPool = givenValidPoolState(liquidityPool, position);
-        setPoolState(liquidityPool, position);
+        setPoolState(liquidityPool, position, false);
         givenValidPositionState(position);
         setPositionState(position);
 

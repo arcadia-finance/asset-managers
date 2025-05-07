@@ -4,21 +4,21 @@
  */
 pragma solidity ^0.8.26;
 
-import { RebalancerUniswapV3 } from "../../../../src/rebalancers/RebalancerUniswapV3.sol";
-import { RebalancerUniswapV3_Fuzz_Test } from "./_RebalancerUniswapV3.fuzz.t.sol";
+import { RebalancerSlipstream } from "../../../../src/rebalancers/RebalancerSlipstream.sol";
+import { RebalancerSlipstream_Fuzz_Test } from "./_RebalancerSlipstream.fuzz.t.sol";
 
 /**
- * @notice Fuzz tests for the function "uniswapV3SwapCallback" of contract "RebalancerUniswapV3".
+ * @notice Fuzz tests for the function "uniswapV3SwapCallback" of contract "RebalancerSlipstream".
  */
-contract UniswapV3SwapCallback_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Test {
+contract UniswapV3SwapCallback_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public override {
-        RebalancerUniswapV3_Fuzz_Test.setUp();
+        RebalancerSlipstream_Fuzz_Test.setUp();
 
-        initUniswapV3();
+        initSlipstream();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -32,7 +32,7 @@ contract UniswapV3SwapCallback_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswa
         address caller
     ) public {
         // Given: Caller is not the pool.
-        vm.assume(caller != address(poolUniswap));
+        vm.assume(caller != address(poolCl));
 
         // And: Rebalancer has sufficient balances.
         deal(address(token0), address(rebalancer), balance0, true);
@@ -40,9 +40,9 @@ contract UniswapV3SwapCallback_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswa
 
         // When: The Uniswap Pool calls uniswapV3SwapCallback.
         // Then: It should revert.
-        bytes memory data = abi.encode(address(token0), address(token1), POOL_FEE);
+        bytes memory data = abi.encode(address(token0), address(token1), TICK_SPACING);
         vm.prank(caller);
-        vm.expectRevert(RebalancerUniswapV3.OnlyPool.selector);
+        vm.expectRevert(RebalancerSlipstream.OnlyPool.selector);
         rebalancer.uniswapV3SwapCallback(amount0Delta, amount1Delta, data);
     }
 
@@ -62,8 +62,8 @@ contract UniswapV3SwapCallback_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswa
         deal(address(token1), address(rebalancer), balance1, true);
 
         // When: The Uniswap Pool calls uniswapV3SwapCallback.
-        bytes memory data = abi.encode(address(token0), address(token1), POOL_FEE);
-        vm.prank(address(poolUniswap));
+        bytes memory data = abi.encode(address(token0), address(token1), TICK_SPACING);
+        vm.prank(address(poolCl));
         rebalancer.uniswapV3SwapCallback(amount0Delta, amount1Delta, data);
 
         // Then: The correct balances are returned.
@@ -87,8 +87,8 @@ contract UniswapV3SwapCallback_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswa
         deal(address(token1), address(rebalancer), balance1, true);
 
         // When: The Uniswap Pool calls uniswapV3SwapCallback.
-        bytes memory data = abi.encode(address(token0), address(token1), POOL_FEE);
-        vm.prank(address(poolUniswap));
+        bytes memory data = abi.encode(address(token0), address(token1), TICK_SPACING);
+        vm.prank(address(poolCl));
         rebalancer.uniswapV3SwapCallback(amount0Delta, amount1Delta, data);
 
         // Then: The correct balances are returned.
