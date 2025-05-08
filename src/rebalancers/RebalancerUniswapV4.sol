@@ -2,34 +2,29 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.26;
 
-import { ActionData, IActionBase } from "../../lib/accounts-v2/src/interfaces/IActionBase.sol";
-import { ArcadiaLogic } from "./libraries/ArcadiaLogic.sol";
+import { Actions } from "../../lib/accounts-v2/lib/v4-periphery/src/libraries/Actions.sol";
 import { BalanceDelta } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/BalanceDelta.sol";
 import { Currency } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
-import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { FullMath } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
-import { IAccount } from "./interfaces/IAccount.sol";
 import { IHooks } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/interfaces/IHooks.sol";
-import { IPool } from "./interfaces/IPool.sol";
-import { IPositionManager } from "./interfaces/IPositionManager.sol";
-import { IStrategyHook } from "./interfaces/IStrategyHook.sol";
+import { IPermit2 } from "./interfaces/IPermit2.sol";
+import { IPoolManager } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/interfaces/IPoolManager.sol";
+import { IPositionManagerV4 } from "./interfaces/IPositionManagerV4.sol";
 import { IWETH } from "./interfaces/IWETH.sol";
-import { LiquidityAmounts } from "./libraries/cl-math/LiquidityAmounts.sol";
+import { LiquidityAmounts } from "../libraries/LiquidityAmounts.sol";
 import { PoolKey } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
-import { PricingLogic } from "./libraries/cl-math/PricingLogic.sol";
-import { RebalanceLogic } from "./libraries/RebalanceLogic.sol";
+import { PositionInfo } from "../../lib/accounts-v2/lib/v4-periphery/src/libraries/PositionInfoLibrary.sol";
+import { Rebalancer } from "./Rebalancer.sol";
+import { RebalanceParams } from "./libraries/RebalanceLogic.sol";
 import { SafeApprove } from "../libraries/SafeApprove.sol";
-import { SwapLogicV4 } from "./libraries/uniswap-v4/SwapLogicV4.sol";
-import { SwapParams } from "./interfaces/IPoolManager.sol";
+import { StateLibrary } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/StateLibrary.sol";
 import { TickMath } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
-import { UniswapV4Logic } from "./libraries/uniswap-v4/UniswapV4Logic.sol";
 
 /**
- * @title Permissioned rebalancer for Uniswap V4 Positions.
- * @notice The Rebalancer will act as an Asset Manager for Arcadia Accounts.
+ * @title Rebalancer for Uniswap V4 Liquidity Positions.
+ * @notice The Rebalancer is an Asset Manager for Arcadia Accounts.
  * It will allow third parties to trigger the rebalancing functionality for a Liquidity Position in the Account.
  * The owner of an Arcadia Account should set an initiator via setAccountInfo() that will be permisionned to rebalance
  * all Liquidity Positions held in that Account.
@@ -39,609 +34,473 @@ import { UniswapV4Logic } from "./libraries/uniswap-v4/UniswapV4Logic.sol";
  * @dev The contract guarantees a limited slippage with each rebalance by enforcing a minimum amount of liquidity that must be added,
  * based on a hypothetical optimal swap through the pool itself without slippage.
  * This protects the Account owners from incompetent or malicious initiators who route swaps poorly, or try to skim off liquidity from the position.
+ * @dev The rebalancer must not be used for Pools of native ETH - WETH.
  */
-contract RebalancerUniswapV4 is IActionBase {
-    using FixedPointMathLib for uint256;
+contract RebalancerUniswapV4 is Rebalancer {
     using SafeApprove for ERC20;
     using SafeTransferLib for ERC20;
+    using StateLibrary for IPoolManager;
     /* //////////////////////////////////////////////////////////////
                                 CONSTANTS
     ////////////////////////////////////////////////////////////// */
 
-    // The Account to compound the fees for, used as transient storage.
-    address internal account;
+    // The contract address of the Uniswap v4 Position Manager.
+    IPositionManagerV4 internal immutable POSITION_MANAGER;
+
+    // The Permit2 contract.
+    IPermit2 internal immutable PERMIT_2;
+
+    // The Uniswap V4 PoolManager contract.
+    IPoolManager internal immutable POOL_MANAGER;
 
     // The contract address of WETH.
-    address internal constant WETH = 0x4200000000000000000000000000000000000006;
-
-    // The maximum lower deviation of the pools actual sqrtPriceX96,
-    // The maximum deviation of the actual pool price, in % with 18 decimals precision.
-    uint256 public immutable MAX_TOLERANCE;
-
-    // The maximum fee an initiator can set, with 18 decimals precision.
-    uint256 public immutable MAX_INITIATOR_FEE;
-
-    // The ratio that limits the amount of slippage of the swap, with 18 decimals precision.
-    // It is defined as the quotient between the minimal amount of liquidity that must be added,
-    // and the amount of liquidity that would be added if the swap was executed through the pool without slippage.
-    // MIN_LIQUIDITY_RATIO = minLiquidity / liquidityWithoutSlippage
-    uint256 public immutable MIN_LIQUIDITY_RATIO;
+    address internal immutable WETH;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
     ////////////////////////////////////////////////////////////// */
 
-    // A mapping from initiator to rebalancing fee.
-    mapping(address initiator => InitiatorInfo) public initiatorInfo;
-
-    // A mapping that sets the approved initiator per account.
-    mapping(address account => address initiator) public accountToInitiator;
-
-    // A mapping that sets a strategy hook per account.
-    mapping(address account => address hook) public strategyHook;
-
-    // A struct with the state of a specific position, only used in memory.
-    struct PositionState {
-        address hook;
-        address token0;
-        address token1;
-        uint24 fee;
-        int24 tickSpacing;
-        int24 tickUpper;
-        int24 tickLower;
-        uint128 liquidity;
-        uint160 sqrtRatioLower;
-        uint160 sqrtRatioUpper;
-        uint256 sqrtPriceX96;
-        uint256 lowerBoundSqrtPriceX96;
-        uint256 upperBoundSqrtPriceX96;
-    }
-
-    // A struct with information for each specific initiator
-    struct InitiatorInfo {
-        uint64 upperSqrtPriceDeviation;
-        uint64 lowerSqrtPriceDeviation;
-        uint64 fee;
-        uint64 minLiquidityRatio;
-    }
+    // A mapping if permit2 has been approved for a certain token.
+    mapping(address token => bool approved) internal approved;
 
     /* //////////////////////////////////////////////////////////////
                                 ERRORS
     ////////////////////////////////////////////////////////////// */
 
-    error InitiatorNotValid();
-    error InsufficientLiquidity();
-    error InvalidValue();
-    error NotAnAccount();
-    error OnlyAccount();
-    error OnlyAccountOwner();
-    error OnlyPool();
-    error PoolManagerOnly();
-    error Reentered();
-    error UnbalancedPool();
-
-    /* //////////////////////////////////////////////////////////////
-                                EVENTS
-    ////////////////////////////////////////////////////////////// */
-
-    event AccountInfoSet(
-        address indexed account, address indexed initiator, address indexed strategyHook, address token0, address token1
-    );
-    event Rebalance(address indexed account, address indexed positionManager, uint256 oldId, uint256 newId);
-
-    /* //////////////////////////////////////////////////////////////
-                                MODIFIERS
-    ////////////////////////////////////////////////////////////// */
-
-    /**
-     * @dev Only the UniswapV4 PoolManager can call functions with this modifier.
-     */
-    modifier onlyPoolManager() {
-        if (msg.sender != address(UniswapV4Logic.POOL_MANAGER)) revert PoolManagerOnly();
-        _;
-    }
+    error OnlyPoolManager();
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
     ////////////////////////////////////////////////////////////// */
 
     /**
+     * @param arcadiaFactory The contract address of the Arcadia Factory.
      * @param maxTolerance The maximum allowed deviation of the actual pool price for any initiator,
      * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
      * @param maxInitiatorFee The maximum fee an initiator can set,
      * relative to the ideal amountIn, with 18 decimals precision.
      * @param minLiquidityRatio The ratio of the minimum amount of liquidity that must be minted,
      * relative to the hypothetical amount of liquidity when we rebalance without slippage, with 18 decimals precision.
+     * @param positionManager The contract address of the Uniswap v3 Position Manager.
+     * @param permit2 The contract address of Permit2.
+     * @param poolManager The contract address of the Uniswap v4 Pool Manager.
+     * @param weth The contract address of WETH.
      */
-    constructor(uint256 maxTolerance, uint256 maxInitiatorFee, uint256 minLiquidityRatio) {
-        MAX_TOLERANCE = maxTolerance;
-        MAX_INITIATOR_FEE = maxInitiatorFee;
-        MIN_LIQUIDITY_RATIO = minLiquidityRatio;
-    }
-
-    /* ///////////////////////////////////////////////////////////////
-                             REBALANCING LOGIC
-    /////////////////////////////////////////////////////////////// */
-
-    /**
-     * @notice Rebalances a Uniswap V4 Liquidity Position, owned by an Arcadia Account.
-     * @param account_ The Arcadia Account owning the position.
-     * @param positionManager The contract address of the Position Manager.
-     * @param oldId The oldId of the Liquidity Position to rebalance.
-     * @param trustedSqrtPriceX96 The pool sqrtPriceX96 provided at the time of calling rebalance().
-     * @param tickLower The new lower tick to rebalance to.
-     * @param tickUpper The new upper tick to rebalance to.
-     * @dev When tickLower and tickUpper are equal, ticks will be updated with same tick-spacing as current position
-     * and with a balanced, 50/50 ratio around current tick.
-     */
-    function rebalance(
-        address account_,
+    constructor(
+        address arcadiaFactory,
+        uint256 maxTolerance,
+        uint256 maxInitiatorFee,
+        uint256 minLiquidityRatio,
         address positionManager,
-        uint256 oldId,
-        uint256 trustedSqrtPriceX96,
-        int24 tickLower,
-        int24 tickUpper,
-        bytes calldata swapData
-    ) external {
-        // If the initiator is set, account_ is an actual Arcadia Account.
-        if (account != address(0)) revert Reentered();
-        if (accountToInitiator[account_] != msg.sender) revert InitiatorNotValid();
-
-        // Store Account address, used to validate the caller of the executeAction() callback and serves as a reentrancy guard.
-        account = account_;
-
-        // Encode data for the flash-action.
-        bytes memory actionData = ArcadiaLogic._encodeAction(
-            positionManager, oldId, msg.sender, tickLower, tickUpper, trustedSqrtPriceX96, swapData
-        );
-
-        // Call flashAction() with this contract as actionTarget.
-        IAccount(account).flashAction(address(this), actionData);
-
-        // Reset account.
-        account = address(0);
-    }
-
-    /**
-     * @notice Callback function called by the Arcadia Account during the flashAction.
-     * @param rebalanceData A bytes object containing a struct with the assetData of the position and the address of the initiator.
-     * @return depositData A struct with the asset data of the Liquidity Position and with the leftovers after mint, if any.
-     * @dev The Liquidity Position is already transferred to this contract before executeAction() is called.
-     * @dev When rebalancing we will burn the current Liquidity Position and mint a new one with a new tokenId.
-     */
-    function executeAction(bytes calldata rebalanceData) external override returns (ActionData memory depositData) {
-        // Caller should be the Account, provided as input in rebalance().
-        if (msg.sender != account) revert OnlyAccount();
-
-        // Cache the strategy hook.
-        address hook = strategyHook[msg.sender];
-
-        // Decode rebalanceData.
-        bytes memory swapData;
-        address positionManager;
-        uint256 oldId;
-        uint256 newId;
-        PositionState memory position;
-        address initiator;
-        {
-            ActionData memory assetData;
-            int24 tickLower;
-            int24 tickUpper;
-            uint256 trustedSqrtPriceX96;
-            (assetData, initiator, tickLower, tickUpper, trustedSqrtPriceX96, swapData) =
-                abi.decode(rebalanceData, (ActionData, address, int24, int24, uint256, bytes));
-            positionManager = assetData.assets[0];
-            oldId = assetData.assetIds[0];
-
-            // Fetch and cache all position related data.
-            position = getPositionState(oldId, tickLower, tickUpper, trustedSqrtPriceX96, initiator);
-        }
-
-        // If set, call the strategy hook before the rebalance (view function).
-        // This can be used to enforce additional constraints on the rebalance, specific to the Account/Id.
-        // Such as:
-        // - Directional preferences.
-        // - Minimum Cool Down Periods.
-        // - Excluding rebalancing of certain positions.
-        // - ...
-        if (hook != address(0)) {
-            IStrategyHook(hook).beforeRebalance(
-                msg.sender, positionManager, oldId, position.tickLower, position.tickUpper
-            );
-        }
-
-        // Check that pool is initially balanced.
-        // Prevents sandwiching attacks when swapping and/or adding liquidity.
-        if (isPoolUnbalanced(position)) revert UnbalancedPool();
-
-        // Remove liquidity of the position and claim outstanding fees/rewards.
-        _burn(oldId, position.token0, position.token1);
-
-        // Token0 might be native ETH.
-        uint256 balance0 = Currency.wrap(position.token0).balanceOfSelf();
-        uint256 balance1 = ERC20(position.token1).balanceOf(address(this));
-
-        {
-            // Get the rebalance parameters.
-            // These are calculated based on a hypothetical swap through the pool, without slippage.
-            (uint256 minLiquidity, bool zeroToOne, uint256 amountInitiatorFee, uint256 amountIn, uint256 amountOut) =
-            RebalanceLogic._getRebalanceParams(
-                initiatorInfo[initiator].minLiquidityRatio,
-                position.fee,
-                initiatorInfo[initiator].fee,
-                position.sqrtPriceX96,
-                position.sqrtRatioLower,
-                position.sqrtRatioUpper,
-                balance0,
-                balance1
-            );
-
-            PoolKey memory poolKey = PoolKey(
-                Currency.wrap(position.token0),
-                Currency.wrap(position.token1),
-                position.fee,
-                position.tickSpacing,
-                IHooks(position.hook)
-            );
-            // Do the actual swap to rebalance the position.
-            // This can be done either directly through the pool, or via a router with custom swap data.
-            // For swaps directly through the pool, if slippage is bigger than calculated, the transaction will not immediately revert,
-            // but excess slippage will be subtracted from the initiatorFee.
-            // For swaps via a router, tokenOut should be the limiting factor when increasing liquidity.
-            (balance0, balance1) = SwapLogicV4._swap(
-                swapData, position, poolKey, zeroToOne, amountInitiatorFee, amountIn, amountOut, balance0, balance1
-            );
-
-            // Check that the pool is still balanced after the swap.
-            if (isPoolUnbalanced(position)) revert UnbalancedPool();
-
-            // Mint the new liquidity position.
-            // We mint with the total available balances of token0 and token1, not subtracting the initiator fee.
-            // Leftovers must be in tokenIn, otherwise the total tokenIn balance will be added as liquidity,
-            // and the initiator fee will be 0 (but the transaction will not revert).
-            uint256 liquidity;
-            (newId, liquidity) = _mint(position, poolKey, balance0, balance1);
-
-            // Check that the actual liquidity of the position is above the minimum threshold.
-            // This prevents loss of principal of the liquidity position due to slippage,
-            // or malicious initiators who remove liquidity during a custom swap.
-            if (liquidity < minLiquidity) revert InsufficientLiquidity();
-
-            balance0 = Currency.wrap(position.token0).balanceOfSelf();
-            balance1 = ERC20(position.token1).balanceOf(address(this));
-
-            // Transfer fee to the initiator.
-            (balance0, balance1) = _transferFee(
-                initiator, zeroToOne, amountInitiatorFee, position.token0, position.token1, balance0, balance1
-            );
-        }
-
-        // Approve Account to redeposit Liquidity Position and leftovers.
-        {
-            uint256 count = 1;
-            IPositionManager(positionManager).approve(msg.sender, newId);
-            if (balance0 > 0) {
-                // If leftover is in native ETH, we need to wrap it and send WETH to the Account.
-                if (position.token0 == address(0)) {
-                    position.token0 = WETH;
-                    IWETH(payable(WETH)).deposit{ value: balance0 }();
-                }
-
-                ERC20(position.token0).safeApproveWithRetry(msg.sender, balance0);
-                count = 2;
-            }
-            if (balance1 > 0) {
-                ERC20(position.token1).safeApproveWithRetry(msg.sender, balance1);
-                ++count;
-            }
-
-            // Encode deposit data for the flash-action.
-            depositData = ArcadiaLogic._encodeDeposit(
-                positionManager, newId, position.token0, position.token1, count, balance0, balance1, 0
-            );
-        }
-
-        // If set, call the strategy hook after the rebalance (non view function).
-        // Can be used to check additional constraints and persist state changes on the hook.
-        if (hook != address(0)) IStrategyHook(hook).afterRebalance(msg.sender, positionManager, oldId, newId);
-
-        emit Rebalance(msg.sender, positionManager, oldId, newId);
-
-        return depositData;
+        address permit2,
+        address poolManager,
+        address weth
+    ) Rebalancer(arcadiaFactory, maxTolerance, maxInitiatorFee, minLiquidityRatio) {
+        POSITION_MANAGER = IPositionManagerV4(positionManager);
+        PERMIT_2 = IPermit2(permit2);
+        POOL_MANAGER = IPoolManager(poolManager);
+        WETH = weth;
     }
 
     /* ///////////////////////////////////////////////////////////////
-                          UNISWAP V4 LOGIC
+                            POSITION VALIDATION
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @dev Mints a new Uniswap V4 position by providing liquidity to a specified pool.
-     * @param position The memory struct containing details about the state of the Uniswap position.
-     * @param balance0 The amount of token0 to be added to the position.
-     * @param balance1 The amount of token1 to be added to the position.
-     * @return newTokenId The ID of the newly minted Uniswap V4 position.
-     * @return liquidity The calculated liquidity corresponding to the provided balances and ticks.
+     * @notice Returns if a position manager matches the position manager(s) of the rebalancer.
+     * @param positionManager the contract address of the position manager to check.
      */
-    function _mint(PositionState memory position, PoolKey memory poolKey, uint256 balance0, uint256 balance1)
+    function isPositionManager(address positionManager) public view override returns (bool) {
+        return positionManager == address(POSITION_MANAGER);
+    }
+
+    /* ///////////////////////////////////////////////////////////////
+                              GETTERS
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Returns the underlying assets of the pool.
+     * @param initiatorParams A struct with the initiator parameters.
+     * @return token0 The contract address of token0.
+     * @return token1 The contract address of token1.
+     */
+    function _getUnderlyingTokens(InitiatorParams memory initiatorParams)
         internal
-        returns (uint256 newTokenId, uint256 liquidity)
+        view
+        override
+        returns (address token0, address token1)
     {
-        // Manage token approvals and check if native ETH has to be added to the position.
-        if (position.token0 != address(0)) UniswapV4Logic._checkAndApprovePermit2(position.token0, balance0);
-        UniswapV4Logic._checkAndApprovePermit2(position.token1, balance1);
+        (PoolKey memory poolKey,) = POSITION_MANAGER.getPoolAndPositionInfo(initiatorParams.oldId);
+        token0 = Currency.unwrap(poolKey.currency0);
+        token1 = Currency.unwrap(poolKey.currency1);
 
-        // Get new token id.
-        newTokenId = UniswapV4Logic.POSITION_MANAGER.nextTokenId();
-
-        // Generate calldata to mint new position.
-        bytes[] memory params = new bytes[](3);
-        (uint160 newSqrtPriceX96,,,) = UniswapV4Logic.STATE_VIEW.getSlot0(poolKey.toId());
-        {
-            liquidity = LiquidityAmounts.getLiquidityForAmounts(
-                newSqrtPriceX96, position.sqrtRatioLower, position.sqrtRatioUpper, balance0, balance1
-            );
-
-            params[0] = abi.encode(
-                poolKey,
-                position.tickLower,
-                position.tickUpper,
-                liquidity,
-                type(uint128).max,
-                type(uint128).max,
-                address(this),
-                ""
-            );
-            params[1] = abi.encode(poolKey.currency0, poolKey.currency1);
-            params[2] = abi.encode(poolKey.currency0, address(this));
-        }
-
-        bytes memory actions = new bytes(3);
-        actions[0] = bytes1(uint8(UniswapV4Logic.MINT_POSITION));
-        actions[1] = bytes1(uint8(UniswapV4Logic.SETTLE_PAIR));
-        actions[2] = bytes1(uint8(UniswapV4Logic.SWEEP));
-
-        // Mint the new position.
-        uint256 ethValue = position.token0 == address(0) ? balance0 : 0;
-
-        bytes memory mintParams = abi.encode(actions, params);
-        UniswapV4Logic.POSITION_MANAGER.modifyLiquidities{ value: ethValue }(mintParams, block.timestamp);
+        // If token0 is in native ETH, we need to withdraw wrapped eth from the Account.
+        if (token0 == address(0)) token0 = WETH;
     }
 
     /**
-     * @dev Burns a Uniswap V4 position, removing liquidity and collecting the underlying assets.
-     * @param id The id of the Uniswap V4 position to burn.
-     * @param token0 The address of the first token in the pair.
-     * @param token1 The address of the second token in the pair.
+     * @notice Returns the position and pool related state.
+     * @param initiatorParams A struct with the initiator parameters.
+     * @return balances The balances of the underlying tokens of the position.
+     * @return position A struct with position and pool related variables.
      */
-    function _burn(uint256 id, address token0, address token1) internal {
+    function _getPositionState(InitiatorParams memory initiatorParams)
+        internal
+        view
+        override
+        returns (uint256[] memory balances, PositionState memory position)
+    {
+        // Positions have two underlying tokens.
+        position.tokens = new address[](2);
+        balances = new uint256[](2);
+
+        // Rebalancer has withdrawn the underlying tokens from the Account.
+        balances[0] = initiatorParams.amount0;
+        balances[1] = initiatorParams.amount1;
+
+        // Get data of the Liquidity Position.
+        position.id = initiatorParams.oldId;
+        (PoolKey memory poolKey, PositionInfo info) = POSITION_MANAGER.getPoolAndPositionInfo(position.id);
+        position.tickLower = info.tickLower();
+        position.tickUpper = info.tickUpper();
+        bytes32 positionId = keccak256(
+            abi.encodePacked(address(POSITION_MANAGER), info.tickLower(), info.tickUpper(), bytes32(position.id))
+        );
+        position.liquidity = POOL_MANAGER.getPositionLiquidity(poolKey.toId(), positionId);
+
+        // Get data of the Liquidity Pool.
+        position.pool = address(poolKey.hooks);
+        position.tokens[0] = Currency.unwrap(poolKey.currency0);
+        position.tokens[1] = Currency.unwrap(poolKey.currency1);
+        position.fee = poolKey.fee;
+        position.tickSpacing = poolKey.tickSpacing;
+        (position.sqrtPriceX96, position.tickCurrent,,) = POOL_MANAGER.getSlot0(poolKey.toId());
+    }
+
+    /**
+     * @notice Returns the liquidity of the Pool.
+     * @param position A struct with position and pool related variables.
+     * @return liquidity The liquidity of the Pool.
+     */
+    function _getPoolLiquidity(Rebalancer.PositionState memory position)
+        internal
+        view
+        override
+        returns (uint128 liquidity)
+    {
+        PoolKey memory poolKey = PoolKey(
+            Currency.wrap(position.tokens[0]),
+            Currency.wrap(position.tokens[1]),
+            position.fee,
+            position.tickSpacing,
+            IHooks(position.pool)
+        );
+        liquidity = POOL_MANAGER.getLiquidity(poolKey.toId());
+    }
+
+    /**
+     * @notice Returns the sqrtPriceX96 of the Pool.
+     * @param position A struct with position and pool related variables.
+     * @return sqrtPriceX96 The sqrtPriceX96 of the Pool.
+     */
+    function _getSqrtPriceX96(Rebalancer.PositionState memory position)
+        internal
+        view
+        override
+        returns (uint160 sqrtPriceX96)
+    {
+        PoolKey memory poolKey = PoolKey(
+            Currency.wrap(position.tokens[0]),
+            Currency.wrap(position.tokens[1]),
+            position.fee,
+            position.tickSpacing,
+            IHooks(position.pool)
+        );
+        (sqrtPriceX96,,,) = POOL_MANAGER.getSlot0(poolKey.toId());
+    }
+
+    /* ///////////////////////////////////////////////////////////////
+                             BURN LOGIC
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Burns the Liquidity Position.
+     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param initiatorParams A struct with the initiator parameters.
+     * @param position A struct with position and pool related variables.
+     */
+    function _burn(
+        uint256[] memory balances,
+        Rebalancer.InitiatorParams memory initiatorParams,
+        Rebalancer.PositionState memory position,
+        Rebalancer.Cache memory
+    ) internal override {
         // Generate calldata to burn the position and collect the underlying assets.
         bytes memory actions = new bytes(2);
-        actions[0] = bytes1(uint8(UniswapV4Logic.BURN_POSITION));
-        actions[1] = bytes1(uint8(UniswapV4Logic.TAKE_PAIR));
+        actions[0] = bytes1(uint8(Actions.BURN_POSITION));
+        actions[1] = bytes1(uint8(Actions.TAKE_PAIR));
         bytes[] memory params = new bytes[](2);
-        Currency currency0 = Currency.wrap(token0);
-        Currency currency1 = Currency.wrap(token1);
-        params[0] = abi.encode(id, 0, 0, "");
+        Currency currency0 = Currency.wrap(position.tokens[0]);
+        Currency currency1 = Currency.wrap(position.tokens[1]);
+        params[0] = abi.encode(position.id, 0, 0, "");
         params[1] = abi.encode(currency0, currency1, address(this));
 
         bytes memory burnParams = abi.encode(actions, params);
-        UniswapV4Logic.POSITION_MANAGER.modifyLiquidities(burnParams, block.timestamp);
+        POSITION_MANAGER.modifyLiquidities(burnParams, block.timestamp);
+
+        // If token0 is in native ETH, and weth was withdrawn from the account, unwrap it.
+        if (position.tokens[0] == address(0) && initiatorParams.amount0 > 0) {
+            IWETH(WETH).withdraw(initiatorParams.amount0);
+        }
+
+        // Update the balances, token0 might be native ETH.
+        balances[0] = Currency.wrap(position.tokens[0]).balanceOfSelf();
+        balances[1] = ERC20(position.tokens[1]).balanceOf(address(this));
+    }
+
+    /* ///////////////////////////////////////////////////////////////
+                             SWAP LOGIC
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Swaps one token for another, directly through the pool itself.
+     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param position A struct with position and pool related variables.
+     * @param rebalanceParams A struct with the rebalance parameters.
+     * @param cache A struct with cached variables.
+     * @param amountOut The amount of tokenOut that must be swapped to.
+     */
+    function _swapViaPool(
+        uint256[] memory balances,
+        Rebalancer.PositionState memory position,
+        RebalanceParams memory rebalanceParams,
+        Rebalancer.Cache memory cache,
+        uint256 amountOut
+    ) internal override {
+        // Pool should still be balanced (within tolerance boundaries) after the swap.
+        uint160 sqrtPriceLimitX96 =
+            uint160(rebalanceParams.zeroToOne ? cache.lowerBoundSqrtPriceX96 : cache.upperBoundSqrtPriceX96);
+
+        // Do the swap.
+        bytes memory swapData = abi.encode(
+            IPoolManager.SwapParams({
+                zeroForOne: rebalanceParams.zeroToOne,
+                amountSpecified: int256(amountOut),
+                sqrtPriceLimitX96: sqrtPriceLimitX96
+            }),
+            PoolKey(
+                Currency.wrap(position.tokens[0]),
+                Currency.wrap(position.tokens[1]),
+                position.fee,
+                position.tickSpacing,
+                IHooks(position.pool)
+            )
+        );
+        bytes memory results = POOL_MANAGER.unlock(swapData);
+
+        // Check that pool is still balanced.
+        // If sqrtPriceLimitX96 is reached before an amountOut of tokenOut is received, the pool is not balanced anymore.
+        // By setting the sqrtPriceX96 to sqrtPriceLimitX96, the transaction will revert on the balance check.
+        BalanceDelta swapDelta = abi.decode(results, (BalanceDelta));
+        int256 deltaAmount0 = swapDelta.amount0();
+        int256 deltaAmount1 = swapDelta.amount1();
+        if (amountOut > (rebalanceParams.zeroToOne ? uint256(deltaAmount1) : uint256(deltaAmount0))) {
+            position.sqrtPriceX96 = sqrtPriceLimitX96;
+        }
+
+        // Update the balances.
+        balances[0] =
+            rebalanceParams.zeroToOne ? balances[0] - uint256(-deltaAmount0) : balances[0] + uint256(deltaAmount0);
+        balances[1] =
+            rebalanceParams.zeroToOne ? balances[1] + uint256(deltaAmount1) : balances[1] - uint256(-deltaAmount1);
     }
 
     /**
      * @notice Callback function executed during the unlock phase of a Uniswap V4 pool operation.
-     * @dev This function can only be called by the Pool Manager. It processes a swap and handles the resulting balance deltas.
      * @param data The encoded swap parameters and pool key.
      * @return results The encoded BalanceDelta result from the swap operation.
      */
-    function unlockCallback(bytes calldata data) external payable onlyPoolManager returns (bytes memory results) {
-        (SwapParams memory params, PoolKey memory poolKey) = abi.decode(data, (SwapParams, PoolKey));
-        BalanceDelta delta = UniswapV4Logic.POOL_MANAGER.swap(poolKey, params, "");
-        UniswapV4Logic._processSwapDelta(delta, poolKey.currency0, poolKey.currency1);
+    function unlockCallback(bytes calldata data) external payable returns (bytes memory results) {
+        if (msg.sender != address(POOL_MANAGER)) revert OnlyPoolManager();
+
+        (IPoolManager.SwapParams memory params, PoolKey memory poolKey) =
+            abi.decode(data, (IPoolManager.SwapParams, PoolKey));
+
+        // Do the swap.
+        BalanceDelta delta = POOL_MANAGER.swap(poolKey, params, "");
         results = abi.encode(delta);
-    }
 
-    /* ///////////////////////////////////////////////////////////////
-                    PUBLIC POSITION VIEW FUNCTIONS
-    /////////////////////////////////////////////////////////////// */
-
-    /**
-     * @notice returns if the pool of a Liquidity Position is unbalanced.
-     * @param position Struct with the position data.
-     * @return isPoolUnbalanced_ Bool indicating if the pool is unbalanced.
-     */
-    function isPoolUnbalanced(PositionState memory position) public pure returns (bool isPoolUnbalanced_) {
-        // Check if current priceX96 of the Pool is within accepted tolerance of the calculated trusted priceX96.
-        isPoolUnbalanced_ = position.sqrtPriceX96 <= position.lowerBoundSqrtPriceX96
-            || position.sqrtPriceX96 >= position.upperBoundSqrtPriceX96;
+        // Processes token balance changes.
+        _processSwapDelta(delta, poolKey.currency0, poolKey.currency1);
     }
 
     /**
-     * @notice Fetches all required position data from external contracts.
-     * @param oldId The oldId of the Liquidity Position.
-     * @param tickLower The lower tick of the newly minted position.
-     * @param tickUpper The upper tick of the newly minted position.
-     * @param trustedSqrtPriceX96 The pool sqrtPriceX96 provided at the time of calling rebalance().
-     * @param initiator The address of the initiator.
-     * @return position Struct with the position data.
+     * @notice Processes token balance changes resulting from a swap operation.
+     * @param delta The BalanceDelta containing the positive/negative changes in token amounts.
+     * @param currency0 The address of the first token in the pair.
+     * @param currency1 The address of the second token in the pair.
+     * @dev Handles token transfers between the contract and the Pool Manager based on delta values:
+     *  - For tokens owed to the Pool Manager: transfers tokens and calls settle().
+     *  - For tokens owed from the Pool Manager: calls take() to receive tokens.
      */
-    function getPositionState(
-        uint256 oldId,
-        int24 tickLower,
-        int24 tickUpper,
-        uint256 trustedSqrtPriceX96,
-        address initiator
-    ) public view virtual returns (PositionState memory position) {
-        // Get data of the Liquidity Position.
-        (int24 tickCurrent, int24 tickRange) = UniswapV4Logic._getPositionState(position, oldId);
-
-        // Store the new ticks for the rebalance
-        if (tickLower == tickUpper) {
-            // Round current tick down to a tick that is a multiple of the tick spacing (can be initialised).
-            // We do not handle the edge cases where the new ticks might exceed MIN_TICK or MAX_TICK.
-            // This will result in a revert during the mint, if ever needed a different rebalancer has to be deployed.
-            tickCurrent = tickCurrent / position.tickSpacing * position.tickSpacing;
-            // For tick ranges that are an even multiple of the tick spacing, we use a symmetric spacing around the current tick.
-            // For uneven multiples, the smaller part is below the current tick.
-            position.tickLower = tickCurrent - tickRange / (2 * position.tickSpacing) * position.tickSpacing;
-            position.tickUpper = position.tickLower + tickRange;
-        } else {
-            (position.tickLower, position.tickUpper) = (tickLower, tickUpper);
-        }
-        position.sqrtRatioLower = TickMath.getSqrtPriceAtTick(position.tickLower);
-        position.sqrtRatioUpper = TickMath.getSqrtPriceAtTick(position.tickUpper);
-
-        // Calculate the upper and lower bounds of sqrtPriceX96 for the Pool to be balanced.
-        // We do not handle the edge cases where exceed MIN_SQRT_RATIO or MAX_SQRT_RATIO.
-        // This will result in a revert during swapViaPool, if ever needed a different rebalancer has to be deployed.
-        position.lowerBoundSqrtPriceX96 =
-            trustedSqrtPriceX96.mulDivDown(initiatorInfo[initiator].lowerSqrtPriceDeviation, 1e18);
-        position.upperBoundSqrtPriceX96 =
-            trustedSqrtPriceX96.mulDivDown(initiatorInfo[initiator].upperSqrtPriceDeviation, 1e18);
-    }
-
-    /* ///////////////////////////////////////////////////////////////
-                            ACCOUNT LOGIC
-    /////////////////////////////////////////////////////////////// */
-    /**
-     * @notice Sets the required information for an Account.
-     * @param account_ The contract address of the Arcadia Account to set the information for.
-     * @param initiator The address of the initiator.
-     * @param hook The contract address of the hook.
-     * @param token0 The contract address of token0 in the Liquidity Position.
-     * @param token1 The contract address of token1 in the Liquidity Position.
-     * @param rebalanceInfo Account-specific rebalancing info stored in the hook.
-     * @dev An initiator will be permissioned to rebalance any
-     * Liquidity Position held in the specified Arcadia Account.
-     * @dev If the hook is set to address(0), the hook will be disabled.
-     * @dev When an Account is transferred to a new owner,
-     * the asset manager itself (this contract) and hence its initiator and hook will no longer be allowed by the Account.
-     */
-    function setAccountInfo(
-        address account_,
-        address initiator,
-        address hook,
-        address token0,
-        address token1,
-        bytes calldata rebalanceInfo
-    ) external {
-        if (account != address(0)) revert Reentered();
-        if (!ArcadiaLogic.FACTORY.isAccount(account_)) revert NotAnAccount();
-        if (msg.sender != IAccount(account_).owner()) revert OnlyAccountOwner();
-
-        accountToInitiator[account_] = initiator;
-        strategyHook[account_] = hook;
-
-        (token0, token1) = token0 < token1 ? (token0, token1) : (token1, token0);
-        if (hook != address(0)) IStrategyHook(hook).setRebalanceInfo(account_, token0, token1, rebalanceInfo);
-
-        emit AccountInfoSet(account_, initiator, hook, token0, token1);
-    }
-
-    /* ///////////////////////////////////////////////////////////////
-                            INITIATORS LOGIC
-    /////////////////////////////////////////////////////////////// */
-
-    /**
-     * @notice Sets the information requested for an initiator.
-     * @param tolerance The maximum deviation of the actual pool price,
-     * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
-     * @param fee The fee paid to the initiator, with 18 decimals precision.
-     * @param minLiquidityRatio The ratio of the minimum amount of liquidity that must be minted,
-     * relative to the hypothetical amount of liquidity when we rebalance without slippage, with 18 decimals precision.
-     * @dev The tolerance for the pool price will be converted to an upper and lower max sqrtPrice deviation,
-     * using the square root of the basis (one with 18 decimals precision) +- tolerance (18 decimals precision).
-     * The tolerance boundaries are symmetric around the price, but taking the square root will result in a different
-     * allowed deviation of the sqrtPriceX96 for the lower and upper boundaries.
-     */
-    function setInitiatorInfo(uint256 tolerance, uint256 fee, uint256 minLiquidityRatio) external {
-        if (account != address(0)) revert Reentered();
-
-        // Cache struct
-        InitiatorInfo memory initiatorInfo_ = initiatorInfo[msg.sender];
-
-        // Calculation required for checks.
-        uint64 upperSqrtPriceDeviation = uint64(FixedPointMathLib.sqrt((1e18 + tolerance) * 1e18));
-
-        // Check if initiator is already set.
-        if (initiatorInfo_.minLiquidityRatio > 0) {
-            // If so, the initiator can only change parameters to more favourable values for users.
-            if (
-                fee > initiatorInfo_.fee || upperSqrtPriceDeviation > initiatorInfo_.upperSqrtPriceDeviation
-                    || minLiquidityRatio < initiatorInfo_.minLiquidityRatio || minLiquidityRatio > 1e18
-            ) revert InvalidValue();
-        } else {
-            // If not, the parameters can not exceed certain thresholds.
-            if (
-                fee > MAX_INITIATOR_FEE || tolerance > MAX_TOLERANCE || minLiquidityRatio < MIN_LIQUIDITY_RATIO
-                    || minLiquidityRatio > 1e18
-            ) {
-                revert InvalidValue();
-            }
-        }
-
-        initiatorInfo_.fee = uint64(fee);
-        initiatorInfo_.minLiquidityRatio = uint64(minLiquidityRatio);
-        initiatorInfo_.lowerSqrtPriceDeviation = uint64(FixedPointMathLib.sqrt((1e18 - tolerance) * 1e18));
-        initiatorInfo_.upperSqrtPriceDeviation = upperSqrtPriceDeviation;
-
-        initiatorInfo[msg.sender] = initiatorInfo_;
-    }
-
-    /**
-     * @notice Transfers the initiator fee to the initiator.
-     * @param initiator The address of the initiator.
-     * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
-     * @param amountInitiatorFee The amount of initiator fee.
-     * @param token0 The contract address of token0.
-     * @param token1 The contract address of token1.
-     * @param balance0 The balance of token0 before transferring the initiator fee.
-     * @param balance1 The balance of token1 before transferring the initiator fee.
-     * @return balance0 The balance of token0 after transferring the initiator fee.
-     * @return balance1 The balance of token1 after transferring the initiator fee.
-     */
-    function _transferFee(
-        address initiator,
-        bool zeroToOne,
-        uint256 amountInitiatorFee,
-        address token0,
-        address token1,
-        uint256 balance0,
-        uint256 balance1
-    ) internal returns (uint256, uint256) {
-        unchecked {
-            if (zeroToOne) {
-                (balance0, amountInitiatorFee) =
-                    balance0 > amountInitiatorFee ? (balance0 - amountInitiatorFee, amountInitiatorFee) : (0, balance0);
-                if (amountInitiatorFee > 0) Currency.wrap(token0).transfer(initiator, amountInitiatorFee);
+    function _processSwapDelta(BalanceDelta delta, Currency currency0, Currency currency1) internal {
+        // Transfer tokens owed to the Pool Manager.
+        if (delta.amount0() < 0) {
+            POOL_MANAGER.sync(currency0);
+            if (currency0.isAddressZero()) {
+                POOL_MANAGER.settle{ value: uint128(-delta.amount0()) }();
             } else {
-                (balance1, amountInitiatorFee) =
-                    balance1 > amountInitiatorFee ? (balance1 - amountInitiatorFee, amountInitiatorFee) : (0, balance1);
-                if (amountInitiatorFee > 0) ERC20(token1).transfer(initiator, amountInitiatorFee);
+                currency0.transfer(address(POOL_MANAGER), uint128(-delta.amount0()));
+                POOL_MANAGER.settle();
             }
-            return (balance0, balance1);
+        }
+        if (delta.amount1() < 0) {
+            POOL_MANAGER.sync(currency1);
+            currency1.transfer(address(POOL_MANAGER), uint128(-delta.amount1()));
+            POOL_MANAGER.settle();
+        }
+
+        // Withdraw tokens that the Pool Manager owes.
+        if (delta.amount0() > 0) {
+            POOL_MANAGER.take(currency0, (address(this)), uint128(delta.amount0()));
+        }
+        if (delta.amount1() > 0) {
+            POOL_MANAGER.take(currency1, address(this), uint128(delta.amount1()));
         }
     }
 
-    /* ///////////////////////////////////////////////////////////////
-                      ERC721 HANDLER FUNCTION
-    /////////////////////////////////////////////////////////////// */
-
     /**
-     * @notice Returns the onERC721Received selector.
-     * @dev Required to receive ERC721 tokens via safeTransferFrom.
+     * @notice Swaps one token for another, via a router with custom swap data.
+     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param position A struct with position and pool related variables.
+     * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
+     * @param swapData Arbitrary calldata provided by an initiator for the swap.
+     * @dev Initiator has to route swap in such a way that at least minLiquidity of liquidity is added to the position after the swap.
+     * And leftovers must be in tokenIn, otherwise the total tokenIn balance will be added as liquidity,
+     * and the initiator fee will be 0 (but the transaction will not revert)
      */
-    function onERC721Received(address, address, uint256, bytes calldata) public pure returns (bytes4) {
-        return this.onERC721Received.selector;
+    function _swapViaRouter(
+        uint256[] memory balances,
+        PositionState memory position,
+        bool zeroToOne,
+        bytes memory swapData
+    ) internal override {
+        // Decode the swap data.
+        (address router, uint256 amountIn, bytes memory data) = abi.decode(swapData, (address, uint256, bytes));
+
+        // Handle pools with native ETH.
+        address token0 = position.tokens[0];
+        bool isNative = token0 == address(0);
+        if (zeroToOne && isNative) {
+            token0 = WETH;
+            IWETH(WETH).deposit{ value: amountIn }();
+        }
+
+        // Approve token to swap.
+        ERC20(zeroToOne ? token0 : position.tokens[1]).safeApproveWithRetry(router, amountIn);
+
+        // Execute arbitrary swap.
+        (bool success, bytes memory result) = router.call(data);
+        require(success, string(result));
+
+        // Pool should still be balanced (within tolerance boundaries) after the swap.
+        // Since the swap went potentially through the pool itself (but does not have to),
+        // the sqrtPriceX96 might have moved and brought the pool out of balance.
+        // By fetching the sqrtPriceX96, the transaction will revert in that case on the balance check.
+        position.sqrtPriceX96 = _getSqrtPriceX96(position);
+
+        // Handle pools with native ETH.
+        if (isNative) IWETH(WETH).withdraw(ERC20(WETH).balanceOf(address(this)));
+
+        // Update the balances, token0 might be native ETH.
+        balances[0] = Currency.wrap(position.tokens[0]).balanceOfSelf();
+        balances[1] = ERC20(position.tokens[1]).balanceOf(address(this));
     }
 
     /* ///////////////////////////////////////////////////////////////
-                      NATIVE ETH HANDLER
+                             MINT LOGIC
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Receives native ether.
-     * @dev Required for native ETH swaps through Uniswap V4 PoolManager or Router.
+     * @notice Mints a new Liquidity Position.
+     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param position A struct with position and pool related variables.
+     * @param cache A struct with cached variables.
      */
-    receive() external payable { }
+    function _mint(
+        uint256[] memory balances,
+        Rebalancer.InitiatorParams memory,
+        Rebalancer.PositionState memory position,
+        Rebalancer.Cache memory cache
+    ) internal override {
+        // Check it token0 is native ETH.
+        bool isNative = position.tokens[0] == address(0);
+
+        // Handle approvals.
+        if (!isNative) _checkAndApprovePermit2(position.tokens[0]);
+        _checkAndApprovePermit2(position.tokens[1]);
+
+        // Get new token id.
+        position.id = POSITION_MANAGER.nextTokenId();
+
+        // Calculate liquidity to be added.
+        PoolKey memory poolKey = PoolKey(
+            Currency.wrap(position.tokens[0]),
+            Currency.wrap(position.tokens[1]),
+            position.fee,
+            position.tickSpacing,
+            IHooks(position.pool)
+        );
+        // ToDo: move to swap?
+        (position.sqrtPriceX96,,,) = POOL_MANAGER.getSlot0(poolKey.toId());
+        position.liquidity = LiquidityAmounts.getLiquidityForAmounts(
+            uint160(position.sqrtPriceX96), cache.sqrtRatioLower, cache.sqrtRatioUpper, balances[0], balances[1]
+        );
+
+        // Generate calldata to mint new position.
+        bytes memory actions = new bytes(3);
+        actions[0] = bytes1(uint8(Actions.MINT_POSITION));
+        actions[1] = bytes1(uint8(Actions.SETTLE_PAIR));
+        actions[2] = bytes1(uint8(Actions.SWEEP));
+        bytes[] memory params = new bytes[](3);
+        params[0] = abi.encode(
+            poolKey,
+            position.tickLower,
+            position.tickUpper,
+            position.liquidity,
+            type(uint128).max,
+            type(uint128).max,
+            address(this),
+            ""
+        );
+        params[1] = abi.encode(poolKey.currency0, poolKey.currency1);
+        params[2] = abi.encode(poolKey.currency0, address(this));
+
+        // Mint the new position.
+        uint256 ethValue = isNative ? balances[0] : 0;
+        bytes memory mintParams = abi.encode(actions, params);
+        POSITION_MANAGER.modifyLiquidities{ value: ethValue }(mintParams, block.timestamp);
+
+        // Update the balances, token0 might be native ETH.
+        balances[0] = Currency.wrap(position.tokens[0]).balanceOfSelf();
+        balances[1] = ERC20(position.tokens[1]).balanceOf(address(this));
+
+        // If token0 is in native ETH, wrap it.
+        if (isNative) {
+            position.tokens[0] = WETH;
+            IWETH(payable(WETH)).deposit{ value: balances[0] }();
+        }
+    }
+
+    /**
+     * @notice Ensures that the Permit2 contract has sufficient approval to spend a given token.
+     * @param token The contract address of the token.
+     */
+    function _checkAndApprovePermit2(address token) internal {
+        if (!approved[token]) {
+            approved[token] = true;
+            ERC20(token).safeApproveWithRetry(address(PERMIT_2), type(uint256).max);
+            PERMIT_2.approve(token, address(POSITION_MANAGER), type(uint160).max, type(uint48).max);
+        }
+    }
 }

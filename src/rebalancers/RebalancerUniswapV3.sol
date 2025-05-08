@@ -9,7 +9,7 @@ import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/ut
 import { IUniswapV3Pool } from "./interfaces/IUniswapV3Pool.sol";
 import { PoolAddress } from "../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/PoolAddress.sol";
 import { Rebalancer } from "./Rebalancer.sol";
-import { RebalanceParams } from "./libraries/RebalanceLogic2.sol";
+import { RebalanceParams } from "./libraries/RebalanceLogic.sol";
 import { SafeApprove } from "../libraries/SafeApprove.sol";
 
 /**

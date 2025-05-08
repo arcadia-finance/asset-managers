@@ -1,16 +1,19 @@
-// https://github.com/velodrome-finance/slipstream/blob/main/contracts/periphery/libraries/PoolAddress.sol
-// SPDX-License-Identifier: GPL-2.0-or-later
+/**
+ * Created by Pragma Labs
+ * SPDX-License-Identifier: BUSL-1.1
+ */
 pragma solidity ^0.8.22;
 
-/// @title Provides functions for deriving a pool address from the factory, tokens, and the tickSpacing
-library PoolAddress {
-    /// @notice Deterministically computes the pool address given the factory and PoolKey
-    /// @param poolImplementation The contract address of the Slipstream Pool implementation.
-    /// @param factory The contract address of the Slipstream factory.
-    /// @param token0 Contract address of token0.
-    /// @param token1 Contract address of token1.
-    /// @param tickSpacing The tick spacing of the pool
-    /// @return pool The contract address of the pool
+library SlipstreamLogic {
+    /**
+     *  @notice Deterministically computes the pool address given the factory and PoolKey
+     *  @param poolImplementation The contract address of the Slipstream Pool implementation.
+     *  @param factory The contract address of the Slipstream factory.
+     *  @param token0 Contract address of token0.
+     *  @param token1 Contract address of token1.
+     *  @param tickSpacing The tick spacing of the pool
+     *  @return pool The contract address of the pool
+     */
     function computeAddress(
         address poolImplementation,
         address factory,
@@ -27,7 +30,7 @@ library PoolAddress {
     }
 
     /**
-     * @dev Computes the address of a clone deployed using {Clones-cloneDeterministic}.
+     * @notice Computes the address of a clone deployed using {Clones-cloneDeterministic}.
      */
     function predictDeterministicAddress(address master, bytes32 salt, address deployer)
         internal

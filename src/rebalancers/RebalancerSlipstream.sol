@@ -10,9 +10,9 @@ import {
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { ICLPool } from "./interfaces/ICLPool.sol";
 import { IStakedSlipstreamAM } from "./interfaces/IStakedSlipstreamAM.sol";
-import { PoolAddress } from "./libraries/slipstream/PoolAddress.sol";
+import { SlipstreamLogic } from "../libraries/SlipstreamLogic.sol";
 import { Rebalancer } from "./Rebalancer.sol";
-import { RebalanceParams } from "./libraries/RebalanceLogic2.sol";
+import { RebalanceParams } from "./libraries/RebalanceLogic.sol";
 import { SafeApprove } from "../libraries/SafeApprove.sol";
 
 /**
@@ -173,7 +173,7 @@ contract RebalancerSlipstream is Rebalancer {
         balances[1] = initiatorParams.amount1;
 
         // Get data of the Liquidity Pool.
-        position.pool = PoolAddress.computeAddress(
+        position.pool = SlipstreamLogic.computeAddress(
             POOL_IMPLEMENTATION, CL_FACTORY, position.tokens[0], position.tokens[1], position.tickSpacing
         );
         position.id = initiatorParams.oldId;
@@ -320,7 +320,8 @@ contract RebalancerSlipstream is Rebalancer {
         // Check that callback came from an actual Slipstream Pool.
         (address token0, address token1, int24 tickSpacing) = abi.decode(data, (address, address, int24));
 
-        if (PoolAddress.computeAddress(POOL_IMPLEMENTATION, CL_FACTORY, token0, token1, tickSpacing) != msg.sender) {
+        if (SlipstreamLogic.computeAddress(POOL_IMPLEMENTATION, CL_FACTORY, token0, token1, tickSpacing) != msg.sender)
+        {
             revert OnlyPool();
         }
 

@@ -5,53 +5,52 @@
 pragma solidity ^0.8.22;
 
 import { ActionData } from "../../../lib/accounts-v2/src/interfaces/IActionBase.sol";
-import { IFactory } from "../interfaces/IFactory.sol";
 import { IPermit2 } from "../../../lib/accounts-v2/src/interfaces/IPermit2.sol";
-import { RebalancerUniV3Slipstream } from "../RebalancerUniV3Slipstream.sol";
-import { StakedSlipstreamLogic } from "./slipstream/StakedSlipstreamLogic.sol";
+import { Rebalancer } from "../Rebalancer.sol";
 
 library ArcadiaLogic {
-    // The contract address of the Arcadia Factory.
-    IFactory internal constant FACTORY = IFactory(0xDa14Fdd72345c4d2511357214c5B89A919768e59);
-
     /**
      * @notice Encodes the action data for the flash-action used to rebalance a Liquidity Position.
-     * @param asset The contract address of the asset.
-     * @param id The id of the Liquidity Position.
-     * @param initiator The address of the initiator.
-     * @param tickLower The new lower tick to rebalance the position to.
-     * @param tickUpper The new upper tick to rebalancer the position to.
-     * @param trustedSqrtPriceX96 The pool sqrtPriceX96 provided at the time of calling rebalance().
-     * @param swapData Arbitrary calldata provided by an initiator for a swap.
      * @return actionData Bytes string with the encoded data.
      */
     function _encodeAction(
-        address asset,
-        uint256 id,
         address initiator,
-        int24 tickLower,
-        int24 tickUpper,
-        uint256 trustedSqrtPriceX96,
-        bytes calldata swapData
+        Rebalancer.InitiatorParams calldata params,
+        address token0,
+        address token1
     ) internal pure returns (bytes memory actionData) {
+        uint256 count = 1;
+        if (params.amount0 > 0) count++;
+        if (params.amount1 > 0) count++;
+
         ActionData memory assetData;
         {
-            // Encode Uniswap V3 position that has to be withdrawn from and deposited back into the Account.
-            address[] memory assets_ = new address[](1);
-            assets_[0] = asset;
-            uint256[] memory assetIds_ = new uint256[](1);
-            assetIds_[0] = id;
-            uint256[] memory assetAmounts_ = new uint256[](1);
-            assetAmounts_[0] = 1;
-            uint256[] memory assetTypes_ = new uint256[](1);
-            assetTypes_[0] = 2;
+            address[] memory assets = new address[](count);
+            uint256[] memory ids = new uint256[](count);
+            uint256[] memory amounts = new uint256[](count);
+            uint256[] memory types = new uint256[](count);
 
-            assetData = ActionData({
-                assets: assets_,
-                assetIds: assetIds_,
-                assetAmounts: assetAmounts_,
-                assetTypes: assetTypes_
-            });
+            // Encode Uniswap V3 position.
+            assets[0] = params.positionManager;
+            ids[0] = params.oldId;
+            amounts[0] = 1;
+            types[0] = 2;
+
+            // Encode underlying assets of the Uniswap V3 position.
+            uint256 index = 1;
+            if (params.amount0 > 0) {
+                assets[1] = token0;
+                amounts[1] = params.amount0;
+                types[1] = 1;
+                index = 2;
+            }
+            if (params.amount1 > 0) {
+                assets[index] = token1;
+                amounts[index] = params.amount1;
+                types[index] = 1;
+            }
+
+            assetData = ActionData({ assets: assets, assetIds: ids, assetAmounts: amounts, assetTypes: types });
         }
 
         // Empty data objects that have to be encoded when calling flashAction(), but that are not used for this specific flash-action.
@@ -59,68 +58,46 @@ library ArcadiaLogic {
         ActionData memory transferFromOwner;
         IPermit2.PermitBatchTransferFrom memory permit;
 
-        // Data required by this contract when Account does the executeAction() callback during the flash-action.
-        bytes memory rebalanceData =
-            abi.encode(assetData, initiator, tickLower, tickUpper, trustedSqrtPriceX96, swapData);
-
         // Encode the actionData.
-        actionData = abi.encode(assetData, transferFromOwner, permit, signature, rebalanceData);
+        bytes memory actionTargetData = abi.encode(initiator, params);
+        actionData = abi.encode(assetData, transferFromOwner, permit, signature, actionTargetData);
     }
 
-    /**
-     * @notice Encodes the deposit data after the flash-action used to rebalance the Liquidity Position.
-     * @param positionManager The contract address of the Position Manager.
-     * @param id The id of the Liquidity Position.
-     * @param token0 The contract address of token0.
-     * @param token1 The contract address of token1.
-     * @param count The number of assets to deposit.
-     * @param balance0 The amount of token0 to deposit.
-     * @param balance1 The amount of token1 to deposit.
-     * @param reward The amount of reward token to deposit.
-     * @return depositData Bytes string with the encoded data.
-     */
     function _encodeDeposit(
         address positionManager,
         uint256 id,
-        address token0,
-        address token1,
         uint256 count,
-        uint256 balance0,
-        uint256 balance1,
-        uint256 reward
+        address[] memory tokens,
+        uint256[] memory balances
     ) internal pure returns (ActionData memory depositData) {
-        depositData.assets = new address[](count);
-        depositData.assetIds = new uint256[](count);
-        depositData.assetAmounts = new uint256[](count);
-        depositData.assetTypes = new uint256[](count);
+        address[] memory assets = new address[](count);
+        uint256[] memory ids = new uint256[](count);
+        uint256[] memory amounts = new uint256[](count);
+        uint256[] memory types = new uint256[](count);
 
-        // Add newly minted Liquidity Position.
-        depositData.assets[0] = positionManager;
-        depositData.assetIds[0] = id;
-        depositData.assetAmounts[0] = 1;
-        depositData.assetTypes[0] = 2;
+        assets = new address[](count);
+        ids = new uint256[](count);
+        amounts = new uint256[](count);
+        types = new uint256[](count);
 
-        // Track the next index for the ERC20 tokens.
-        uint256 index = 1;
+        // Add Liquidity Position.
+        assets[0] = positionManager;
+        ids[0] = id;
+        amounts[0] = 1;
+        types[0] = 2;
 
-        if (balance0 > 0) {
-            depositData.assets[1] = token0;
-            depositData.assetAmounts[1] = balance0;
-            depositData.assetTypes[1] = 1;
-            index = 2;
+        // Add ERC20 tokens.
+        if (count > 1) {
+            uint256 i = 1;
+            for (uint256 j; j < balances.length; j++) {
+                if (balances[j] > 0) {
+                    assets[i] = tokens[j];
+                    amounts[i] = balances[j];
+                    types[i] = 1;
+                    i++;
+                }
+            }
         }
-
-        if (balance1 > 0) {
-            depositData.assets[index] = token1;
-            depositData.assetAmounts[index] = balance1;
-            depositData.assetTypes[index] = 1;
-            ++index;
-        }
-
-        if (reward > 0) {
-            depositData.assets[index] = StakedSlipstreamLogic.REWARD_TOKEN;
-            depositData.assetAmounts[index] = reward;
-            depositData.assetTypes[index] = 1;
-        }
+        depositData = ActionData({ assets: assets, assetIds: ids, assetAmounts: amounts, assetTypes: types });
     }
 }

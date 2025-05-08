@@ -5,14 +5,14 @@
 pragma solidity ^0.8.26;
 
 import { ActionData, IActionBase } from "../../lib/accounts-v2/src/interfaces/IActionBase.sol";
-import { ArcadiaLogic } from "./libraries/ArcadiaLogic2.sol";
+import { ArcadiaLogic } from "./libraries/ArcadiaLogic.sol";
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { ERC721 } from "../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IAccount } from "./interfaces/IAccount.sol";
 import { IArcadiaFactory } from "./interfaces/IArcadiaFactory.sol";
 import { IStrategyHook } from "./interfaces/IStrategyHook.sol";
-import { RebalanceLogic, RebalanceParams } from "./libraries/RebalanceLogic2.sol";
+import { RebalanceLogic, RebalanceParams } from "./libraries/RebalanceLogic.sol";
 import { RebalanceOptimizationMath } from "./libraries/RebalanceOptimizationMath.sol";
 import { SafeApprove } from "../libraries/SafeApprove.sol";
 import { TickMath } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";

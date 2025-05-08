@@ -4,7 +4,7 @@
  */
 pragma solidity ^0.8.22;
 
-import { RebalanceParams } from "../../../src/rebalancers/libraries/RebalanceLogic2.sol";
+import { RebalanceParams } from "../../../src/rebalancers/libraries/RebalanceLogic.sol";
 import { RebalancerSlipstream } from "../../../src/rebalancers/RebalancerSlipstream.sol";
 
 contract RebalancerSlipstreamExtension is RebalancerSlipstream {
