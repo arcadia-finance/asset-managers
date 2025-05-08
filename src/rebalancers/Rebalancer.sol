@@ -142,6 +142,7 @@ abstract contract Rebalancer is IActionBase {
     error InsufficientLiquidity();
     error InvalidInitiator();
     error InvalidPositionManager();
+    error InvalidRouter();
     error InvalidValue();
     error NotAnAccount();
     error OnlyAccount();
@@ -580,6 +581,8 @@ abstract contract Rebalancer is IActionBase {
     ) internal virtual {
         // Decode the swap data.
         (address router, uint256 amountIn, bytes memory data) = abi.decode(swapData, (address, uint256, bytes));
+        // ToDo: test + cache router?
+        if (router == strategyHook[msg.sender]) revert InvalidRouter();
 
         // Approve token to swap.
         ERC20(zeroToOne ? position.tokens[0] : position.tokens[1]).safeApproveWithRetry(router, amountIn);
