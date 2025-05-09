@@ -9,7 +9,7 @@ import {
 } from "./interfaces/ICLPositionManager.sol";
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { ICLPool } from "./interfaces/ICLPool.sol";
-import { IStakedSlipstreamAM } from "./interfaces/IStakedSlipstreamAM.sol";
+import { IStakedSlipstream } from "./interfaces/IStakedSlipstream.sol";
 import { SlipstreamLogic } from "../libraries/SlipstreamLogic.sol";
 import { Rebalancer } from "./Rebalancer.sol";
 import { RebalanceParams } from "./libraries/RebalanceLogic.sol";
@@ -228,7 +228,7 @@ contract RebalancerSlipstream is Rebalancer {
         // If position is a staked slipstream position, first unstake the position.
         if (initiatorParams.positionManager != address(POSITION_MANAGER)) {
             // If rewardToken is an underlying token of the position, add it to the balances
-            uint256 rewards = IStakedSlipstreamAM(initiatorParams.positionManager).burn(position.id);
+            uint256 rewards = IStakedSlipstream(initiatorParams.positionManager).burn(position.id);
             if (balances.length == 3) balances[2] = rewards;
             else if (position.tokens[0] == REWARD_TOKEN) balances[0] += rewards;
             else balances[1] += rewards;
@@ -376,7 +376,7 @@ contract RebalancerSlipstream is Rebalancer {
         // If position is a staked slipstream position, stake the position.
         if (initiatorParams.positionManager != address(POSITION_MANAGER)) {
             POSITION_MANAGER.approve(initiatorParams.positionManager, position.id);
-            IStakedSlipstreamAM(initiatorParams.positionManager).mint(position.id);
+            IStakedSlipstream(initiatorParams.positionManager).mint(position.id);
         }
     }
 }

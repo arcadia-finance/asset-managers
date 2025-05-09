@@ -4,7 +4,7 @@
  */
 pragma solidity ^0.8.22;
 
-interface IStakedSlipstreamAM {
+interface IStakedSlipstream {
     function burn(uint256 id) external returns (uint256 rewards);
 
     function mint(uint256 id) external returns (uint256 id_);

@@ -30,7 +30,7 @@ struct MintParams {
     uint256 deadline;
 }
 
-interface IPositionManager {
+interface IPositionManagerV3 {
     function approve(address spender, uint256 tokenId) external;
 
     function collect(CollectParams calldata params) external payable returns (uint256 amount0, uint256 amount1);

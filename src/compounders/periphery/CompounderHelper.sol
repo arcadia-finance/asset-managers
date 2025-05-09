@@ -4,7 +4,6 @@
  */
 pragma solidity ^0.8.22;
 
-import { IAccount } from "../../interfaces/IAccount.sol";
 import { IFactory } from "../../interfaces/IFactory.sol";
 import { SlipstreamLogic } from "../slipstream/libraries/SlipstreamLogic.sol";
 import { SlipstreamCompounderHelperLogic } from "./libraries/slipstream/SlipstreamCompounderHelperLogic.sol";

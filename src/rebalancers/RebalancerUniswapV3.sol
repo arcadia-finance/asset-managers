@@ -4,7 +4,9 @@
  */
 pragma solidity ^0.8.26;
 
-import { CollectParams, DecreaseLiquidityParams, IPositionManager, MintParams } from "./interfaces/IPositionManager.sol";
+import {
+    CollectParams, DecreaseLiquidityParams, IPositionManagerV3, MintParams
+} from "./interfaces/IPositionManagerV3.sol";
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { IUniswapV3Pool } from "./interfaces/IUniswapV3Pool.sol";
 import { PoolAddress } from "../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/PoolAddress.sol";
@@ -33,7 +35,7 @@ contract RebalancerUniswapV3 is Rebalancer {
     ////////////////////////////////////////////////////////////// */
 
     // The contract address of the Uniswap v3 Position Manager.
-    IPositionManager internal immutable POSITION_MANAGER;
+    IPositionManagerV3 internal immutable POSITION_MANAGER;
 
     // The contract address of the Uniswap v3 Factory.
     address internal immutable UNISWAP_V3_FACTORY;
@@ -67,7 +69,7 @@ contract RebalancerUniswapV3 is Rebalancer {
         address positionManager,
         address uniswapV3Factory
     ) Rebalancer(arcadiaFactory, maxTolerance, maxInitiatorFee, minLiquidityRatio) {
-        POSITION_MANAGER = IPositionManager(positionManager);
+        POSITION_MANAGER = IPositionManagerV3(positionManager);
         UNISWAP_V3_FACTORY = uniswapV3Factory;
     }
 
