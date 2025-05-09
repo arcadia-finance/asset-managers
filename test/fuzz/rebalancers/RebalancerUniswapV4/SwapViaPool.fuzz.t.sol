@@ -77,8 +77,9 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
         assertEq(balances[0], token0.balanceOf(address(rebalancer)));
         assertEq(balances[1], token1.balanceOf(address(rebalancer)));
 
-        // And: The sqrtPriceX96 remains equal.
-        assertEq(position_.sqrtPriceX96, position.sqrtPriceX96);
+        // And: The sqrtPriceX96 is updated.
+        (uint160 sqrtPriceX96,,,) = stateView.getSlot0(poolKey.toId());
+        assertEq(sqrtPriceX96, position_.sqrtPriceX96);
     }
 
     function testFuzz_Success_swapViaPool_NotNative_ZeroToOne_Unbalanced(
@@ -136,6 +137,8 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
 
         // Then: The sqrtPriceX96 equals the lower bound.
         assertEq(position_.sqrtPriceX96, cache.lowerBoundSqrtPriceX96);
+        (uint160 sqrtPriceX96,,,) = stateView.getSlot0(poolKey.toId());
+        assertEq(sqrtPriceX96, position_.sqrtPriceX96);
     }
 
     function testFuzz_Success_swapViaPool_NotNative_OneToZero_Balanced(
@@ -192,8 +195,9 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
         assertEq(balances[0], token0.balanceOf(address(rebalancer)));
         assertEq(balances[1], token1.balanceOf(address(rebalancer)));
 
-        // And: The sqrtPriceX96 remains equal.
-        assertEq(position_.sqrtPriceX96, position.sqrtPriceX96);
+        // And: The sqrtPriceX96 is updated.
+        (uint160 sqrtPriceX96,,,) = stateView.getSlot0(poolKey.toId());
+        assertEq(sqrtPriceX96, position_.sqrtPriceX96);
     }
 
     function testFuzz_Success_swapViaPool_NotNative_OneToZero_UnBalanced(
@@ -251,6 +255,8 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
 
         // Then: The sqrtPriceX96 equals the upper bound.
         assertEq(position_.sqrtPriceX96, cache.upperBoundSqrtPriceX96);
+        (uint160 sqrtPriceX96,,,) = stateView.getSlot0(poolKey.toId());
+        assertEq(sqrtPriceX96, position_.sqrtPriceX96);
     }
 
     function testFuzz_Success_swapViaPool_IsNative_ZeroToOne_Balanced(
@@ -307,8 +313,9 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
         assertEq(balances[0], address(rebalancer).balance);
         assertEq(balances[1], token1.balanceOf(address(rebalancer)));
 
-        // And: The sqrtPriceX96 remains equal.
-        assertEq(position_.sqrtPriceX96, position.sqrtPriceX96);
+        // And: The sqrtPriceX96 is updated.
+        (uint160 sqrtPriceX96,,,) = stateView.getSlot0(poolKey.toId());
+        assertEq(sqrtPriceX96, position_.sqrtPriceX96);
     }
 
     function testFuzz_Success_swapViaPool_IsNative_ZeroToOne_Unbalanced(
@@ -366,6 +373,8 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
 
         // Then: The sqrtPriceX96 equals the lower bound.
         assertEq(position_.sqrtPriceX96, cache.lowerBoundSqrtPriceX96);
+        (uint160 sqrtPriceX96,,,) = stateView.getSlot0(poolKey.toId());
+        assertEq(sqrtPriceX96, position_.sqrtPriceX96);
     }
 
     function testFuzz_Success_swapViaPool_IsNative_OneToZero_Balanced(
@@ -422,8 +431,9 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
         assertEq(balances[0], address(rebalancer).balance);
         assertEq(balances[1], token1.balanceOf(address(rebalancer)));
 
-        // And: The sqrtPriceX96 remains equal.
-        assertEq(position_.sqrtPriceX96, position.sqrtPriceX96);
+        // And: The sqrtPriceX96 is updated.
+        (uint160 sqrtPriceX96,,,) = stateView.getSlot0(poolKey.toId());
+        assertEq(sqrtPriceX96, position_.sqrtPriceX96);
     }
 
     function testFuzz_Success_swapViaPool_IsNative_OneToZero_UnBalanced(
@@ -481,5 +491,7 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
 
         // Then: The sqrtPriceX96 equals the upper bound.
         assertEq(position_.sqrtPriceX96, cache.upperBoundSqrtPriceX96);
+        (uint160 sqrtPriceX96,,,) = stateView.getSlot0(poolKey.toId());
+        assertEq(sqrtPriceX96, position_.sqrtPriceX96);
     }
 }

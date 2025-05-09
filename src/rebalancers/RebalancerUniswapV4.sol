@@ -282,37 +282,36 @@ contract RebalancerUniswapV4 is Rebalancer {
             uint160(rebalanceParams.zeroToOne ? cache.lowerBoundSqrtPriceX96 : cache.upperBoundSqrtPriceX96);
 
         // Do the swap.
+        PoolKey memory poolKey = PoolKey(
+            Currency.wrap(position.tokens[0]),
+            Currency.wrap(position.tokens[1]),
+            position.fee,
+            position.tickSpacing,
+            IHooks(position.pool)
+        );
         bytes memory swapData = abi.encode(
             IPoolManager.SwapParams({
                 zeroForOne: rebalanceParams.zeroToOne,
                 amountSpecified: int256(amountOut),
                 sqrtPriceLimitX96: sqrtPriceLimitX96
             }),
-            PoolKey(
-                Currency.wrap(position.tokens[0]),
-                Currency.wrap(position.tokens[1]),
-                position.fee,
-                position.tickSpacing,
-                IHooks(position.pool)
-            )
+            poolKey
         );
         bytes memory results = POOL_MANAGER.unlock(swapData);
 
-        // Check that pool is still balanced.
-        // If sqrtPriceLimitX96 is reached before an amountOut of tokenOut is received, the pool is not balanced anymore.
-        // By setting the sqrtPriceX96 to sqrtPriceLimitX96, the transaction will revert on the balance check.
-        BalanceDelta swapDelta = abi.decode(results, (BalanceDelta));
-        int256 deltaAmount0 = swapDelta.amount0();
-        int256 deltaAmount1 = swapDelta.amount1();
-        if (amountOut > (rebalanceParams.zeroToOne ? uint256(deltaAmount1) : uint256(deltaAmount0))) {
-            position.sqrtPriceX96 = sqrtPriceLimitX96;
-        }
+        // Pool should still be balanced (within tolerance boundaries) after the swap.
+        // Since the swap went through the pool itself, the sqrtPriceX96 might have brought the pool out of balance.
+        // By fetching the sqrtPriceX96, the transaction will revert in that case on the balance check.
+        (position.sqrtPriceX96,,,) = POOL_MANAGER.getSlot0(poolKey.toId());
 
         // Update the balances.
-        balances[0] =
-            rebalanceParams.zeroToOne ? balances[0] - uint256(-deltaAmount0) : balances[0] + uint256(deltaAmount0);
-        balances[1] =
-            rebalanceParams.zeroToOne ? balances[1] + uint256(deltaAmount1) : balances[1] - uint256(-deltaAmount1);
+        BalanceDelta swapDelta = abi.decode(results, (BalanceDelta));
+        balances[0] = rebalanceParams.zeroToOne
+            ? balances[0] - uint256(-int256(swapDelta.amount0()))
+            : balances[0] + uint256(int256(swapDelta.amount0()));
+        balances[1] = rebalanceParams.zeroToOne
+            ? balances[1] + uint256(int256(swapDelta.amount1()))
+            : balances[1] - uint256(-int256(swapDelta.amount1()));
     }
 
     /**
@@ -452,8 +451,6 @@ contract RebalancerUniswapV4 is Rebalancer {
             position.tickSpacing,
             IHooks(position.pool)
         );
-        // ToDo: move to swap?
-        (position.sqrtPriceX96,,,) = POOL_MANAGER.getSlot0(poolKey.toId());
         position.liquidity = LiquidityAmounts.getLiquidityForAmounts(
             uint160(position.sqrtPriceX96), cache.sqrtRatioLower, cache.sqrtRatioUpper, balances[0], balances[1]
         );
