@@ -1,0 +1,92 @@
+/**
+ * Created by Pragma Labs
+ * SPDX-License-Identifier: BUSL-1.1
+ */
+pragma solidity ^0.8.22;
+
+import { RebalanceParams } from "../../../src/rebalancers/libraries/RebalanceLogic.sol";
+import { Rebalancer } from "../../../src/rebalancers/Rebalancer.sol";
+
+contract RebalancerExtension is Rebalancer {
+    constructor(address arcadiaFactory, uint256 maxTolerance, uint256 maxInitiatorFee, uint256 minLiquidityRatio)
+        Rebalancer(arcadiaFactory, maxTolerance, maxInitiatorFee, minLiquidityRatio)
+    { }
+
+    function isPositionManager(address positionManager) public view override returns (bool) { }
+
+    function _getUnderlyingTokens(InitiatorParams memory initiatorParams)
+        internal
+        view
+        override
+        returns (address token0, address token1)
+    { }
+
+    function _getPositionState(InitiatorParams memory initiatorParams)
+        internal
+        view
+        override
+        returns (uint256[] memory balances, PositionState memory)
+    { }
+
+    function _getPoolLiquidity(PositionState memory position) internal view override returns (uint128) { }
+
+    function _getSqrtPriceX96(PositionState memory position) internal view override returns (uint160) { }
+
+    function _burn(
+        uint256[] memory balances,
+        InitiatorParams memory initiatorParams,
+        PositionState memory position,
+        Cache memory cache
+    ) internal override { }
+
+    function _swapViaPool(
+        uint256[] memory balances,
+        PositionState memory position,
+        RebalanceParams memory rebalanceParams,
+        Cache memory cache,
+        uint256 amountOut
+    ) internal override { }
+
+    function swapViaRouter(
+        uint256[] memory balances,
+        PositionState memory position,
+        bool zeroToOne,
+        bytes memory swapData
+    ) external returns (uint256[] memory balances_) {
+        _swapViaRouter(balances, position, zeroToOne, swapData);
+        balances_ = balances;
+    }
+
+    function _mint(
+        uint256[] memory balances,
+        InitiatorParams memory initiatorParams,
+        PositionState memory position,
+        Cache memory cache
+    ) internal override { }
+
+    function transferInitiatorFee(
+        uint256[] memory balances,
+        PositionState memory position,
+        bool zeroToOne,
+        uint256 amountInitiatorFee,
+        address initiator
+    ) external returns (uint256[] memory balances_) {
+        _transferInitiatorFee(balances, position, zeroToOne, amountInitiatorFee, initiator);
+        balances_ = balances;
+    }
+
+    function approve(uint256[] memory balances, InitiatorParams memory initiatorParams, PositionState memory position)
+        external
+        returns (uint256 count)
+    {
+        return _approve(balances, initiatorParams, position);
+    }
+
+    function setHook(address account_, address hook) public {
+        strategyHook[account_] = hook;
+    }
+
+    function setAccount(address account_) public {
+        account = account_;
+    }
+}

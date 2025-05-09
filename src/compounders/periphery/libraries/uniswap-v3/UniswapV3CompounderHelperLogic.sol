@@ -4,7 +4,6 @@
  */
 pragma solidity ^0.8.22;
 
-import { AlienBaseLogic } from "../../../alien-base/libraries/AlienBaseLogic.sol";
 import { Fees, IUniswapV3Compounder, PositionState } from "../../../uniswap-v3/interfaces/IUniswapV3Compounder.sol";
 import { FixedPoint128 } from "../../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint128.sol";
 import { FixedPointMathLib } from "../../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
@@ -29,12 +28,9 @@ library UniswapV3CompounderHelperLogic {
     // The contract addresses of the Asset Managers.
     IUniswapV3Compounder internal constant COMPOUNDER_UNISWAPV3 =
         IUniswapV3Compounder(0x351a4CE4C45029D847F396132953673BcdEAF324);
-    IUniswapV3Compounder internal constant COMPOUNDER_ALIENBASE =
-        IUniswapV3Compounder(0x15E755f17E3712F561d25538cCc0488445398c8D);
 
     // The Quoter contract addresses.
     IQuoter internal constant QUOTER_UNISWAPV3 = IQuoter(0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a);
-    IQuoter internal constant QUOTER_ALIENBASE = IQuoter(0x2ba1d35920DB74a1dB97679BC27d2cBa81bB96ea);
 
     /* ///////////////////////////////////////////////////////////////
                       OFF-CHAIN VIEW FUNCTIONS
@@ -57,19 +53,13 @@ library UniswapV3CompounderHelperLogic {
         internal
         returns (bool isCompoundable_, address compounder_, uint160 sqrtPriceX96)
     {
-        IUniswapV3Compounder compounder =
-            positionManager == address(UniswapV3Logic.POSITION_MANAGER) ? COMPOUNDER_UNISWAPV3 : COMPOUNDER_ALIENBASE;
+        IUniswapV3Compounder compounder;
 
-        {
-            if (positionManager == address(UniswapV3Logic.POSITION_MANAGER)) {
-                (,, address token0, address token1, uint24 fee,,,,,,,) = UniswapV3Logic.POSITION_MANAGER.positions(id);
-                address pool = UniswapV3Logic._computePoolAddress(token0, token1, fee);
-                (sqrtPriceX96,,,,,,) = IUniswapV3Pool(pool).slot0();
-            } else {
-                (,, address token0, address token1, uint24 fee,,,,,,,) = AlienBaseLogic.POSITION_MANAGER.positions(id);
-                address pool = AlienBaseLogic._computePoolAddress(token0, token1, fee);
-                (sqrtPriceX96,,,,,,) = IUniswapV3Pool(pool).slot0();
-            }
+        if (positionManager == address(UniswapV3Logic.POSITION_MANAGER)) {
+            compounder = COMPOUNDER_UNISWAPV3;
+            (,, address token0, address token1, uint24 fee,,,,,,,) = UniswapV3Logic.POSITION_MANAGER.positions(id);
+            address pool = UniswapV3Logic._computePoolAddress(token0, token1, fee);
+            (sqrtPriceX96,,,,,,) = IUniswapV3Pool(pool).slot0();
         }
 
         // Get the initiator.
@@ -120,7 +110,7 @@ library UniswapV3CompounderHelperLogic {
 
     /**
      * @notice Off-chain view function to get the quote of a swap.
-     * @param positionManager The address of the position manager.
+     * param positionManager The address of the position manager.
      * @param position Struct with the position data.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param amountOut The amount of tokenOut that must be swapped to.
@@ -131,12 +121,11 @@ library UniswapV3CompounderHelperLogic {
      * does the swap (with state changes), next it reverts (state changes are not persisted) and information about
      * the final state is passed via the error message in the expect.
      */
-    function _quote(address positionManager, PositionState memory position, bool zeroToOne, uint256 amountOut)
+    function _quote(address, PositionState memory position, bool zeroToOne, uint256 amountOut)
         internal
         returns (bool isPoolUnbalanced, uint256 amountIn)
     {
-        IQuoter quoter;
-        quoter = positionManager == address(UniswapV3Logic.POSITION_MANAGER) ? QUOTER_UNISWAPV3 : QUOTER_ALIENBASE;
+        IQuoter quoter = QUOTER_UNISWAPV3;
 
         // Don't get quote for swaps with zero amount.
         if (amountOut == 0) return (false, 0);
@@ -188,9 +177,7 @@ library UniswapV3CompounderHelperLogic {
             uint256 feeGrowthInside1LastX128,
             uint256 tokensOwed0, // gas: cheaper to use uint256 instead of uint128.
             uint256 tokensOwed1 // gas: cheaper to use uint256 instead of uint128.
-        ) = positionManager == address(UniswapV3Logic.POSITION_MANAGER)
-            ? UniswapV3Logic.POSITION_MANAGER.positions(tokenId)
-            : AlienBaseLogic.POSITION_MANAGER.positions(tokenId);
+        ) = UniswapV3Logic.POSITION_MANAGER.positions(tokenId);
 
         (uint256 feeGrowthInside0CurrentX128, uint256 feeGrowthInside1CurrentX128) =
             _getFeeGrowthInside(positionManager, token0, token1, fee, tickLower, tickUpper);
@@ -213,7 +200,7 @@ library UniswapV3CompounderHelperLogic {
 
     /**
      * @notice Calculates the current fee growth inside the Liquidity Range.
-     * @param positionManager The address of the position manager.
+     * param positionManager The address of the position manager.
      * @param token0 Token0 of the Liquidity Pool.
      * @param token1 Token1 of the Liquidity Pool.
      * @param fee The fee of the Liquidity Pool.
@@ -222,17 +209,12 @@ library UniswapV3CompounderHelperLogic {
      * @return feeGrowthInside0X128 The amount of fees in underlying token0 tokens.
      * @return feeGrowthInside1X128 The amount of fees in underlying token1 tokens.
      */
-    function _getFeeGrowthInside(
-        address positionManager,
-        address token0,
-        address token1,
-        uint24 fee,
-        int24 tickLower,
-        int24 tickUpper
-    ) internal view returns (uint256 feeGrowthInside0X128, uint256 feeGrowthInside1X128) {
-        IUniswapV3Pool pool = positionManager == address(UniswapV3Logic.POSITION_MANAGER)
-            ? IUniswapV3Pool(UniswapV3Logic._computePoolAddress(token0, token1, fee))
-            : IUniswapV3Pool(AlienBaseLogic._computePoolAddress(token0, token1, fee));
+    function _getFeeGrowthInside(address, address token0, address token1, uint24 fee, int24 tickLower, int24 tickUpper)
+        internal
+        view
+        returns (uint256 feeGrowthInside0X128, uint256 feeGrowthInside1X128)
+    {
+        IUniswapV3Pool pool = IUniswapV3Pool(UniswapV3Logic._computePoolAddress(token0, token1, fee));
 
         // To calculate the pending fees, the current tick has to be used, even if the pool would be unbalanced.
         (, int24 tickCurrent,,,,,) = pool.slot0();

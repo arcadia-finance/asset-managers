@@ -4,6 +4,7 @@
  */
 pragma solidity ^0.8.22;
 
+import { CLMathExtension } from "../../../utils/extensions/CLMathExtension.sol";
 import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { FixedPoint96 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
 import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
@@ -11,10 +12,8 @@ import { IQuoterV2 } from
     "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/IQuoterV2.sol";
 import { IUniswapV3PoolExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/IUniswapV3PoolExtension.sol";
-import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/cl-math/LiquidityAmounts.sol";
-import { PricingLogic } from "../../../../src/rebalancers/libraries/cl-math/PricingLogic.sol";
+import { LiquidityAmounts } from "../../../../src/libraries/LiquidityAmounts.sol";
 import { QuoterV2Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/QuoterV2Fixture.f.sol";
-import { RebalanceLogicExtension } from "../../../utils/extensions/RebalanceLogicExtension.sol";
 import { StdStorage, stdStorage } from "../../../../lib/accounts-v2/lib/forge-std/src/Test.sol";
 import { RebalanceOptimizationMath_Fuzz_Test } from "./_RebalanceOptimizationMath.fuzz.t.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
@@ -42,7 +41,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is
                             VARIABLES
     /////////////////////////////////////////////////////////////// */
 
-    RebalanceLogicExtension internal rebalanceLogic;
+    CLMathExtension internal cLMath;
     ERC20Mock internal token0;
     ERC20Mock internal token1;
 
@@ -59,7 +58,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is
 
         QuoterV2Fixture.deployQuoterV2(address(uniswapV3Factory), address(weth9));
 
-        rebalanceLogic = new RebalanceLogicExtension();
+        cLMath = new CLMathExtension();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -100,10 +99,10 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is
             }
 
             // And: total value in token1 is not close to zero.
-            vm.assume(amount1 + PricingLogic._getSpotValue(sqrtPriceOld, true, amount0) > 1e6);
+            vm.assume(amount1 + cLMath.getSpotValue(sqrtPriceOld, true, amount0) > 1e6);
 
             // And: we start from an estimation based on the slippage free swap.
-            (zeroToOne, amountIn, amountOut) = rebalanceLogic.getSwapParams(
+            (zeroToOne, amountIn, amountOut) = cLMath.getSwapParams(
                 sqrtPriceOld, sqrtRatioLower, sqrtRatioUpper, amount0, amount1, INITIATOR_FEE + uint256(POOL_FEE) * 1e12
             );
 

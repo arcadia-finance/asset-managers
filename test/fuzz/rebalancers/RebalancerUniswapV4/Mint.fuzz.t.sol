@@ -2,13 +2,13 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.26;
 
-import { ERC20, ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
-import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/cl-math/LiquidityAmounts.sol";
+import { LiquidityAmounts } from "../../../../src/libraries/LiquidityAmounts.sol";
+import { Rebalancer, RebalanceParams } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RebalancerUniswapV4_Fuzz_Test } from "./_RebalancerUniswapV4.fuzz.t.sol";
-import { RebalancerUniswapV4 } from "../../../../src/rebalancers/RebalancerUniswapV4.sol";
+import { SqrtPriceMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/SqrtPriceMath.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
 
@@ -20,156 +20,141 @@ contract Mint_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
-    function setUp() public override(RebalancerUniswapV4_Fuzz_Test) {
+    function setUp() public override {
         RebalancerUniswapV4_Fuzz_Test.setUp();
     }
 
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_mint(
-        RebalancerUniswapV4.PositionState memory position,
-        uint112 balance0,
-        uint112 balance1
+    function testFuzz_Success_mint_NotNative(
+        uint128 liquidityPool,
+        Rebalancer.InitiatorParams memory initiatorParams,
+        Rebalancer.PositionState memory position,
+        Rebalancer.Cache memory cache,
+        uint128 balance0,
+        uint128 balance1
     ) public {
         // Given: A valid position.
-        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, BOUND_TICK_UPPER - 1));
-        position.tickUpper = int24(bound(position.tickUpper, position.tickLower + 1, BOUND_TICK_UPPER));
-        position.sqrtPriceX96 = uint160(bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER, BOUND_SQRT_PRICE_UPPER));
-        position.sqrtRatioLower = TickMath.getSqrtPriceAtTick(position.tickLower);
-        position.sqrtRatioUpper = TickMath.getSqrtPriceAtTick(position.tickUpper);
+        liquidityPool = givenValidPoolState(liquidityPool, position);
+        setPoolState(liquidityPool, position, false);
+        givenValidPositionState(position);
+
+        cache.sqrtRatioLower = TickMath.getSqrtPriceAtTick(position.tickLower);
+        cache.sqrtRatioUpper = TickMath.getSqrtPriceAtTick(position.tickUpper);
 
         // And: Liquidity is not 0, does not overflow and is below max liquidity.
-        if (position.sqrtPriceX96 <= TickMath.getSqrtPriceAtTick(position.tickLower)) {
-            uint256 liquidity0 = LiquidityAmounts.getLiquidityForAmount0(
-                TickMath.getSqrtPriceAtTick(position.tickLower),
-                TickMath.getSqrtPriceAtTick(position.tickUpper),
-                balance0
-            );
+        if (position.sqrtPriceX96 <= cache.sqrtRatioLower) {
+            uint256 liquidity0 =
+                LiquidityAmounts.getLiquidityForAmount0(cache.sqrtRatioLower, cache.sqrtRatioUpper, balance0);
             vm.assume(liquidity0 > 0);
             vm.assume(liquidity0 < UniswapHelpers.maxLiquidity(1));
-        } else if (position.sqrtPriceX96 <= TickMath.getSqrtPriceAtTick(position.tickUpper)) {
-            uint256 liquidity0 = LiquidityAmounts.getLiquidityForAmount0(
-                uint160(position.sqrtPriceX96), TickMath.getSqrtPriceAtTick(position.tickUpper), balance0
-            );
+        } else if (position.sqrtPriceX96 <= cache.sqrtRatioUpper) {
+            uint256 liquidity0 =
+                LiquidityAmounts.getLiquidityForAmount0(uint160(position.sqrtPriceX96), cache.sqrtRatioUpper, balance0);
             vm.assume(liquidity0 > 0);
             vm.assume(liquidity0 < type(uint128).max);
-            uint256 liquidity1 = LiquidityAmounts.getLiquidityForAmount1(
-                TickMath.getSqrtPriceAtTick(position.tickLower), uint160(position.sqrtPriceX96), balance1
-            );
+            uint256 liquidity1 =
+                LiquidityAmounts.getLiquidityForAmount1(cache.sqrtRatioLower, uint160(position.sqrtPriceX96), balance1);
             vm.assume(liquidity1 > 0);
             vm.assume(liquidity1 < type(uint128).max);
             vm.assume((liquidity0 < liquidity1 ? liquidity0 : liquidity1) < UniswapHelpers.maxLiquidity(1));
         } else {
-            uint256 liquidity1 = LiquidityAmounts.getLiquidityForAmount1(
-                TickMath.getSqrtPriceAtTick(position.tickLower),
-                TickMath.getSqrtPriceAtTick(position.tickUpper),
-                balance1
-            );
+            uint256 liquidity1 =
+                LiquidityAmounts.getLiquidityForAmount1(cache.sqrtRatioLower, cache.sqrtRatioUpper, balance1);
             vm.assume(liquidity1 > 0);
             vm.assume(liquidity1 < UniswapHelpers.maxLiquidity(1));
         }
 
-        // And: Contracts holds balances.
-        ERC20Mock token0 = new ERC20Mock("TokenA", "TOKA", 0);
-        ERC20Mock token1 = new ERC20Mock("TokenB", "TOKB", 0);
-        (token0, token1) = (token0 < token1) ? (token0, token1) : (token1, token0);
-        position.token0 = address(token0);
-        position.token1 = address(token1);
-        deal(position.token0, address(rebalancer), balance0, true);
-        deal(position.token1, address(rebalancer), balance1, true);
+        // And: Contract has sufficient balances.
+        uint256[] memory balances = new uint256[](2);
+        balances[0] = balance0;
+        balances[1] = balance1;
+        deal(address(token0), address(rebalancer), balance0, true);
+        deal(address(token1), address(rebalancer), balance1, true);
 
-        // Create pool.
-        v4PoolKey = initializePoolV4(
-            address(token0), address(token1), uint160(position.sqrtPriceX96), address(0), POOL_FEE, TICK_SPACING
-        );
-        position.fee = POOL_FEE;
-
-        // When: Calling _mint().
-        (uint256 id, uint256 liquidity) = rebalancer.mint(position, v4PoolKey, balance0, balance1);
+        // When: Calling mint.
+        Rebalancer.PositionState memory position_;
+        (balances, position_) = rebalancer.mint(balances, initiatorParams, position, cache);
 
         // Then: Contract is owner of the position.
-        assertEq(ERC721(address(positionManagerV4)).ownerOf(id), address(rebalancer));
+        assertEq(ERC721(address(positionManagerV4)).ownerOf(position_.id), address(rebalancer));
 
         // And: Correct liquidity should be returned.
-        {
-            bytes32 positionId = keccak256(
-                abi.encodePacked(address(positionManagerV4), position.tickLower, position.tickUpper, bytes32(id))
-            );
-            uint128 liquidity_ = stateView.getPositionLiquidity(v4PoolKey.toId(), positionId);
-            assertEq(liquidity, liquidity_);
-        }
+        bytes32 positionId = keccak256(
+            abi.encodePacked(address(positionManagerV4), position.tickLower, position.tickUpper, bytes32(position_.id))
+        );
+        assertEq(position_.liquidity, stateView.getPositionLiquidity(poolKey.toId(), positionId));
+
+        // And: Correct balances should be returned.
+        assertEq(balances[0], token0.balanceOf(address(rebalancer)));
+        assertEq(balances[1], token1.balanceOf(address(rebalancer)));
     }
 
-    function testFuzz_Success_mint_nativeETH(
-        RebalancerUniswapV4.PositionState memory position,
-        uint112 balance0,
-        uint112 balance1
+    function testFuzz_Success_mint_IsNative(
+        uint128 liquidityPool,
+        Rebalancer.InitiatorParams memory initiatorParams,
+        Rebalancer.PositionState memory position,
+        Rebalancer.Cache memory cache,
+        uint128 balance0,
+        uint128 balance1
     ) public {
         // Given: A valid position.
-        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, BOUND_TICK_UPPER - 1));
-        position.tickUpper = int24(bound(position.tickUpper, position.tickLower + 1, BOUND_TICK_UPPER));
-        position.sqrtPriceX96 = uint160(bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER, BOUND_SQRT_PRICE_UPPER));
-        position.sqrtRatioLower = TickMath.getSqrtPriceAtTick(position.tickLower);
-        position.sqrtRatioUpper = TickMath.getSqrtPriceAtTick(position.tickUpper);
+        liquidityPool = givenValidPoolState(liquidityPool, position);
+        setPoolState(liquidityPool, position, true);
+        givenValidPositionState(position);
+
+        cache.sqrtRatioLower = TickMath.getSqrtPriceAtTick(position.tickLower);
+        cache.sqrtRatioUpper = TickMath.getSqrtPriceAtTick(position.tickUpper);
 
         // And: Liquidity is not 0, does not overflow and is below max liquidity.
-        if (position.sqrtPriceX96 <= TickMath.getSqrtPriceAtTick(position.tickLower)) {
-            uint256 liquidity0 = LiquidityAmounts.getLiquidityForAmount0(
-                TickMath.getSqrtPriceAtTick(position.tickLower),
-                TickMath.getSqrtPriceAtTick(position.tickUpper),
-                balance0
-            );
+        if (position.sqrtPriceX96 <= cache.sqrtRatioLower) {
+            uint256 liquidity0 =
+                LiquidityAmounts.getLiquidityForAmount0(cache.sqrtRatioLower, cache.sqrtRatioUpper, balance0);
             vm.assume(liquidity0 > 0);
             vm.assume(liquidity0 < UniswapHelpers.maxLiquidity(1));
-        } else if (position.sqrtPriceX96 <= TickMath.getSqrtPriceAtTick(position.tickUpper)) {
-            uint256 liquidity0 = LiquidityAmounts.getLiquidityForAmount0(
-                uint160(position.sqrtPriceX96), TickMath.getSqrtPriceAtTick(position.tickUpper), balance0
-            );
+        } else if (position.sqrtPriceX96 <= cache.sqrtRatioUpper) {
+            uint256 liquidity0 =
+                LiquidityAmounts.getLiquidityForAmount0(uint160(position.sqrtPriceX96), cache.sqrtRatioUpper, balance0);
             vm.assume(liquidity0 > 0);
             vm.assume(liquidity0 < type(uint128).max);
-            uint256 liquidity1 = LiquidityAmounts.getLiquidityForAmount1(
-                TickMath.getSqrtPriceAtTick(position.tickLower), uint160(position.sqrtPriceX96), balance1
-            );
+            uint256 liquidity1 =
+                LiquidityAmounts.getLiquidityForAmount1(cache.sqrtRatioLower, uint160(position.sqrtPriceX96), balance1);
             vm.assume(liquidity1 > 0);
             vm.assume(liquidity1 < type(uint128).max);
             vm.assume((liquidity0 < liquidity1 ? liquidity0 : liquidity1) < UniswapHelpers.maxLiquidity(1));
         } else {
-            uint256 liquidity1 = LiquidityAmounts.getLiquidityForAmount1(
-                TickMath.getSqrtPriceAtTick(position.tickLower),
-                TickMath.getSqrtPriceAtTick(position.tickUpper),
-                balance1
-            );
+            uint256 liquidity1 =
+                LiquidityAmounts.getLiquidityForAmount1(cache.sqrtRatioLower, cache.sqrtRatioUpper, balance1);
             vm.assume(liquidity1 > 0);
             vm.assume(liquidity1 < UniswapHelpers.maxLiquidity(1));
         }
 
-        // And: Contracts holds balances.
-        ERC20Mock token1 = new ERC20Mock("TokenB", "TOKB", 0);
-        position.token0 = address(0);
-        position.token1 = address(token1);
+        // And: Contract has sufficient balances.
+        uint256[] memory balances = new uint256[](2);
+        balances[0] = balance0;
+        balances[1] = balance1;
         vm.deal(address(rebalancer), balance0);
-        deal(position.token1, address(rebalancer), balance1, true);
+        deal(address(token1), address(rebalancer), balance1, true);
 
-        // Create pool.
-        nativeEthPoolKey = initializePoolV4(
-            address(0), address(token1), uint160(position.sqrtPriceX96), address(0), POOL_FEE, TICK_SPACING
-        );
-        position.fee = POOL_FEE;
-
-        // When: Calling _mint().
-        (uint256 id, uint256 liquidity) = rebalancer.mint(position, nativeEthPoolKey, balance0, balance1);
+        // When: Calling mint.
+        Rebalancer.PositionState memory position_;
+        (balances, position_) = rebalancer.mint(balances, initiatorParams, position, cache);
 
         // Then: Contract is owner of the position.
-        assertEq(ERC721(address(positionManagerV4)).ownerOf(id), address(rebalancer));
+        assertEq(ERC721(address(positionManagerV4)).ownerOf(position_.id), address(rebalancer));
 
         // And: Correct liquidity should be returned.
-        {
-            bytes32 positionId = keccak256(
-                abi.encodePacked(address(positionManagerV4), position.tickLower, position.tickUpper, bytes32(id))
-            );
-            uint128 liquidity_ = stateView.getPositionLiquidity(nativeEthPoolKey.toId(), positionId);
-            assertEq(liquidity, liquidity_);
-        }
+        bytes32 positionId = keccak256(
+            abi.encodePacked(address(positionManagerV4), position.tickLower, position.tickUpper, bytes32(position_.id))
+        );
+        assertEq(position_.liquidity, stateView.getPositionLiquidity(poolKey.toId(), positionId));
+
+        // And: Correct balances should be returned.
+        assertEq(balances[0], weth9.balanceOf(address(rebalancer)));
+        assertEq(balances[1], token1.balanceOf(address(rebalancer)));
+
+        // And: token0 is weth.
+        assertEq(position_.tokens[0], address(weth9));
     }
 }

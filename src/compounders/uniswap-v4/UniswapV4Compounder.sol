@@ -408,22 +408,20 @@ contract UniswapV4Compounder is IActionBase {
         uint256 sqrtRatioUpper,
         uint256 id
     ) internal {
-        // Handle approvals based on whether tokens are ETH or ERC20.
-        bool token0IsNative = Currency.unwrap(poolKey.currency0) == address(0);
+        // Check it token0 is native ETH.
+        bool isNative = Currency.unwrap(poolKey.currency0) == address(0);
 
-        // Handle approvals for non-native tokens.
-        if (!token0IsNative && amount0 > 0) {
+        // Handle approvals.
+        if (!isNative && amount0 > 0) {
             _checkAndApprovePermit2(Currency.unwrap(poolKey.currency0));
         }
         if (amount1 > 0) _checkAndApprovePermit2(Currency.unwrap(poolKey.currency1));
 
-        // Calculate liquidity to be added based on fee amounts and updated sqrtPriceX96 after swap.
+        // Calculate liquidity to be added.
         (uint160 newSqrtPriceX96,,,) = UniswapV4Logic.POOL_MANAGER.getSlot0(poolKey.toId());
         uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
             newSqrtPriceX96, uint160(sqrtRatioLower), uint160(sqrtRatioUpper), amount0, amount1
         );
-
-        uint256 ethValue = token0IsNative ? address(this).balance : 0;
 
         // Generate calldata to increase liquidity.
         bytes memory actions = new bytes(3);
@@ -435,6 +433,8 @@ contract UniswapV4Compounder is IActionBase {
         params[1] = abi.encode(poolKey.currency0, poolKey.currency1);
         params[2] = abi.encode(poolKey.currency0, address(this));
 
+        // Increase the liquidity of the position.
+        uint256 ethValue = isNative ? address(this).balance : 0;
         bytes memory increaseLiquidityParams = abi.encode(actions, params);
         UniswapV4Logic.POSITION_MANAGER.modifyLiquidities{ value: ethValue }(increaseLiquidityParams, block.timestamp);
     }

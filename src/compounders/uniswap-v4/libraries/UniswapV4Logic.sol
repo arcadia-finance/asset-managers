@@ -112,10 +112,10 @@ library UniswapV4Logic {
     }
 
     /**
-     * @notice Processes token balance changes resulting from a swap operation..
-     * @param delta The BalanceDelta containing the positive/negative changes in token amounts..
-     * @param currency0 The address of the first token in the pair..
-     * @param currency1 The address of the second token in the pair..
+     * @notice Processes token balance changes resulting from a swap operation.
+     * @param delta The BalanceDelta containing the positive/negative changes in token amounts.
+     * @param currency0 The address of the first token in the pair.
+     * @param currency1 The address of the second token in the pair.
      * @dev Handles token transfers between the contract and the Pool Manager based on delta values:
      *  - For tokens owed to the Pool Manager: transfers tokens and calls settle().
      *  - For tokens owed from the Pool Manager: calls take() to receive tokens.
@@ -137,7 +137,7 @@ library UniswapV4Logic {
             POOL_MANAGER.settle();
         }
 
-        // Withdraw tokens Pool Manager owes.
+        // Withdraw tokens that the Pool Manager owes.
         if (delta.amount0() > 0) {
             POOL_MANAGER.take(currency0, address(this), uint128(delta.amount0()));
         }

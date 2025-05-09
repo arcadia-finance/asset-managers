@@ -4,28 +4,22 @@
  */
 pragma solidity ^0.8.22;
 
-contract HookMock {
-    // A mapping from an Arcadia Account to a struct with Account-specific rebalancing information.
-    mapping(address account => RebalanceInfo) public rebalanceInfo;
+import { Rebalancer } from "../../../src/rebalancers/Rebalancer.sol";
+import { StrategyHook } from "../../../src/rebalancers/periphery/StrategyHook.sol";
 
-    // A struct containing Account-specific rebalancing information.
-    struct RebalanceInfo {
-        address token0;
-        address token1;
-        bytes customInfo;
-    }
-
+contract HookMock is StrategyHook {
+    function setStrategy(address account, bytes calldata strategyData) external override { }
     function beforeRebalance(
         address account,
         address positionManager,
+        Rebalancer.PositionState memory position,
+        bytes memory strategyData
+    ) external view override returns (int24 tickLower, int24 tickUpper) { }
+    function afterRebalance(
+        address account,
+        address positionManager,
         uint256 oldId,
-        int24 newTickLower,
-        int24 newTickUpper
-    ) external view { }
-
-    function afterRebalance(address account, address positionManager, uint256 oldId, uint256 newId) external { }
-
-    function setRebalanceInfo(address account, address token0_, address token1_, bytes calldata customInfo) external {
-        rebalanceInfo[account] = RebalanceInfo({ token0: token0_, token1: token1_, customInfo: customInfo });
-    }
+        Rebalancer.PositionState memory newPosition,
+        bytes memory strategyData
+    ) external override { }
 }

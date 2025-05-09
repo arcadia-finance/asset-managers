@@ -4,7 +4,6 @@
  */
 pragma solidity ^0.8.22;
 
-import { ArcadiaLogicExtension } from "../../../utils/extensions/ArcadiaLogicExtension.sol";
 import { Fuzz_Test } from "../../Fuzz.t.sol";
 
 /**
@@ -23,16 +22,12 @@ abstract contract ArcadiaLogic_Fuzz_Test is Fuzz_Test {
                             TEST CONTRACTS
     /////////////////////////////////////////////////////////////// */
 
-    ArcadiaLogicExtension internal arcadiaLogic;
-
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public virtual override(Fuzz_Test) {
         Fuzz_Test.setUp();
-
-        arcadiaLogic = new ArcadiaLogicExtension();
     }
 
     /*////////////////////////////////////////////////////////////////

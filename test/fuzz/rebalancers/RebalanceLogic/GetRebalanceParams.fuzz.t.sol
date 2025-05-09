@@ -4,11 +4,11 @@
  */
 pragma solidity ^0.8.22;
 
+import { CLMath } from "../../../../src/libraries/CLMath.sol";
 import { FixedPoint96 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
 import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
-import { LiquidityAmounts } from "../../../../src/rebalancers/libraries/cl-math/LiquidityAmounts.sol";
-import { PricingLogic } from "../../../../src/rebalancers/libraries/cl-math/PricingLogic.sol";
-import { RebalanceLogic } from "../../../../src/rebalancers/libraries/RebalanceLogic.sol";
+import { LiquidityAmounts } from "../../../../src/libraries/LiquidityAmounts.sol";
+import { RebalanceLogic, RebalanceParams } from "../../../../src/rebalancers/libraries/RebalanceLogic.sol";
 import { RebalanceLogic_Fuzz_Test } from "./_RebalanceLogic.fuzz.t.sol";
 import { stdError } from "../../../../lib/accounts-v2/lib/forge-std/src/StdError.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
@@ -69,8 +69,7 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
 
         // And: Liquidity0 doesn't overflow (A lot of amount1 in very narrow ranges at small prices).
         {
-            uint256 maxBalance0 =
-                testVars.balance0 + PricingLogic._getSpotValue(testVars.sqrtPrice, false, testVars.balance1);
+            uint256 maxBalance0 = testVars.balance0 + CLMath._getSpotValue(testVars.sqrtPrice, false, testVars.balance1);
             vm.assume(
                 LiquidityAmounts.getLiquidityForAmount0(sqrtRatioLower, sqrtRatioUpper, maxBalance0) < type(uint128).max
             );
@@ -84,32 +83,31 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
         testVars.maxSlippageRatio = bound(testVars.maxSlippageRatio, MIN_LIQUIDITY_RATIO, 1e18);
 
         // When: calling getRebalanceParams.
-        (uint256 minLiquidity, bool zeroToOne, uint256 amountInitiatorFee, uint256 amountIn, uint256 amountOut) =
-            getRebalanceParams(sqrtRatioLower, sqrtRatioUpper, testVars);
+        RebalanceParams memory rebalanceParams = getRebalanceParams(sqrtRatioLower, sqrtRatioUpper, testVars);
 
         // Then: minLiquidity is non-zero and correct.
-        assertGt(minLiquidity, 0);
+        assertGt(rebalanceParams.minLiquidity, 0);
         uint256 liquidity = LiquidityAmounts.getLiquidityForAmounts(
             uint160(testVars.sqrtPrice),
             uint160(sqrtRatioLower),
             uint160(sqrtRatioUpper),
-            testVars.balance0 + amountOut,
-            testVars.balance1 - amountIn - amountInitiatorFee
+            testVars.balance0 + rebalanceParams.amountOut,
+            testVars.balance1 - rebalanceParams.amountIn - rebalanceParams.amountInitiatorFee
         );
-        assertEq(minLiquidity, liquidity * testVars.maxSlippageRatio / 1e18);
+        assertEq(rebalanceParams.minLiquidity, liquidity * testVars.maxSlippageRatio / 1e18);
 
         // And: zeroToOne is false.
-        assertFalse(zeroToOne);
+        assertFalse(rebalanceParams.zeroToOne);
 
         // And: amountInitiatorFee is correct.
-        assertEq(amountInitiatorFee, testVars.balance1 * testVars.initiatorFee / 1e18);
+        assertEq(rebalanceParams.amountInitiatorFee, testVars.balance1 * testVars.initiatorFee / 1e18);
 
         // And: amountIn is correct.
-        assertEq(amountIn, testVars.balance1 - amountInitiatorFee);
+        assertEq(rebalanceParams.amountIn, testVars.balance1 - rebalanceParams.amountInitiatorFee);
 
         // And: amountOut is correct.
         uint256 fee = testVars.initiatorFee + testVars.poolFee * 1e12;
-        assertEq(amountOut, rebalanceLogic.getAmountOut(testVars.sqrtPrice, false, testVars.balance1, fee));
+        assertEq(rebalanceParams.amountOut, CLMath._getAmountOut(testVars.sqrtPrice, false, testVars.balance1, fee));
     }
 
     function testFuzz_Success_getRebalanceParams_AboveRange(TestVariables memory testVars) public {
@@ -131,8 +129,7 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
 
         // And: Liquidity1 doesn't overflow (A lot of amount1 in very narrow ranges at small prices).
         {
-            uint256 maxBalance1 =
-                testVars.balance1 + PricingLogic._getSpotValue(testVars.sqrtPrice, true, testVars.balance0);
+            uint256 maxBalance1 = testVars.balance1 + CLMath._getSpotValue(testVars.sqrtPrice, true, testVars.balance0);
             vm.assume(
                 LiquidityAmounts.getLiquidityForAmount1(sqrtRatioLower, sqrtRatioUpper, maxBalance1) < type(uint128).max
             );
@@ -146,32 +143,31 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
         testVars.maxSlippageRatio = bound(testVars.maxSlippageRatio, MIN_LIQUIDITY_RATIO, 1e18);
 
         // When: calling getRebalanceParams.
-        (uint256 minLiquidity, bool zeroToOne, uint256 amountInitiatorFee, uint256 amountIn, uint256 amountOut) =
-            getRebalanceParams(sqrtRatioLower, sqrtRatioUpper, testVars);
+        RebalanceParams memory rebalanceParams = getRebalanceParams(sqrtRatioLower, sqrtRatioUpper, testVars);
 
         // Then: minLiquidity is non-zero and correct.
-        assertGt(minLiquidity, 0);
+        assertGt(rebalanceParams.minLiquidity, 0);
         uint256 liquidity = LiquidityAmounts.getLiquidityForAmounts(
             uint160(testVars.sqrtPrice),
             uint160(sqrtRatioLower),
             uint160(sqrtRatioUpper),
-            testVars.balance0 - amountIn - amountInitiatorFee,
-            testVars.balance1 + amountOut
+            testVars.balance0 - rebalanceParams.amountIn - rebalanceParams.amountInitiatorFee,
+            testVars.balance1 + rebalanceParams.amountOut
         );
-        assertEq(minLiquidity, liquidity * testVars.maxSlippageRatio / 1e18);
+        assertEq(rebalanceParams.minLiquidity, liquidity * testVars.maxSlippageRatio / 1e18);
 
         // And: zeroToOne is true.
-        assertTrue(zeroToOne);
+        assertTrue(rebalanceParams.zeroToOne);
 
         // And: amountInitiatorFee is correct.
-        assertEq(amountInitiatorFee, testVars.balance0 * testVars.initiatorFee / 1e18);
+        assertEq(rebalanceParams.amountInitiatorFee, testVars.balance0 * testVars.initiatorFee / 1e18);
 
         // And: amountIn is correct.
-        assertEq(amountIn, testVars.balance0 - amountInitiatorFee);
+        assertEq(rebalanceParams.amountIn, testVars.balance0 - rebalanceParams.amountInitiatorFee);
 
         // And: amountOut is correct.
         uint256 fee = testVars.initiatorFee + testVars.poolFee * 1e12;
-        assertEq(amountOut, rebalanceLogic.getAmountOut(testVars.sqrtPrice, true, testVars.balance0, fee));
+        assertEq(rebalanceParams.amountOut, CLMath._getAmountOut(testVars.sqrtPrice, true, testVars.balance0, fee));
     }
 
     function testFuzz_Success_getRebalanceParams_InRange_SmallerCurrentRatio(TestVariables memory testVars) public {
@@ -193,8 +189,7 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
 
         // And: Liquidity0 doesn't overflow (A lot of amount1 in very narrow ranges at small prices).
         {
-            uint256 maxBalance0 =
-                testVars.balance0 + PricingLogic._getSpotValue(testVars.sqrtPrice, false, testVars.balance1);
+            uint256 maxBalance0 = testVars.balance0 + CLMath._getSpotValue(testVars.sqrtPrice, false, testVars.balance1);
             vm.assume(
                 LiquidityAmounts.getLiquidityForAmount0(uint160(testVars.sqrtPrice), sqrtRatioUpper, maxBalance0)
                     < type(uint128).max
@@ -203,8 +198,7 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
 
         // And: Liquidity1 doesn't overflow (A lot of amount1 in very narrow ranges at small prices).
         {
-            uint256 maxBalance1 =
-                testVars.balance1 + PricingLogic._getSpotValue(testVars.sqrtPrice, true, testVars.balance0);
+            uint256 maxBalance1 = testVars.balance1 + CLMath._getSpotValue(testVars.sqrtPrice, true, testVars.balance0);
             vm.assume(
                 LiquidityAmounts.getLiquidityForAmount1(sqrtRatioLower, uint160(testVars.sqrtPrice), maxBalance1)
                     < type(uint128).max
@@ -222,50 +216,48 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
         uint256 totalValueInToken1;
         uint256 currentRatio;
         {
-            uint256 token0ValueInToken1 =
-                FullMath.mulDiv(testVars.balance0, testVars.sqrtPrice ** 2, RebalanceLogic.Q192);
+            uint256 token0ValueInToken1 = FullMath.mulDiv(testVars.balance0, testVars.sqrtPrice ** 2, CLMath.Q192);
             totalValueInToken1 = token0ValueInToken1 + testVars.balance1;
             currentRatio = uint256(testVars.balance1) * 1e18 / totalValueInToken1;
         }
-        uint256 targetRatio = rebalanceLogic.getTargetRatio(testVars.sqrtPrice, sqrtRatioLower, sqrtRatioUpper);
+        uint256 targetRatio = CLMath._getTargetRatio(testVars.sqrtPrice, sqrtRatioLower, sqrtRatioUpper);
         vm.assume(currentRatio < targetRatio);
 
         // When: calling getSwapParams.
-        (uint256 minLiquidity, bool zeroToOne, uint256 amountInitiatorFee, uint256 amountIn, uint256 amountOut) =
-            getRebalanceParams(sqrtRatioLower, sqrtRatioUpper, testVars);
+        RebalanceParams memory rebalanceParams = getRebalanceParams(sqrtRatioLower, sqrtRatioUpper, testVars);
 
         // Then: minLiquidity is non-zero and correct.
-        assertGt(minLiquidity, 0);
+        assertGt(rebalanceParams.minLiquidity, 0);
         {
             uint256 liquidity;
             {
-                uint256 balance0_ = testVars.balance0 - amountIn - amountInitiatorFee;
-                uint256 balance1_ = testVars.balance1 + amountOut;
+                uint256 balance0_ = testVars.balance0 - rebalanceParams.amountIn - rebalanceParams.amountInitiatorFee;
+                uint256 balance1_ = testVars.balance1 + rebalanceParams.amountOut;
                 liquidity = LiquidityAmounts.getLiquidityForAmounts(
                     uint160(testVars.sqrtPrice), sqrtRatioLower, sqrtRatioUpper, balance0_, balance1_
                 );
             }
-            assertEq(minLiquidity, liquidity * testVars.maxSlippageRatio / 1e18);
+            assertEq(rebalanceParams.minLiquidity, liquidity * testVars.maxSlippageRatio / 1e18);
         }
 
         // Then: zeroToOne is true.
-        assertTrue(zeroToOne);
+        assertTrue(rebalanceParams.zeroToOne);
 
         // And: amountOut is correct.
         uint256 fee = testVars.initiatorFee + testVars.poolFee * 1e12;
         {
             uint256 denominator = 1e18 + targetRatio * fee / (1e18 - fee);
             uint256 amountOutExpected = (targetRatio - currentRatio) * totalValueInToken1 / denominator;
-            assertEq(amountOut, amountOutExpected);
+            assertEq(rebalanceParams.amountOut, amountOutExpected);
         }
 
         // And: amountInitiatorFee is correct.
-        uint256 amountInWithFee = rebalanceLogic.getAmountIn(testVars.sqrtPrice, true, amountOut, fee);
+        uint256 amountInWithFee = CLMath._getAmountIn(testVars.sqrtPrice, true, rebalanceParams.amountOut, fee);
         uint256 amountInitiatorFee_ = amountInWithFee * testVars.initiatorFee / 1e18;
-        assertEq(amountInitiatorFee, amountInitiatorFee_);
+        assertEq(rebalanceParams.amountInitiatorFee, amountInitiatorFee_);
 
         // And: amountIn is correct.
-        assertEq(amountIn, amountInWithFee - amountInitiatorFee_);
+        assertEq(rebalanceParams.amountIn, amountInWithFee - amountInitiatorFee_);
     }
 
     function testFuzz_Success_getRebalanceParams_InRange_BiggerCurrentRatio(TestVariables memory testVars) public {
@@ -287,8 +279,7 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
 
         // And: Liquidity0 doesn't overflow (A lot of amount1 in very narrow ranges at small prices).
         {
-            uint256 maxBalance0 =
-                testVars.balance0 + PricingLogic._getSpotValue(testVars.sqrtPrice, false, testVars.balance1);
+            uint256 maxBalance0 = testVars.balance0 + CLMath._getSpotValue(testVars.sqrtPrice, false, testVars.balance1);
             vm.assume(
                 LiquidityAmounts.getLiquidityForAmount0(uint160(testVars.sqrtPrice), sqrtRatioUpper, maxBalance0)
                     < type(uint128).max
@@ -297,8 +288,7 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
 
         // And: Liquidity1 doesn't overflow (A lot of amount1 in very narrow ranges at small prices).
         {
-            uint256 maxBalance1 =
-                testVars.balance1 + PricingLogic._getSpotValue(testVars.sqrtPrice, true, testVars.balance0);
+            uint256 maxBalance1 = testVars.balance1 + CLMath._getSpotValue(testVars.sqrtPrice, true, testVars.balance0);
             vm.assume(
                 LiquidityAmounts.getLiquidityForAmount1(sqrtRatioLower, uint160(testVars.sqrtPrice), maxBalance1)
                     < type(uint128).max
@@ -316,41 +306,32 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
         uint256 totalValueInToken1;
         uint256 currentRatio;
         {
-            uint256 token0ValueInToken1 =
-                FullMath.mulDiv(testVars.balance0, testVars.sqrtPrice ** 2, RebalanceLogic.Q192);
+            uint256 token0ValueInToken1 = FullMath.mulDiv(testVars.balance0, testVars.sqrtPrice ** 2, CLMath.Q192);
             totalValueInToken1 = token0ValueInToken1 + testVars.balance1;
             currentRatio = uint256(testVars.balance1) * 1e18 / totalValueInToken1;
         }
-        uint256 targetRatio = rebalanceLogic.getTargetRatio(testVars.sqrtPrice, sqrtRatioLower, sqrtRatioUpper);
+        uint256 targetRatio = CLMath._getTargetRatio(testVars.sqrtPrice, sqrtRatioLower, sqrtRatioUpper);
         vm.assume(currentRatio >= targetRatio);
 
         // When: calling getSwapParams.
-        uint256 amountOut;
-        uint256 amountInitiatorFee;
-        uint256 amountIn;
+        RebalanceParams memory rebalanceParams = getRebalanceParams(sqrtRatioLower, sqrtRatioUpper, testVars);
+
+        // Then: minLiquidity is non-zero and correct.
+        assertGt(rebalanceParams.minLiquidity, 0);
         {
-            uint256 minLiquidity;
-            bool zeroToOne;
-            (minLiquidity, zeroToOne, amountInitiatorFee, amountIn, amountOut) =
-                getRebalanceParams(sqrtRatioLower, sqrtRatioUpper, testVars);
-
-            // Then: minLiquidity is non-zero and correct.
-            assertGt(minLiquidity, 0);
+            uint256 liquidity;
             {
-                uint256 liquidity;
-                {
-                    uint256 balance0_ = testVars.balance0 + amountOut;
-                    uint256 balance1_ = testVars.balance1 - amountIn - amountInitiatorFee;
-                    liquidity = LiquidityAmounts.getLiquidityForAmounts(
-                        uint160(testVars.sqrtPrice), sqrtRatioLower, sqrtRatioUpper, balance0_, balance1_
-                    );
-                }
-                assertEq(minLiquidity, liquidity * testVars.maxSlippageRatio / 1e18);
+                uint256 balance0_ = testVars.balance0 + rebalanceParams.amountOut;
+                uint256 balance1_ = testVars.balance1 - rebalanceParams.amountIn - rebalanceParams.amountInitiatorFee;
+                liquidity = LiquidityAmounts.getLiquidityForAmounts(
+                    uint160(testVars.sqrtPrice), sqrtRatioLower, sqrtRatioUpper, balance0_, balance1_
+                );
             }
-
-            // And: zeroToOne is false.
-            assertFalse(zeroToOne);
+            assertEq(rebalanceParams.minLiquidity, liquidity * testVars.maxSlippageRatio / 1e18);
         }
+
+        // And: zeroToOne is false.
+        assertFalse(rebalanceParams.zeroToOne);
 
         // And: amountInitiatorFee is correct.
         uint256 fee = testVars.initiatorFee + testVars.poolFee * 1e12;
@@ -359,14 +340,14 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
             uint256 denominator = 1e18 - targetRatio * fee / 1e18;
             amountInWithFee = (currentRatio - targetRatio) * totalValueInToken1 / denominator;
             uint256 amountInitiatorFee_ = amountInWithFee * testVars.initiatorFee / 1e18;
-            assertEq(amountInitiatorFee, amountInitiatorFee_);
+            assertEq(rebalanceParams.amountInitiatorFee, amountInitiatorFee_);
         }
 
         // And: amountIn is correct.
-        assertEq(amountIn, amountInWithFee - amountInitiatorFee);
+        assertEq(rebalanceParams.amountIn, amountInWithFee - rebalanceParams.amountInitiatorFee);
 
         // And: amountOut is correct.
-        assertEq(amountOut, rebalanceLogic.getAmountOut(testVars.sqrtPrice, false, amountInWithFee, fee));
+        assertEq(rebalanceParams.amountOut, CLMath._getAmountOut(testVars.sqrtPrice, false, amountInWithFee, fee));
     }
 
     /*////////////////////////////////////////////////////////////////
@@ -375,7 +356,7 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
     function getRebalanceParams(uint256 sqrtRatioLower, uint256 sqrtRatioUpper, TestVariables memory testVars)
         internal
         view
-        returns (uint256 minLiquidity, bool zeroToOne, uint256 amountInitiatorFee, uint256 amountIn, uint256 amountOut)
+        returns (RebalanceParams memory rebalanceParams)
     {
         return rebalanceLogic.getRebalanceParams(
             testVars.maxSlippageRatio,
