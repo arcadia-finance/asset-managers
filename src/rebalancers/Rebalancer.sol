@@ -79,7 +79,7 @@ abstract contract Rebalancer is IActionBase {
         uint128 amount0;
         // The amount of token1 withdrawn from the account.
         uint128 amount1;
-        // The sqrtPriceX96 th epool should have, given by the initiator.
+        // The sqrtPriceX96 the pool should have, given by the initiator.
         uint256 trustedSqrtPriceX96;
         // Calldata provided by the initiator to execute the swap.
         bytes swapData;

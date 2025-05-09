@@ -11,47 +11,50 @@ import { Rebalancer } from "../Rebalancer.sol";
 library ArcadiaLogic {
     /**
      * @notice Encodes the action data for the flash-action used to rebalance a Liquidity Position.
+     * @param initiator The address of the initiator.
+     * @param initiatorParams A struct with the initiator parameters.
+     * @param token0 The contract address of token0.
+     * @param token1 The contract address of token1.
      * @return actionData Bytes string with the encoded data.
      */
     function _encodeAction(
         address initiator,
-        Rebalancer.InitiatorParams calldata params,
+        Rebalancer.InitiatorParams calldata initiatorParams,
         address token0,
         address token1
     ) internal pure returns (bytes memory actionData) {
+        // Calculate the number of assets to encode.
         uint256 count = 1;
-        if (params.amount0 > 0) count++;
-        if (params.amount1 > 0) count++;
+        if (initiatorParams.amount0 > 0) count++;
+        if (initiatorParams.amount1 > 0) count++;
 
-        ActionData memory assetData;
-        {
-            address[] memory assets = new address[](count);
-            uint256[] memory ids = new uint256[](count);
-            uint256[] memory amounts = new uint256[](count);
-            uint256[] memory types = new uint256[](count);
+        address[] memory assets = new address[](count);
+        uint256[] memory ids = new uint256[](count);
+        uint256[] memory amounts = new uint256[](count);
+        uint256[] memory types = new uint256[](count);
 
-            // Encode Uniswap V3 position.
-            assets[0] = params.positionManager;
-            ids[0] = params.oldId;
-            amounts[0] = 1;
-            types[0] = 2;
+        // Encode liquidity position.
+        assets[0] = initiatorParams.positionManager;
+        ids[0] = initiatorParams.oldId;
+        amounts[0] = 1;
+        types[0] = 2;
 
-            // Encode underlying assets of the Uniswap V3 position.
-            uint256 index = 1;
-            if (params.amount0 > 0) {
-                assets[1] = token0;
-                amounts[1] = params.amount0;
-                types[1] = 1;
-                index = 2;
-            }
-            if (params.amount1 > 0) {
-                assets[index] = token1;
-                amounts[index] = params.amount1;
-                types[index] = 1;
-            }
-
-            assetData = ActionData({ assets: assets, assetIds: ids, assetAmounts: amounts, assetTypes: types });
+        // Encode underlying assets of the liquidity position.
+        uint256 index = 1;
+        if (initiatorParams.amount0 > 0) {
+            assets[1] = token0;
+            amounts[1] = initiatorParams.amount0;
+            types[1] = 1;
+            index = 2;
         }
+        if (initiatorParams.amount1 > 0) {
+            assets[index] = token1;
+            amounts[index] = initiatorParams.amount1;
+            types[index] = 1;
+        }
+
+        ActionData memory assetData =
+            ActionData({ assets: assets, assetIds: ids, assetAmounts: amounts, assetTypes: types });
 
         // Empty data objects that have to be encoded when calling flashAction(), but that are not used for this specific flash-action.
         bytes memory signature;
@@ -59,10 +62,19 @@ library ArcadiaLogic {
         IPermit2.PermitBatchTransferFrom memory permit;
 
         // Encode the actionData.
-        bytes memory actionTargetData = abi.encode(initiator, params);
+        bytes memory actionTargetData = abi.encode(initiator, initiatorParams);
         actionData = abi.encode(assetData, transferFromOwner, permit, signature, actionTargetData);
     }
 
+    /**
+     * @notice Encodes the action data for the flash-action used to rebalance a Liquidity Position.
+     * @param positionManager The address of the position manager.
+     * @param id The id of the Liquidity Position.
+     * @param count The number of tokens to deposit.
+     * @param tokens The contract addresses of the tokens to deposit.
+     * @param balances The balances of the tokens to deposit.
+     * @return depositData Bytes string with the encoded data.
+     */
     function _encodeDeposit(
         address positionManager,
         uint256 id,
@@ -75,18 +87,13 @@ library ArcadiaLogic {
         uint256[] memory amounts = new uint256[](count);
         uint256[] memory types = new uint256[](count);
 
-        assets = new address[](count);
-        ids = new uint256[](count);
-        amounts = new uint256[](count);
-        types = new uint256[](count);
-
-        // Add Liquidity Position.
+        // Encode liquidity position.
         assets[0] = positionManager;
         ids[0] = id;
         amounts[0] = 1;
         types[0] = 2;
 
-        // Add ERC20 tokens.
+        // Encode underlying assets of the liquidity position.
         if (count > 1) {
             uint256 i = 1;
             for (uint256 j; j < balances.length; j++) {
@@ -98,6 +105,7 @@ library ArcadiaLogic {
                 }
             }
         }
+
         depositData = ActionData({ assets: assets, assetIds: ids, assetAmounts: amounts, assetTypes: types });
     }
 }
