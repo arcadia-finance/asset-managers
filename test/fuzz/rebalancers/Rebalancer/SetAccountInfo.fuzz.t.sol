@@ -68,7 +68,7 @@ contract SetAccountInfo_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         rebalancer.setAccountInfo(address(account), initiator, address(strategyHook), strategyData);
 
         // Then: Initiator should be set for that Account
-        assertEq(rebalancer.accountToInitiator(address(account)), initiator);
+        assertEq(rebalancer.accountToInitiator(account.owner(), address(account)), initiator);
 
         // And: Hook should be set for that Account.
         assertEq(rebalancer.strategyHook(address(account)), address(strategyHook));

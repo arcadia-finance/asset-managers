@@ -387,6 +387,7 @@ contract RebalancerUniswapV4 is Rebalancer {
     ) internal override {
         // Decode the swap data.
         (address router, uint256 amountIn, bytes memory data) = abi.decode(swapData, (address, uint256, bytes));
+        if (router == strategyHook[msg.sender]) revert InvalidRouter();
 
         // Handle pools with native ETH.
         address token0 = position.tokens[0];

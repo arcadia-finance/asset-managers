@@ -263,12 +263,12 @@ contract RebalancerUniswapV3 is Rebalancer {
     }
 
     /**
-     * @notice Callback after executing a swap via IPool.swap.
+     * @notice Callback after executing a swap via IUniswapV3Pool.swap.
      * @param amount0Delta The amount of token0 that was sent (negative) or must be received (positive) by the pool by
      * the end of the swap. If positive, the callback must send that amount of token0 to the position.
      * @param amount1Delta The amount of token1 that was sent (negative) or must be received (positive) by the pool by
      * the end of the swap. If positive, the callback must send that amount of token1 to the position.
-     * @param data Any data passed by this contract via the IPool.swap() call.
+     * @param data Any data passed by this contract via the IUniswapV3Pool.swap() call.
      */
     function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external {
         // Check that callback came from an actual Uniswap V3 Pool.

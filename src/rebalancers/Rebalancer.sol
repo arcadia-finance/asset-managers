@@ -63,8 +63,8 @@ abstract contract Rebalancer is IActionBase {
     // A mapping from initiator to rebalancing fee.
     mapping(address initiator => InitiatorInfo) public initiatorInfo;
 
-    // A mapping that sets the approved initiator per account.
-    mapping(address account => address initiator) public accountToInitiator;
+    // A mapping that sets the approved initiator per owner per ccount.
+    mapping(address owner => mapping(address account => address initiator)) public accountToInitiator;
 
     // A mapping that sets a strategy hook per account.
     mapping(address account => address hook) public strategyHook;
@@ -121,6 +121,8 @@ abstract contract Rebalancer is IActionBase {
         uint160 sqrtRatioLower;
         // The sqrtRatio of the upper tick.
         uint160 sqrtRatioUpper;
+        // Implementation specific data.
+        bytes data;
     }
 
     // A struct with information for each specific initiator.
@@ -187,15 +189,14 @@ abstract contract Rebalancer is IActionBase {
      * @param initiator The address of the initiator.
      * @param hook The contract address of the hook.
      * @param strategyData Strategy specific data stored in the hook.
-     * @dev When an Account is transferred to a new owner,
-     * the asset manager itself (this contract) and hence its initiator and hook will no longer be allowed by the Account.
      */
     function setAccountInfo(address account_, address initiator, address hook, bytes calldata strategyData) external {
         if (account != address(0)) revert Reentered();
         if (!ARCADIA_FACTORY.isAccount(account_)) revert NotAnAccount();
-        if (msg.sender != IAccount(account_).owner()) revert OnlyAccountOwner();
+        address owner = IAccount(account_).owner();
+        if (msg.sender != owner) revert OnlyAccountOwner();
 
-        accountToInitiator[account_] = initiator;
+        accountToInitiator[owner][account_] = initiator;
         strategyHook[account_] = hook;
 
         IStrategyHook(hook).setStrategy(account_, strategyData);
@@ -265,7 +266,7 @@ abstract contract Rebalancer is IActionBase {
     function rebalance(address account_, InitiatorParams calldata initiatorParams) external {
         // If the initiator is set, account_ is an actual Arcadia Account.
         if (account != address(0)) revert Reentered();
-        if (accountToInitiator[account_] != msg.sender) revert InvalidInitiator();
+        if (accountToInitiator[IAccount(account_).owner()][account_] != msg.sender) revert InvalidInitiator();
         if (!isPositionManager(initiatorParams.positionManager)) revert InvalidPositionManager();
 
         // Store Account address, used to validate the caller of the executeAction() callback and serves as a reentrancy guard.
@@ -462,7 +463,8 @@ abstract contract Rebalancer is IActionBase {
                 initiatorInfo[initiator].upperSqrtPriceDeviation, 1e18
             ),
             sqrtRatioLower: TickMath.getSqrtPriceAtTick(position.tickLower),
-            sqrtRatioUpper: TickMath.getSqrtPriceAtTick(position.tickUpper)
+            sqrtRatioUpper: TickMath.getSqrtPriceAtTick(position.tickUpper),
+            data: ""
         });
     }
 
@@ -581,7 +583,6 @@ abstract contract Rebalancer is IActionBase {
     ) internal virtual {
         // Decode the swap data.
         (address router, uint256 amountIn, bytes memory data) = abi.decode(swapData, (address, uint256, bytes));
-        // ToDo: test + cache router?
         if (router == strategyHook[msg.sender]) revert InvalidRouter();
 
         // Approve token to swap.

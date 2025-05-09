@@ -4,6 +4,7 @@
  */
 pragma solidity ^0.8.22;
 
+import { HookMock } from "../../../utils/mocks/HookMock.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { Rebalancer_Fuzz_Test } from "./_Rebalancer.fuzz.t.sol";
 import { RouterMock } from "../../../utils/mocks/RouterMock.sol";
@@ -22,6 +23,7 @@ contract SwapViaRouter_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
                             VARIABLES
     /////////////////////////////////////////////////////////////// */
 
+    HookMock internal strategyHook;
     RouterMock internal routerMock;
 
     /* ///////////////////////////////////////////////////////////////
@@ -37,7 +39,52 @@ contract SwapViaRouter_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Revert_swapViaRouter_Router(
+    function testFuzz_Revert_swapViaRouter_InvalidRouter(
+        uint128 liquidityPool,
+        Rebalancer.PositionState memory position,
+        uint64 balance0,
+        uint64 balance1,
+        uint64 amountIn,
+        bool zeroToOne,
+        bytes memory data,
+        address initiator,
+        bytes memory strategyData
+    ) public {
+        // Given: A pool with liquidity.
+        position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
+        liquidityPool =
+            uint128(bound(liquidityPool, UniswapHelpers.maxLiquidity(1) / 1000, UniswapHelpers.maxLiquidity(1) / 10));
+        deployAndInitUniswapV3(uint160(position.sqrtPriceX96), liquidityPool);
+        position.tokens = new address[](2);
+        position.tokens[0] = address(token0);
+        position.tokens[1] = address(token1);
+        position.pool = address(poolUniswap);
+
+        // And: Contract has insufficient balance.
+        uint256[] memory balances = new uint256[](2);
+        balances[0] = balance0;
+        balances[1] = balance1;
+
+        // And: Hook is set.
+        strategyHook = new HookMock();
+        vm.prank(account.owner());
+        rebalancer.setAccountInfo(address(account), initiator, address(strategyHook), strategyData);
+
+        // And: Contract has balances..
+        deal(address(token0), address(rebalancer), balance0, true);
+        deal(address(token1), address(rebalancer), balance1, true);
+
+        // And: Hook is set as router.
+        bytes memory swapData = abi.encode(address(strategyHook), uint256(amountIn), data);
+
+        // When: Calling swapViaRouter.
+        // Then: It should revert.
+        vm.prank(address(account));
+        vm.expectRevert(Rebalancer.InvalidRouter.selector);
+        rebalancer.swapViaRouter(balances, position, zeroToOne, swapData);
+    }
+
+    function testFuzz_Revert_swapViaRouter_RouterReverts(
         uint128 liquidityPool,
         Rebalancer.PositionState memory position,
         uint64 balance0,
