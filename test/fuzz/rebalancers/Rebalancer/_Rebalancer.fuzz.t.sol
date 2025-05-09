@@ -66,12 +66,12 @@ abstract contract Rebalancer_Fuzz_Test is Fuzz_Test, UniswapV3Fixture {
                         HELPER FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
-    function deployAndInitUniswapV3(uint160 sqrtPriceX96, uint128 liquidityPool) internal {
+    function deployAndInitUniswapV3(uint160 sqrtPrice, uint128 liquidityPool) internal {
         // Deploy fixture for Uniswap V3.
         UniswapV3Fixture.setUp();
 
         // Create pool.
-        poolUniswap = createPoolUniV3(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
+        poolUniswap = createPoolUniV3(address(token0), address(token1), POOL_FEE, sqrtPrice, 300);
 
         // Create initial position.
         addLiquidityUniV3(

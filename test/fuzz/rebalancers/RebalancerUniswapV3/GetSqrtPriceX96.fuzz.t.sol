@@ -8,9 +8,9 @@ import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RebalancerUniswapV3_Fuzz_Test } from "./_RebalancerUniswapV3.fuzz.t.sol";
 
 /**
- * @notice Fuzz tests for the function "_getSqrtPriceX96" of contract "RebalancerUniswapV3".
+ * @notice Fuzz tests for the function "_getSqrtPrice" of contract "RebalancerUniswapV3".
  */
-contract GetSqrtPriceX96_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Test {
+contract GetSqrtPrice_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
@@ -22,18 +22,18 @@ contract GetSqrtPriceX96_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fu
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_getSqrtPriceX96(uint128 liquidityPool, Rebalancer.PositionState memory position) public {
+    function testFuzz_Success_getSqrtPrice(uint128 liquidityPool, Rebalancer.PositionState memory position) public {
         // Given: A valid position.
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position);
         givenValidPositionState(position);
         setPositionState(position);
 
-        // When: Calling getSqrtPriceX96.
-        uint160 sqrtPriceX96 = rebalancer.getSqrtPriceX96(position);
+        // When: Calling getSqrtPrice.
+        uint160 sqrtPrice = rebalancer.getSqrtPrice(position);
 
         // Then: It should return the correct values.
-        (uint160 sqrtPriceX96_,,,,,,) = poolUniswap.slot0();
-        assertEq(sqrtPriceX96, sqrtPriceX96_);
+        (uint160 sqrtPrice_,,,,,,) = poolUniswap.slot0();
+        assertEq(sqrtPrice, sqrtPrice_);
     }
 }

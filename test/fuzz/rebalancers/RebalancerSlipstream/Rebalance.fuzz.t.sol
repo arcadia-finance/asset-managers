@@ -206,7 +206,7 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         }
 
         // And: The pool is balanced.
-        initiatorParams.trustedSqrtPriceX96 = position.sqrtPriceX96;
+        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
 
         // When: Calling rebalance().
         initiatorParams.swapData = "";
@@ -300,7 +300,7 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         }
 
         // And: The pool is balanced.
-        initiatorParams.trustedSqrtPriceX96 = position.sqrtPriceX96;
+        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
 
         // When: Calling rebalance().
         initiatorParams.swapData = "";
@@ -378,7 +378,7 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         deal(address(token1), address(account), initiatorParams.amount1, true);
 
         // And: The pool is balanced.
-        initiatorParams.trustedSqrtPriceX96 = position.sqrtPriceX96;
+        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
 
         // When: Calling rebalance().
         initiatorParams.swapData = "";

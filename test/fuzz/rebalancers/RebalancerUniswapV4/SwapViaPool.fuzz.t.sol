@@ -42,12 +42,12 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
         vm.assume(token1.balanceOf(address(poolManager)) > 1e6);
         amountOut = uint64(bound(amountOut, 1e5, token1.balanceOf(address(poolManager)) / 10));
 
-        // Get the new sqrtPriceX96 and amountIn.
+        // Get the new sqrtPrice and amountIn.
         uint160 sqrtPriceNew = SqrtPriceMath.getNextSqrtPriceFromOutput(
-            uint160(position.sqrtPriceX96), stateView.getLiquidity(poolKey.toId()), amountOut, true
+            uint160(position.sqrtPrice), stateView.getLiquidity(poolKey.toId()), amountOut, true
         );
         uint256 amountInLessFee = SqrtPriceMath.getAmount0Delta(
-            sqrtPriceNew, uint160(position.sqrtPriceX96), stateView.getLiquidity(poolKey.toId()), true
+            sqrtPriceNew, uint160(position.sqrtPrice), stateView.getLiquidity(poolKey.toId()), true
         );
         uint256 amountIn = amountInLessFee * 1e6 / (1e6 - POOL_FEE);
         vm.assume(amountIn > 10);
@@ -64,12 +64,11 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
         deal(address(token1), address(rebalancer), balance1, true);
 
         // And: The pool is still balanced after the swap.
-        cache.lowerBoundSqrtPriceX96 =
-            uint160(bound(cache.lowerBoundSqrtPriceX96, BOUND_SQRT_PRICE_LOWER, sqrtPriceNew - 10));
+        cache.lowerBoundSqrtPrice = uint160(bound(cache.lowerBoundSqrtPrice, BOUND_SQRT_PRICE_LOWER, sqrtPriceNew - 10));
 
         // When: Calling swapViaPool.
         Rebalancer.PositionState memory position_;
-        (balances, position_) = rebalancer.swapViaPool(balances, position, rebalanceParams, cache, amountOut);
+        (balances, position_) = rebalancer.swapViaPool(balances, position, cache, rebalanceParams.zeroToOne, amountOut);
 
         // Then: The correct balances are returned.
         assertEq(amountOut, balances[1] - balance1);
@@ -77,9 +76,9 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
         assertEq(balances[0], token0.balanceOf(address(rebalancer)));
         assertEq(balances[1], token1.balanceOf(address(rebalancer)));
 
-        // And: The sqrtPriceX96 is updated.
-        (uint160 sqrtPriceX96,,,) = stateView.getSlot0(poolKey.toId());
-        assertEq(sqrtPriceX96, position_.sqrtPriceX96);
+        // And: The sqrtPrice is updated.
+        (uint160 sqrtPrice,,,) = stateView.getSlot0(poolKey.toId());
+        assertEq(sqrtPrice, position_.sqrtPrice);
     }
 
     function testFuzz_Success_swapViaPool_NotNative_ZeroToOne_Unbalanced(
@@ -101,12 +100,12 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
         vm.assume(token1.balanceOf(address(poolManager)) > 1e6);
         amountOut = uint64(bound(amountOut, 1e5, token1.balanceOf(address(poolManager)) / 10));
 
-        // Get the new sqrtPriceX96 and amountIn.
+        // Get the new sqrtPrice and amountIn.
         uint160 sqrtPriceNew = SqrtPriceMath.getNextSqrtPriceFromOutput(
-            uint160(position.sqrtPriceX96), stateView.getLiquidity(poolKey.toId()), amountOut, true
+            uint160(position.sqrtPrice), stateView.getLiquidity(poolKey.toId()), amountOut, true
         );
         uint256 amountInLessFee = SqrtPriceMath.getAmount0Delta(
-            sqrtPriceNew, uint160(position.sqrtPriceX96), stateView.getLiquidity(poolKey.toId()), true
+            sqrtPriceNew, uint160(position.sqrtPrice), stateView.getLiquidity(poolKey.toId()), true
         );
         uint256 amountIn = amountInLessFee * 1e6 / (1e6 - POOL_FEE);
         vm.assume(amountIn > 10);
@@ -123,22 +122,22 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
         deal(address(token1), address(rebalancer), balance1, true);
 
         // And: The pool is still balanced after the swap.
-        vm.assume(position.sqrtPriceX96 - sqrtPriceNew > 1);
-        cache.lowerBoundSqrtPriceX96 =
-            uint160(bound(cache.lowerBoundSqrtPriceX96, sqrtPriceNew + 1, uint160(position.sqrtPriceX96) - 1));
+        vm.assume(position.sqrtPrice - sqrtPriceNew > 1);
+        cache.lowerBoundSqrtPrice =
+            uint160(bound(cache.lowerBoundSqrtPrice, sqrtPriceNew + 1, uint160(position.sqrtPrice) - 1));
 
         // When: Calling swapViaPool.
         Rebalancer.PositionState memory position_;
-        (balances, position_) = rebalancer.swapViaPool(balances, position, rebalanceParams, cache, amountOut);
+        (balances, position_) = rebalancer.swapViaPool(balances, position, cache, rebalanceParams.zeroToOne, amountOut);
 
         // Then: The correct balances are returned.
         assertEq(balances[0], token0.balanceOf(address(rebalancer)));
         assertEq(balances[1], token1.balanceOf(address(rebalancer)));
 
-        // Then: The sqrtPriceX96 equals the lower bound.
-        assertEq(position_.sqrtPriceX96, cache.lowerBoundSqrtPriceX96);
-        (uint160 sqrtPriceX96,,,) = stateView.getSlot0(poolKey.toId());
-        assertEq(sqrtPriceX96, position_.sqrtPriceX96);
+        // Then: The sqrtPrice equals the lower bound.
+        assertEq(position_.sqrtPrice, cache.lowerBoundSqrtPrice);
+        (uint160 sqrtPrice,,,) = stateView.getSlot0(poolKey.toId());
+        assertEq(sqrtPrice, position_.sqrtPrice);
     }
 
     function testFuzz_Success_swapViaPool_NotNative_OneToZero_Balanced(
@@ -160,12 +159,12 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
         vm.assume(token0.balanceOf(address(poolManager)) > 1e6);
         amountOut = uint64(bound(amountOut, 1e5, token0.balanceOf(address(poolManager)) / 10));
 
-        // Get the new sqrtPriceX96 and amountIn.
+        // Get the new sqrtPrice and amountIn.
         uint160 sqrtPriceNew = SqrtPriceMath.getNextSqrtPriceFromOutput(
-            uint160(position.sqrtPriceX96), stateView.getLiquidity(poolKey.toId()), amountOut, false
+            uint160(position.sqrtPrice), stateView.getLiquidity(poolKey.toId()), amountOut, false
         );
         uint256 amountInLessFee = SqrtPriceMath.getAmount1Delta(
-            sqrtPriceNew, uint160(position.sqrtPriceX96), stateView.getLiquidity(poolKey.toId()), true
+            sqrtPriceNew, uint160(position.sqrtPrice), stateView.getLiquidity(poolKey.toId()), true
         );
         uint256 amountIn = amountInLessFee * 1e6 / (1e6 - POOL_FEE);
         vm.assume(amountIn > 10);
@@ -182,12 +181,11 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
         deal(address(token1), address(rebalancer), balance1, true);
 
         // And: The pool is still balanced after the swap.
-        cache.upperBoundSqrtPriceX96 =
-            uint160(bound(cache.upperBoundSqrtPriceX96, sqrtPriceNew + 10, BOUND_SQRT_PRICE_UPPER));
+        cache.upperBoundSqrtPrice = uint160(bound(cache.upperBoundSqrtPrice, sqrtPriceNew + 10, BOUND_SQRT_PRICE_UPPER));
 
         // When: Calling swapViaPool.
         Rebalancer.PositionState memory position_;
-        (balances, position_) = rebalancer.swapViaPool(balances, position, rebalanceParams, cache, amountOut);
+        (balances, position_) = rebalancer.swapViaPool(balances, position, cache, rebalanceParams.zeroToOne, amountOut);
 
         // Then: The correct balances are returned.
         assertEq(amountOut, balances[0] - balance0);
@@ -195,9 +193,9 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
         assertEq(balances[0], token0.balanceOf(address(rebalancer)));
         assertEq(balances[1], token1.balanceOf(address(rebalancer)));
 
-        // And: The sqrtPriceX96 is updated.
-        (uint160 sqrtPriceX96,,,) = stateView.getSlot0(poolKey.toId());
-        assertEq(sqrtPriceX96, position_.sqrtPriceX96);
+        // And: The sqrtPrice is updated.
+        (uint160 sqrtPrice,,,) = stateView.getSlot0(poolKey.toId());
+        assertEq(sqrtPrice, position_.sqrtPrice);
     }
 
     function testFuzz_Success_swapViaPool_NotNative_OneToZero_UnBalanced(
@@ -219,12 +217,12 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
         vm.assume(token0.balanceOf(address(poolManager)) > 1e6);
         amountOut = uint64(bound(amountOut, 1e5, token0.balanceOf(address(poolManager)) / 10));
 
-        // Get the new sqrtPriceX96 and amountIn.
+        // Get the new sqrtPrice and amountIn.
         uint160 sqrtPriceNew = SqrtPriceMath.getNextSqrtPriceFromOutput(
-            uint160(position.sqrtPriceX96), stateView.getLiquidity(poolKey.toId()), amountOut, false
+            uint160(position.sqrtPrice), stateView.getLiquidity(poolKey.toId()), amountOut, false
         );
         uint256 amountInLessFee = SqrtPriceMath.getAmount1Delta(
-            sqrtPriceNew, uint160(position.sqrtPriceX96), stateView.getLiquidity(poolKey.toId()), true
+            sqrtPriceNew, uint160(position.sqrtPrice), stateView.getLiquidity(poolKey.toId()), true
         );
         uint256 amountIn = amountInLessFee * 1e6 / (1e6 - POOL_FEE);
         vm.assume(amountIn > 10);
@@ -241,22 +239,22 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
         deal(address(token1), address(rebalancer), balance1, true);
 
         // And: The pool is unbalanced after the swap.
-        vm.assume(sqrtPriceNew - position.sqrtPriceX96 > 1);
-        cache.upperBoundSqrtPriceX96 =
-            uint160(bound(cache.upperBoundSqrtPriceX96, uint160(position.sqrtPriceX96) + 1, sqrtPriceNew - 1));
+        vm.assume(sqrtPriceNew - position.sqrtPrice > 1);
+        cache.upperBoundSqrtPrice =
+            uint160(bound(cache.upperBoundSqrtPrice, uint160(position.sqrtPrice) + 1, sqrtPriceNew - 1));
 
         // When: Calling swapViaPool.
         Rebalancer.PositionState memory position_;
-        (balances, position_) = rebalancer.swapViaPool(balances, position, rebalanceParams, cache, amountOut);
+        (balances, position_) = rebalancer.swapViaPool(balances, position, cache, rebalanceParams.zeroToOne, amountOut);
 
         // Then: The correct balances are returned.
         assertEq(balances[0], token0.balanceOf(address(rebalancer)));
         assertEq(balances[1], token1.balanceOf(address(rebalancer)));
 
-        // Then: The sqrtPriceX96 equals the upper bound.
-        assertEq(position_.sqrtPriceX96, cache.upperBoundSqrtPriceX96);
-        (uint160 sqrtPriceX96,,,) = stateView.getSlot0(poolKey.toId());
-        assertEq(sqrtPriceX96, position_.sqrtPriceX96);
+        // Then: The sqrtPrice equals the upper bound.
+        assertEq(position_.sqrtPrice, cache.upperBoundSqrtPrice);
+        (uint160 sqrtPrice,,,) = stateView.getSlot0(poolKey.toId());
+        assertEq(sqrtPrice, position_.sqrtPrice);
     }
 
     function testFuzz_Success_swapViaPool_IsNative_ZeroToOne_Balanced(
@@ -278,12 +276,12 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
         vm.assume(token1.balanceOf(address(poolManager)) > 1e6);
         amountOut = uint64(bound(amountOut, 1e5, token1.balanceOf(address(poolManager)) / 10));
 
-        // Get the new sqrtPriceX96 and amountIn.
+        // Get the new sqrtPrice and amountIn.
         uint160 sqrtPriceNew = SqrtPriceMath.getNextSqrtPriceFromOutput(
-            uint160(position.sqrtPriceX96), stateView.getLiquidity(poolKey.toId()), amountOut, true
+            uint160(position.sqrtPrice), stateView.getLiquidity(poolKey.toId()), amountOut, true
         );
         uint256 amountInLessFee = SqrtPriceMath.getAmount0Delta(
-            sqrtPriceNew, uint160(position.sqrtPriceX96), stateView.getLiquidity(poolKey.toId()), true
+            sqrtPriceNew, uint160(position.sqrtPrice), stateView.getLiquidity(poolKey.toId()), true
         );
         uint256 amountIn = amountInLessFee * 1e6 / (1e6 - POOL_FEE);
         vm.assume(amountIn > 10);
@@ -300,12 +298,11 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
         deal(address(token1), address(rebalancer), balance1, true);
 
         // And: The pool is still balanced after the swap.
-        cache.lowerBoundSqrtPriceX96 =
-            uint160(bound(cache.lowerBoundSqrtPriceX96, BOUND_SQRT_PRICE_LOWER, sqrtPriceNew - 10));
+        cache.lowerBoundSqrtPrice = uint160(bound(cache.lowerBoundSqrtPrice, BOUND_SQRT_PRICE_LOWER, sqrtPriceNew - 10));
 
         // When: Calling swapViaPool.
         Rebalancer.PositionState memory position_;
-        (balances, position_) = rebalancer.swapViaPool(balances, position, rebalanceParams, cache, amountOut);
+        (balances, position_) = rebalancer.swapViaPool(balances, position, cache, rebalanceParams.zeroToOne, amountOut);
 
         // Then: The correct balances are returned.
         assertEq(amountOut, balances[1] - balance1);
@@ -313,9 +310,9 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
         assertEq(balances[0], address(rebalancer).balance);
         assertEq(balances[1], token1.balanceOf(address(rebalancer)));
 
-        // And: The sqrtPriceX96 is updated.
-        (uint160 sqrtPriceX96,,,) = stateView.getSlot0(poolKey.toId());
-        assertEq(sqrtPriceX96, position_.sqrtPriceX96);
+        // And: The sqrtPrice is updated.
+        (uint160 sqrtPrice,,,) = stateView.getSlot0(poolKey.toId());
+        assertEq(sqrtPrice, position_.sqrtPrice);
     }
 
     function testFuzz_Success_swapViaPool_IsNative_ZeroToOne_Unbalanced(
@@ -337,12 +334,12 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
         vm.assume(token1.balanceOf(address(poolManager)) > 1e6);
         amountOut = uint64(bound(amountOut, 1e5, token1.balanceOf(address(poolManager)) / 10));
 
-        // Get the new sqrtPriceX96 and amountIn.
+        // Get the new sqrtPrice and amountIn.
         uint160 sqrtPriceNew = SqrtPriceMath.getNextSqrtPriceFromOutput(
-            uint160(position.sqrtPriceX96), stateView.getLiquidity(poolKey.toId()), amountOut, true
+            uint160(position.sqrtPrice), stateView.getLiquidity(poolKey.toId()), amountOut, true
         );
         uint256 amountInLessFee = SqrtPriceMath.getAmount0Delta(
-            sqrtPriceNew, uint160(position.sqrtPriceX96), stateView.getLiquidity(poolKey.toId()), true
+            sqrtPriceNew, uint160(position.sqrtPrice), stateView.getLiquidity(poolKey.toId()), true
         );
         uint256 amountIn = amountInLessFee * 1e6 / (1e6 - POOL_FEE);
         vm.assume(amountIn > 10);
@@ -359,22 +356,22 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
         deal(address(token1), address(rebalancer), balance1, true);
 
         // And: The pool is still balanced after the swap.
-        vm.assume(position.sqrtPriceX96 - sqrtPriceNew > 1);
-        cache.lowerBoundSqrtPriceX96 =
-            uint160(bound(cache.lowerBoundSqrtPriceX96, sqrtPriceNew + 1, uint160(position.sqrtPriceX96) - 1));
+        vm.assume(position.sqrtPrice - sqrtPriceNew > 1);
+        cache.lowerBoundSqrtPrice =
+            uint160(bound(cache.lowerBoundSqrtPrice, sqrtPriceNew + 1, uint160(position.sqrtPrice) - 1));
 
         // When: Calling swapViaPool.
         Rebalancer.PositionState memory position_;
-        (balances, position_) = rebalancer.swapViaPool(balances, position, rebalanceParams, cache, amountOut);
+        (balances, position_) = rebalancer.swapViaPool(balances, position, cache, rebalanceParams.zeroToOne, amountOut);
 
         // Then: The correct balances are returned.
         assertEq(balances[0], address(rebalancer).balance);
         assertEq(balances[1], token1.balanceOf(address(rebalancer)));
 
-        // Then: The sqrtPriceX96 equals the lower bound.
-        assertEq(position_.sqrtPriceX96, cache.lowerBoundSqrtPriceX96);
-        (uint160 sqrtPriceX96,,,) = stateView.getSlot0(poolKey.toId());
-        assertEq(sqrtPriceX96, position_.sqrtPriceX96);
+        // Then: The sqrtPrice equals the lower bound.
+        assertEq(position_.sqrtPrice, cache.lowerBoundSqrtPrice);
+        (uint160 sqrtPrice,,,) = stateView.getSlot0(poolKey.toId());
+        assertEq(sqrtPrice, position_.sqrtPrice);
     }
 
     function testFuzz_Success_swapViaPool_IsNative_OneToZero_Balanced(
@@ -396,12 +393,12 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
         vm.assume(address(poolManager).balance > 1e6);
         amountOut = uint64(bound(amountOut, 1e5, address(poolManager).balance / 10));
 
-        // Get the new sqrtPriceX96 and amountIn.
+        // Get the new sqrtPrice and amountIn.
         uint160 sqrtPriceNew = SqrtPriceMath.getNextSqrtPriceFromOutput(
-            uint160(position.sqrtPriceX96), stateView.getLiquidity(poolKey.toId()), amountOut, false
+            uint160(position.sqrtPrice), stateView.getLiquidity(poolKey.toId()), amountOut, false
         );
         uint256 amountInLessFee = SqrtPriceMath.getAmount1Delta(
-            sqrtPriceNew, uint160(position.sqrtPriceX96), stateView.getLiquidity(poolKey.toId()), true
+            sqrtPriceNew, uint160(position.sqrtPrice), stateView.getLiquidity(poolKey.toId()), true
         );
         uint256 amountIn = amountInLessFee * 1e6 / (1e6 - POOL_FEE);
         vm.assume(amountIn > 10);
@@ -418,12 +415,11 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
         deal(address(token1), address(rebalancer), balance1, true);
 
         // And: The pool is still balanced after the swap.
-        cache.upperBoundSqrtPriceX96 =
-            uint160(bound(cache.upperBoundSqrtPriceX96, sqrtPriceNew + 10, BOUND_SQRT_PRICE_UPPER));
+        cache.upperBoundSqrtPrice = uint160(bound(cache.upperBoundSqrtPrice, sqrtPriceNew + 10, BOUND_SQRT_PRICE_UPPER));
 
         // When: Calling swapViaPool.
         Rebalancer.PositionState memory position_;
-        (balances, position_) = rebalancer.swapViaPool(balances, position, rebalanceParams, cache, amountOut);
+        (balances, position_) = rebalancer.swapViaPool(balances, position, cache, rebalanceParams.zeroToOne, amountOut);
 
         // Then: The correct balances are returned.
         assertEq(amountOut, balances[0] - balance0);
@@ -431,9 +427,9 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
         assertEq(balances[0], address(rebalancer).balance);
         assertEq(balances[1], token1.balanceOf(address(rebalancer)));
 
-        // And: The sqrtPriceX96 is updated.
-        (uint160 sqrtPriceX96,,,) = stateView.getSlot0(poolKey.toId());
-        assertEq(sqrtPriceX96, position_.sqrtPriceX96);
+        // And: The sqrtPrice is updated.
+        (uint160 sqrtPrice,,,) = stateView.getSlot0(poolKey.toId());
+        assertEq(sqrtPrice, position_.sqrtPrice);
     }
 
     function testFuzz_Success_swapViaPool_IsNative_OneToZero_UnBalanced(
@@ -455,12 +451,12 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
         vm.assume(address(poolManager).balance > 1e6);
         amountOut = uint64(bound(amountOut, 1e5, address(poolManager).balance / 10));
 
-        // Get the new sqrtPriceX96 and amountIn.
+        // Get the new sqrtPrice and amountIn.
         uint160 sqrtPriceNew = SqrtPriceMath.getNextSqrtPriceFromOutput(
-            uint160(position.sqrtPriceX96), stateView.getLiquidity(poolKey.toId()), amountOut, false
+            uint160(position.sqrtPrice), stateView.getLiquidity(poolKey.toId()), amountOut, false
         );
         uint256 amountInLessFee = SqrtPriceMath.getAmount1Delta(
-            sqrtPriceNew, uint160(position.sqrtPriceX96), stateView.getLiquidity(poolKey.toId()), true
+            sqrtPriceNew, uint160(position.sqrtPrice), stateView.getLiquidity(poolKey.toId()), true
         );
         uint256 amountIn = amountInLessFee * 1e6 / (1e6 - POOL_FEE);
         vm.assume(amountIn > 10);
@@ -477,21 +473,21 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
         deal(address(token1), address(rebalancer), balance1, true);
 
         // And: The pool is unbalanced after the swap.
-        vm.assume(sqrtPriceNew - position.sqrtPriceX96 > 1);
-        cache.upperBoundSqrtPriceX96 =
-            uint160(bound(cache.upperBoundSqrtPriceX96, uint160(position.sqrtPriceX96) + 1, sqrtPriceNew - 1));
+        vm.assume(sqrtPriceNew - position.sqrtPrice > 1);
+        cache.upperBoundSqrtPrice =
+            uint160(bound(cache.upperBoundSqrtPrice, uint160(position.sqrtPrice) + 1, sqrtPriceNew - 1));
 
         // When: Calling swapViaPool.
         Rebalancer.PositionState memory position_;
-        (balances, position_) = rebalancer.swapViaPool(balances, position, rebalanceParams, cache, amountOut);
+        (balances, position_) = rebalancer.swapViaPool(balances, position, cache, rebalanceParams.zeroToOne, amountOut);
 
         // Then: The correct balances are returned.
         assertEq(balances[0], address(rebalancer).balance);
         assertEq(balances[1], token1.balanceOf(address(rebalancer)));
 
-        // Then: The sqrtPriceX96 equals the upper bound.
-        assertEq(position_.sqrtPriceX96, cache.upperBoundSqrtPriceX96);
-        (uint160 sqrtPriceX96,,,) = stateView.getSlot0(poolKey.toId());
-        assertEq(sqrtPriceX96, position_.sqrtPriceX96);
+        // Then: The sqrtPrice equals the upper bound.
+        assertEq(position_.sqrtPrice, cache.upperBoundSqrtPrice);
+        (uint160 sqrtPrice,,,) = stateView.getSlot0(poolKey.toId());
+        assertEq(sqrtPrice, position_.sqrtPrice);
     }
 }

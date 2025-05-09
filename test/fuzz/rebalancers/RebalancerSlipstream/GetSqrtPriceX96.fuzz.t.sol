@@ -8,9 +8,9 @@ import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RebalancerSlipstream_Fuzz_Test } from "./_RebalancerSlipstream.fuzz.t.sol";
 
 /**
- * @notice Fuzz tests for the function "_getSqrtPriceX96" of contract "RebalancerSlipstream".
+ * @notice Fuzz tests for the function "_getSqrtPrice" of contract "RebalancerSlipstream".
  */
-contract GetSqrtPriceX96_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
+contract GetSqrtPrice_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
@@ -22,18 +22,18 @@ contract GetSqrtPriceX96_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_getSqrtPriceX96(uint128 liquidityPool, Rebalancer.PositionState memory position) public {
+    function testFuzz_Success_getSqrtPrice(uint128 liquidityPool, Rebalancer.PositionState memory position) public {
         // Given: A valid position.
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position, false);
         givenValidPositionState(position);
         setPositionState(position);
 
-        // When: Calling getSqrtPriceX96.
-        uint160 sqrtPriceX96 = rebalancer.getSqrtPriceX96(position);
+        // When: Calling getSqrtPrice.
+        uint160 sqrtPrice = rebalancer.getSqrtPrice(position);
 
         // Then: It should return the correct values.
-        (uint160 sqrtPriceX96_,,,,,) = poolCl.slot0();
-        assertEq(sqrtPriceX96, sqrtPriceX96_);
+        (uint160 sqrtPrice_,,,,,) = poolCl.slot0();
+        assertEq(sqrtPrice, sqrtPrice_);
     }
 }

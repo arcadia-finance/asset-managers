@@ -44,18 +44,18 @@ contract Mint_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
         cache.sqrtRatioUpper = TickMath.getSqrtPriceAtTick(position.tickUpper);
 
         // And: Liquidity is not 0, does not overflow and is below max liquidity.
-        if (position.sqrtPriceX96 <= cache.sqrtRatioLower) {
+        if (position.sqrtPrice <= cache.sqrtRatioLower) {
             uint256 liquidity0 =
                 LiquidityAmounts.getLiquidityForAmount0(cache.sqrtRatioLower, cache.sqrtRatioUpper, balance0);
             vm.assume(liquidity0 > 0);
             vm.assume(liquidity0 < UniswapHelpers.maxLiquidity(1));
-        } else if (position.sqrtPriceX96 <= cache.sqrtRatioUpper) {
+        } else if (position.sqrtPrice <= cache.sqrtRatioUpper) {
             uint256 liquidity0 =
-                LiquidityAmounts.getLiquidityForAmount0(uint160(position.sqrtPriceX96), cache.sqrtRatioUpper, balance0);
+                LiquidityAmounts.getLiquidityForAmount0(uint160(position.sqrtPrice), cache.sqrtRatioUpper, balance0);
             vm.assume(liquidity0 > 0);
             vm.assume(liquidity0 < type(uint128).max);
             uint256 liquidity1 =
-                LiquidityAmounts.getLiquidityForAmount1(cache.sqrtRatioLower, uint160(position.sqrtPriceX96), balance1);
+                LiquidityAmounts.getLiquidityForAmount1(cache.sqrtRatioLower, uint160(position.sqrtPrice), balance1);
             vm.assume(liquidity1 > 0);
             vm.assume(liquidity1 < type(uint128).max);
             vm.assume((liquidity0 < liquidity1 ? liquidity0 : liquidity1) < UniswapHelpers.maxLiquidity(1));
@@ -108,18 +108,18 @@ contract Mint_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
         cache.sqrtRatioUpper = TickMath.getSqrtPriceAtTick(position.tickUpper);
 
         // And: Liquidity is not 0, does not overflow and is below max liquidity.
-        if (position.sqrtPriceX96 <= cache.sqrtRatioLower) {
+        if (position.sqrtPrice <= cache.sqrtRatioLower) {
             uint256 liquidity0 =
                 LiquidityAmounts.getLiquidityForAmount0(cache.sqrtRatioLower, cache.sqrtRatioUpper, balance0);
             vm.assume(liquidity0 > 0);
             vm.assume(liquidity0 < UniswapHelpers.maxLiquidity(1));
-        } else if (position.sqrtPriceX96 <= cache.sqrtRatioUpper) {
+        } else if (position.sqrtPrice <= cache.sqrtRatioUpper) {
             uint256 liquidity0 =
-                LiquidityAmounts.getLiquidityForAmount0(uint160(position.sqrtPriceX96), cache.sqrtRatioUpper, balance0);
+                LiquidityAmounts.getLiquidityForAmount0(uint160(position.sqrtPrice), cache.sqrtRatioUpper, balance0);
             vm.assume(liquidity0 > 0);
             vm.assume(liquidity0 < type(uint128).max);
             uint256 liquidity1 =
-                LiquidityAmounts.getLiquidityForAmount1(cache.sqrtRatioLower, uint160(position.sqrtPriceX96), balance1);
+                LiquidityAmounts.getLiquidityForAmount1(cache.sqrtRatioLower, uint160(position.sqrtPrice), balance1);
             vm.assume(liquidity1 > 0);
             vm.assume(liquidity1 < type(uint128).max);
             vm.assume((liquidity0 < liquidity1 ? liquidity0 : liquidity1) < UniswapHelpers.maxLiquidity(1));

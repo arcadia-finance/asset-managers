@@ -12,7 +12,7 @@ import { LiquidityAmounts } from "./LiquidityAmounts.sol";
 library CLMath {
     using FixedPointMathLib for uint256;
 
-    // The binary precision of sqrtPriceX96 squared.
+    // The binary precision of sqrtPrice squared.
     uint256 internal constant Q192 = FixedPoint96.Q96 ** 2;
 
     /**
@@ -115,90 +115,90 @@ library CLMath {
     }
 
     /**
-     * @notice Calculates the value of one token in the other token for a given amountIn and sqrtPriceX96.
+     * @notice Calculates the value of one token in the other token for a given amountIn and sqrtPrice.
      * Does not take into account slippage and fees.
-     * @param sqrtPriceX96 The square root of the price (token1/token0), with 96 binary precision.
+     * @param sqrtPrice The square root of the price (token1/token0), with 96 binary precision.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param amountIn The amount that of tokenIn that must be swapped to tokenOut.
      * @return amountOut The amount of tokenOut.
-     * @dev Function will revert for all pools where the sqrtPriceX96 is bigger than type(uint128).max.
+     * @dev Function will revert for all pools where the sqrtPrice is bigger than type(uint128).max.
      * type(uint128).max is currently more than enough for all supported pools.
-     * If ever the sqrtPriceX96 of a pool exceeds type(uint128).max, a different rebalancer has to be deployed,
+     * If ever the sqrtPrice of a pool exceeds type(uint128).max, a different rebalancer has to be deployed,
      * which does two consecutive mulDivs.
      */
-    function _getSpotValue(uint256 sqrtPriceX96, bool zeroToOne, uint256 amountIn)
+    function _getSpotValue(uint256 sqrtPrice, bool zeroToOne, uint256 amountIn)
         internal
         pure
         returns (uint256 amountOut)
     {
         amountOut = zeroToOne
-            ? FullMath.mulDiv(amountIn, sqrtPriceX96 ** 2, Q192)
-            : FullMath.mulDiv(amountIn, Q192, sqrtPriceX96 ** 2);
+            ? FullMath.mulDiv(amountIn, sqrtPrice ** 2, Q192)
+            : FullMath.mulDiv(amountIn, Q192, sqrtPrice ** 2);
     }
 
     /**
-     * @notice Calculates the amountOut for a given amountIn and sqrtPriceX96 for a hypothetical
+     * @notice Calculates the amountOut for a given amountIn and sqrtPrice for a hypothetical
      * swap though the pool itself with fees but without slippage.
-     * @param sqrtPriceX96 The square root of the price (token1/token0), with 96 binary precision.
+     * @param sqrtPrice The square root of the price (token1/token0), with 96 binary precision.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param amountIn The amount of tokenIn that must be swapped to tokenOut.
      * @param fee The total fee on amountIn, with 18 decimals precision.
      * @return amountOut The amount of tokenOut.
-     * @dev Function will revert for all pools where the sqrtPriceX96 is bigger than type(uint128).max.
+     * @dev Function will revert for all pools where the sqrtPrice is bigger than type(uint128).max.
      * type(uint128).max is currently more than enough for all supported pools.
-     * If ever the sqrtPriceX96 of a pool exceeds type(uint128).max, a different rebalancer has to be deployed,
+     * If ever the sqrtPrice of a pool exceeds type(uint128).max, a different rebalancer has to be deployed,
      * which does two consecutive mulDivs.
      */
-    function _getAmountOut(uint256 sqrtPriceX96, bool zeroToOne, uint256 amountIn, uint256 fee)
+    function _getAmountOut(uint256 sqrtPrice, bool zeroToOne, uint256 amountIn, uint256 fee)
         internal
         pure
         returns (uint256 amountOut)
     {
-        require(sqrtPriceX96 <= type(uint128).max);
+        require(sqrtPrice <= type(uint128).max);
         unchecked {
             uint256 amountInWithoutFees = (1e18 - fee).mulDivDown(amountIn, 1e18);
             amountOut = zeroToOne
-                ? FullMath.mulDiv(amountInWithoutFees, sqrtPriceX96 ** 2, Q192)
-                : FullMath.mulDiv(amountInWithoutFees, Q192, sqrtPriceX96 ** 2);
+                ? FullMath.mulDiv(amountInWithoutFees, sqrtPrice ** 2, Q192)
+                : FullMath.mulDiv(amountInWithoutFees, Q192, sqrtPrice ** 2);
         }
     }
 
     /**
-     * @notice Calculates the amountIn for a given amountOut and sqrtPriceX96 for a hypothetical
+     * @notice Calculates the amountIn for a given amountOut and sqrtPrice for a hypothetical
      * swap though the pool itself with fees but without slippage.
-     * @param sqrtPriceX96 The square root of the price (token1/token0), with 96 binary precision.
+     * @param sqrtPrice The square root of the price (token1/token0), with 96 binary precision.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param amountOut The amount that tokenOut that must be swapped.
      * @param fee The total fee on amountIn, with 18 decimals precision.
      * @return amountIn The amount of tokenIn.
-     * @dev Function will revert for all pools where the sqrtPriceX96 is bigger than type(uint128).max.
+     * @dev Function will revert for all pools where the sqrtPrice is bigger than type(uint128).max.
      * type(uint128).max is currently more than enough for all supported pools.
-     * If ever the sqrtPriceX96 of a pool exceeds type(uint128).max, a different rebalancer has to be deployed,
+     * If ever the sqrtPrice of a pool exceeds type(uint128).max, a different rebalancer has to be deployed,
      * which does two consecutive mulDivs.
      */
-    function _getAmountIn(uint256 sqrtPriceX96, bool zeroToOne, uint256 amountOut, uint256 fee)
+    function _getAmountIn(uint256 sqrtPrice, bool zeroToOne, uint256 amountOut, uint256 fee)
         internal
         pure
         returns (uint256 amountIn)
     {
-        require(sqrtPriceX96 <= type(uint128).max);
+        require(sqrtPrice <= type(uint128).max);
         unchecked {
             uint256 amountInWithoutFees = zeroToOne
-                ? FullMath.mulDiv(amountOut, Q192, sqrtPriceX96 ** 2)
-                : FullMath.mulDiv(amountOut, sqrtPriceX96 ** 2, Q192);
+                ? FullMath.mulDiv(amountOut, Q192, sqrtPrice ** 2)
+                : FullMath.mulDiv(amountOut, sqrtPrice ** 2, Q192);
             amountIn = amountInWithoutFees.mulDivDown(1e18, 1e18 - fee);
         }
     }
 
     /**
      * @notice Calculates the ratio of how much of the total value of a liquidity position has to be provided in token1.
-     * @param sqrtPriceX96 The square root of the current pool price (token1/token0), with 96 binary precision.
+     * @param sqrtPrice The square root of the current pool price (token1/token0), with 96 binary precision.
      * @param sqrtRatioLower The square root price of the lower tick of the liquidity position, with 96 binary precision.
      * @param sqrtRatioUpper The square root price of the upper tick of the liquidity position, with 96 binary precision.
      * @return targetRatio The ratio of the value of token1 compared to the total value of the position, with 18 decimals precision.
-     * @dev Function will revert for all pools where the sqrtPriceX96 is bigger than type(uint128).max.
+     * @dev Function will revert for all pools where the sqrtPrice is bigger than type(uint128).max.
      * type(uint128).max is currently more than enough for all supported pools.
-     * If ever the sqrtPriceX96 of a pool exceeds type(uint128).max, a different rebalancer has to be deployed,
+     * If ever the sqrtPrice of a pool exceeds type(uint128).max, a different rebalancer has to be deployed,
      * which does two consecutive mulDivs.
      * @dev Derivation of the formula:
      * 1) The ratio is defined as:
@@ -212,17 +212,17 @@ library CLMath {
      * 4) Combining 1), 2) and 3) and simplifying we get:
      *    R = [sqrtPrice - sqrtRatioLower] / [2 * sqrtPrice - sqrtRatioLower - sqrtPrice² / sqrtRatioUpper]
      */
-    function _getTargetRatio(uint256 sqrtPriceX96, uint256 sqrtRatioLower, uint256 sqrtRatioUpper)
+    function _getTargetRatio(uint256 sqrtPrice, uint256 sqrtRatioLower, uint256 sqrtRatioUpper)
         internal
         pure
         returns (uint256 targetRatio)
     {
-        require(sqrtPriceX96 <= type(uint128).max);
-        // Unchecked: sqrtPriceX96 is always bigger than sqrtRatioLower.
-        // Unchecked: sqrtPriceX96 is always smaller than sqrtRatioUpper -> sqrtPriceX96 > sqrtPriceX96 ** 2 / sqrtRatioUpper.
+        require(sqrtPrice <= type(uint128).max);
+        // Unchecked: sqrtPrice is always bigger than sqrtRatioLower.
+        // Unchecked: sqrtPrice is always smaller than sqrtRatioUpper -> sqrtPrice > sqrtPrice ** 2 / sqrtRatioUpper.
         unchecked {
-            uint256 numerator = sqrtPriceX96 - sqrtRatioLower;
-            uint256 denominator = 2 * sqrtPriceX96 - sqrtRatioLower - sqrtPriceX96 ** 2 / sqrtRatioUpper;
+            uint256 numerator = sqrtPrice - sqrtRatioLower;
+            uint256 denominator = 2 * sqrtPrice - sqrtRatioLower - sqrtPrice ** 2 / sqrtRatioUpper;
 
             targetRatio = numerator.mulDivDown(1e18, denominator);
         }

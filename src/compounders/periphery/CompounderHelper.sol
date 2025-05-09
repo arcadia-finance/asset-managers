@@ -46,7 +46,7 @@ contract CompounderHelper {
      * @param account The owner of the position, which should be an Arcadia Account.
      * @return isCompoundable_ Bool indicating if the fees can be compounded.
      * @return compounder The address of the specific Compounder to call for the given asset.
-     * @return sqrtPriceX96 The current sqrtPriceX96 of the pool.
+     * @return sqrtPrice The current sqrtPrice of the pool.
      * @dev While this function does not persist state changes, it cannot be declared as view function.
      * Since quoteExactOutputSingle() of Uniswap's Quoter02.sol uses a try - except pattern where it first
      * does the swap (with state changes), next it reverts (state changes are not persisted) and information about
@@ -54,7 +54,7 @@ contract CompounderHelper {
      */
     function isCompoundable(uint256 id, address positionManager, address account)
         external
-        returns (bool isCompoundable_, address compounder, uint160 sqrtPriceX96)
+        returns (bool isCompoundable_, address compounder, uint160 sqrtPrice)
     {
         bool isAccount = FACTORY.isAccount(account);
         if (!isAccount) return (false, address(0), 0);
@@ -64,12 +64,12 @@ contract CompounderHelper {
         bool isUniswapV4 = positionManager == address(UniswapV4Logic.POSITION_MANAGER);
 
         if (positionManager == address(SlipstreamLogic.POSITION_MANAGER)) {
-            (isCompoundable_, compounder, sqrtPriceX96) = SlipstreamCompounderHelperLogic._isCompoundable(id, account);
+            (isCompoundable_, compounder, sqrtPrice) = SlipstreamCompounderHelperLogic._isCompoundable(id, account);
         } else if (positionManager == address(UniswapV3Logic.POSITION_MANAGER)) {
-            (isCompoundable_, compounder, sqrtPriceX96) =
+            (isCompoundable_, compounder, sqrtPrice) =
                 UniswapV3CompounderHelperLogic._isCompoundable(id, positionManager, account);
         } else if (isUniswapV4) {
-            (isCompoundable_, compounder, sqrtPriceX96) = UNISWAPV4_COMPOUNDER_HELPER.isCompoundable(id, account);
+            (isCompoundable_, compounder, sqrtPrice) = UNISWAPV4_COMPOUNDER_HELPER.isCompoundable(id, account);
         }
     }
 }

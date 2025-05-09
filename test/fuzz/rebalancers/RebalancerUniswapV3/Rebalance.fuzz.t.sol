@@ -202,7 +202,7 @@ contract Rebalance_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Tes
         }
 
         // And: The pool is balanced.
-        initiatorParams.trustedSqrtPriceX96 = position.sqrtPriceX96;
+        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
 
         // When: Calling rebalance().
         initiatorParams.swapData = "";

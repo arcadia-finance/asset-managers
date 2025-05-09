@@ -46,8 +46,8 @@ contract RebalancerUniswapV4Extension is RebalancerUniswapV4 {
         return _getPoolLiquidity(position);
     }
 
-    function getSqrtPriceX96(PositionState memory position) external view returns (uint160) {
-        return _getSqrtPriceX96(position);
+    function getSqrtPrice(PositionState memory position) external view returns (uint160) {
+        return _getSqrtPrice(position);
     }
 
     function burn(
@@ -63,11 +63,11 @@ contract RebalancerUniswapV4Extension is RebalancerUniswapV4 {
     function swapViaPool(
         uint256[] memory balances,
         PositionState memory position,
-        RebalanceParams memory rebalanceParams,
         Cache memory cache,
+        bool zeroToOne,
         uint256 amountOut
     ) external returns (uint256[] memory balances_, PositionState memory position_) {
-        _swapViaPool(balances, position, rebalanceParams, cache, amountOut);
+        _swapViaPool(balances, position, cache, zeroToOne, amountOut);
         balances_ = balances;
         position_ = position;
     }

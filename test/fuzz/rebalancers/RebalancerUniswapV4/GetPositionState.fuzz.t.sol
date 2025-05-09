@@ -49,11 +49,11 @@ contract GetPositionState_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_F
         assertEq(position_.id, initiatorParams.oldId);
         assertEq(position_.fee, POOL_FEE);
         assertEq(position_.tickSpacing, TICK_SPACING);
-        assertEq(position_.tickCurrent, TickMath.getTickAtSqrtPrice(uint160(position.sqrtPriceX96)));
+        assertEq(position_.tickCurrent, TickMath.getTickAtSqrtPrice(uint160(position.sqrtPrice)));
         assertEq(position_.tickLower, position.tickLower);
         assertEq(position_.tickUpper, position.tickUpper);
         assertEq(position_.liquidity, position.liquidity);
-        assertEq(position_.sqrtPriceX96, position.sqrtPriceX96);
+        assertEq(position_.sqrtPrice, position.sqrtPrice);
         assertEq(position_.tokens.length, 2);
         assertEq(position_.tokens[0], address(token0));
         assertEq(position_.tokens[1], address(token1));
@@ -85,11 +85,11 @@ contract GetPositionState_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_F
         assertEq(position_.id, initiatorParams.oldId);
         assertEq(position_.fee, POOL_FEE);
         assertEq(position_.tickSpacing, TICK_SPACING);
-        assertEq(position_.tickCurrent, TickMath.getTickAtSqrtPrice(uint160(position.sqrtPriceX96)));
+        assertEq(position_.tickCurrent, TickMath.getTickAtSqrtPrice(uint160(position.sqrtPrice)));
         assertEq(position_.tickLower, position.tickLower);
         assertEq(position_.tickUpper, position.tickUpper);
         assertEq(position_.liquidity, position.liquidity);
-        assertEq(position_.sqrtPriceX96, position.sqrtPriceX96);
+        assertEq(position_.sqrtPrice, position.sqrtPrice);
         assertEq(position_.tokens.length, 2);
         assertEq(position_.tokens[0], address(0));
         assertEq(position_.tokens[1], address(token1));

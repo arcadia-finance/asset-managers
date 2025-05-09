@@ -99,14 +99,14 @@ contract DefaultHook is StrategyHook {
                     tickInitializableBelowCurrent - tickRange / (2 * position.tickSpacing) * position.tickSpacing;
             } else {
                 // For tick ranges that are an even multiple of the tick spacing,
-                // we use a symmetric spacing initializable tick that is closest to the current sqrtPriceX96.
+                // we use a symmetric spacing initializable tick that is closest to the current sqrtPrice.
                 // If we have for instance a position with a range of 4 tick spacings,
-                // and the current sqrtPriceX96 is closest to first tick that can be initialised below tickCurrent:
+                // and the current sqrtPrice is closest to first tick that can be initialised below tickCurrent:
                 // - The tickLower will be 2 tick spacing below that tick.
                 // - The tickUpper will be 2 tick spacings above that tick.
-                // And vica versa when the current sqrtPriceX96 is closest to first tick that can be initialised above tickCurrent.
+                // And vica versa when the current sqrtPrice is closest to first tick that can be initialised above tickCurrent.
                 int24 tickClosest =
-                    _getClosestInitializableTick(position.tickSpacing, position.tickCurrent, position.sqrtPriceX96);
+                    _getClosestInitializableTick(position.tickSpacing, position.tickCurrent, position.sqrtPrice);
                 tickLower = tickClosest - tickRange / 2;
             }
             tickUpper = tickLower + tickRange;
@@ -117,10 +117,10 @@ contract DefaultHook is StrategyHook {
      * @notice Calculates the closest initializable tick to the current sqrtPrice.
      * @param tickSpacing The tick spacing of the pool.
      * @param tickCurrent The current tick.
-     * @param sqrtPriceX96 The current sqrtPriceX96.
+     * @param sqrtPrice The current sqrtPrice.
      * @return tickClosest TThe closest initializable tick to the current sqrtPrice.
      */
-    function _getClosestInitializableTick(int24 tickSpacing, int24 tickCurrent, uint256 sqrtPriceX96)
+    function _getClosestInitializableTick(int24 tickSpacing, int24 tickCurrent, uint256 sqrtPrice)
         internal
         pure
         returns (int24 tickClosest)
@@ -131,8 +131,8 @@ contract DefaultHook is StrategyHook {
         uint256 sqrtPriceBelow = TickMath.getSqrtPriceAtTick(tickBelow);
         uint256 sqrtPriceAbove = TickMath.getSqrtPriceAtTick(tickAbove);
 
-        // Find the initializable tick that is closest to the current sqrtPriceX96.
-        tickClosest = (sqrtPriceAbove.mulDivDown(1e18, sqrtPriceX96) > sqrtPriceX96.mulDivDown(1e18, sqrtPriceBelow))
+        // Find the initializable tick that is closest to the current sqrtPrice.
+        tickClosest = (sqrtPriceAbove.mulDivDown(1e18, sqrtPrice) > sqrtPrice.mulDivDown(1e18, sqrtPriceBelow))
             ? tickBelow
             : tickBelow + tickSpacing;
     }

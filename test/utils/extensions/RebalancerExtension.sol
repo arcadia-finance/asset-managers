@@ -30,7 +30,7 @@ contract RebalancerExtension is Rebalancer {
 
     function _getPoolLiquidity(PositionState memory position) internal view override returns (uint128) { }
 
-    function _getSqrtPriceX96(PositionState memory position) internal view override returns (uint160) { }
+    function _getSqrtPrice(PositionState memory position) internal view override returns (uint160) { }
 
     function _burn(
         uint256[] memory balances,
@@ -42,8 +42,8 @@ contract RebalancerExtension is Rebalancer {
     function _swapViaPool(
         uint256[] memory balances,
         PositionState memory position,
-        RebalanceParams memory rebalanceParams,
         Cache memory cache,
+        bool zeroToOne,
         uint256 amountOut
     ) internal override { }
 

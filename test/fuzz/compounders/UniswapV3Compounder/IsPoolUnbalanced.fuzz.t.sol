@@ -23,10 +23,10 @@ contract IsPoolUnbalanced_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_F
                               TESTS
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Success_isPoolUnbalanced_true_lowerBound() public {
-        // Given : sqrtPriceX96 < lowerBoundSqrtPriceX96
+        // Given : sqrtPrice < lowerBoundSqrtPrice
         UniswapV3Compounder.PositionState memory position;
-        position.sqrtPriceX96 = 0;
-        position.lowerBoundSqrtPriceX96 = 1;
+        position.sqrtPrice = 0;
+        position.lowerBoundSqrtPrice = 1;
 
         // When : Calling isPoolUnbalanced
         bool isPoolUnbalanced = compounder.isPoolUnbalanced(position);
@@ -36,10 +36,10 @@ contract IsPoolUnbalanced_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_F
     }
 
     function testFuzz_Success_isPoolUnbalanced_true_upperBound() public {
-        // Given : sqrtPriceX96 > upperBoundSqrtPriceX96
+        // Given : sqrtPrice > upperBoundSqrtPrice
         UniswapV3Compounder.PositionState memory position;
-        position.sqrtPriceX96 = 1;
-        position.upperBoundSqrtPriceX96 = 0;
+        position.sqrtPrice = 1;
+        position.upperBoundSqrtPrice = 0;
 
         // When : Calling isPoolUnbalanced
         bool isPoolUnbalanced = compounder.isPoolUnbalanced(position);
@@ -49,11 +49,11 @@ contract IsPoolUnbalanced_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_F
     }
 
     function testFuzz_Success_isPoolUnbalanced_false() public {
-        // Given : sqrtPriceX96 is between lower and upper bounds.
+        // Given : sqrtPrice is between lower and upper bounds.
         UniswapV3Compounder.PositionState memory position;
-        position.sqrtPriceX96 = 1;
-        position.lowerBoundSqrtPriceX96 = 0;
-        position.upperBoundSqrtPriceX96 = 2;
+        position.sqrtPrice = 1;
+        position.lowerBoundSqrtPrice = 0;
+        position.upperBoundSqrtPrice = 2;
 
         // When : Calling isPoolUnbalanced
         bool isPoolUnbalanced = compounder.isPoolUnbalanced(position);

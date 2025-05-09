@@ -108,8 +108,8 @@ abstract contract UniswapV3Compounder_Fuzz_Test is
         addAssetToArcadia(address(token1), int256(10 ** MOCK_ORACLE_DECIMALS));
 
         // Create UniswapV3 pool.
-        uint256 sqrtPriceX96 = compounder.getSqrtPriceX96(10 ** token1.decimals(), 10 ** token0.decimals());
-        usdStablePool = createPoolUniV3(address(token0), address(token1), POOL_FEE, uint160(sqrtPriceX96), 300);
+        uint256 sqrtPrice = compounder.getSqrtPrice(10 ** token1.decimals(), 10 ** token0.decimals());
+        usdStablePool = createPoolUniV3(address(token0), address(token1), POOL_FEE, uint160(sqrtPrice), 300);
 
         // And : Compounder is allowed as Asset Manager
         vm.prank(users.accountOwner);

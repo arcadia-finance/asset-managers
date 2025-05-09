@@ -36,8 +36,8 @@ contract IsCompoundable_SlipstreamCompounderHelper_Fuzz_Test is SlipstreamCompou
         addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
 
         // Create pool with 1% trade fee.
-        uint160 sqrtPriceX96 = SlipstreamLogic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPoolCL(address(token0), address(token1), 2000, sqrtPriceX96, 300);
+        uint160 sqrtPrice = SlipstreamLogic._getSqrtPrice(1e18, 1e18);
+        usdStablePool = createPoolCL(address(token0), address(token1), 2000, sqrtPrice, 300);
         usdStablePool.fee();
 
         // Set smaller initiator share
@@ -77,8 +77,8 @@ contract IsCompoundable_SlipstreamCompounderHelper_Fuzz_Test is SlipstreamCompou
         addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
 
         // Create pool with 1% trade fee.
-        uint160 sqrtPriceX96 = SlipstreamLogic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPoolCL(address(token0), address(token1), 2000, sqrtPriceX96, 300);
+        uint160 sqrtPrice = SlipstreamLogic._getSqrtPrice(1e18, 1e18);
+        usdStablePool = createPoolCL(address(token0), address(token1), 2000, sqrtPrice, 300);
 
         // Redeploy compounder with small initiator share
         uint256 initiatorShare = 0.005 * 1e18;
@@ -116,8 +116,8 @@ contract IsCompoundable_SlipstreamCompounderHelper_Fuzz_Test is SlipstreamCompou
         addAssetToArcadia(address(token0), int256(10 ** token0.decimals()));
         addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
 
-        uint160 sqrtPriceX96 = SlipstreamLogic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPoolCL(address(token0), address(token1), TICK_SPACING, sqrtPriceX96, 300);
+        uint160 sqrtPrice = SlipstreamLogic._getSqrtPrice(1e18, 1e18);
+        usdStablePool = createPoolCL(address(token0), address(token1), TICK_SPACING, sqrtPrice, 300);
 
         // Liquidity has been added for both tokens
         (uint256 tokenId,,) = addLiquidityCL(
@@ -134,11 +134,11 @@ contract IsCompoundable_SlipstreamCompounderHelper_Fuzz_Test is SlipstreamCompou
         generateFees(2, 2);
 
         // When : Calling isCompoundable()
-        (bool isCompoundable_, address compounder_, uint160 sqrtPriceX96_) =
+        (bool isCompoundable_, address compounder_, uint160 sqrtPrice_) =
             compounderHelper.isCompoundable(tokenId, address(slipstreamPositionManager), address(account));
         assertEq(isCompoundable_, true);
         assertEq(compounder_, address(slipstreamCompounder));
-        assert(sqrtPriceX96_ > sqrtPriceX96);
+        assert(sqrtPrice_ > sqrtPrice);
         // Todo: test for specific sqrtPrice here.
     }
 }

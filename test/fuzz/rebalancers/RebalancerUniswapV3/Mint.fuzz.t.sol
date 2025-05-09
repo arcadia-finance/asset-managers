@@ -41,7 +41,7 @@ contract Mint_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Test {
         givenValidPositionState(position);
 
         // And: Liquidity is not 0, does not overflow and is below max liquidity.
-        if (position.sqrtPriceX96 <= TickMath.getSqrtPriceAtTick(position.tickLower)) {
+        if (position.sqrtPrice <= TickMath.getSqrtPriceAtTick(position.tickLower)) {
             uint256 liquidity0 = LiquidityAmounts.getLiquidityForAmount0(
                 TickMath.getSqrtPriceAtTick(position.tickLower),
                 TickMath.getSqrtPriceAtTick(position.tickUpper),
@@ -49,14 +49,14 @@ contract Mint_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Test {
             );
             vm.assume(liquidity0 > 0);
             vm.assume(liquidity0 < UniswapHelpers.maxLiquidity(1));
-        } else if (position.sqrtPriceX96 <= TickMath.getSqrtPriceAtTick(position.tickUpper)) {
+        } else if (position.sqrtPrice <= TickMath.getSqrtPriceAtTick(position.tickUpper)) {
             uint256 liquidity0 = LiquidityAmounts.getLiquidityForAmount0(
-                uint160(position.sqrtPriceX96), TickMath.getSqrtPriceAtTick(position.tickUpper), balance0
+                uint160(position.sqrtPrice), TickMath.getSqrtPriceAtTick(position.tickUpper), balance0
             );
             vm.assume(liquidity0 > 0);
             vm.assume(liquidity0 < type(uint128).max);
             uint256 liquidity1 = LiquidityAmounts.getLiquidityForAmount1(
-                TickMath.getSqrtPriceAtTick(position.tickLower), uint160(position.sqrtPriceX96), balance1
+                TickMath.getSqrtPriceAtTick(position.tickLower), uint160(position.sqrtPrice), balance1
             );
             vm.assume(liquidity1 > 0);
             vm.assume(liquidity1 < type(uint128).max);

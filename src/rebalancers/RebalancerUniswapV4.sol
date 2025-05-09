@@ -28,7 +28,7 @@ import { TickMath } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src
  * It will allow third parties to trigger the rebalancing functionality for a Liquidity Position in the Account.
  * The owner of an Arcadia Account should set an initiator via setAccountInfo() that will be permisionned to rebalance
  * all Liquidity Positions held in that Account.
- * @dev The initiator will provide a trusted sqrtPriceX96 input at the time of rebalance to mitigate frontrunning risks.
+ * @dev The initiator will provide a trusted sqrtPrice input at the time of rebalance to mitigate frontrunning risks.
  * This input serves as a reference point for calculating the maximum allowed deviation during the rebalancing process,
  * ensuring that rebalancing remains within a controlled price range.
  * @dev The contract guarantees a limited slippage with each rebalance by enforcing a minimum amount of liquidity that must be added,
@@ -174,7 +174,7 @@ contract RebalancerUniswapV4 is Rebalancer {
         position.tokens[1] = Currency.unwrap(poolKey.currency1);
         position.fee = poolKey.fee;
         position.tickSpacing = poolKey.tickSpacing;
-        (position.sqrtPriceX96, position.tickCurrent,,) = POOL_MANAGER.getSlot0(poolKey.toId());
+        (position.sqrtPrice, position.tickCurrent,,) = POOL_MANAGER.getSlot0(poolKey.toId());
     }
 
     /**
@@ -199,15 +199,15 @@ contract RebalancerUniswapV4 is Rebalancer {
     }
 
     /**
-     * @notice Returns the sqrtPriceX96 of the Pool.
+     * @notice Returns the sqrtPrice of the Pool.
      * @param position A struct with position and pool related variables.
-     * @return sqrtPriceX96 The sqrtPriceX96 of the Pool.
+     * @return sqrtPrice The sqrtPrice of the Pool.
      */
-    function _getSqrtPriceX96(Rebalancer.PositionState memory position)
+    function _getSqrtPrice(Rebalancer.PositionState memory position)
         internal
         view
         override
-        returns (uint160 sqrtPriceX96)
+        returns (uint160 sqrtPrice)
     {
         PoolKey memory poolKey = PoolKey(
             Currency.wrap(position.tokens[0]),
@@ -216,7 +216,7 @@ contract RebalancerUniswapV4 is Rebalancer {
             position.tickSpacing,
             IHooks(position.pool)
         );
-        (sqrtPriceX96,,,) = POOL_MANAGER.getSlot0(poolKey.toId());
+        (sqrtPrice,,,) = POOL_MANAGER.getSlot0(poolKey.toId());
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -266,20 +266,19 @@ contract RebalancerUniswapV4 is Rebalancer {
      * @notice Swaps one token for another, directly through the pool itself.
      * @param balances The balances of the underlying tokens held by the Rebalancer.
      * @param position A struct with position and pool related variables.
-     * @param rebalanceParams A struct with the rebalance parameters.
      * @param cache A struct with cached variables.
+     * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param amountOut The amount of tokenOut that must be swapped to.
      */
     function _swapViaPool(
         uint256[] memory balances,
         Rebalancer.PositionState memory position,
-        RebalanceParams memory rebalanceParams,
         Rebalancer.Cache memory cache,
+        bool zeroToOne,
         uint256 amountOut
     ) internal override {
         // Pool should still be balanced (within tolerance boundaries) after the swap.
-        uint160 sqrtPriceLimitX96 =
-            uint160(rebalanceParams.zeroToOne ? cache.lowerBoundSqrtPriceX96 : cache.upperBoundSqrtPriceX96);
+        uint160 sqrtPriceLimitX96 = uint160(zeroToOne ? cache.lowerBoundSqrtPrice : cache.upperBoundSqrtPrice);
 
         // Do the swap.
         PoolKey memory poolKey = PoolKey(
@@ -291,7 +290,7 @@ contract RebalancerUniswapV4 is Rebalancer {
         );
         bytes memory swapData = abi.encode(
             IPoolManager.SwapParams({
-                zeroForOne: rebalanceParams.zeroToOne,
+                zeroForOne: zeroToOne,
                 amountSpecified: int256(amountOut),
                 sqrtPriceLimitX96: sqrtPriceLimitX96
             }),
@@ -300,16 +299,16 @@ contract RebalancerUniswapV4 is Rebalancer {
         bytes memory results = POOL_MANAGER.unlock(swapData);
 
         // Pool should still be balanced (within tolerance boundaries) after the swap.
-        // Since the swap went through the pool itself, the sqrtPriceX96 might have brought the pool out of balance.
-        // By fetching the sqrtPriceX96, the transaction will revert in that case on the balance check.
-        (position.sqrtPriceX96,,,) = POOL_MANAGER.getSlot0(poolKey.toId());
+        // Since the swap went through the pool itself, the sqrtPrice might have brought the pool out of balance.
+        // By fetching the sqrtPrice, the transaction will revert in that case on the balance check.
+        (position.sqrtPrice,,,) = POOL_MANAGER.getSlot0(poolKey.toId());
 
         // Update the balances.
         BalanceDelta swapDelta = abi.decode(results, (BalanceDelta));
-        balances[0] = rebalanceParams.zeroToOne
+        balances[0] = zeroToOne
             ? balances[0] - uint256(-int256(swapDelta.amount0()))
             : balances[0] + uint256(int256(swapDelta.amount0()));
-        balances[1] = rebalanceParams.zeroToOne
+        balances[1] = zeroToOne
             ? balances[1] + uint256(int256(swapDelta.amount1()))
             : balances[1] - uint256(-int256(swapDelta.amount1()));
     }
@@ -405,9 +404,9 @@ contract RebalancerUniswapV4 is Rebalancer {
 
         // Pool should still be balanced (within tolerance boundaries) after the swap.
         // Since the swap went potentially through the pool itself (but does not have to),
-        // the sqrtPriceX96 might have moved and brought the pool out of balance.
-        // By fetching the sqrtPriceX96, the transaction will revert in that case on the balance check.
-        position.sqrtPriceX96 = _getSqrtPriceX96(position);
+        // the sqrtPrice might have moved and brought the pool out of balance.
+        // By fetching the sqrtPrice, the transaction will revert in that case on the balance check.
+        position.sqrtPrice = _getSqrtPrice(position);
 
         // Handle pools with native ETH.
         if (isNative) IWETH(WETH).withdraw(ERC20(WETH).balanceOf(address(this)));
@@ -452,7 +451,7 @@ contract RebalancerUniswapV4 is Rebalancer {
             IHooks(position.pool)
         );
         position.liquidity = LiquidityAmounts.getLiquidityForAmounts(
-            uint160(position.sqrtPriceX96), cache.sqrtRatioLower, cache.sqrtRatioUpper, balances[0], balances[1]
+            uint160(position.sqrtPrice), cache.sqrtRatioLower, cache.sqrtRatioUpper, balances[0], balances[1]
         );
 
         // Generate calldata to mint new position.

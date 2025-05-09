@@ -27,10 +27,9 @@ contract IsPoolUnbalanced_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         Rebalancer.PositionState memory position,
         Rebalancer.Cache memory cache
     ) public {
-        // Given: sqrtPriceX96 <= lowerBoundSqrtPriceX96.
-        position.sqrtPriceX96 = bound(position.sqrtPriceX96, TickMath.MIN_SQRT_PRICE, TickMath.MAX_SQRT_PRICE);
-        cache.lowerBoundSqrtPriceX96 =
-            bound(cache.lowerBoundSqrtPriceX96, position.sqrtPriceX96, TickMath.MAX_SQRT_PRICE);
+        // Given: sqrtPrice <= lowerBoundSqrtPrice.
+        position.sqrtPrice = bound(position.sqrtPrice, TickMath.MIN_SQRT_PRICE, TickMath.MAX_SQRT_PRICE);
+        cache.lowerBoundSqrtPrice = bound(cache.lowerBoundSqrtPrice, position.sqrtPrice, TickMath.MAX_SQRT_PRICE);
 
         // When: Calling isPoolUnbalanced.
         // Then: It should return "true".
@@ -41,14 +40,12 @@ contract IsPoolUnbalanced_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         Rebalancer.PositionState memory position,
         Rebalancer.Cache memory cache
     ) public {
-        // Given: sqrtPriceX96 > lowerBoundSqrtPriceX96.
-        position.sqrtPriceX96 = bound(position.sqrtPriceX96, TickMath.MIN_SQRT_PRICE + 1, TickMath.MAX_SQRT_PRICE);
-        cache.lowerBoundSqrtPriceX96 =
-            bound(cache.lowerBoundSqrtPriceX96, TickMath.MIN_SQRT_PRICE, position.sqrtPriceX96 - 1);
+        // Given: sqrtPrice > lowerBoundSqrtPrice.
+        position.sqrtPrice = bound(position.sqrtPrice, TickMath.MIN_SQRT_PRICE + 1, TickMath.MAX_SQRT_PRICE);
+        cache.lowerBoundSqrtPrice = bound(cache.lowerBoundSqrtPrice, TickMath.MIN_SQRT_PRICE, position.sqrtPrice - 1);
 
-        // And: sqrtPriceX96 >= upperBoundSqrtPriceX96.
-        cache.upperBoundSqrtPriceX96 =
-            bound(cache.upperBoundSqrtPriceX96, cache.lowerBoundSqrtPriceX96 + 1, position.sqrtPriceX96);
+        // And: sqrtPrice >= upperBoundSqrtPrice.
+        cache.upperBoundSqrtPrice = bound(cache.upperBoundSqrtPrice, cache.lowerBoundSqrtPrice + 1, position.sqrtPrice);
 
         // When: Calling isPoolUnbalanced.
         // Then: It should return "true".
@@ -59,14 +56,12 @@ contract IsPoolUnbalanced_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         Rebalancer.PositionState memory position,
         Rebalancer.Cache memory cache
     ) public {
-        // Given: sqrtPriceX96 > lowerBoundSqrtPriceX96.
-        position.sqrtPriceX96 = bound(position.sqrtPriceX96, TickMath.MIN_SQRT_PRICE + 1, TickMath.MAX_SQRT_PRICE - 1);
-        cache.lowerBoundSqrtPriceX96 =
-            bound(cache.lowerBoundSqrtPriceX96, TickMath.MIN_SQRT_PRICE, position.sqrtPriceX96 - 1);
+        // Given: sqrtPrice > lowerBoundSqrtPrice.
+        position.sqrtPrice = bound(position.sqrtPrice, TickMath.MIN_SQRT_PRICE + 1, TickMath.MAX_SQRT_PRICE - 1);
+        cache.lowerBoundSqrtPrice = bound(cache.lowerBoundSqrtPrice, TickMath.MIN_SQRT_PRICE, position.sqrtPrice - 1);
 
-        // And: sqrtPriceX96 < upperBoundSqrtPriceX96.
-        cache.upperBoundSqrtPriceX96 =
-            bound(cache.upperBoundSqrtPriceX96, position.sqrtPriceX96 + 1, TickMath.MAX_SQRT_PRICE);
+        // And: sqrtPrice < upperBoundSqrtPrice.
+        cache.upperBoundSqrtPrice = bound(cache.upperBoundSqrtPrice, position.sqrtPrice + 1, TickMath.MAX_SQRT_PRICE);
 
         // When: Calling isPoolUnbalanced.
         // Then: It should return "false".

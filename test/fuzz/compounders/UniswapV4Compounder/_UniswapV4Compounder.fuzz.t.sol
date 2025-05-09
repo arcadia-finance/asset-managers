@@ -136,10 +136,9 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         addAssetToArcadia(address(token1), int256(10 ** MOCK_ORACLE_DECIMALS));
 
         // Create UniswapV4 pool.
-        uint256 sqrtPriceX96 = compounder.getSqrtPriceX96(10 ** token1.decimals(), 10 ** token0.decimals());
-        stablePoolKey = initializePoolV4(
-            address(token0), address(token1), uint160(sqrtPriceX96), address(0), POOL_FEE, TICK_SPACING
-        );
+        uint256 sqrtPrice = compounder.getSqrtPrice(10 ** token1.decimals(), 10 ** token0.decimals());
+        stablePoolKey =
+            initializePoolV4(address(token0), address(token1), uint160(sqrtPrice), address(0), POOL_FEE, TICK_SPACING);
 
         // And : Compounder is allowed as Asset Manager
         vm.prank(users.accountOwner);
@@ -197,9 +196,9 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
 
     function deployNativeEthPool() public {
         // Create UniswapV4 pool, native ETH has 18 decimals
-        uint256 sqrtPriceX96 = compounder.getSqrtPriceX96(10 ** token1.decimals(), 1e6);
+        uint256 sqrtPrice = compounder.getSqrtPrice(10 ** token1.decimals(), 1e6);
         nativeEthPoolKey =
-            initializePoolV4(address(0), address(token1), uint160(sqrtPriceX96), address(0), POOL_FEE, TICK_SPACING);
+            initializePoolV4(address(0), address(token1), uint160(sqrtPrice), address(0), POOL_FEE, TICK_SPACING);
     }
 
     function deployCompounder(uint256 maxTolerance, uint256 maxInitiatorShare) public {
@@ -235,7 +234,7 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         returns (TestVariables memory testVars_, bool token0HasLowestDecimals)
     {
         // Given : ticks should be in range
-        (uint160 sqrtPriceX96, int24 currentTick,,) = stateView.getSlot0(poolKey.toId());
+        (uint160 sqrtPrice, int24 currentTick,,) = stateView.getSlot0(poolKey.toId());
 
         // And : tickRange is minimum 20
         testVars.tickUpper = int24(bound(testVars.tickUpper, currentTick + 10, currentTick + type(int16).max));
@@ -250,7 +249,7 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         }
 
         // And : provide liquidity in balanced way.
-        uint256 maxLiquidity = getLiquidityDeltaFromAmounts(testVars.tickLower, testVars.tickUpper, sqrtPriceX96);
+        uint256 maxLiquidity = getLiquidityDeltaFromAmounts(testVars.tickLower, testVars.tickUpper, sqrtPrice);
         // Here we set a minimum liquidity of 1e20 to avoid having unbalanced pool to quickly after fee swap.
         testVars.liquidity = uint128(bound(testVars.liquidity, 1e20, maxLiquidity));
         vm.assume(testVars.liquidity <= poolManager.getTickSpacingToMaxLiquidityPerTick(1));
@@ -315,14 +314,14 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
     }
 
     // From UniV4-core tests
-    function getLiquidityDeltaFromAmounts(int24 tickLower, int24 tickUpper, uint160 sqrtPriceX96)
+    function getLiquidityDeltaFromAmounts(int24 tickLower, int24 tickUpper, uint160 sqrtPrice)
         public
         pure
         returns (uint256 liquidityMaxByAmount)
     {
         // First get the maximum amount0 and maximum amount1 that can be deposited at this range.
         (uint256 maxAmount0, uint256 maxAmount1) = LiquidityAmounts.getAmountsForLiquidity(
-            sqrtPriceX96,
+            sqrtPrice,
             TickMath.getSqrtPriceAtTick(tickLower),
             TickMath.getSqrtPriceAtTick(tickUpper),
             uint128(type(int128).max)
@@ -338,7 +337,7 @@ abstract contract UniswapV4Compounder_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         maxAmount1 = maxAmount1 > amount1 ? amount1 : maxAmount1;
 
         liquidityMaxByAmount = LiquidityAmountsExtension.getLiquidityForAmounts(
-            sqrtPriceX96,
+            sqrtPrice,
             TickMath.getSqrtPriceAtTick(tickLower),
             TickMath.getSqrtPriceAtTick(tickUpper),
             maxAmount0,

@@ -64,24 +64,24 @@ contract UniswapV4CompounderHelper {
      * @param account The address of the Arcadia Account.
      * @return isCompoundable_ Bool indicating if the fees can be compounded.
      * @return compounder_ The address of the Compounder contract.
-     * @return sqrtPriceX96 The current sqrtPriceX96 of the pool.
+     * @return sqrtPrice The current sqrtPrice of the pool.
      */
     function isCompoundable(uint256 id, address account)
         public
-        returns (bool isCompoundable_, address compounder_, uint160 sqrtPriceX96)
+        returns (bool isCompoundable_, address compounder_, uint160 sqrtPrice)
     {
-        // Get current sqrtPriceX96 of the pool.
+        // Get current sqrtPrice of the pool.
         (PoolKey memory poolKey, PositionInfo info) = UniswapV4Logic.POSITION_MANAGER.getPoolAndPositionInfo(id);
-        (sqrtPriceX96,,,) = UniswapV4Logic.POOL_MANAGER.getSlot0(poolKey.toId());
+        (sqrtPrice,,,) = UniswapV4Logic.POOL_MANAGER.getSlot0(poolKey.toId());
 
         // Get the initiator.
         address initiator = COMPOUNDER.accountToInitiator(account);
         if (initiator == address(0)) return (false, address(0), 0);
 
         // Fetch and cache all position related data.
-        PositionState memory position = COMPOUNDER.getPositionState(id, uint256(sqrtPriceX96), initiator);
+        PositionState memory position = COMPOUNDER.getPositionState(id, uint256(sqrtPrice), initiator);
 
-        // It should never be unbalanced at this point as we fetch sqrtPriceX96 above.
+        // It should never be unbalanced at this point as we fetch sqrtPrice above.
         if (COMPOUNDER.isPoolUnbalanced(position)) return (false, address(0), 0);
 
         // Get fee amounts
@@ -125,7 +125,7 @@ contract UniswapV4CompounderHelper {
         // The balances of the fees after swapping must be bigger than the actual input amount when increasing liquidity.
         // Due to slippage, or for pools with high swapping fees this might not always hold.
         (uint256 amount0, uint256 amount1) = _getLiquidityAmounts(position, desiredAmounts);
-        return (balances.amount0 > amount0 && balances.amount1 > amount1, address(COMPOUNDER), sqrtPriceX96);
+        return (balances.amount0 > amount0 && balances.amount1 > amount1, address(COMPOUNDER), sqrtPrice);
     }
 
     /**
@@ -149,7 +149,7 @@ contract UniswapV4CompounderHelper {
         if (amountOut == 0) return (false, 0);
 
         // Max slippage: Pool should still be balanced after the swap.
-        uint256 sqrtPriceLimitX96 = zeroToOne ? position.lowerBoundSqrtPriceX96 : position.upperBoundSqrtPriceX96;
+        uint256 sqrtPriceLimitX96 = zeroToOne ? position.lowerBoundSqrtPrice : position.upperBoundSqrtPrice;
 
         IPoolManager.SwapParams memory params = IPoolManager.SwapParams({
             zeroForOne: zeroToOne,
@@ -158,43 +158,43 @@ contract UniswapV4CompounderHelper {
         });
 
         bytes memory swapData = abi.encode(params, poolKey);
-        uint160 sqrtPriceX96After;
+        uint160 sqrtPriceAfter;
 
         // This call should always revert with the simulated swap results (or other reason).
         try UniswapV4Logic.POOL_MANAGER.unlock(swapData) { }
         catch (bytes memory reason) {
             uint128 amountIn_;
-            (amountIn_, sqrtPriceX96After) = _parseReason(reason);
+            (amountIn_, sqrtPriceAfter) = _parseReason(reason);
             amountIn = uint256(amountIn_);
         }
 
         // Check if max slippage was exceeded (sqrtPriceLimitX96 is reached).
-        isPoolUnbalanced = sqrtPriceX96After == sqrtPriceLimitX96 ? true : false;
+        isPoolUnbalanced = sqrtPriceAfter == sqrtPriceLimitX96 ? true : false;
 
-        // Update the sqrtPriceX96 of the pool.
-        position.sqrtPriceX96 = sqrtPriceX96After;
+        // Update the sqrtPrice of the pool.
+        position.sqrtPrice = sqrtPriceAfter;
     }
 
     /**
      * @notice Parses revert data returned by a simulated Uniswap V4 swap.
      * @param reason The raw revert data returned by the simulated swap.
      * @return amountIn The input amount required for the swap.
-     * @return sqrtPriceX96 The square root price after the simulated swap.
+     * @return sqrtPrice The square root price after the simulated swap.
      */
-    function _parseReason(bytes memory reason) internal pure returns (uint128 amountIn, uint160 sqrtPriceX96) {
+    function _parseReason(bytes memory reason) internal pure returns (uint128 amountIn, uint160 sqrtPrice) {
         bytes4 selector;
         assembly {
             // Load the first 4 bytes of data (after the length prefix)
             selector := mload(add(reason, 0x20))
             amountIn := mload(add(reason, 0x24))
-            sqrtPriceX96 := mload(add(reason, 0x44))
+            sqrtPrice := mload(add(reason, 0x44))
         }
 
         if (selector != QuoteSwap.selector) revert UnexpectedRevertBytes();
     }
 
     /**
-     * @notice Executes a simulated swap and reverts with the amountIn and resulting sqrtPriceX96.
+     * @notice Executes a simulated swap and reverts with the amountIn and resulting sqrtPrice.
      * @dev This function is meant to be called during a swap simulation and intentionally reverts to return swap quote data.
      * @param data The encoded swap parameters and pool key.
      * @return results This function always reverts, so `results` is never returned
@@ -208,9 +208,9 @@ contract UniswapV4CompounderHelper {
 
         // The input delta of a swap is negative so we must flip it.
         uint128 amountIn = params.zeroForOne ? uint128(-swapDelta.amount0()) : uint128(-swapDelta.amount1());
-        (uint160 sqrtPriceX96,,,) = UniswapV4Logic.POOL_MANAGER.getSlot0(poolKey.toId());
+        (uint160 sqrtPrice,,,) = UniswapV4Logic.POOL_MANAGER.getSlot0(poolKey.toId());
 
-        revert QuoteSwap(amountIn, sqrtPriceX96);
+        revert QuoteSwap(amountIn, sqrtPrice);
     }
 
     /**
@@ -260,17 +260,14 @@ contract UniswapV4CompounderHelper {
         returns (uint256 amount0, uint256 amount1)
     {
         uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
-            uint160(position.sqrtPriceX96),
+            uint160(position.sqrtPrice),
             uint160(position.sqrtRatioLower),
             uint160(position.sqrtRatioUpper),
             amountsDesired.amount0,
             amountsDesired.amount1
         );
         (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
-            uint160(position.sqrtPriceX96),
-            uint160(position.sqrtRatioLower),
-            uint160(position.sqrtRatioUpper),
-            liquidity
+            uint160(position.sqrtPrice), uint160(position.sqrtRatioLower), uint160(position.sqrtRatioUpper), liquidity
         );
     }
 }

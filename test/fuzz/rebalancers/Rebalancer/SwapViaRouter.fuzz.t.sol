@@ -51,10 +51,10 @@ contract SwapViaRouter_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         bytes memory strategyData
     ) public {
         // Given: A pool with liquidity.
-        position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
+        position.sqrtPrice = bound(position.sqrtPrice, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
         liquidityPool =
             uint128(bound(liquidityPool, UniswapHelpers.maxLiquidity(1) / 1000, UniswapHelpers.maxLiquidity(1) / 10));
-        deployAndInitUniswapV3(uint160(position.sqrtPriceX96), liquidityPool);
+        deployAndInitUniswapV3(uint160(position.sqrtPrice), liquidityPool);
         position.tokens = new address[](2);
         position.tokens[0] = address(token0);
         position.tokens[1] = address(token1);
@@ -93,10 +93,10 @@ contract SwapViaRouter_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         uint64 amountOut
     ) public {
         // Given: A pool with liquidity.
-        position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
+        position.sqrtPrice = bound(position.sqrtPrice, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
         liquidityPool =
             uint128(bound(liquidityPool, UniswapHelpers.maxLiquidity(1) / 1000, UniswapHelpers.maxLiquidity(1) / 10));
-        deployAndInitUniswapV3(uint160(position.sqrtPriceX96), liquidityPool);
+        deployAndInitUniswapV3(uint160(position.sqrtPrice), liquidityPool);
         position.tokens = new address[](2);
         position.tokens[0] = address(token0);
         position.tokens[1] = address(token1);
@@ -135,10 +135,10 @@ contract SwapViaRouter_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         uint64 amountOut
     ) public {
         // Given: A pool with liquidity.
-        position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
+        position.sqrtPrice = bound(position.sqrtPrice, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
         liquidityPool =
             uint128(bound(liquidityPool, UniswapHelpers.maxLiquidity(1) / 1000, UniswapHelpers.maxLiquidity(1) / 10));
-        deployAndInitUniswapV3(uint160(position.sqrtPriceX96), liquidityPool);
+        deployAndInitUniswapV3(uint160(position.sqrtPrice), liquidityPool);
         position.tokens = new address[](2);
         position.tokens[0] = address(token0);
         position.tokens[1] = address(token1);
@@ -179,10 +179,10 @@ contract SwapViaRouter_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         uint64 amountOut
     ) public {
         // Given: A pool with liquidity.
-        position.sqrtPriceX96 = bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
+        position.sqrtPrice = bound(position.sqrtPrice, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
         liquidityPool =
             uint128(bound(liquidityPool, UniswapHelpers.maxLiquidity(1) / 1000, UniswapHelpers.maxLiquidity(1) / 10));
-        deployAndInitUniswapV3(uint160(position.sqrtPriceX96), liquidityPool);
+        deployAndInitUniswapV3(uint160(position.sqrtPrice), liquidityPool);
         position.tokens = new address[](2);
         position.tokens[0] = address(token0);
         position.tokens[1] = address(token1);

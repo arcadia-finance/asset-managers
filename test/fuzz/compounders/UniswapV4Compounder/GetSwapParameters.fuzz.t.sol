@@ -44,12 +44,12 @@ contract GetSwapParameters_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_
 
         // And : newTick = tickUpper.
         int24 newTick = testVars.tickUpper;
-        uint160 newSqrtPriceX96 = TickMath.getSqrtPriceAtTick(newTick);
+        uint160 newSqrtPrice = TickMath.getSqrtPriceAtTick(newTick);
 
         UniswapV4Compounder.PositionState memory position;
         position.sqrtRatioLower = TickMath.getSqrtPriceAtTick(testVars.tickLower);
         position.sqrtRatioUpper = TickMath.getSqrtPriceAtTick(testVars.tickUpper);
-        position.sqrtPriceX96 = newSqrtPriceX96;
+        position.sqrtPrice = newSqrtPrice;
 
         UniswapV4Compounder.Fees memory fees;
         fees.amount0 = feeData.desiredFee0;
@@ -61,7 +61,7 @@ contract GetSwapParameters_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_
         // Then : Returned values should be valid.
         assertEq(zeroToOne, true);
 
-        uint256 amountOutExpected = UniswapV4Logic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
+        uint256 amountOutExpected = UniswapV4Logic._getAmountOut(position.sqrtPrice, true, fees.amount0);
         assertEq(amountOut, amountOutExpected);
     }
 
@@ -82,12 +82,12 @@ contract GetSwapParameters_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_
 
         // And : newTick < tickLower.
         int24 newTick = testVars.tickLower - 1;
-        uint160 newSqrtPriceX96 = TickMath.getSqrtPriceAtTick(newTick);
+        uint160 newSqrtPrice = TickMath.getSqrtPriceAtTick(newTick);
 
         UniswapV4Compounder.PositionState memory position;
         position.sqrtRatioLower = TickMath.getSqrtPriceAtTick(testVars.tickLower);
         position.sqrtRatioUpper = TickMath.getSqrtPriceAtTick(testVars.tickUpper);
-        position.sqrtPriceX96 = newSqrtPriceX96;
+        position.sqrtPrice = newSqrtPrice;
 
         UniswapV4Compounder.Fees memory fees;
         fees.amount0 = feeData.desiredFee0;
@@ -99,7 +99,7 @@ contract GetSwapParameters_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_
         // Then : Returned values should be valid
         assertEq(zeroToOne, false);
 
-        uint256 amountOutExpected = UniswapV4Logic._getAmountOut(position.sqrtPriceX96, false, fees.amount1);
+        uint256 amountOutExpected = UniswapV4Logic._getAmountOut(position.sqrtPrice, false, fees.amount1);
         assertEq(amountOut, amountOutExpected);
     }
 
@@ -119,10 +119,10 @@ contract GetSwapParameters_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_
         feeData.desiredFee0 = bound(feeData.desiredFee0, feeData.desiredFee1 + 1, type(uint16).max);
         feeData = setFeeState(feeData, stablePoolKey, testVars.liquidity);
 
-        (uint160 sqrtPriceX96,,,) = stateView.getSlot0(stablePoolKey.toId());
+        (uint160 sqrtPrice,,,) = stateView.getSlot0(stablePoolKey.toId());
 
         UniswapV4Compounder.PositionState memory position;
-        position.sqrtPriceX96 = sqrtPriceX96;
+        position.sqrtPrice = sqrtPrice;
         position.sqrtRatioLower = TickMath.getSqrtPriceAtTick(testVars.tickLower);
         position.sqrtRatioUpper = TickMath.getSqrtPriceAtTick(testVars.tickUpper);
 
@@ -141,13 +141,12 @@ contract GetSwapParameters_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_
             // Calculate targetRatio
             uint256 sqrtPriceLower = TickMath.getSqrtPriceAtTick(testVars.tickLower);
             uint256 sqrtPriceUpper = TickMath.getSqrtPriceAtTick(testVars.tickUpper);
-            uint256 numerator = position.sqrtPriceX96 - sqrtPriceLower;
-            uint256 denominator =
-                2 * position.sqrtPriceX96 - sqrtPriceLower - position.sqrtPriceX96 ** 2 / sqrtPriceUpper;
+            uint256 numerator = position.sqrtPrice - sqrtPriceLower;
+            uint256 denominator = 2 * position.sqrtPrice - sqrtPriceLower - position.sqrtPrice ** 2 / sqrtPriceUpper;
             uint256 targetRatio = numerator.mulDivDown(1e18, denominator);
 
             // Calculate the total fee value in token1 equivalent:
-            uint256 fee0ValueInToken1 = UniswapV4Logic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
+            uint256 fee0ValueInToken1 = UniswapV4Logic._getAmountOut(position.sqrtPrice, true, fees.amount0);
             uint256 totalFeeValueInToken1 = fees.amount1 + fee0ValueInToken1;
             uint256 currentRatio = fees.amount1.mulDivDown(1e18, totalFeeValueInToken1);
 
@@ -176,9 +175,9 @@ contract GetSwapParameters_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_
 
         feeData = setFeeState(feeData, stablePoolKey, testVars.liquidity);
 
-        (uint160 sqrtPriceX96,,,) = stateView.getSlot0(stablePoolKey.toId());
+        (uint160 sqrtPrice,,,) = stateView.getSlot0(stablePoolKey.toId());
         UniswapV4Compounder.PositionState memory position;
-        position.sqrtPriceX96 = sqrtPriceX96;
+        position.sqrtPrice = sqrtPrice;
         position.sqrtRatioLower = TickMath.getSqrtPriceAtTick(testVars.tickLower);
         position.sqrtRatioUpper = TickMath.getSqrtPriceAtTick(testVars.tickUpper);
 
@@ -197,18 +196,17 @@ contract GetSwapParameters_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_
             // Calculate targetRatio
             uint256 sqrtPriceLower = TickMath.getSqrtPriceAtTick(testVars.tickLower);
             uint256 sqrtPriceUpper = TickMath.getSqrtPriceAtTick(testVars.tickUpper);
-            uint256 numerator = position.sqrtPriceX96 - sqrtPriceLower;
-            uint256 denominator =
-                2 * position.sqrtPriceX96 - sqrtPriceLower - position.sqrtPriceX96 ** 2 / sqrtPriceUpper;
+            uint256 numerator = position.sqrtPrice - sqrtPriceLower;
+            uint256 denominator = 2 * position.sqrtPrice - sqrtPriceLower - position.sqrtPrice ** 2 / sqrtPriceUpper;
             uint256 targetRatio = numerator.mulDivDown(1e18, denominator);
 
             // Calculate the total fee value in token1 equivalent:
-            uint256 fee0ValueInToken1 = UniswapV4Logic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
+            uint256 fee0ValueInToken1 = UniswapV4Logic._getAmountOut(position.sqrtPrice, true, fees.amount0);
             uint256 totalFeeValueInToken1 = fees.amount1 + fee0ValueInToken1;
             uint256 currentRatio = fees.amount1.mulDivDown(1e18, totalFeeValueInToken1);
 
             uint256 amountIn = (currentRatio - targetRatio).mulDivDown(totalFeeValueInToken1, 1e18);
-            expectedAmountOut = UniswapV4Logic._getAmountOut(position.sqrtPriceX96, false, amountIn);
+            expectedAmountOut = UniswapV4Logic._getAmountOut(position.sqrtPrice, false, amountIn);
         }
 
         assertEq(amountOut, expectedAmountOut);

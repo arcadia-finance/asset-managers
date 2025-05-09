@@ -51,8 +51,8 @@ contract Swap_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder_Fuzz_Test {
         addAssetToArcadia(address(token0), int256(10 ** token0.decimals()));
         addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
 
-        uint160 sqrtPriceX96 = SlipstreamLogic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPoolCL(address(token0), address(token1), TICK_SPACING, sqrtPriceX96, 300);
+        uint160 sqrtPrice = SlipstreamLogic._getSqrtPrice(1e18, 1e18);
+        usdStablePool = createPoolCL(address(token0), address(token1), TICK_SPACING, sqrtPrice, 300);
 
         // And : Liquidity has been added for both tokens
         addLiquidityCL(
@@ -70,7 +70,7 @@ contract Swap_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder_Fuzz_Test {
             position.token0 = address(token0);
             position.token1 = address(token1);
             position.tickSpacing = TICK_SPACING;
-            position.lowerBoundSqrtPriceX96 = sqrtPriceX96 * uint256(lowerSqrtPriceDeviation) / 1e18;
+            position.lowerBoundSqrtPrice = sqrtPrice * uint256(lowerSqrtPriceDeviation) / 1e18;
             position.pool = address(usdStablePool);
         }
 
@@ -103,8 +103,8 @@ contract Swap_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder_Fuzz_Test {
         addAssetToArcadia(address(token0), int256(10 ** token0.decimals()));
         addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
 
-        uint160 sqrtPriceX96 = SlipstreamLogic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPoolCL(address(token0), address(token1), TICK_SPACING, sqrtPriceX96, 300);
+        uint160 sqrtPrice = SlipstreamLogic._getSqrtPrice(1e18, 1e18);
+        usdStablePool = createPoolCL(address(token0), address(token1), TICK_SPACING, sqrtPrice, 300);
 
         // And : Liquidity has been added for both tokens
         addLiquidityCL(
@@ -122,7 +122,7 @@ contract Swap_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder_Fuzz_Test {
             position.token0 = address(token0);
             position.token1 = address(token1);
             position.tickSpacing = TICK_SPACING;
-            position.upperBoundSqrtPriceX96 = sqrtPriceX96 * uint256(upperSqrtPriceDeviation) / 1e18;
+            position.upperBoundSqrtPrice = sqrtPrice * uint256(upperSqrtPriceDeviation) / 1e18;
             position.pool = address(usdStablePool);
         }
 
@@ -155,8 +155,8 @@ contract Swap_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder_Fuzz_Test {
         addAssetToArcadia(address(token0), int256(10 ** token0.decimals()));
         addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
 
-        uint160 sqrtPriceX96 = SlipstreamLogic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPoolCL(address(token0), address(token1), TICK_SPACING, sqrtPriceX96, 300);
+        uint160 sqrtPrice = SlipstreamLogic._getSqrtPrice(1e18, 1e18);
+        usdStablePool = createPoolCL(address(token0), address(token1), TICK_SPACING, sqrtPrice, 300);
 
         // And : Liquidity has been added for both tokens
         addLiquidityCL(
@@ -174,7 +174,7 @@ contract Swap_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder_Fuzz_Test {
             position.token0 = address(token0);
             position.token1 = address(token1);
             position.tickSpacing = TICK_SPACING;
-            position.lowerBoundSqrtPriceX96 = sqrtPriceX96 * uint256(lowerSqrtPriceDeviation) / 1e18;
+            position.lowerBoundSqrtPrice = sqrtPrice * uint256(lowerSqrtPriceDeviation) / 1e18;
             position.pool = address(usdStablePool);
         }
 
@@ -207,8 +207,8 @@ contract Swap_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder_Fuzz_Test {
         addAssetToArcadia(address(token0), int256(10 ** token0.decimals()));
         addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
 
-        uint160 sqrtPriceX96 = SlipstreamLogic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPoolCL(address(token0), address(token1), TICK_SPACING, sqrtPriceX96, 300);
+        uint160 sqrtPrice = SlipstreamLogic._getSqrtPrice(1e18, 1e18);
+        usdStablePool = createPoolCL(address(token0), address(token1), TICK_SPACING, sqrtPrice, 300);
 
         // And : Liquidity has been added for both tokens
         addLiquidityCL(
@@ -226,7 +226,7 @@ contract Swap_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder_Fuzz_Test {
             position.token0 = address(token0);
             position.token1 = address(token1);
             position.tickSpacing = TICK_SPACING;
-            position.upperBoundSqrtPriceX96 = sqrtPriceX96 * uint256(upperSqrtPriceDeviation) / 1e18;
+            position.upperBoundSqrtPrice = sqrtPrice * uint256(upperSqrtPriceDeviation) / 1e18;
             position.pool = address(usdStablePool);
         }
 

@@ -104,7 +104,7 @@ abstract contract RebalancerSlipstream_Fuzz_Test is Fuzz_Test, SlipstreamFixture
         id = initSlipstream(2 ** 96, type(uint64).max, TICK_SPACING);
     }
 
-    function initSlipstream(uint160 sqrtPriceX96, uint128 liquidityPool, int24 tickSpacing)
+    function initSlipstream(uint160 sqrtPrice, uint128 liquidityPool, int24 tickSpacing)
         internal
         returns (uint256 id)
     {
@@ -112,10 +112,10 @@ abstract contract RebalancerSlipstream_Fuzz_Test is Fuzz_Test, SlipstreamFixture
         SlipstreamFixture.setUp();
 
         // Add assets to Arcadia.
-        addAssetsToArcadia(sqrtPriceX96);
+        addAssetsToArcadia(sqrtPrice);
 
         // Create pool.
-        poolCl = createPoolCL(address(token0), address(token1), tickSpacing, sqrtPriceX96, 300);
+        poolCl = createPoolCL(address(token0), address(token1), tickSpacing, sqrtPrice, 300);
 
         // Create initial position.
         (id,,) = addLiquidityCL(
@@ -128,8 +128,8 @@ abstract contract RebalancerSlipstream_Fuzz_Test is Fuzz_Test, SlipstreamFixture
         );
     }
 
-    function addAssetsToArcadia(uint256 sqrtPriceX96) internal {
-        uint256 price0 = FullMath.mulDiv(1e18, sqrtPriceX96 ** 2, FixedPoint96.Q96 ** 2);
+    function addAssetsToArcadia(uint256 sqrtPrice) internal {
+        uint256 price0 = FullMath.mulDiv(1e18, sqrtPrice ** 2, FixedPoint96.Q96 ** 2);
         uint256 price1 = 1e18;
 
         addAssetToArcadia(address(token0), int256(price0));
@@ -142,20 +142,20 @@ abstract contract RebalancerSlipstream_Fuzz_Test is Fuzz_Test, SlipstreamFixture
         returns (uint128 liquidityPool_)
     {
         // Given: Reasonable current price.
-        position.sqrtPriceX96 =
-            uint160(bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3));
+        position.sqrtPrice =
+            uint160(bound(position.sqrtPrice, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3));
 
         // And: Pool has reasonable liquidity.
         liquidityPool_ =
             uint128(bound(liquidityPool, UniswapHelpers.maxLiquidity(1) / 1000, UniswapHelpers.maxLiquidity(1) / 10));
-        position.sqrtPriceX96 = uint160(position.sqrtPriceX96);
-        position.tickCurrent = TickMath.getTickAtSqrtPrice(uint160(position.sqrtPriceX96));
+        position.sqrtPrice = uint160(position.sqrtPrice);
+        position.tickCurrent = TickMath.getTickAtSqrtPrice(uint160(position.sqrtPrice));
         position.tickSpacing = TICK_SPACING;
     }
 
     function setPoolState(uint128 liquidityPool, Rebalancer.PositionState memory position, bool staked) internal {
         // Create pool.
-        initSlipstream(uint160(position.sqrtPriceX96), liquidityPool, position.tickSpacing);
+        initSlipstream(uint160(position.sqrtPrice), liquidityPool, position.tickSpacing);
         position.pool = address(poolCl);
         position.fee = poolCl.fee();
         position.tokens = new address[](2);

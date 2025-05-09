@@ -96,16 +96,16 @@ abstract contract RebalancerUniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, 
         id = initUniswapV3(2 ** 96, type(uint64).max, POOL_FEE);
     }
 
-    function initUniswapV3(uint160 sqrtPriceX96, uint128 liquidityPool, uint24 poolFee) internal returns (uint256 id) {
+    function initUniswapV3(uint160 sqrtPrice, uint128 liquidityPool, uint24 poolFee) internal returns (uint256 id) {
         // Create tokens.
         token0 = new ERC20Mock("TokenA", "TOKA", 0);
         token1 = new ERC20Mock("TokenB", "TOKB", 0);
         (token0, token1) = (token0 < token1) ? (token0, token1) : (token1, token0);
 
-        addAssetsToArcadia(sqrtPriceX96);
+        addAssetsToArcadia(sqrtPrice);
 
         // Create pool.
-        poolUniswap = createPoolUniV3(address(token0), address(token1), poolFee, sqrtPriceX96, 300);
+        poolUniswap = createPoolUniV3(address(token0), address(token1), poolFee, sqrtPrice, 300);
 
         // Create initial position.
         int24 tickSpacing = poolUniswap.tickSpacing();
@@ -119,8 +119,8 @@ abstract contract RebalancerUniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, 
         );
     }
 
-    function addAssetsToArcadia(uint256 sqrtPriceX96) internal {
-        uint256 price0 = FullMath.mulDiv(1e18, sqrtPriceX96 ** 2, FixedPoint96.Q96 ** 2);
+    function addAssetsToArcadia(uint256 sqrtPrice) internal {
+        uint256 price0 = FullMath.mulDiv(1e18, sqrtPrice ** 2, FixedPoint96.Q96 ** 2);
         uint256 price1 = 1e18;
 
         addAssetToArcadia(address(token0), int256(price0));
@@ -133,19 +133,19 @@ abstract contract RebalancerUniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, 
         returns (uint128 liquidityPool_)
     {
         // Given: Reasonable current price.
-        position.sqrtPriceX96 =
-            uint160(bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3));
+        position.sqrtPrice =
+            uint160(bound(position.sqrtPrice, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3));
 
         // And: Pool has reasonable liquidity.
         liquidityPool_ =
             uint128(bound(liquidityPool, UniswapHelpers.maxLiquidity(1) / 1000, UniswapHelpers.maxLiquidity(1) / 10));
-        position.sqrtPriceX96 = uint160(position.sqrtPriceX96);
-        position.tickCurrent = TickMath.getTickAtSqrtPrice(uint160(position.sqrtPriceX96));
+        position.sqrtPrice = uint160(position.sqrtPrice);
+        position.tickCurrent = TickMath.getTickAtSqrtPrice(uint160(position.sqrtPrice));
         position.fee = POOL_FEE;
     }
 
     function setPoolState(uint128 liquidityPool, Rebalancer.PositionState memory position) internal {
-        initUniswapV3(uint160(position.sqrtPriceX96), liquidityPool, position.fee);
+        initUniswapV3(uint160(position.sqrtPrice), liquidityPool, position.fee);
         position.pool = address(poolUniswap);
         position.tickSpacing = poolUniswap.tickSpacing();
         position.tokens = new address[](2);

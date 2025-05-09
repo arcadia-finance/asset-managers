@@ -104,9 +104,9 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         // And: The pool is unbalanced.
         {
             (, uint256 lowerSqrtPriceDeviation,,) = rebalancer.initiatorInfo(initiator);
-            initiatorParams.trustedSqrtPriceX96 = bound(
-                initiatorParams.trustedSqrtPriceX96,
-                position.sqrtPriceX96 * 1e18 / lowerSqrtPriceDeviation + lowerSqrtPriceDeviation,
+            initiatorParams.trustedSqrtPrice = bound(
+                initiatorParams.trustedSqrtPrice,
+                position.sqrtPrice * 1e18 / lowerSqrtPriceDeviation + lowerSqrtPriceDeviation,
                 type(uint160).max
             );
         }
@@ -173,21 +173,21 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         rebalancer.setAccount(address(account));
 
         // And: The pool is initially balanced.
-        initiatorParams.trustedSqrtPriceX96 = position.sqrtPriceX96;
+        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
 
         // And: The pool is unbalanced after the swap.
         {
             (, uint256 lowerSqrtPriceDeviation,,) = rebalancer.initiatorInfo(initiator);
-            uint256 lowerBoundSqrtPriceX96 = initiatorParams.trustedSqrtPriceX96 * lowerSqrtPriceDeviation / 1e18;
-            uint256 newSqrtPriceX96 = bound(position.sqrtPriceX96, TickMath.MIN_SQRT_PRICE, lowerBoundSqrtPriceX96);
+            uint256 lowerBoundSqrtPrice = initiatorParams.trustedSqrtPrice * lowerSqrtPriceDeviation / 1e18;
+            uint256 newSqrtPrice = bound(position.sqrtPrice, TickMath.MIN_SQRT_PRICE, lowerBoundSqrtPrice);
 
             RouterSetPoolPriceUniV4Mock router = new RouterSetPoolPriceUniV4Mock();
             bytes memory routerData = abi.encodeWithSelector(
                 RouterSetPoolPriceUniV4Mock.swap.selector,
                 address(poolManager),
                 poolKey.toId(),
-                TickMath.getTickAtSqrtPrice(uint160(newSqrtPriceX96)),
-                uint160(newSqrtPriceX96)
+                TickMath.getTickAtSqrtPrice(uint160(newSqrtPrice)),
+                uint160(newSqrtPrice)
             );
             initiatorParams.swapData = abi.encode(address(router), 0, routerData);
         }
@@ -256,7 +256,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         rebalancer.setAccount(address(account));
 
         // And: The pool is balanced.
-        initiatorParams.trustedSqrtPriceX96 = position.sqrtPriceX96;
+        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
 
         // And: Swap is not optimal resulting in little liquidity.
         {
@@ -330,7 +330,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         rebalancer.setAccount(address(account));
 
         // And: The pool is balanced.
-        initiatorParams.trustedSqrtPriceX96 = position.sqrtPriceX96;
+        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
 
         // And: Swap is successful.
         {
@@ -431,7 +431,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         rebalancer.setAccount(address(account));
 
         // And: The pool is balanced.
-        initiatorParams.trustedSqrtPriceX96 = position.sqrtPriceX96;
+        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
 
         // And: Swap is successful.
         {
@@ -541,7 +541,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         rebalancer.setAccount(address(account));
 
         // And: The pool is balanced.
-        initiatorParams.trustedSqrtPriceX96 = position.sqrtPriceX96;
+        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
 
         // And: Swap is successful.
         {
@@ -644,7 +644,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         rebalancer.setAccount(address(account));
 
         // And: The pool is balanced.
-        initiatorParams.trustedSqrtPriceX96 = position.sqrtPriceX96;
+        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
 
         // And: Swap is successful.
         {

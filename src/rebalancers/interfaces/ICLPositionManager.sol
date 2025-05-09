@@ -28,7 +28,7 @@ struct MintParams {
     uint256 amount1Min;
     address recipient;
     uint256 deadline;
-    uint160 sqrtPriceX96;
+    uint160 sqrtPrice;
 }
 
 interface ICLPositionManager {

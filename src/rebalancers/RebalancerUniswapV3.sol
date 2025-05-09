@@ -20,7 +20,7 @@ import { SafeApprove } from "../libraries/SafeApprove.sol";
  * It will allow third parties to trigger the rebalancing functionality for a Liquidity Position in the Account.
  * The owner of an Arcadia Account should set an initiator via setAccountInfo() that will be permisionned to rebalance
  * all Liquidity Positions held in that Account.
- * @dev The initiator will provide a trusted sqrtPriceX96 input at the time of rebalance to mitigate frontrunning risks.
+ * @dev The initiator will provide a trusted sqrtPrice input at the time of rebalance to mitigate frontrunning risks.
  * This input serves as a reference point for calculating the maximum allowed deviation during the rebalancing process,
  * ensuring that rebalancing remains within a controlled price range.
  * @dev The contract guarantees a limited slippage with each rebalance by enforcing a minimum amount of liquidity that must be added,
@@ -143,7 +143,7 @@ contract RebalancerUniswapV3 is Rebalancer {
         // Get data of the Liquidity Pool.
         position.pool =
             PoolAddress.computeAddress(UNISWAP_V3_FACTORY, position.tokens[0], position.tokens[1], position.fee);
-        (position.sqrtPriceX96, position.tickCurrent,,,,,) = IUniswapV3Pool(position.pool).slot0();
+        (position.sqrtPrice, position.tickCurrent,,,,,) = IUniswapV3Pool(position.pool).slot0();
         position.tickSpacing = IUniswapV3Pool(position.pool).tickSpacing();
     }
 
@@ -162,17 +162,17 @@ contract RebalancerUniswapV3 is Rebalancer {
     }
 
     /**
-     * @notice Returns the sqrtPriceX96 of the Pool.
+     * @notice Returns the sqrtPrice of the Pool.
      * @param position A struct with position and pool related variables.
-     * @return sqrtPriceX96 The sqrtPriceX96 of the Pool.
+     * @return sqrtPrice The sqrtPrice of the Pool.
      */
-    function _getSqrtPriceX96(Rebalancer.PositionState memory position)
+    function _getSqrtPrice(Rebalancer.PositionState memory position)
         internal
         view
         override
-        returns (uint160 sqrtPriceX96)
+        returns (uint160 sqrtPrice)
     {
-        (sqrtPriceX96,,,,,,) = IUniswapV3Pool(position.pool).slot0();
+        (sqrtPrice,,,,,,) = IUniswapV3Pool(position.pool).slot0();
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -226,42 +226,38 @@ contract RebalancerUniswapV3 is Rebalancer {
      * @notice Swaps one token for another, directly through the pool itself.
      * @param balances The balances of the underlying tokens held by the Rebalancer.
      * @param position A struct with position and pool related variables.
-     * @param rebalanceParams A struct with the rebalance parameters.
      * @param cache A struct with cached variables.
+     * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param amountOut The amount of tokenOut that must be swapped to.
      */
     function _swapViaPool(
         uint256[] memory balances,
         Rebalancer.PositionState memory position,
-        RebalanceParams memory rebalanceParams,
         Rebalancer.Cache memory cache,
+        bool zeroToOne,
         uint256 amountOut
     ) internal override {
         // Pool should still be balanced (within tolerance boundaries) after the swap.
-        uint160 sqrtPriceLimitX96 =
-            uint160(rebalanceParams.zeroToOne ? cache.lowerBoundSqrtPriceX96 : cache.upperBoundSqrtPriceX96);
+        uint160 sqrtPriceLimitX96 = uint160(zeroToOne ? cache.lowerBoundSqrtPrice : cache.upperBoundSqrtPrice);
 
         // Encode the swap data.
         bytes memory data = abi.encode(position.tokens[0], position.tokens[1], position.fee);
 
         // Do the swap.
         // Callback (external function) must be implemented in the main contract.
-        (int256 deltaAmount0, int256 deltaAmount1) = IUniswapV3Pool(position.pool).swap(
-            address(this), rebalanceParams.zeroToOne, -int256(amountOut), sqrtPriceLimitX96, data
-        );
+        (int256 deltaAmount0, int256 deltaAmount1) =
+            IUniswapV3Pool(position.pool).swap(address(this), zeroToOne, -int256(amountOut), sqrtPriceLimitX96, data);
 
         // Check that pool is still balanced.
         // If sqrtPriceLimitX96 is reached before an amountOut of tokenOut is received, the pool is not balanced anymore.
-        // By setting the sqrtPriceX96 to sqrtPriceLimitX96, the transaction will revert on the balance check.
-        if (amountOut > (rebalanceParams.zeroToOne ? uint256(-deltaAmount1) : uint256(-deltaAmount0))) {
-            position.sqrtPriceX96 = sqrtPriceLimitX96;
+        // By setting the sqrtPrice to sqrtPriceLimitX96, the transaction will revert on the balance check.
+        if (amountOut > (zeroToOne ? uint256(-deltaAmount1) : uint256(-deltaAmount0))) {
+            position.sqrtPrice = sqrtPriceLimitX96;
         }
 
         // Update the balances.
-        balances[0] =
-            rebalanceParams.zeroToOne ? balances[0] - uint256(deltaAmount0) : balances[0] + uint256(-deltaAmount0);
-        balances[1] =
-            rebalanceParams.zeroToOne ? balances[1] + uint256(-deltaAmount1) : balances[1] - uint256(deltaAmount1);
+        balances[0] = zeroToOne ? balances[0] - uint256(deltaAmount0) : balances[0] + uint256(-deltaAmount0);
+        balances[1] = zeroToOne ? balances[1] + uint256(-deltaAmount1) : balances[1] - uint256(deltaAmount1);
     }
 
     /**

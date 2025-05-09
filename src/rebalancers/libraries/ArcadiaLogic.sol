@@ -67,7 +67,7 @@ library ArcadiaLogic {
     }
 
     /**
-     * @notice Encodes the action data for the flash-action used to rebalance a Liquidity Position.
+     * @notice Encodes the deposit data after the flash-action is executed.
      * @param positionManager The address of the position manager.
      * @param id The id of the Liquidity Position.
      * @param count The number of tokens to deposit.

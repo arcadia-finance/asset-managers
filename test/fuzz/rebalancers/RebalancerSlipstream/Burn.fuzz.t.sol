@@ -63,7 +63,7 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
 
         // Then: It should return the correct balances.
         (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
-            uint160(position.sqrtPriceX96),
+            uint160(position.sqrtPrice),
             TickMath.getSqrtPriceAtTick(position.tickLower),
             TickMath.getSqrtPriceAtTick(position.tickUpper),
             position.liquidity
@@ -126,15 +126,15 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
 
         // Then: It should return the correct balances.
         (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
-            uint160(position.sqrtPriceX96),
+            uint160(position.sqrtPrice),
             TickMath.getSqrtPriceAtTick(position.tickLower),
             TickMath.getSqrtPriceAtTick(position.tickUpper),
             position.liquidity
         );
         uint256 rewards;
         if (
-            TickMath.getSqrtPriceAtTick(position.tickLower) < position.sqrtPriceX96
-                && position.sqrtPriceX96 < TickMath.getSqrtPriceAtTick(position.tickUpper)
+            TickMath.getSqrtPriceAtTick(position.tickLower) < position.sqrtPrice
+                && position.sqrtPrice < TickMath.getSqrtPriceAtTick(position.tickUpper)
         ) {
             uint256 rewardGrowthInsideX128;
             unchecked {
@@ -188,8 +188,8 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
         // And: Aero does not overflow.
         uint256 rewards;
         if (
-            TickMath.getSqrtPriceAtTick(position.tickLower) < position.sqrtPriceX96
-                && position.sqrtPriceX96 < TickMath.getSqrtPriceAtTick(position.tickUpper)
+            TickMath.getSqrtPriceAtTick(position.tickLower) < position.sqrtPrice
+                && position.sqrtPrice < TickMath.getSqrtPriceAtTick(position.tickUpper)
         ) {
             uint256 rewardGrowthInsideX128;
             unchecked {
@@ -227,7 +227,7 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
 
         // Then: It should return the correct balances.
         (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
-            uint160(position.sqrtPriceX96),
+            uint160(position.sqrtPrice),
             TickMath.getSqrtPriceAtTick(position.tickLower),
             TickMath.getSqrtPriceAtTick(position.tickUpper),
             position.liquidity
@@ -290,15 +290,15 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
 
         // Then: It should return the correct balances.
         (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
-            uint160(position.sqrtPriceX96),
+            uint160(position.sqrtPrice),
             TickMath.getSqrtPriceAtTick(position.tickLower),
             TickMath.getSqrtPriceAtTick(position.tickUpper),
             position.liquidity
         );
         uint256 rewards;
         if (
-            TickMath.getSqrtPriceAtTick(position.tickLower) < position.sqrtPriceX96
-                && position.sqrtPriceX96 < TickMath.getSqrtPriceAtTick(position.tickUpper)
+            TickMath.getSqrtPriceAtTick(position.tickLower) < position.sqrtPrice
+                && position.sqrtPrice < TickMath.getSqrtPriceAtTick(position.tickUpper)
         ) {
             uint256 rewardGrowthInsideX128;
             unchecked {
@@ -352,8 +352,8 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
         // And: Aero does not overflow.
         uint256 rewards;
         if (
-            TickMath.getSqrtPriceAtTick(position.tickLower) < position.sqrtPriceX96
-                && position.sqrtPriceX96 < TickMath.getSqrtPriceAtTick(position.tickUpper)
+            TickMath.getSqrtPriceAtTick(position.tickLower) < position.sqrtPrice
+                && position.sqrtPrice < TickMath.getSqrtPriceAtTick(position.tickUpper)
         ) {
             uint256 rewardGrowthInsideX128;
             unchecked {
@@ -391,7 +391,7 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
 
         // Then: It should return the correct balances.
         (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
-            uint160(position.sqrtPriceX96),
+            uint160(position.sqrtPrice),
             TickMath.getSqrtPriceAtTick(position.tickLower),
             TickMath.getSqrtPriceAtTick(position.tickUpper),
             position.liquidity

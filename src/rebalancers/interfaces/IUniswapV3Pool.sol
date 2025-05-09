@@ -8,7 +8,7 @@ interface IUniswapV3Pool {
         external
         view
         returns (
-            uint160 sqrtPriceX96,
+            uint160 sqrtPrice,
             int24 tick,
             uint16 observationIndex,
             uint16 observationCardinality,

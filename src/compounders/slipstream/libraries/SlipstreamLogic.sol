@@ -14,7 +14,7 @@ import { TickMath } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV
 library SlipstreamLogic {
     using FixedPointMathLib for uint256;
 
-    // The binary precision of sqrtPriceX96 squared.
+    // The binary precision of sqrtPrice squared.
     uint256 internal constant Q192 = FixedPoint96.Q96 ** 2;
 
     // The Slipstream Factory contract.
@@ -40,32 +40,32 @@ library SlipstreamLogic {
     }
 
     /**
-     * @notice Calculates the amountOut for a given amountIn and sqrtPriceX96 for a hypothetical
+     * @notice Calculates the amountOut for a given amountIn and sqrtPrice for a hypothetical
      * swap without slippage.
-     * @param sqrtPriceX96 The square root of the price (token1/token0), with 96 binary precision.
+     * @param sqrtPrice The square root of the price (token1/token0), with 96 binary precision.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param amountIn The amount that of tokenIn that must be swapped to tokenOut.
      * @return amountOut The amount of tokenOut.
-     * @dev Function will revert for all pools where the sqrtPriceX96 is bigger than type(uint128).max.
+     * @dev Function will revert for all pools where the sqrtPrice is bigger than type(uint128).max.
      * type(uint128).max is currently more than enough for all supported pools.
-     * If ever the sqrtPriceX96 of a pool exceeds type(uint128).max, a different auto compounder has to be deployed,
+     * If ever the sqrtPrice of a pool exceeds type(uint128).max, a different auto compounder has to be deployed,
      * which does two consecutive mulDivs.
      */
-    function _getAmountOut(uint256 sqrtPriceX96, bool zeroToOne, uint256 amountIn)
+    function _getAmountOut(uint256 sqrtPrice, bool zeroToOne, uint256 amountIn)
         internal
         pure
         returns (uint256 amountOut)
     {
         amountOut = zeroToOne
-            ? FullMath.mulDiv(amountIn, sqrtPriceX96 ** 2, Q192)
-            : FullMath.mulDiv(amountIn, Q192, sqrtPriceX96 ** 2);
+            ? FullMath.mulDiv(amountIn, sqrtPrice ** 2, Q192)
+            : FullMath.mulDiv(amountIn, Q192, sqrtPrice ** 2);
     }
 
     /**
-     * @notice Calculates the sqrtPriceX96 (token1/token0) from trusted USD prices of both tokens.
+     * @notice Calculates the sqrtPrice (token1/token0) from trusted USD prices of both tokens.
      * @param priceToken0 The price of 1e18 tokens of token0 in USD, with 18 decimals precision.
      * @param priceToken1 The price of 1e18 tokens of token1 in USD, with 18 decimals precision.
-     * @return sqrtPriceX96 The square root of the price (token1/token0), with 96 binary precision.
+     * @return sqrtPrice The square root of the price (token1/token0), with 96 binary precision.
      * @dev The price in Uniswap V3 is defined as:
      * price = amountToken1/amountToken0.
      * The usdPriceToken is defined as: usdPriceToken = amountUsd/amountToken.
@@ -73,7 +73,7 @@ library SlipstreamLogic {
      * Hence we can derive the Uniswap V3 price as:
      * price = (amountUsd/usdPriceToken1)/(amountUsd/usdPriceToken0) = usdPriceToken0/usdPriceToken1.
      */
-    function _getSqrtPriceX96(uint256 priceToken0, uint256 priceToken1) internal pure returns (uint160 sqrtPriceX96) {
+    function _getSqrtPrice(uint256 priceToken0, uint256 priceToken1) internal pure returns (uint160 sqrtPrice) {
         if (priceToken1 == 0) return TickMath.MAX_SQRT_RATIO;
 
         // Both priceTokens have 18 decimals precision and result of division should have 28 decimals precision.
@@ -86,18 +86,18 @@ library SlipstreamLogic {
 
         // Change sqrtPrice from a decimal fixed point number with 14 digits to a binary fixed point number with 96 digits.
         // Unsafe cast: Cast will only overflow when priceToken0/priceToken1 >= 2^128.
-        sqrtPriceX96 = uint160((sqrtPriceXd14 << FixedPoint96.RESOLUTION) / 1e14);
+        sqrtPrice = uint160((sqrtPriceXd14 << FixedPoint96.RESOLUTION) / 1e14);
     }
 
     /**
      * @notice Calculates the ratio of how much of the total value of a liquidity position has to be provided in token1.
-     * @param sqrtPriceX96 The square root of the current pool price (token1/token0), with 96 binary precision.
+     * @param sqrtPrice The square root of the current pool price (token1/token0), with 96 binary precision.
      * @param sqrtRatioLower The square root price of the lower tick of the liquidity position.
      * @param sqrtRatioUpper The square root price of the upper tick of the liquidity position.
      * @return targetRatio The ratio of the value of token1 compared to the total value of the position, with 18 decimals precision.
-     * @dev Function will revert for all pools where the sqrtPriceX96 is bigger than type(uint128).max.
+     * @dev Function will revert for all pools where the sqrtPrice is bigger than type(uint128).max.
      * type(uint128).max is currently more than enough for all supported pools.
-     * If ever the sqrtPriceX96 of a pool exceeds type(uint128).max, a different auto compounder has to be deployed,
+     * If ever the sqrtPrice of a pool exceeds type(uint128).max, a different auto compounder has to be deployed,
      * which does two consecutive mulDivs.
      * @dev Derivation of the formula:
      * 1) The ratio is defined as:
@@ -111,13 +111,13 @@ library SlipstreamLogic {
      * 4) Combining 1), 2) and 3) and simplifying we get:
      *    R = [sqrtPrice - sqrtRatioLower] / [2 * sqrtPrice - sqrtRatioLower - sqrtPrice² / sqrtRatioUpper]
      */
-    function _getTargetRatio(uint256 sqrtPriceX96, uint256 sqrtRatioLower, uint256 sqrtRatioUpper)
+    function _getTargetRatio(uint256 sqrtPrice, uint256 sqrtRatioLower, uint256 sqrtRatioUpper)
         internal
         pure
         returns (uint256 targetRatio)
     {
-        uint256 numerator = sqrtPriceX96 - sqrtRatioLower;
-        uint256 denominator = 2 * sqrtPriceX96 - sqrtRatioLower - sqrtPriceX96 ** 2 / sqrtRatioUpper;
+        uint256 numerator = sqrtPrice - sqrtRatioLower;
+        uint256 denominator = 2 * sqrtPrice - sqrtRatioLower - sqrtPrice ** 2 / sqrtRatioUpper;
 
         targetRatio = numerator.mulDivDown(1e18, denominator);
     }

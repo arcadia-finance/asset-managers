@@ -12,8 +12,8 @@ contract SlipstreamCompounderExtension is SlipstreamCompounder {
         SlipstreamCompounder(maxTolerance, maxInitiatorShare)
     { }
 
-    function getSqrtPriceX96(uint256 priceToken0, uint256 priceToken1) public pure returns (uint256) {
-        return SlipstreamLogic._getSqrtPriceX96(priceToken0, priceToken1);
+    function getSqrtPrice(uint256 priceToken0, uint256 priceToken1) public pure returns (uint256) {
+        return SlipstreamLogic._getSqrtPrice(priceToken0, priceToken1);
     }
 
     function swap(PositionState memory position, bool zeroToOne, uint256 amountOut) public returns (bool) {

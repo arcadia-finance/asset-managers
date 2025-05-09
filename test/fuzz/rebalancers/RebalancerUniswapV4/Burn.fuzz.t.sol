@@ -56,7 +56,7 @@ contract Burn_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
 
         // Then: It should return the correct balances.
         (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
-            uint160(position.sqrtPriceX96),
+            uint160(position.sqrtPrice),
             TickMath.getSqrtPriceAtTick(position.tickLower),
             TickMath.getSqrtPriceAtTick(position.tickUpper),
             position.liquidity
@@ -100,7 +100,7 @@ contract Burn_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
 
         // Then: It should return the correct balances.
         (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
-            uint160(position.sqrtPriceX96),
+            uint160(position.sqrtPrice),
             TickMath.getSqrtPriceAtTick(position.tickLower),
             TickMath.getSqrtPriceAtTick(position.tickUpper),
             position.liquidity

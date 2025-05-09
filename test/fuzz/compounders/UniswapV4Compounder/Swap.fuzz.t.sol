@@ -36,7 +36,7 @@ contract Swap_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_Test {
         // When : Calling _swap()
         // Then : It should return false
         bool isPoolUnbalanced = compounder.swap(
-            stablePoolKey, position.lowerBoundSqrtPriceX96, position.upperBoundSqrtPriceX96, zeroToOne, amountOut
+            stablePoolKey, position.lowerBoundSqrtPrice, position.upperBoundSqrtPrice, zeroToOne, amountOut
         );
         assertEq(isPoolUnbalanced, false);
     }
@@ -53,12 +53,12 @@ contract Swap_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_Test {
         addAssetToArcadia(address(token0), int256(10 ** token0.decimals()));
         addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
 
-        uint160 sqrtPriceX96 = UniswapV4Logic._getSqrtPriceX96(1e18, 1e18);
+        uint160 sqrtPrice = UniswapV4Logic._getSqrtPrice(1e18, 1e18);
         stablePoolKey =
-            initializePoolV4(address(token0), address(token1), sqrtPriceX96, address(0), POOL_FEE, TICK_SPACING);
+            initializePoolV4(address(token0), address(token1), sqrtPrice, address(0), POOL_FEE, TICK_SPACING);
 
         uint256 liquidity = LiquidityAmountsExtension.getLiquidityForAmounts(
-            sqrtPriceX96,
+            sqrtPrice,
             TickMath.getSqrtPriceAtTick(-1000),
             TickMath.getSqrtPriceAtTick(1000),
             100_000 * 10 ** token0.decimals(),
@@ -72,7 +72,7 @@ contract Swap_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_Test {
 
         (, uint64 lowerSqrtPriceDeviation,) = compounder.initiatorInfo(initiator);
 
-        uint256 lowerBoundSqrtPriceX96 = sqrtPriceX96 * uint256(lowerSqrtPriceDeviation) / 1e18;
+        uint256 lowerBoundSqrtPrice = sqrtPrice * uint256(lowerSqrtPriceDeviation) / 1e18;
 
         // When : Swapping an amount that will move the price out of tolerance zone
         uint256 amount0 = 100_000 * 10 ** token0.decimals();
@@ -82,7 +82,7 @@ contract Swap_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_Test {
 
         token0.mint(address(compounder), amount0);
 
-        bool isPoolUnbalanced = compounder.swap(stablePoolKey, lowerBoundSqrtPriceX96, 0, zeroToOne, amountOut);
+        bool isPoolUnbalanced = compounder.swap(stablePoolKey, lowerBoundSqrtPrice, 0, zeroToOne, amountOut);
 
         // Then : It should return "true"
         assertEq(isPoolUnbalanced, true);
@@ -100,12 +100,12 @@ contract Swap_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_Test {
         addAssetToArcadia(address(token0), int256(10 ** token0.decimals()));
         addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
 
-        uint160 sqrtPriceX96 = UniswapV4Logic._getSqrtPriceX96(1e18, 1e18);
+        uint160 sqrtPrice = UniswapV4Logic._getSqrtPrice(1e18, 1e18);
         stablePoolKey =
-            initializePoolV4(address(token0), address(token1), sqrtPriceX96, address(0), POOL_FEE, TICK_SPACING);
+            initializePoolV4(address(token0), address(token1), sqrtPrice, address(0), POOL_FEE, TICK_SPACING);
 
         uint256 liquidity = LiquidityAmountsExtension.getLiquidityForAmounts(
-            sqrtPriceX96,
+            sqrtPrice,
             TickMath.getSqrtPriceAtTick(-1000),
             TickMath.getSqrtPriceAtTick(1000),
             100_000 * 10 ** token0.decimals(),
@@ -119,7 +119,7 @@ contract Swap_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_Test {
 
         (uint64 upperSqrtPriceDeviation,,) = compounder.initiatorInfo(initiator);
 
-        uint256 upperBoundSqrtPriceX96 = sqrtPriceX96 * uint256(upperSqrtPriceDeviation) / 1e18;
+        uint256 upperBoundSqrtPrice = sqrtPrice * uint256(upperSqrtPriceDeviation) / 1e18;
 
         // When : Swapping an amount that will move the price out of tolerance zone
         uint256 amount1 = 100_000 * 10 ** token1.decimals();
@@ -129,7 +129,7 @@ contract Swap_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_Test {
 
         token1.mint(address(compounder), amount1);
 
-        bool isPoolUnbalanced = compounder.swap(stablePoolKey, 0, upperBoundSqrtPriceX96, zeroToOne, amountOut);
+        bool isPoolUnbalanced = compounder.swap(stablePoolKey, 0, upperBoundSqrtPrice, zeroToOne, amountOut);
 
         // Then : It should return "true"
         assertEq(isPoolUnbalanced, true);
@@ -147,13 +147,13 @@ contract Swap_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_Test {
         addAssetToArcadia(address(token0), int256(10 ** token0.decimals()));
         addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
 
-        uint160 sqrtPriceX96 = UniswapV4Logic._getSqrtPriceX96(1e18, 1e18);
+        uint160 sqrtPrice = UniswapV4Logic._getSqrtPrice(1e18, 1e18);
         stablePoolKey =
-            initializePoolV4(address(token0), address(token1), sqrtPriceX96, address(0), POOL_FEE, TICK_SPACING);
+            initializePoolV4(address(token0), address(token1), sqrtPrice, address(0), POOL_FEE, TICK_SPACING);
 
         // And : Liquidity has been added for both tokens
         uint256 liquidity = LiquidityAmountsExtension.getLiquidityForAmounts(
-            sqrtPriceX96,
+            sqrtPrice,
             TickMath.getSqrtPriceAtTick(-1000),
             TickMath.getSqrtPriceAtTick(1000),
             100_000 * 10 ** token0.decimals(),
@@ -166,7 +166,7 @@ contract Swap_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_Test {
 
         (, uint64 lowerSqrtPriceDeviation,) = compounder.initiatorInfo(initiator);
 
-        uint256 lowerBoundSqrtPriceX96 = sqrtPriceX96 * uint256(lowerSqrtPriceDeviation) / 1e18;
+        uint256 lowerBoundSqrtPrice = sqrtPrice * uint256(lowerSqrtPriceDeviation) / 1e18;
 
         // When : Swapping an amount that will move the price at limit of tolerance (still withing tolerance)
         uint256 amount0 = 100_000 * 10 ** token0.decimals();
@@ -176,7 +176,7 @@ contract Swap_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_Test {
 
         token0.mint(address(compounder), amount0);
 
-        bool isPoolUnbalanced = compounder.swap(stablePoolKey, lowerBoundSqrtPriceX96, 0, zeroToOne, amountOut);
+        bool isPoolUnbalanced = compounder.swap(stablePoolKey, lowerBoundSqrtPrice, 0, zeroToOne, amountOut);
 
         // Then : It should return "false"
         assertEq(isPoolUnbalanced, false);
@@ -194,13 +194,13 @@ contract Swap_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_Test {
         addAssetToArcadia(address(token0), int256(10 ** token0.decimals()));
         addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
 
-        uint160 sqrtPriceX96 = UniswapV4Logic._getSqrtPriceX96(1e18, 1e18);
+        uint160 sqrtPrice = UniswapV4Logic._getSqrtPrice(1e18, 1e18);
         stablePoolKey =
-            initializePoolV4(address(token0), address(token1), sqrtPriceX96, address(0), POOL_FEE, TICK_SPACING);
+            initializePoolV4(address(token0), address(token1), sqrtPrice, address(0), POOL_FEE, TICK_SPACING);
 
         // And : Liquidity has been added for both tokens
         uint256 liquidity = LiquidityAmountsExtension.getLiquidityForAmounts(
-            sqrtPriceX96,
+            sqrtPrice,
             TickMath.getSqrtPriceAtTick(-1000),
             TickMath.getSqrtPriceAtTick(1000),
             100_000 * 10 ** token0.decimals(),
@@ -213,7 +213,7 @@ contract Swap_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_Test {
 
         (uint64 upperSqrtPriceDeviation,,) = compounder.initiatorInfo(initiator);
 
-        uint256 upperBoundSqrtPriceX96 = sqrtPriceX96 * uint256(upperSqrtPriceDeviation) / 1e18;
+        uint256 upperBoundSqrtPrice = sqrtPrice * uint256(upperSqrtPriceDeviation) / 1e18;
 
         // When : Swapping an amount that will move the price out of tolerance zone
         uint256 amount1 = 100_000 * 10 ** token1.decimals();
@@ -223,7 +223,7 @@ contract Swap_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_Test {
 
         token1.mint(address(compounder), amount1);
 
-        bool isPoolUnbalanced = compounder.swap(stablePoolKey, 0, upperBoundSqrtPriceX96, zeroToOne, amountOut);
+        bool isPoolUnbalanced = compounder.swap(stablePoolKey, 0, upperBoundSqrtPrice, zeroToOne, amountOut);
 
         // Then : It should return "true"
         assertEq(isPoolUnbalanced, false);
