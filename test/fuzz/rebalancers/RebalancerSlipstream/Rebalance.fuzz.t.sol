@@ -89,7 +89,7 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         address initiator,
         uint256 tolerance,
         uint256 fee
-    ) public {
+    ) public canReceiveERC721(newOwner) {
         // Given : newOwner is not the old owner.
         vm.assume(newOwner != account.owner());
         vm.assume(newOwner != address(0));
