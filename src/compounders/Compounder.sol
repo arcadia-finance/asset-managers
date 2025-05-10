@@ -121,7 +121,6 @@ abstract contract Compounder is IActionBase {
     error NotAnAccount();
     error OnlyAccount();
     error OnlyAccountOwner();
-    error OnlyPool();
     error Reentered();
     error UnbalancedPool();
 

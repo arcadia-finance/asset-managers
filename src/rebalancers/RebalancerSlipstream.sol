@@ -229,9 +229,11 @@ contract RebalancerSlipstream is Rebalancer {
         if (initiatorParams.positionManager != address(POSITION_MANAGER)) {
             // If rewardToken is an underlying token of the position, add it to the balances
             uint256 rewards = IStakedSlipstream(initiatorParams.positionManager).burn(position.id);
-            if (balances.length == 3) balances[2] = rewards;
-            else if (position.tokens[0] == REWARD_TOKEN) balances[0] += rewards;
-            else balances[1] += rewards;
+            if (rewards > 0) {
+                if (balances.length == 3) balances[2] = rewards;
+                else if (position.tokens[0] == REWARD_TOKEN) balances[0] += rewards;
+                else balances[1] += rewards;
+            }
         }
 
         // Remove liquidity of the position and claim outstanding fees to get full amounts of token0 and token1
@@ -366,8 +368,48 @@ contract RebalancerSlipstream is Rebalancer {
             })
         );
 
-        balances[0] = balances[0] - amount0;
-        balances[1] = balances[1] - amount1;
+        balances[0] -= amount0;
+        balances[1] -= amount1;
+
+        // If position is a staked slipstream position, stake the position.
+        if (initiatorParams.positionManager != address(POSITION_MANAGER)) {
+            POSITION_MANAGER.approve(initiatorParams.positionManager, position.id);
+            IStakedSlipstream(initiatorParams.positionManager).mint(position.id);
+        }
+    }
+
+    function _mint2(
+        uint256[] memory balances,
+        Rebalancer.InitiatorParams memory initiatorParams,
+        Rebalancer.PositionState memory position,
+        Rebalancer.Cache memory,
+        uint256 amount0Desired,
+        uint256 amount1Desired
+    ) internal override {
+        ERC20(position.tokens[0]).safeApproveWithRetry(address(POSITION_MANAGER), amount0Desired);
+        ERC20(position.tokens[1]).safeApproveWithRetry(address(POSITION_MANAGER), amount1Desired);
+
+        uint256 amount0;
+        uint256 amount1;
+        (position.id, position.liquidity, amount0, amount1) = POSITION_MANAGER.mint(
+            MintParams({
+                token0: position.tokens[0],
+                token1: position.tokens[1],
+                tickSpacing: position.tickSpacing,
+                tickLower: position.tickLower,
+                tickUpper: position.tickUpper,
+                amount0Desired: amount0Desired,
+                amount1Desired: amount1Desired,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: address(this),
+                deadline: block.timestamp,
+                sqrtPrice: 0
+            })
+        );
+
+        balances[0] -= amount0;
+        balances[1] -= amount1;
 
         // If position is a staked slipstream position, stake the position.
         if (initiatorParams.positionManager != address(POSITION_MANAGER)) {

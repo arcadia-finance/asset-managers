@@ -103,7 +103,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
         // And: The pool is unbalanced.
         {
-            (, uint256 lowerSqrtPriceDeviation,,) = rebalancer.initiatorInfo(initiator);
+            (, uint256 lowerSqrtPriceDeviation,,,) = rebalancer.initiatorInfo(initiator);
             initiatorParams.trustedSqrtPrice = bound(
                 initiatorParams.trustedSqrtPrice,
                 position.sqrtPrice * 1e18 / lowerSqrtPriceDeviation + lowerSqrtPriceDeviation,
@@ -177,7 +177,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
         // And: The pool is unbalanced after the swap.
         {
-            (, uint256 lowerSqrtPriceDeviation,,) = rebalancer.initiatorInfo(initiator);
+            (, uint256 lowerSqrtPriceDeviation,,,) = rebalancer.initiatorInfo(initiator);
             uint256 lowerBoundSqrtPrice = initiatorParams.trustedSqrtPrice * lowerSqrtPriceDeviation / 1e18;
             uint256 newSqrtPrice = bound(position.sqrtPrice, TickMath.MIN_SQRT_PRICE, lowerBoundSqrtPrice);
 

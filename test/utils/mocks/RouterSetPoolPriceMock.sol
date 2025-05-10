@@ -5,11 +5,11 @@
 pragma solidity ^0.8.22;
 
 interface IUniswapV3PoolExtension {
-    function setSqrtPrice(uint160 sqrtPrice) external;
+    function setSqrtPriceX96(uint160 sqrtPrice) external;
 }
 
 contract RouterSetPoolPriceMock {
     function swap(address pool, uint160 sqrtPrice) external {
-        IUniswapV3PoolExtension(pool).setSqrtPrice(sqrtPrice);
+        IUniswapV3PoolExtension(pool).setSqrtPriceX96(sqrtPrice);
     }
 }

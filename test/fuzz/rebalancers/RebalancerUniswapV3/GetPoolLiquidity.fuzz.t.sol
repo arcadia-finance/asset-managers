@@ -4,7 +4,7 @@
  */
 pragma solidity ^0.8.26;
 
-import { IUniswapV3Pool } from "../../../../src/rebalancers/interfaces/IUniswapV3Pool.sol";
+import { IUniswapV3Pool } from "../../../../src/interfaces/IUniswapV3Pool.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RebalancerUniswapV3_Fuzz_Test } from "./_RebalancerUniswapV3.fuzz.t.sol";
 

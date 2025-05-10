@@ -5,10 +5,13 @@
 pragma solidity ^0.8.26;
 
 import {
-    CollectParams, DecreaseLiquidityParams, IPositionManagerV3, MintParams
-} from "./interfaces/IPositionManagerV3.sol";
+    CollectParams,
+    DecreaseLiquidityParams,
+    IPositionManagerV3,
+    MintParams
+} from "../interfaces/IPositionManagerV3.sol";
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
-import { IUniswapV3Pool } from "./interfaces/IUniswapV3Pool.sol";
+import { IUniswapV3Pool } from "../interfaces/IUniswapV3Pool.sol";
 import { PoolAddress } from "../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/PoolAddress.sol";
 import { Rebalancer } from "./Rebalancer.sol";
 import { RebalanceParams } from "./libraries/RebalanceLogic.sol";
@@ -317,7 +320,40 @@ contract RebalancerUniswapV3 is Rebalancer {
             })
         );
 
-        balances[0] = balances[0] - amount0;
-        balances[1] = balances[1] - amount1;
+        balances[0] -= amount0;
+        balances[1] -= amount1;
+    }
+
+    function _mint2(
+        uint256[] memory balances,
+        Rebalancer.InitiatorParams memory,
+        Rebalancer.PositionState memory position,
+        Rebalancer.Cache memory,
+        uint256 amount0Desired,
+        uint256 amount1Desired
+    ) internal override {
+        ERC20(position.tokens[0]).safeApproveWithRetry(address(POSITION_MANAGER), amount0Desired);
+        ERC20(position.tokens[1]).safeApproveWithRetry(address(POSITION_MANAGER), amount1Desired);
+
+        uint256 amount0;
+        uint256 amount1;
+        (position.id, position.liquidity, amount0, amount1) = POSITION_MANAGER.mint(
+            MintParams({
+                token0: position.tokens[0],
+                token1: position.tokens[1],
+                fee: position.fee,
+                tickLower: position.tickLower,
+                tickUpper: position.tickUpper,
+                amount0Desired: amount0Desired,
+                amount1Desired: amount1Desired,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: address(this),
+                deadline: block.timestamp
+            })
+        );
+
+        balances[0] -= amount0;
+        balances[1] -= amount1;
     }
 }
