@@ -29,7 +29,6 @@ contract Burn_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Test {
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
         Rebalancer.PositionState memory position,
-        Rebalancer.Cache memory cache,
         uint64 balance0,
         uint64 balance1
     ) public {
@@ -53,7 +52,7 @@ contract Burn_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Test {
         );
 
         // When: Calling burn.
-        balances = rebalancer.burn(balances, initiatorParams, position, cache);
+        balances = rebalancer.burn(balances, initiatorParams, position);
 
         // Then: It should return the correct balances.
         (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(

@@ -22,7 +22,7 @@ struct SwapParams {
     /// The desired input amount if negative (exactIn), or the desired output amount if positive (exactOut)
     int256 amountSpecified;
     /// The sqrt price at which, if reached, the swap will stop executing
-    uint160 sqrtPriceLimitX96;
+    uint160 sqrtPriceLimit;
 }
 
 interface IPoolManager {

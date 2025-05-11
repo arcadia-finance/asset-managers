@@ -8,12 +8,26 @@ import { FixedPoint96 } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { FullMath } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { LiquidityAmounts } from "./LiquidityAmounts.sol";
+import { TickMath } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
 library CLMath {
     using FixedPointMathLib for uint256;
+    /* //////////////////////////////////////////////////////////////
+                                CONSTANTS
+    ////////////////////////////////////////////////////////////// */
+
+    // The minimum sqrtPriceLimit for a swap.
+    uint160 internal constant MIN_SQRT_PRICE_LIMIT = TickMath.MIN_SQRT_PRICE + 1;
+
+    // The maximum sqrtPriceLimit for a swap.
+    uint160 internal constant MAX_SQRT_PRICE_LIMIT = TickMath.MAX_SQRT_PRICE - 1;
 
     // The binary precision of sqrtPrice squared.
     uint256 internal constant Q192 = FixedPoint96.Q96 ** 2;
+
+    /* //////////////////////////////////////////////////////////////
+                                MATHS
+    ////////////////////////////////////////////////////////////// */
 
     /**
      * @notice Calculates the swap parameters, calculated based on a hypothetical swap (in the pool itself with fees but without slippage).

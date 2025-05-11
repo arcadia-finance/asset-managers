@@ -32,20 +32,15 @@ contract RebalancerExtension is Rebalancer {
 
     function _getSqrtPrice(PositionState memory position) internal view override returns (uint160) { }
 
-    function _burn(
-        uint256[] memory balances,
-        InitiatorParams memory initiatorParams,
-        PositionState memory position,
-        Cache memory cache
-    ) internal override { }
+    function _burn(uint256[] memory balances, InitiatorParams memory initiatorParams, PositionState memory position)
+        internal
+        override
+    { }
 
-    function _swapViaPool(
-        uint256[] memory balances,
-        PositionState memory position,
-        Cache memory cache,
-        bool zeroToOne,
-        uint256 amountOut
-    ) internal override { }
+    function _swapViaPool(uint256[] memory balances, PositionState memory position, bool zeroToOne, uint256 amountOut)
+        internal
+        override
+    { }
 
     function swapViaRouter(
         uint256[] memory balances,
@@ -57,12 +52,10 @@ contract RebalancerExtension is Rebalancer {
         balances_ = balances;
     }
 
-    function _mint(
-        uint256[] memory balances,
-        InitiatorParams memory initiatorParams,
-        PositionState memory position,
-        Cache memory cache
-    ) internal override { }
+    function _mint(uint256[] memory balances, InitiatorParams memory initiatorParams, PositionState memory position)
+        internal
+        override
+    { }
 
     function transferInitiatorFee(
         uint256[] memory balances,

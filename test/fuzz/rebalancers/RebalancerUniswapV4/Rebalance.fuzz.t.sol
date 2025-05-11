@@ -58,6 +58,9 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         // Given: Account is not an Arcadia Account.
         vm.assume(!factory.isAccount(account_));
 
+        // And: account_ has no owner() function.
+        vm.assume(account_.code.length == 0);
+
         // When : calling rebalance
         // Then : it should revert
         vm.prank(caller);
@@ -91,6 +94,9 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         // Given : newOwner is not the old owner.
         vm.assume(newOwner != account.owner());
         vm.assume(newOwner != address(0));
+
+        // And : initiator is not address(0).
+        vm.assume(initiator != address(0));
 
         // And: Rebalancer is allowed as Asset Manager.
         vm.prank(users.accountOwner);

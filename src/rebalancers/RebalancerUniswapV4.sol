@@ -6,6 +6,7 @@ pragma solidity ^0.8.26;
 
 import { Actions } from "../../lib/accounts-v2/lib/v4-periphery/src/libraries/Actions.sol";
 import { BalanceDelta } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/BalanceDelta.sol";
+import { CLMath } from "../libraries/CLMath.sol";
 import { Currency } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { IHooks } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/interfaces/IHooks.sol";
@@ -232,8 +233,7 @@ contract RebalancerUniswapV4 is Rebalancer {
     function _burn(
         uint256[] memory balances,
         Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position,
-        Rebalancer.Cache memory
+        Rebalancer.PositionState memory position
     ) internal override {
         // Generate calldata to burn the position and collect the underlying assets.
         bytes memory actions = new bytes(2);
@@ -266,42 +266,31 @@ contract RebalancerUniswapV4 is Rebalancer {
      * @notice Swaps one token for another, directly through the pool itself.
      * @param balances The balances of the underlying tokens held by the Rebalancer.
      * @param position A struct with position and pool related variables.
-     * @param cache A struct with cached variables.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param amountOut The amount of tokenOut that must be swapped to.
      */
     function _swapViaPool(
         uint256[] memory balances,
         Rebalancer.PositionState memory position,
-        Rebalancer.Cache memory cache,
         bool zeroToOne,
         uint256 amountOut
     ) internal override {
-        // Pool should still be balanced (within tolerance boundaries) after the swap.
-        uint160 sqrtPriceLimitX96 = uint160(zeroToOne ? cache.lowerBoundSqrtPrice : cache.upperBoundSqrtPrice);
-
         // Do the swap.
-        PoolKey memory poolKey = PoolKey(
-            Currency.wrap(position.tokens[0]),
-            Currency.wrap(position.tokens[1]),
-            position.fee,
-            position.tickSpacing,
-            IHooks(position.pool)
-        );
         bytes memory swapData = abi.encode(
             IPoolManager.SwapParams({
                 zeroForOne: zeroToOne,
                 amountSpecified: int256(amountOut),
-                sqrtPriceLimitX96: sqrtPriceLimitX96
+                sqrtPriceLimitX96: zeroToOne ? CLMath.MIN_SQRT_PRICE_LIMIT : CLMath.MAX_SQRT_PRICE_LIMIT
             }),
-            poolKey
+            PoolKey(
+                Currency.wrap(position.tokens[0]),
+                Currency.wrap(position.tokens[1]),
+                position.fee,
+                position.tickSpacing,
+                IHooks(position.pool)
+            )
         );
         bytes memory results = POOL_MANAGER.unlock(swapData);
-
-        // Pool should still be balanced (within tolerance boundaries) after the swap.
-        // Since the swap went through the pool itself, the sqrtPrice might have brought the pool out of balance.
-        // By fetching the sqrtPrice, the transaction will revert in that case on the balance check.
-        (position.sqrtPrice,,,) = POOL_MANAGER.getSlot0(poolKey.toId());
 
         // Update the balances.
         BalanceDelta swapDelta = abi.decode(results, (BalanceDelta));
@@ -402,12 +391,6 @@ contract RebalancerUniswapV4 is Rebalancer {
         (bool success, bytes memory result) = router.call(data);
         require(success, string(result));
 
-        // Pool should still be balanced (within tolerance boundaries) after the swap.
-        // Since the swap went potentially through the pool itself (but does not have to),
-        // the sqrtPrice might have moved and brought the pool out of balance.
-        // By fetching the sqrtPrice, the transaction will revert in that case on the balance check.
-        position.sqrtPrice = _getSqrtPrice(position);
-
         // Handle pools with native ETH.
         if (isNative) IWETH(WETH).withdraw(ERC20(WETH).balanceOf(address(this)));
 
@@ -424,13 +407,11 @@ contract RebalancerUniswapV4 is Rebalancer {
      * @notice Mints a new Liquidity Position.
      * @param balances The balances of the underlying tokens held by the Rebalancer.
      * @param position A struct with position and pool related variables.
-     * @param cache A struct with cached variables.
      */
     function _mint(
         uint256[] memory balances,
         Rebalancer.InitiatorParams memory,
-        Rebalancer.PositionState memory position,
-        Rebalancer.Cache memory cache
+        Rebalancer.PositionState memory position
     ) internal override {
         // Check it token0 is native ETH.
         bool isNative = position.tokens[0] == address(0);
@@ -443,15 +424,21 @@ contract RebalancerUniswapV4 is Rebalancer {
         position.id = POSITION_MANAGER.nextTokenId();
 
         // Calculate liquidity to be added.
+        position.liquidity = LiquidityAmounts.getLiquidityForAmounts(
+            uint160(position.sqrtPrice),
+            TickMath.getSqrtPriceAtTick(position.tickLower),
+            TickMath.getSqrtPriceAtTick(position.tickUpper),
+            balances[0],
+            balances[1]
+        );
+
+        // Cache the pool key.
         PoolKey memory poolKey = PoolKey(
             Currency.wrap(position.tokens[0]),
             Currency.wrap(position.tokens[1]),
             position.fee,
             position.tickSpacing,
             IHooks(position.pool)
-        );
-        position.liquidity = LiquidityAmounts.getLiquidityForAmounts(
-            uint160(position.sqrtPrice), cache.sqrtRatioLower, cache.sqrtRatioUpper, balances[0], balances[1]
         );
 
         // Generate calldata to mint new position.
@@ -493,7 +480,6 @@ contract RebalancerUniswapV4 is Rebalancer {
         uint256[] memory balances,
         Rebalancer.InitiatorParams memory,
         Rebalancer.PositionState memory position,
-        Rebalancer.Cache memory cache,
         uint256 amount0Desired,
         uint256 amount1Desired
     ) internal override {
@@ -508,15 +494,21 @@ contract RebalancerUniswapV4 is Rebalancer {
         position.id = POSITION_MANAGER.nextTokenId();
 
         // Calculate liquidity to be added.
+        position.liquidity = LiquidityAmounts.getLiquidityForAmounts(
+            uint160(position.sqrtPrice),
+            TickMath.getSqrtPriceAtTick(position.tickLower),
+            TickMath.getSqrtPriceAtTick(position.tickUpper),
+            amount0Desired,
+            amount1Desired
+        );
+
+        // Cache the pool key.
         PoolKey memory poolKey = PoolKey(
             Currency.wrap(position.tokens[0]),
             Currency.wrap(position.tokens[1]),
             position.fee,
             position.tickSpacing,
             IHooks(position.pool)
-        );
-        position.liquidity = LiquidityAmounts.getLiquidityForAmounts(
-            uint160(position.sqrtPrice), cache.sqrtRatioLower, cache.sqrtRatioUpper, amount0Desired, amount1Desired
         );
 
         // Generate calldata to mint new position.

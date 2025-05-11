@@ -154,10 +154,6 @@ contract SwapViaRouter_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         assertEq(balances[1], uint256(balance1) + amountOut);
         assertEq(balances[0], token0.balanceOf(address(rebalancer)));
         assertEq(balances[1], token1.balanceOf(address(rebalancer)));
-
-        // And: The sqrtPrice is updated.
-        (uint160 sqrtPrice,,,) = stateView.getSlot0(poolKey.toId());
-        assertEq(sqrtPrice, position_.sqrtPrice);
     }
 
     function testFuzz_Success_swapViaRouter_NotNative_OneToZero(
@@ -199,9 +195,6 @@ contract SwapViaRouter_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         assertEq(balances[1], balance1 - amountIn);
         assertEq(balances[0], token0.balanceOf(address(rebalancer)));
         assertEq(balances[1], token1.balanceOf(address(rebalancer)));
-        // And: The sqrtPrice is updated.
-        (uint160 sqrtPrice,,,) = stateView.getSlot0(poolKey.toId());
-        assertEq(sqrtPrice, position_.sqrtPrice);
     }
 
     function testFuzz_Success_swapViaRouter_IsNative_ZeroToOne(
@@ -243,10 +236,6 @@ contract SwapViaRouter_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         assertEq(balances[1], uint256(balance1) + amountOut);
         assertEq(balances[0], address(rebalancer).balance);
         assertEq(balances[1], token1.balanceOf(address(rebalancer)));
-
-        // And: The sqrtPrice is updated.
-        (uint160 sqrtPrice,,,) = stateView.getSlot0(poolKey.toId());
-        assertEq(sqrtPrice, position_.sqrtPrice);
     }
 
     function testFuzz_Success_swapViaRouter_IsNative_OneToZero(
@@ -290,9 +279,5 @@ contract SwapViaRouter_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         assertEq(balances[1], balance1 - amountIn);
         assertEq(balances[0], address(rebalancer).balance);
         assertEq(balances[1], token1.balanceOf(address(rebalancer)));
-
-        // And: The sqrtPrice is updated.
-        (uint160 sqrtPrice,,,) = stateView.getSlot0(poolKey.toId());
-        assertEq(sqrtPrice, position_.sqrtPrice);
     }
 }

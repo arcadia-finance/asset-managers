@@ -31,7 +31,6 @@ contract Mint_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
         Rebalancer.PositionState memory position,
-        Rebalancer.Cache memory cache,
         uint128 balance0,
         uint128 balance1
     ) public {
@@ -81,7 +80,7 @@ contract Mint_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
 
         // When: Calling mint.
         Rebalancer.PositionState memory position_;
-        (balances, position_) = rebalancer.mint(balances, initiatorParams, position, cache);
+        (balances, position_) = rebalancer.mint(balances, initiatorParams, position);
 
         // Then: Contract is owner of the position.
         assertEq(ERC721(address(slipstreamPositionManager)).ownerOf(position_.id), address(rebalancer));
@@ -101,7 +100,6 @@ contract Mint_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
         Rebalancer.PositionState memory position,
-        Rebalancer.Cache memory cache,
         uint128 balance0,
         uint128 balance1
     ) public {
@@ -151,7 +149,7 @@ contract Mint_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
 
         // When: Calling mint.
         Rebalancer.PositionState memory position_;
-        (balances, position_) = rebalancer.mint(balances, initiatorParams, position, cache);
+        (balances, position_) = rebalancer.mint(balances, initiatorParams, position);
 
         // Then: Contract is owner of the position.
         assertEq(ERC721(address(slipstreamPositionManager)).ownerOf(position_.id), address(gauge));
@@ -172,7 +170,6 @@ contract Mint_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
         Rebalancer.PositionState memory position,
-        Rebalancer.Cache memory cache,
         uint128 balance0,
         uint128 balance1
     ) public {
@@ -222,7 +219,7 @@ contract Mint_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
 
         // When: Calling mint.
         Rebalancer.PositionState memory position_;
-        (balances, position_) = rebalancer.mint(balances, initiatorParams, position, cache);
+        (balances, position_) = rebalancer.mint(balances, initiatorParams, position);
 
         // Then: Contract is owner of the position.
         assertEq(ERC721(address(slipstreamPositionManager)).ownerOf(position_.id), address(gauge));

@@ -7,6 +7,7 @@ pragma solidity ^0.8.26;
 import {
     CollectParams, DecreaseLiquidityParams, ICLPositionManager, MintParams
 } from "./interfaces/ICLPositionManager.sol";
+import { CLMath } from "../libraries/CLMath.sol";
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { ICLPool } from "./interfaces/ICLPool.sol";
 import { IStakedSlipstream } from "./interfaces/IStakedSlipstream.sol";
@@ -222,8 +223,7 @@ contract RebalancerSlipstream is Rebalancer {
     function _burn(
         uint256[] memory balances,
         Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position,
-        Rebalancer.Cache memory
+        Rebalancer.PositionState memory position
     ) internal override {
         // If position is a staked slipstream position, first unstake the position.
         if (initiatorParams.positionManager != address(POSITION_MANAGER)) {
@@ -272,34 +272,23 @@ contract RebalancerSlipstream is Rebalancer {
      * @notice Swaps one token for another, directly through the pool itself.
      * @param balances The balances of the underlying tokens held by the Rebalancer.
      * @param position A struct with position and pool related variables.
-     * @param cache A struct with cached variables.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param amountOut The amount of tokenOut that must be swapped to.
      */
     function _swapViaPool(
         uint256[] memory balances,
         Rebalancer.PositionState memory position,
-        Rebalancer.Cache memory cache,
         bool zeroToOne,
         uint256 amountOut
     ) internal override {
-        // Pool should still be balanced (within tolerance boundaries) after the swap.
-        uint160 sqrtPriceLimitX96 = uint160(zeroToOne ? cache.lowerBoundSqrtPrice : cache.upperBoundSqrtPrice);
-
-        // Encode the swap data.
-        bytes memory data = abi.encode(position.tokens[0], position.tokens[1], position.tickSpacing);
-
         // Do the swap.
-        // Callback (external function) must be implemented in the main contract.
-        (int256 deltaAmount0, int256 deltaAmount1) =
-            ICLPool(position.pool).swap(address(this), zeroToOne, -int256(amountOut), sqrtPriceLimitX96, data);
-
-        // Check that pool is still balanced.
-        // If sqrtPriceLimitX96 is reached before an amountOut of tokenOut is received, the pool is not balanced anymore.
-        // By setting the sqrtPrice to sqrtPriceLimitX96, the transaction will revert on the balance check.
-        if (amountOut > (zeroToOne ? uint256(-deltaAmount1) : uint256(-deltaAmount0))) {
-            position.sqrtPrice = sqrtPriceLimitX96;
-        }
+        (int256 deltaAmount0, int256 deltaAmount1) = ICLPool(position.pool).swap(
+            address(this),
+            zeroToOne,
+            -int256(amountOut),
+            zeroToOne ? CLMath.MIN_SQRT_PRICE_LIMIT : CLMath.MAX_SQRT_PRICE_LIMIT,
+            abi.encode(position.tokens[0], position.tokens[1], position.tickSpacing)
+        );
 
         // Update the balances.
         balances[0] = zeroToOne ? balances[0] - uint256(deltaAmount0) : balances[0] + uint256(-deltaAmount0);
@@ -343,8 +332,7 @@ contract RebalancerSlipstream is Rebalancer {
     function _mint(
         uint256[] memory balances,
         Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position,
-        Rebalancer.Cache memory
+        Rebalancer.PositionState memory position
     ) internal override {
         ERC20(position.tokens[0]).safeApproveWithRetry(address(POSITION_MANAGER), balances[0]);
         ERC20(position.tokens[1]).safeApproveWithRetry(address(POSITION_MANAGER), balances[1]);
@@ -382,7 +370,6 @@ contract RebalancerSlipstream is Rebalancer {
         uint256[] memory balances,
         Rebalancer.InitiatorParams memory initiatorParams,
         Rebalancer.PositionState memory position,
-        Rebalancer.Cache memory,
         uint256 amount0Desired,
         uint256 amount1Desired
     ) internal override {

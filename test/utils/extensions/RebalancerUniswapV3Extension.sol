@@ -46,35 +46,28 @@ contract RebalancerUniswapV3Extension is RebalancerUniswapV3 {
         return _getSqrtPrice(position);
     }
 
-    function burn(
-        uint256[] memory balances,
-        InitiatorParams memory initiatorParams,
-        PositionState memory position,
-        Cache memory cache
-    ) external returns (uint256[] memory balances_) {
-        _burn(balances, initiatorParams, position, cache);
+    function burn(uint256[] memory balances, InitiatorParams memory initiatorParams, PositionState memory position)
+        external
+        returns (uint256[] memory balances_)
+    {
+        _burn(balances, initiatorParams, position);
         balances_ = balances;
     }
 
-    function swapViaPool(
-        uint256[] memory balances,
-        PositionState memory position,
-        Cache memory cache,
-        bool zeroToOne,
-        uint256 amountOut
-    ) external returns (uint256[] memory balances_, PositionState memory position_) {
-        _swapViaPool(balances, position, cache, zeroToOne, amountOut);
+    function swapViaPool(uint256[] memory balances, PositionState memory position, bool zeroToOne, uint256 amountOut)
+        external
+        returns (uint256[] memory balances_, PositionState memory position_)
+    {
+        _swapViaPool(balances, position, zeroToOne, amountOut);
         balances_ = balances;
         position_ = position;
     }
 
-    function mint(
-        uint256[] memory balances,
-        InitiatorParams memory initiatorParams,
-        PositionState memory position,
-        Cache memory cache
-    ) external returns (uint256[] memory balances_, PositionState memory position_) {
-        _mint(balances, initiatorParams, position, cache);
+    function mint(uint256[] memory balances, InitiatorParams memory initiatorParams, PositionState memory position)
+        external
+        returns (uint256[] memory balances_, PositionState memory position_)
+    {
+        _mint(balances, initiatorParams, position);
         balances_ = balances;
         position_ = position;
     }

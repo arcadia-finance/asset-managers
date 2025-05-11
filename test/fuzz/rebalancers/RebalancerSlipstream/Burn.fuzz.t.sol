@@ -34,7 +34,6 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
         Rebalancer.PositionState memory position,
-        Rebalancer.Cache memory cache,
         uint64 balance0,
         uint64 balance1
     ) public {
@@ -59,7 +58,7 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
         );
 
         // When: Calling burn.
-        balances = rebalancer.burn(balances, initiatorParams, position, cache);
+        balances = rebalancer.burn(balances, initiatorParams, position);
 
         // Then: It should return the correct balances.
         (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
@@ -78,7 +77,6 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
         Rebalancer.PositionState memory position,
-        Rebalancer.Cache memory cache,
         uint64 balance0,
         uint64 balance1,
         uint256 rewardGrowthGlobalX128Last,
@@ -122,7 +120,7 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
         );
 
         // When: Calling burn.
-        balances = rebalancer.burn(balances, initiatorParams, position, cache);
+        balances = rebalancer.burn(balances, initiatorParams, position);
 
         // Then: It should return the correct balances.
         (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
@@ -154,7 +152,6 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
         Rebalancer.PositionState memory position,
-        Rebalancer.Cache memory cache,
         uint64 balance0,
         uint64 balance1,
         uint256 rewardGrowthGlobalX128Last,
@@ -223,7 +220,7 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
         );
 
         // When: Calling burn.
-        balances = rebalancer.burn(balances, initiatorParams, position, cache);
+        balances = rebalancer.burn(balances, initiatorParams, position);
 
         // Then: It should return the correct balances.
         (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
@@ -242,7 +239,6 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
         Rebalancer.PositionState memory position,
-        Rebalancer.Cache memory cache,
         uint64 balance0,
         uint64 balance1,
         uint256 rewardGrowthGlobalX128Last,
@@ -286,7 +282,7 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
         );
 
         // When: Calling burn.
-        balances = rebalancer.burn(balances, initiatorParams, position, cache);
+        balances = rebalancer.burn(balances, initiatorParams, position);
 
         // Then: It should return the correct balances.
         (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
@@ -318,7 +314,6 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
         Rebalancer.PositionState memory position,
-        Rebalancer.Cache memory cache,
         uint64 balance0,
         uint64 balance1,
         uint256 rewardGrowthGlobalX128Last,
@@ -387,7 +382,7 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
         );
 
         // When: Calling burn.
-        balances = rebalancer.burn(balances, initiatorParams, position, cache);
+        balances = rebalancer.burn(balances, initiatorParams, position);
 
         // Then: It should return the correct balances.
         (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(

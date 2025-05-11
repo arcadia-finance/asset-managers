@@ -31,7 +31,6 @@ contract Mint_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Test {
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
         Rebalancer.PositionState memory position,
-        Rebalancer.Cache memory cache,
         uint128 balance0,
         uint128 balance1
     ) public {
@@ -80,7 +79,7 @@ contract Mint_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Test {
 
         // When: Calling mint.
         Rebalancer.PositionState memory position_;
-        (balances, position_) = rebalancer.mint(balances, initiatorParams, position, cache);
+        (balances, position_) = rebalancer.mint(balances, initiatorParams, position);
 
         // Then: Contract is owner of the position.
         assertEq(ERC721(address(nonfungiblePositionManager)).ownerOf(position_.id), address(rebalancer));
