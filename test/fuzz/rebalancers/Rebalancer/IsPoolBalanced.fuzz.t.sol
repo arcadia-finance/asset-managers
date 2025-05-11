@@ -4,6 +4,7 @@
  */
 pragma solidity ^0.8.26;
 
+import { PositionState } from "../../../../src/state/PositionState.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { Rebalancer_Fuzz_Test } from "./_Rebalancer.fuzz.t.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
@@ -24,7 +25,7 @@ contract IsPoolBalanced_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
                               TESTS
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Success_isPoolBalanced_False_LowerBound(
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         Rebalancer.Cache memory cache
     ) public {
         // Given: sqrtPrice <= lowerBoundSqrtPrice.
@@ -37,7 +38,7 @@ contract IsPoolBalanced_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     }
 
     function testFuzz_Success_isPoolBalanced_False_UpperBound(
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         Rebalancer.Cache memory cache
     ) public {
         // Given: sqrtPrice > lowerBoundSqrtPrice.
@@ -52,10 +53,9 @@ contract IsPoolBalanced_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         assertFalse(rebalancer.isPoolBalanced(position.sqrtPrice, cache));
     }
 
-    function testFuzz_Success_isPoolBalanced_True(
-        Rebalancer.PositionState memory position,
-        Rebalancer.Cache memory cache
-    ) public {
+    function testFuzz_Success_isPoolBalanced_True(PositionState memory position, Rebalancer.Cache memory cache)
+        public
+    {
         // Given: sqrtPrice > lowerBoundSqrtPrice.
         position.sqrtPrice = bound(position.sqrtPrice, TickMath.MIN_SQRT_PRICE + 1, TickMath.MAX_SQRT_PRICE - 1);
         cache.lowerBoundSqrtPrice = bound(cache.lowerBoundSqrtPrice, TickMath.MIN_SQRT_PRICE, position.sqrtPrice - 1);

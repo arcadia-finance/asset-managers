@@ -12,6 +12,7 @@ import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/F
 import { IAccount } from "./interfaces/IAccount.sol";
 import { IArcadiaFactory } from "./interfaces/IArcadiaFactory.sol";
 import { IStrategyHook } from "./interfaces/IStrategyHook.sol";
+import { PositionState } from "../state/PositionState.sol";
 import { RebalanceLogic, RebalanceParams } from "./libraries/RebalanceLogic.sol";
 import { RebalanceOptimizationMath } from "./libraries/RebalanceOptimizationMath.sol";
 import { SafeApprove } from "../libraries/SafeApprove.sol";
@@ -90,30 +91,6 @@ abstract contract Rebalancer is IActionBase {
         bytes swapData;
         // Strategy specific Calldata provided by the initiator.
         bytes strategyData;
-    }
-
-    // A struct with the position and pool state.
-    struct PositionState {
-        // The contract address of the pool.
-        address pool;
-        // The id of the position.
-        uint256 id;
-        // The fee of the pool
-        uint24 fee;
-        // The tickspacing of the pool.
-        int24 tickSpacing;
-        // The current tick of the pool.
-        int24 tickCurrent;
-        // The lower tick of the position.
-        int24 tickUpper;
-        // The upper tick of the position.
-        int24 tickLower;
-        // The liquidity of the position.
-        uint128 liquidity;
-        // The sqrtPrice of the pool.
-        uint256 sqrtPrice;
-        // The underlying tokens of the pool.
-        address[] tokens;
     }
 
     // A struct with cached variables.

@@ -4,6 +4,7 @@
  */
 pragma solidity ^0.8.22;
 
+import { PositionState } from "../../../src/state/PositionState.sol";
 import { RebalanceParams } from "../../../src/rebalancers/libraries/RebalanceLogic.sol";
 import { Rebalancer } from "../../../src/rebalancers/Rebalancer.sol";
 

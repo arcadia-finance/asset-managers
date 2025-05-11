@@ -7,6 +7,7 @@ pragma solidity ^0.8.26;
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { IWETH } from "../../../../src/rebalancers/interfaces/IWETH.sol";
 import { LiquidityAmounts } from "../../../../src/libraries/LiquidityAmounts.sol";
+import { PositionState } from "../../../../src/state/PositionState.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RebalancerUniswapV4_Fuzz_Test } from "./_RebalancerUniswapV4.fuzz.t.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
@@ -29,7 +30,7 @@ contract Burn_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
     function testFuzz_Success_burn_NotNative(
         uint128 liquidityPool,
         address positionManager,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         uint64 balance0,
         uint64 balance1
     ) public {
@@ -69,7 +70,7 @@ contract Burn_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
     function testFuzz_Success_burn_IsNative(
         uint128 liquidityPool,
         address positionManager,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         uint64 balance0,
         uint64 balance1
     ) public {

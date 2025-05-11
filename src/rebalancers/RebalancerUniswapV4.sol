@@ -17,6 +17,7 @@ import { IWETH } from "./interfaces/IWETH.sol";
 import { LiquidityAmounts } from "../libraries/LiquidityAmounts.sol";
 import { PoolKey } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 import { PositionInfo } from "../../lib/accounts-v2/lib/v4-periphery/src/libraries/PositionInfoLibrary.sol";
+import { PositionState } from "../state/PositionState.sol";
 import { Rebalancer } from "./Rebalancer.sol";
 import { RebalanceParams } from "./libraries/RebalanceLogic.sol";
 import { SafeApprove } from "../libraries/SafeApprove.sol";
@@ -173,12 +174,7 @@ contract RebalancerUniswapV4 is Rebalancer {
      * @param position A struct with position and pool related variables.
      * @return liquidity The liquidity of the Pool.
      */
-    function _getPoolLiquidity(Rebalancer.PositionState memory position)
-        internal
-        view
-        override
-        returns (uint128 liquidity)
-    {
+    function _getPoolLiquidity(PositionState memory position) internal view override returns (uint128 liquidity) {
         PoolKey memory poolKey = PoolKey(
             Currency.wrap(position.tokens[0]),
             Currency.wrap(position.tokens[1]),
@@ -194,12 +190,7 @@ contract RebalancerUniswapV4 is Rebalancer {
      * @param position A struct with position and pool related variables.
      * @return sqrtPrice The sqrtPrice of the Pool.
      */
-    function _getSqrtPrice(Rebalancer.PositionState memory position)
-        internal
-        view
-        override
-        returns (uint160 sqrtPrice)
-    {
+    function _getSqrtPrice(PositionState memory position) internal view override returns (uint160 sqrtPrice) {
         PoolKey memory poolKey = PoolKey(
             Currency.wrap(position.tokens[0]),
             Currency.wrap(position.tokens[1]),
@@ -220,7 +211,7 @@ contract RebalancerUniswapV4 is Rebalancer {
      * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      */
-    function _burn(uint256[] memory balances, address, Rebalancer.PositionState memory position) internal override {
+    function _burn(uint256[] memory balances, address, PositionState memory position) internal override {
         // Generate calldata to burn the position and collect the underlying assets.
         bytes memory actions = new bytes(2);
         actions[0] = bytes1(uint8(Actions.BURN_POSITION));
@@ -255,12 +246,10 @@ contract RebalancerUniswapV4 is Rebalancer {
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param amountOut The amount of tokenOut that must be swapped to.
      */
-    function _swapViaPool(
-        uint256[] memory balances,
-        Rebalancer.PositionState memory position,
-        bool zeroToOne,
-        uint256 amountOut
-    ) internal override {
+    function _swapViaPool(uint256[] memory balances, PositionState memory position, bool zeroToOne, uint256 amountOut)
+        internal
+        override
+    {
         // Do the swap.
         bytes memory swapData = abi.encode(
             IPoolManager.SwapParams({
@@ -400,7 +389,7 @@ contract RebalancerUniswapV4 is Rebalancer {
     function _mint(
         uint256[] memory balances,
         address,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         uint256 amount0Desired,
         uint256 amount1Desired
     ) internal override {

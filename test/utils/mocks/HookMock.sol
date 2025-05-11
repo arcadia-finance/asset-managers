@@ -4,6 +4,7 @@
  */
 pragma solidity ^0.8.22;
 
+import { PositionState } from "../../../src/state/PositionState.sol";
 import { Rebalancer } from "../../../src/rebalancers/Rebalancer.sol";
 import { StrategyHook } from "../../../src/rebalancers/periphery/StrategyHook.sol";
 
@@ -12,14 +13,14 @@ contract HookMock is StrategyHook {
     function beforeRebalance(
         address account,
         address positionManager,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         bytes memory strategyData
     ) external view override returns (int24 tickLower, int24 tickUpper) { }
     function afterRebalance(
         address account,
         address positionManager,
         uint256 oldId,
-        Rebalancer.PositionState memory newPosition,
+        PositionState memory newPosition,
         bytes memory strategyData
     ) external override { }
 }

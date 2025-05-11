@@ -8,6 +8,7 @@ import { AccountV1 } from "../../../../lib/accounts-v2/src/accounts/AccountV1.so
 import { AccountSpot } from "../../../../lib/accounts-v2/src/accounts/AccountSpot.sol";
 import { DefaultHook } from "../../../utils/mocks/DefaultHook.sol";
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
+import { PositionState } from "../../../../src/state/PositionState.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RebalancerSlipstream_Fuzz_Test } from "./_RebalancerSlipstream.fuzz.t.sol";
 import { StdStorage, stdStorage } from "../../../../lib/accounts-v2/lib/forge-std/src/Test.sol";
@@ -133,7 +134,7 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
     function testFuzz_Success_rebalancePosition_Slipstream(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
@@ -226,7 +227,7 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
     function testFuzz_Success_rebalancePosition_StakedSlipstream(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
@@ -320,7 +321,7 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
     function testFuzz_Success_rebalancePosition_WrappedStakedSlipstream(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         int24 tickLower,
         int24 tickUpper,
         address initiator,

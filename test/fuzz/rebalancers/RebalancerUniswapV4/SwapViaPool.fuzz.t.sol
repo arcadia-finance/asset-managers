@@ -4,6 +4,7 @@
  */
 pragma solidity ^0.8.26;
 
+import { PositionState } from "../../../../src/state/PositionState.sol";
 import { Rebalancer, RebalanceParams } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RebalancerUniswapV4_Fuzz_Test } from "./_RebalancerUniswapV4.fuzz.t.sol";
 import { SqrtPriceMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/SqrtPriceMath.sol";
@@ -25,7 +26,7 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Success_swapViaPool_NotNative_ZeroToOne_Balanced(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         RebalanceParams memory rebalanceParams,
         uint128 balance0,
         uint128 balance1,
@@ -63,7 +64,7 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
         deal(address(token1), address(rebalancer), balance1, true);
 
         // When: Calling swapViaPool.
-        Rebalancer.PositionState memory position_;
+        PositionState memory position_;
         (balances, position_) = rebalancer.swapViaPool(balances, position, rebalanceParams.zeroToOne, amountOut);
 
         // Then: The correct balances are returned.
@@ -75,7 +76,7 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
 
     function testFuzz_Success_swapViaPool_NotNative_OneToZero_Balanced(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         RebalanceParams memory rebalanceParams,
         uint128 balance0,
         uint128 balance1,
@@ -113,7 +114,7 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
         deal(address(token1), address(rebalancer), balance1, true);
 
         // When: Calling swapViaPool.
-        Rebalancer.PositionState memory position_;
+        PositionState memory position_;
         (balances, position_) = rebalancer.swapViaPool(balances, position, rebalanceParams.zeroToOne, amountOut);
 
         // Then: The correct balances are returned.
@@ -125,7 +126,7 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
 
     function testFuzz_Success_swapViaPool_IsNative_ZeroToOne_Balanced(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         RebalanceParams memory rebalanceParams,
         uint128 balance0,
         uint128 balance1,
@@ -163,7 +164,7 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
         deal(address(token1), address(rebalancer), balance1, true);
 
         // When: Calling swapViaPool.
-        Rebalancer.PositionState memory position_;
+        PositionState memory position_;
         (balances, position_) = rebalancer.swapViaPool(balances, position, rebalanceParams.zeroToOne, amountOut);
 
         // Then: The correct balances are returned.
@@ -175,7 +176,7 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
 
     function testFuzz_Success_swapViaPool_IsNative_OneToZero_Balanced(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         RebalanceParams memory rebalanceParams,
         uint128 balance0,
         uint128 balance1,
@@ -213,7 +214,7 @@ contract SwapViaPool_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
         deal(address(token1), address(rebalancer), balance1, true);
 
         // When: Calling swapViaPool.
-        Rebalancer.PositionState memory position_;
+        PositionState memory position_;
         (balances, position_) = rebalancer.swapViaPool(balances, position, rebalanceParams.zeroToOne, amountOut);
 
         // Then: The correct balances are returned.

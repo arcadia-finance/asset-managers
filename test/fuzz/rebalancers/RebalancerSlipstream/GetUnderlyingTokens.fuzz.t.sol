@@ -4,6 +4,7 @@
  */
 pragma solidity ^0.8.26;
 
+import { PositionState } from "../../../../src/state/PositionState.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RebalancerSlipstream_Fuzz_Test } from "./_RebalancerSlipstream.fuzz.t.sol";
 
@@ -22,10 +23,9 @@ contract GetUnderlyingTokens_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstr
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_getUnderlyingTokens_Slipstream(
-        uint128 liquidityPool,
-        Rebalancer.PositionState memory position
-    ) public {
+    function testFuzz_Success_getUnderlyingTokens_Slipstream(uint128 liquidityPool, PositionState memory position)
+        public
+    {
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position, false);
         givenValidPositionState(position);

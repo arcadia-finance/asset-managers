@@ -4,6 +4,7 @@
  */
 pragma solidity ^0.8.26;
 
+import { PositionState } from "../../../../src/state/PositionState.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RebalancerUniswapV3_Fuzz_Test } from "./_RebalancerUniswapV3.fuzz.t.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
@@ -23,9 +24,7 @@ contract GetPositionState_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_F
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_getPositionState(uint128 liquidityPool, Rebalancer.PositionState memory position)
-        public
-    {
+    function testFuzz_Success_getPositionState(uint128 liquidityPool, PositionState memory position) public {
         // Given: A valid position.
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position);
@@ -33,8 +32,7 @@ contract GetPositionState_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_F
         setPositionState(position);
 
         // When: Calling getPositionState.
-        Rebalancer.PositionState memory position_ =
-            rebalancer.getPositionState(address(nonfungiblePositionManager), position.id);
+        PositionState memory position_ = rebalancer.getPositionState(address(nonfungiblePositionManager), position.id);
 
         // Then: It should return the correct position.
         assertEq(position_.pool, address(poolUniswap));

@@ -11,6 +11,7 @@ import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-co
 import { Fuzz_Test } from "../../Fuzz.t.sol";
 import { IUniswapV3PoolExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/IUniswapV3PoolExtension.sol";
+import { PositionState } from "../../../../src/state/PositionState.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RebalancerUniswapV3Extension } from "../../../utils/extensions/RebalancerUniswapV3Extension.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
@@ -127,7 +128,7 @@ abstract contract RebalancerUniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, 
         addAssetToArcadia(address(token1), int256(price1));
     }
 
-    function givenValidPoolState(uint128 liquidityPool, Rebalancer.PositionState memory position)
+    function givenValidPoolState(uint128 liquidityPool, PositionState memory position)
         internal
         view
         returns (uint128 liquidityPool_)
@@ -144,7 +145,7 @@ abstract contract RebalancerUniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, 
         position.fee = POOL_FEE;
     }
 
-    function setPoolState(uint128 liquidityPool, Rebalancer.PositionState memory position) internal {
+    function setPoolState(uint128 liquidityPool, PositionState memory position) internal {
         initUniswapV3(uint160(position.sqrtPrice), liquidityPool, position.fee);
         position.pool = address(poolUniswap);
         position.tickSpacing = poolUniswap.tickSpacing();
@@ -153,7 +154,7 @@ abstract contract RebalancerUniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, 
         position.tokens[1] = address(token1);
     }
 
-    function givenValidPositionState(Rebalancer.PositionState memory position) internal {
+    function givenValidPositionState(PositionState memory position) internal {
         int24 tickSpacing = position.tickSpacing;
         position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, BOUND_TICK_UPPER - 2 * tickSpacing));
         position.tickLower = position.tickLower / tickSpacing * tickSpacing;
@@ -162,7 +163,7 @@ abstract contract RebalancerUniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, 
         position.liquidity = uint128(bound(position.liquidity, 1e6, poolUniswap.liquidity() / 1e3));
     }
 
-    function setPositionState(Rebalancer.PositionState memory position) internal {
+    function setPositionState(PositionState memory position) internal {
         (position.id,,) = addLiquidityUniV3(
             poolUniswap, position.liquidity, users.liquidityProvider, position.tickLower, position.tickUpper, false
         );

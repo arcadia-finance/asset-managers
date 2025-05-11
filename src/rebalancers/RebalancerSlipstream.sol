@@ -11,6 +11,7 @@ import { CLMath } from "../libraries/CLMath.sol";
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { ICLPool } from "./interfaces/ICLPool.sol";
 import { IStakedSlipstream } from "./interfaces/IStakedSlipstream.sol";
+import { PositionState } from "../state/PositionState.sol";
 import { SlipstreamLogic } from "../libraries/SlipstreamLogic.sol";
 import { Rebalancer } from "./Rebalancer.sol";
 import { RebalanceParams } from "./libraries/RebalanceLogic.sol";
@@ -178,12 +179,7 @@ contract RebalancerSlipstream is Rebalancer {
      * @param position A struct with position and pool related variables.
      * @return liquidity The liquidity of the Pool.
      */
-    function _getPoolLiquidity(Rebalancer.PositionState memory position)
-        internal
-        view
-        override
-        returns (uint128 liquidity)
-    {
+    function _getPoolLiquidity(PositionState memory position) internal view override returns (uint128 liquidity) {
         liquidity = ICLPool(position.pool).liquidity();
     }
 
@@ -192,12 +188,7 @@ contract RebalancerSlipstream is Rebalancer {
      * @param position A struct with position and pool related variables.
      * @return sqrtPrice The sqrtPrice of the Pool.
      */
-    function _getSqrtPrice(Rebalancer.PositionState memory position)
-        internal
-        view
-        override
-        returns (uint160 sqrtPrice)
-    {
+    function _getSqrtPrice(PositionState memory position) internal view override returns (uint160 sqrtPrice) {
         (sqrtPrice,,,,,) = ICLPool(position.pool).slot0();
     }
 
@@ -211,7 +202,7 @@ contract RebalancerSlipstream is Rebalancer {
      * @param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      */
-    function _burn(uint256[] memory balances, address positionManager, Rebalancer.PositionState memory position)
+    function _burn(uint256[] memory balances, address positionManager, PositionState memory position)
         internal
         override
     {
@@ -265,12 +256,10 @@ contract RebalancerSlipstream is Rebalancer {
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param amountOut The amount of tokenOut that must be swapped to.
      */
-    function _swapViaPool(
-        uint256[] memory balances,
-        Rebalancer.PositionState memory position,
-        bool zeroToOne,
-        uint256 amountOut
-    ) internal override {
+    function _swapViaPool(uint256[] memory balances, PositionState memory position, bool zeroToOne, uint256 amountOut)
+        internal
+        override
+    {
         // Do the swap.
         (int256 deltaAmount0, int256 deltaAmount1) = ICLPool(position.pool).swap(
             address(this),
@@ -324,7 +313,7 @@ contract RebalancerSlipstream is Rebalancer {
     function _mint(
         uint256[] memory balances,
         address positionManager,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         uint256 amount0Desired,
         uint256 amount1Desired
     ) internal override {

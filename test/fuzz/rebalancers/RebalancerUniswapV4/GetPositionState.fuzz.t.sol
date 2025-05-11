@@ -4,6 +4,7 @@
  */
 pragma solidity ^0.8.26;
 
+import { PositionState } from "../../../../src/state/PositionState.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RebalancerUniswapV4_Fuzz_Test } from "./_RebalancerUniswapV4.fuzz.t.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
@@ -23,10 +24,7 @@ contract GetPositionState_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_F
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_getPositionState_NotNative(
-        uint128 liquidityPool,
-        Rebalancer.PositionState memory position
-    ) public {
+    function testFuzz_Success_getPositionState_NotNative(uint128 liquidityPool, PositionState memory position) public {
         // Given: A valid position.
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position, false);
@@ -34,7 +32,7 @@ contract GetPositionState_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_F
         setPositionState(position);
 
         // When: Calling getPositionState.
-        Rebalancer.PositionState memory position_ = rebalancer.getPositionState(address(positionManagerV4), position.id);
+        PositionState memory position_ = rebalancer.getPositionState(address(positionManagerV4), position.id);
 
         // Then: It should return the correct position.
         assertEq(position_.pool, address(0));
@@ -51,9 +49,7 @@ contract GetPositionState_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_F
         assertEq(position_.tokens[1], address(token1));
     }
 
-    function testFuzz_Success_getPositionState_IsNative(uint128 liquidityPool, Rebalancer.PositionState memory position)
-        public
-    {
+    function testFuzz_Success_getPositionState_IsNative(uint128 liquidityPool, PositionState memory position) public {
         // Given: A valid position.
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position, true);
@@ -62,7 +58,7 @@ contract GetPositionState_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_F
         position.id = uint96(position.id);
 
         // When: Calling getPositionState.
-        Rebalancer.PositionState memory position_ = rebalancer.getPositionState(address(positionManagerV4), position.id);
+        PositionState memory position_ = rebalancer.getPositionState(address(positionManagerV4), position.id);
 
         // Then: It should return the correct position.
         assertEq(position_.pool, address(0));

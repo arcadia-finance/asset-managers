@@ -5,6 +5,7 @@
 pragma solidity ^0.8.22;
 
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
+import { PositionState } from "../../../../src/state/PositionState.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { Rebalancer_Fuzz_Test } from "./_Rebalancer.fuzz.t.sol";
 import { UniswapV3Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";
@@ -29,7 +30,7 @@ contract ApproveAndTransfer_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Success_approveAndTransfer_AllZero(
         address account_,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         uint256 balance0,
         uint256 balance1,
         uint256 fee0,
@@ -85,7 +86,7 @@ contract ApproveAndTransfer_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
 
     function testFuzz_Success_approveAndTransfer_Token1Zero(
         address account_,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         uint256 balance0,
         uint256 balance1,
         uint256 fee0,
@@ -143,7 +144,7 @@ contract ApproveAndTransfer_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
 
     function testFuzz_Success_approveAndTransfer_Token0Zero(
         address account_,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         uint256 balance0,
         uint256 balance1,
         uint256 fee0,
@@ -201,7 +202,7 @@ contract ApproveAndTransfer_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
 
     function testFuzz_Success_approveAndTransfer_AllNonZero(
         address account_,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         uint256 balance0,
         uint256 balance1,
         uint256 fee0,

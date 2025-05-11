@@ -14,6 +14,7 @@ import { CLMath } from "../libraries/CLMath.sol";
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { IUniswapV3Pool } from "../interfaces/IUniswapV3Pool.sol";
 import { PoolAddress } from "../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/PoolAddress.sol";
+import { PositionState } from "../state/PositionState.sol";
 import { Rebalancer } from "./Rebalancer.sol";
 import { RebalanceParams } from "./libraries/RebalanceLogic.sol";
 import { SafeApprove } from "../libraries/SafeApprove.sol";
@@ -147,12 +148,7 @@ contract RebalancerUniswapV3 is Rebalancer {
      * @param position A struct with position and pool related variables.
      * @return liquidity The liquidity of the Pool.
      */
-    function _getPoolLiquidity(Rebalancer.PositionState memory position)
-        internal
-        view
-        override
-        returns (uint128 liquidity)
-    {
+    function _getPoolLiquidity(PositionState memory position) internal view override returns (uint128 liquidity) {
         liquidity = IUniswapV3Pool(position.pool).liquidity();
     }
 
@@ -161,12 +157,7 @@ contract RebalancerUniswapV3 is Rebalancer {
      * @param position A struct with position and pool related variables.
      * @return sqrtPrice The sqrtPrice of the Pool.
      */
-    function _getSqrtPrice(Rebalancer.PositionState memory position)
-        internal
-        view
-        override
-        returns (uint160 sqrtPrice)
-    {
+    function _getSqrtPrice(PositionState memory position) internal view override returns (uint160 sqrtPrice) {
         (sqrtPrice,,,,,,) = IUniswapV3Pool(position.pool).slot0();
     }
 
@@ -180,7 +171,7 @@ contract RebalancerUniswapV3 is Rebalancer {
      * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      */
-    function _burn(uint256[] memory balances, address, Rebalancer.PositionState memory position) internal override {
+    function _burn(uint256[] memory balances, address, PositionState memory position) internal override {
         // Remove liquidity of the position and claim outstanding fees to get full amounts of token0 and token1
         // for rebalance.
         POSITION_MANAGER.decreaseLiquidity(
@@ -220,12 +211,10 @@ contract RebalancerUniswapV3 is Rebalancer {
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param amountOut The amount of tokenOut that must be swapped to.
      */
-    function _swapViaPool(
-        uint256[] memory balances,
-        Rebalancer.PositionState memory position,
-        bool zeroToOne,
-        uint256 amountOut
-    ) internal override {
+    function _swapViaPool(uint256[] memory balances, PositionState memory position, bool zeroToOne, uint256 amountOut)
+        internal
+        override
+    {
         // Do the swap.
         (int256 deltaAmount0, int256 deltaAmount1) = IUniswapV3Pool(position.pool).swap(
             address(this),
@@ -276,7 +265,7 @@ contract RebalancerUniswapV3 is Rebalancer {
     function _mint(
         uint256[] memory balances,
         address,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         uint256 amount0Desired,
         uint256 amount1Desired
     ) internal override {

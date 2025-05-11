@@ -11,6 +11,7 @@ import { Fuzz_Test } from "../../Fuzz.t.sol";
 import { ICLGauge } from "../../../../lib/accounts-v2/src/asset-modules/Slipstream/interfaces/ICLGauge.sol";
 import { ICLPoolExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/extensions/interfaces/ICLPoolExtension.sol";
+import { PositionState } from "../../../../src/state/PositionState.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RebalancerSlipstreamExtension } from "../../../utils/extensions/RebalancerSlipstreamExtension.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
@@ -136,7 +137,7 @@ abstract contract RebalancerSlipstream_Fuzz_Test is Fuzz_Test, SlipstreamFixture
         addAssetToArcadia(address(token1), int256(price1));
     }
 
-    function givenValidPoolState(uint128 liquidityPool, Rebalancer.PositionState memory position)
+    function givenValidPoolState(uint128 liquidityPool, PositionState memory position)
         internal
         view
         returns (uint128 liquidityPool_)
@@ -153,7 +154,7 @@ abstract contract RebalancerSlipstream_Fuzz_Test is Fuzz_Test, SlipstreamFixture
         position.tickSpacing = TICK_SPACING;
     }
 
-    function setPoolState(uint128 liquidityPool, Rebalancer.PositionState memory position, bool staked) internal {
+    function setPoolState(uint128 liquidityPool, PositionState memory position, bool staked) internal {
         // Create pool.
         initSlipstream(uint160(position.sqrtPrice), liquidityPool, position.tickSpacing);
         position.pool = address(poolCl);
@@ -173,7 +174,7 @@ abstract contract RebalancerSlipstream_Fuzz_Test is Fuzz_Test, SlipstreamFixture
         }
     }
 
-    function givenValidPositionState(Rebalancer.PositionState memory position) internal {
+    function givenValidPositionState(PositionState memory position) internal {
         int24 tickSpacing = position.tickSpacing;
         position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, BOUND_TICK_UPPER - 2 * tickSpacing));
         position.tickLower = position.tickLower / tickSpacing * tickSpacing;
@@ -182,7 +183,7 @@ abstract contract RebalancerSlipstream_Fuzz_Test is Fuzz_Test, SlipstreamFixture
         position.liquidity = uint128(bound(position.liquidity, 1e6, poolCl.liquidity() / 1e3));
     }
 
-    function setPositionState(Rebalancer.PositionState memory position) internal {
+    function setPositionState(PositionState memory position) internal {
         (position.id,,) = addLiquidityCL(
             poolCl, position.liquidity, users.liquidityProvider, position.tickLower, position.tickUpper, false
         );

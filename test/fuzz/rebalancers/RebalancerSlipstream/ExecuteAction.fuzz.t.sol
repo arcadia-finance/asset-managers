@@ -10,6 +10,7 @@ import { ERC20, ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/t
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { FixedPoint128 } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
 import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
+import { PositionState } from "../../../../src/state/PositionState.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RebalancerSlipstream_Fuzz_Test } from "./_RebalancerSlipstream.fuzz.t.sol";
 import { RouterMock } from "../../../utils/mocks/RouterMock.sol";
@@ -61,7 +62,7 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
     function testFuzz_Revert_executeAction_UnbalancedPoolBeforeSwap(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
@@ -124,7 +125,7 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
     function testFuzz_Revert_executeAction_UnbalancedPoolAfterSwap(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
@@ -202,7 +203,7 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
     function testFuzz_Revert_executeAction_InsufficientLiquidity(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
@@ -278,7 +279,7 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
     function testFuzz_Success_executeAction_Slipstream_ZeroToOne(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
@@ -381,7 +382,7 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
     function testFuzz_Success_executeAction_Slipstream_OneToZero(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
@@ -491,7 +492,7 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
     function testFuzz_Success_executeAction_StakedSlipstream_RewardTokenNotToken0Or1(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
@@ -617,7 +618,7 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
     function testFuzz_Success_executeAction_StakedSlipstream_RewardTokenIsToken0Or1(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
@@ -743,7 +744,7 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
     function testFuzz_Success_executeAction_WrappedStakedSlipstream_RewardTokenNotToken0Or1(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
@@ -869,7 +870,7 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
     function testFuzz_Success_executeAction_WrappedStakedSlipstream_RewardTokenIsToken0Or1(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         int24 tickLower,
         int24 tickUpper,
         address initiator,

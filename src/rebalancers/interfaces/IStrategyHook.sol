@@ -4,6 +4,7 @@
  */
 pragma solidity ^0.8.22;
 
+import { PositionState } from "../../state/PositionState.sol";
 import { Rebalancer } from "../Rebalancer.sol";
 
 interface IStrategyHook {
@@ -17,7 +18,7 @@ interface IStrategyHook {
     function beforeRebalance(
         address account,
         address positionManager,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         bytes memory strategyData
     ) external view returns (int24 tickLower, int24 tickUpper);
 
@@ -26,7 +27,7 @@ interface IStrategyHook {
         address account,
         address positionManager,
         uint256 oldId,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         bytes memory strategyData
     ) external;
 

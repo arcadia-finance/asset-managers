@@ -5,6 +5,7 @@
 pragma solidity ^0.8.26;
 
 import { ICLPool } from "../../../../src/rebalancers/interfaces/ICLPool.sol";
+import { PositionState } from "../../../../src/state/PositionState.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RebalancerSlipstream_Fuzz_Test } from "./_RebalancerSlipstream.fuzz.t.sol";
 
@@ -23,9 +24,7 @@ contract GetPoolLiquidity_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_getPoolLiquidity(uint128 liquidityPool, Rebalancer.PositionState memory position)
-        public
-    {
+    function testFuzz_Success_getPoolLiquidity(uint128 liquidityPool, PositionState memory position) public {
         // Given: A valid position.
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position, false);

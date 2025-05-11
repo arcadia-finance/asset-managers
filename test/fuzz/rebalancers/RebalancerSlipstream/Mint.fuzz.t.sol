@@ -6,6 +6,7 @@ pragma solidity ^0.8.26;
 
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { LiquidityAmounts } from "../../../../src/libraries/LiquidityAmounts.sol";
+import { PositionState } from "../../../../src/state/PositionState.sol";
 import { Rebalancer, RebalanceParams } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RebalancerSlipstream_Fuzz_Test } from "./_RebalancerSlipstream.fuzz.t.sol";
 import { SqrtPriceMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/SqrtPriceMath.sol";
@@ -29,7 +30,7 @@ contract Mint_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Success_mint_Slipstream(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         uint128 balance0,
         uint128 balance1
     ) public {
@@ -77,7 +78,7 @@ contract Mint_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
         deal(address(token1), address(rebalancer), balance1, true);
 
         // When: Calling mint.
-        Rebalancer.PositionState memory position_;
+        PositionState memory position_;
         (balances, position_) =
             rebalancer.mint(balances, address(slipstreamPositionManager), position, balance0, balance1);
 
@@ -97,7 +98,7 @@ contract Mint_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
 
     function testFuzz_Success_mint_StakedSlipstream(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         uint128 balance0,
         uint128 balance1
     ) public {
@@ -145,7 +146,7 @@ contract Mint_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
         deal(address(token1), address(rebalancer), balance1, true);
 
         // When: Calling mint.
-        Rebalancer.PositionState memory position_;
+        PositionState memory position_;
         (balances, position_) = rebalancer.mint(balances, address(stakedSlipstreamAM), position, balance0, balance1);
 
         // Then: Contract is owner of the position.
@@ -165,7 +166,7 @@ contract Mint_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
 
     function testFuzz_Success_mint_WrappedStakedSlipstream(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         uint128 balance0,
         uint128 balance1
     ) public {
@@ -213,7 +214,7 @@ contract Mint_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
         deal(address(token1), address(rebalancer), balance1, true);
 
         // When: Calling mint.
-        Rebalancer.PositionState memory position_;
+        PositionState memory position_;
         (balances, position_) =
             rebalancer.mint(balances, address(wrappedStakedSlipstream), position, balance0, balance1);
 

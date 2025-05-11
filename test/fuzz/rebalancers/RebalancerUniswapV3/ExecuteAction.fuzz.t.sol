@@ -7,6 +7,7 @@ pragma solidity ^0.8.26;
 import { ActionData } from "../../../../lib/accounts-v2/src/interfaces/IActionBase.sol";
 import { DefaultHook } from "../../../utils/mocks/DefaultHook.sol";
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
+import { PositionState } from "../../../../src/state/PositionState.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RebalancerUniswapV3_Fuzz_Test } from "./_RebalancerUniswapV3.fuzz.t.sol";
 import { RouterMock } from "../../../utils/mocks/RouterMock.sol";
@@ -56,7 +57,7 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
     function testFuzz_Revert_executeAction_UnbalancedPoolBeforeSwap(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
@@ -119,7 +120,7 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
     function testFuzz_Revert_executeAction_UnbalancedPoolAfterSwap(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
@@ -198,7 +199,7 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
     function testFuzz_Revert_executeAction_InsufficientLiquidity(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
@@ -274,7 +275,7 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
     function testFuzz_Success_executeAction_ZeroToOne(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
@@ -377,7 +378,7 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
     function testFuzz_Success_executeAction_OneToZero(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         int24 tickLower,
         int24 tickUpper,
         address initiator,

@@ -9,6 +9,7 @@ import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC72
 import { FixedPoint128 } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
 import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { LiquidityAmounts } from "../../../../src/libraries/LiquidityAmounts.sol";
+import { PositionState } from "../../../../src/state/PositionState.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RebalancerSlipstream_Fuzz_Test } from "./_RebalancerSlipstream.fuzz.t.sol";
 import { StdStorage, stdStorage } from "../../../../lib/accounts-v2/lib/forge-std/src/Test.sol";
@@ -32,7 +33,7 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Success_burn_Slipstream(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         uint64 balance0,
         uint64 balance1
     ) public {
@@ -73,7 +74,7 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
 
     function testFuzz_Success_burn_StakedSlipstream_RewardTokenNotToken0Or1(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         uint64 balance0,
         uint64 balance1,
         uint256 rewardGrowthGlobalX128Last,
@@ -146,7 +147,7 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
 
     function testFuzz_Success_burn_StakedSlipstream_RewardTokenIsToken0Or1(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         uint64 balance0,
         uint64 balance1,
         uint256 rewardGrowthGlobalX128Last,
@@ -231,7 +232,7 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
 
     function testFuzz_Success_burn_WrappedStakedSlipstream_RewardTokenNotToken0Or1(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         uint64 balance0,
         uint64 balance1,
         uint256 rewardGrowthGlobalX128Last,
@@ -304,7 +305,7 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
 
     function testFuzz_Success_burn_WrappedStakedSlipstream_RewardTokenIsToken0Or1(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         uint64 balance0,
         uint64 balance1,
         uint256 rewardGrowthGlobalX128Last,

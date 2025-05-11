@@ -5,6 +5,7 @@
 pragma solidity ^0.8.26;
 
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { PositionState } from "../../../src/state/PositionState.sol";
 import { Rebalancer } from "../../../src/rebalancers/Rebalancer.sol";
 import { StrategyHook } from "../../../src/rebalancers/periphery/StrategyHook.sol";
 import { TickMath } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
@@ -67,12 +68,12 @@ contract DefaultHook is StrategyHook {
      * @dev We do not handle the edge cases where the new ticks might exceed MIN_TICK or MAX_TICK.
      * This will result in a revert during the mint, if ever needed a different rebalancer has to be deployed.
      */
-    function beforeRebalance(
-        address account,
-        address,
-        Rebalancer.PositionState memory position,
-        bytes memory strategyData
-    ) external view override returns (int24 tickLower, int24 tickUpper) {
+    function beforeRebalance(address account, address, PositionState memory position, bytes memory strategyData)
+        external
+        view
+        override
+        returns (int24 tickLower, int24 tickUpper)
+    {
         if (
             position.tokens[0] != strategyInfo[msg.sender][account].token0
                 || position.tokens[1] != strategyInfo[msg.sender][account].token1
@@ -149,8 +150,5 @@ contract DefaultHook is StrategyHook {
      * param newPosition The state of the new position.
      * param strategyData Encoded data containing strategy parameters.
      */
-    function afterRebalance(address, address, uint256, Rebalancer.PositionState memory, bytes memory)
-        external
-        override
-    { }
+    function afterRebalance(address, address, uint256, PositionState memory, bytes memory) external override { }
 }

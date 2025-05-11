@@ -8,6 +8,7 @@ import { DefaultHook } from "../../../utils/mocks/DefaultHook.sol";
 import { ERC20 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC20.sol";
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { IWETH } from "../../../../src/rebalancers/interfaces/IWETH.sol";
+import { PositionState } from "../../../../src/state/PositionState.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RebalancerUniswapV4_Fuzz_Test } from "./_RebalancerUniswapV4.fuzz.t.sol";
 
@@ -131,7 +132,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
     function testFuzz_Success_rebalancePosition_NotNative(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
@@ -222,7 +223,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
     function testFuzz_Success_rebalancePosition_IsNative(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         int24 tickLower,
         int24 tickUpper,
         address initiator,

@@ -5,6 +5,7 @@
 pragma solidity ^0.8.22;
 
 import { HookMock } from "../../../utils/mocks/HookMock.sol";
+import { PositionState } from "../../../../src/state/PositionState.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { Rebalancer_Fuzz_Test } from "./_Rebalancer.fuzz.t.sol";
 import { RouterMock } from "../../../utils/mocks/RouterMock.sol";
@@ -41,7 +42,7 @@ contract SwapViaRouter_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Revert_swapViaRouter_InvalidRouter(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         uint64 balance0,
         uint64 balance1,
         uint64 amountIn,
@@ -86,7 +87,7 @@ contract SwapViaRouter_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
 
     function testFuzz_Revert_swapViaRouter_RouterReverts(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         uint64 balance0,
         uint64 balance1,
         uint64 amountIn,
@@ -128,7 +129,7 @@ contract SwapViaRouter_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
 
     function testFuzz_Success_swapViaRouter_ZeroToOne(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         uint64 balance0,
         uint64 balance1,
         uint64 amountIn,
@@ -172,7 +173,7 @@ contract SwapViaRouter_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
 
     function testFuzz_Success_swapViaRouter_OneToZero(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         uint64 balance0,
         uint64 balance1,
         uint64 amountIn,

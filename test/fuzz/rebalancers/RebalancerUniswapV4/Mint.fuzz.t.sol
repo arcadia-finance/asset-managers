@@ -6,6 +6,7 @@ pragma solidity ^0.8.26;
 
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { LiquidityAmounts } from "../../../../src/libraries/LiquidityAmounts.sol";
+import { PositionState } from "../../../../src/state/PositionState.sol";
 import { Rebalancer, RebalanceParams } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RebalancerUniswapV4_Fuzz_Test } from "./_RebalancerUniswapV4.fuzz.t.sol";
 import { SqrtPriceMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/SqrtPriceMath.sol";
@@ -30,7 +31,7 @@ contract Mint_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
     function testFuzz_Success_mint_NotNative(
         uint128 liquidityPool,
         address positionManager,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         Rebalancer.Cache memory cache,
         uint128 balance0,
         uint128 balance1
@@ -74,7 +75,7 @@ contract Mint_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
         deal(address(token1), address(rebalancer), balance1, true);
 
         // When: Calling mint.
-        Rebalancer.PositionState memory position_;
+        PositionState memory position_;
         (balances, position_) = rebalancer.mint(balances, positionManager, position, balance0, balance1);
 
         // Then: Contract is owner of the position.
@@ -94,7 +95,7 @@ contract Mint_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
     function testFuzz_Success_mint_IsNative(
         uint128 liquidityPool,
         address positionManager,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         Rebalancer.Cache memory cache,
         uint128 balance0,
         uint128 balance1
@@ -138,7 +139,7 @@ contract Mint_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
         deal(address(token1), address(rebalancer), balance1, true);
 
         // When: Calling mint.
-        Rebalancer.PositionState memory position_;
+        PositionState memory position_;
         (balances, position_) = rebalancer.mint(balances, positionManager, position, balance0, balance1);
 
         // Then: Contract is owner of the position.

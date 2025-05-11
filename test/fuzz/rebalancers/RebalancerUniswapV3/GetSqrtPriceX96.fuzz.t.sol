@@ -4,6 +4,7 @@
  */
 pragma solidity ^0.8.26;
 
+import { PositionState } from "../../../../src/state/PositionState.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RebalancerUniswapV3_Fuzz_Test } from "./_RebalancerUniswapV3.fuzz.t.sol";
 
@@ -22,7 +23,7 @@ contract GetSqrtPrice_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_getSqrtPrice(uint128 liquidityPool, Rebalancer.PositionState memory position) public {
+    function testFuzz_Success_getSqrtPrice(uint128 liquidityPool, PositionState memory position) public {
         // Given: A valid position.
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position);

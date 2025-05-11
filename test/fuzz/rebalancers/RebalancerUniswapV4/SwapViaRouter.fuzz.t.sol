@@ -6,6 +6,7 @@ pragma solidity ^0.8.22;
 
 import { HookMock } from "../../../utils/mocks/HookMock.sol";
 import { IWETH } from "../../../../src/rebalancers/interfaces/IWETH.sol";
+import { PositionState } from "../../../../src/state/PositionState.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RebalancerUniswapV4_Fuzz_Test } from "./_RebalancerUniswapV4.fuzz.t.sol";
 import { RouterMock } from "../../../utils/mocks/RouterMock.sol";
@@ -42,7 +43,7 @@ contract SwapViaRouter_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Revert_swapViaRouter_InvalidRouter(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         uint64 balance0,
         uint64 balance1,
         uint64 amountIn,
@@ -81,7 +82,7 @@ contract SwapViaRouter_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
     function testFuzz_Revert_swapViaRouter_RouterReverts(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         uint64 balance0,
         uint64 balance1,
         uint64 amountIn,
@@ -117,7 +118,7 @@ contract SwapViaRouter_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
     function testFuzz_Success_swapViaRouter_NotNative_ZeroToOne(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         uint64 balance0,
         uint64 balance1,
         uint64 amountIn,
@@ -146,7 +147,7 @@ contract SwapViaRouter_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
             RouterMock.swap.selector, address(token0), address(token1), uint128(amountIn), uint128(amountOut)
         );
         bytes memory swapData = abi.encode(address(routerMock), uint256(amountIn), data);
-        Rebalancer.PositionState memory position_;
+        PositionState memory position_;
         (balances, position_) = rebalancer.swapViaRouter(balances, position, true, swapData);
 
         // Then: The correct balances are returned.
@@ -158,7 +159,7 @@ contract SwapViaRouter_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
     function testFuzz_Success_swapViaRouter_NotNative_OneToZero(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         uint64 balance0,
         uint64 balance1,
         uint64 amountIn,
@@ -187,7 +188,7 @@ contract SwapViaRouter_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
             RouterMock.swap.selector, address(token1), address(token0), uint128(amountIn), uint128(amountOut)
         );
         bytes memory swapData = abi.encode(address(routerMock), uint256(amountIn), data);
-        Rebalancer.PositionState memory position_;
+        PositionState memory position_;
         (balances, position_) = rebalancer.swapViaRouter(balances, position, false, swapData);
 
         // Then: The correct balances are returned.
@@ -199,7 +200,7 @@ contract SwapViaRouter_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
     function testFuzz_Success_swapViaRouter_IsNative_ZeroToOne(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         uint64 balance0,
         uint64 balance1,
         uint64 amountIn,
@@ -228,7 +229,7 @@ contract SwapViaRouter_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
             RouterMock.swap.selector, address(weth9), address(token1), uint128(amountIn), uint128(amountOut)
         );
         bytes memory swapData = abi.encode(address(routerMock), uint256(amountIn), data);
-        Rebalancer.PositionState memory position_;
+        PositionState memory position_;
         (balances, position_) = rebalancer.swapViaRouter(balances, position, true, swapData);
 
         // Then: The correct balances are returned.
@@ -240,7 +241,7 @@ contract SwapViaRouter_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
     function testFuzz_Success_swapViaRouter_IsNative_OneToZero(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         uint64 balance0,
         uint64 balance1,
         uint64 amountIn,
@@ -271,7 +272,7 @@ contract SwapViaRouter_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
             RouterMock.swap.selector, address(token1), address(weth9), uint128(amountIn), uint128(amountOut)
         );
         bytes memory swapData = abi.encode(address(routerMock), uint256(amountIn), data);
-        Rebalancer.PositionState memory position_;
+        PositionState memory position_;
         (balances, position_) = rebalancer.swapViaRouter(balances, position, false, swapData);
 
         // Then: The correct balances are returned.

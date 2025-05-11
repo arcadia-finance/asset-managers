@@ -5,6 +5,7 @@
 pragma solidity ^0.8.26;
 
 import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
+import { PositionState } from "../../../../src/state/PositionState.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RebalancerSlipstream_Fuzz_Test } from "./_RebalancerSlipstream.fuzz.t.sol";
 import { StdStorage, stdStorage } from "../../../../lib/accounts-v2/lib/forge-std/src/Test.sol";
@@ -26,10 +27,9 @@ contract GetPositionState_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_getPositionState_Slipstream(
-        uint128 liquidityPool,
-        Rebalancer.PositionState memory position
-    ) public {
+    function testFuzz_Success_getPositionState_Slipstream(uint128 liquidityPool, PositionState memory position)
+        public
+    {
         // Given: A valid position.
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position, false);
@@ -37,8 +37,7 @@ contract GetPositionState_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream
         setPositionState(position);
 
         // When: Calling getPositionState.
-        Rebalancer.PositionState memory position_ =
-            rebalancer.getPositionState(address(slipstreamPositionManager), position.id);
+        PositionState memory position_ = rebalancer.getPositionState(address(slipstreamPositionManager), position.id);
 
         // Then: It should return the correct position.
         assertEq(position_.pool, address(poolCl));
@@ -57,7 +56,7 @@ contract GetPositionState_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream
 
     function testFuzz_Success_getPositionState_StakedSlipstream_RewardTokenNotToken0Or1(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position
+        PositionState memory position
     ) public {
         // Given: A valid position.
         liquidityPool = givenValidPoolState(liquidityPool, position);
@@ -66,8 +65,7 @@ contract GetPositionState_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream
         setPositionState(position);
 
         // When: Calling getPositionState.
-        Rebalancer.PositionState memory position_ =
-            rebalancer.getPositionState(address(stakedSlipstreamAM), position.id);
+        PositionState memory position_ = rebalancer.getPositionState(address(stakedSlipstreamAM), position.id);
 
         // Then: It should return the correct position.
         assertEq(position_.pool, address(poolCl));
@@ -87,7 +85,7 @@ contract GetPositionState_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream
 
     function testFuzz_Success_getPositionState_StakedSlipstream_RewardTokenIsToken0Or1(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         bytes32 salt
     ) public {
         // Given: Aero is an underlying token of the position.
@@ -103,8 +101,7 @@ contract GetPositionState_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream
         setPositionState(position);
 
         // When: Calling getPositionState.
-        Rebalancer.PositionState memory position_ =
-            rebalancer.getPositionState(address(stakedSlipstreamAM), position.id);
+        PositionState memory position_ = rebalancer.getPositionState(address(stakedSlipstreamAM), position.id);
 
         // Then: It should return the correct position.
         assertEq(position_.pool, address(poolCl));
@@ -123,7 +120,7 @@ contract GetPositionState_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream
 
     function testFuzz_Success_getPositionState_WrappedStakedSlipstream_RewardTokenNotToken0Or1(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position
+        PositionState memory position
     ) public {
         // Given: A valid position.
         liquidityPool = givenValidPoolState(liquidityPool, position);
@@ -132,8 +129,7 @@ contract GetPositionState_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream
         setPositionState(position);
 
         // When: Calling getPositionState.
-        Rebalancer.PositionState memory position_ =
-            rebalancer.getPositionState(address(wrappedStakedSlipstream), position.id);
+        PositionState memory position_ = rebalancer.getPositionState(address(wrappedStakedSlipstream), position.id);
 
         // Then: It should return the correct position.
         assertEq(position_.pool, address(poolCl));
@@ -153,7 +149,7 @@ contract GetPositionState_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream
 
     function testFuzz_Success_getPositionState_WrappedStakedSlipstream_RewardTokenIsToken0Or1(
         uint128 liquidityPool,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         bytes32 salt
     ) public {
         // Given: Aero is an underlying token of the position.
@@ -169,8 +165,7 @@ contract GetPositionState_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream
         setPositionState(position);
 
         // When: Calling getPositionState.
-        Rebalancer.PositionState memory position_ =
-            rebalancer.getPositionState(address(wrappedStakedSlipstream), position.id);
+        PositionState memory position_ = rebalancer.getPositionState(address(wrappedStakedSlipstream), position.id);
 
         // Then: It should return the correct position.
         assertEq(position_.pool, address(poolCl));
