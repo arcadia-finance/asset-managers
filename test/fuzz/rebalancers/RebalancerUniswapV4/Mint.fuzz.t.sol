@@ -75,7 +75,7 @@ contract Mint_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
 
         // When: Calling mint.
         Rebalancer.PositionState memory position_;
-        (balances, position_) = rebalancer.mint(balances, positionManager, position);
+        (balances, position_) = rebalancer.mint(balances, positionManager, position, balance0, balance1);
 
         // Then: Contract is owner of the position.
         assertEq(ERC721(address(positionManagerV4)).ownerOf(position_.id), address(rebalancer));
@@ -139,7 +139,7 @@ contract Mint_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
 
         // When: Calling mint.
         Rebalancer.PositionState memory position_;
-        (balances, position_) = rebalancer.mint(balances, positionManager, position);
+        (balances, position_) = rebalancer.mint(balances, positionManager, position, balance0, balance1);
 
         // Then: Contract is owner of the position.
         assertEq(ERC721(address(positionManagerV4)).ownerOf(position_.id), address(rebalancer));

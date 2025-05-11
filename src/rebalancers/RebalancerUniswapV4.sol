@@ -394,72 +394,10 @@ contract RebalancerUniswapV4 is Rebalancer {
      * @param balances The balances of the underlying tokens held by the Rebalancer.
      * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
+     * @param amount0Desired The desired amount of token0 to mint as liquidity.
+     * @param amount1Desired The desired amount of token1 to mint as liquidity.
      */
-    function _mint(uint256[] memory balances, address, Rebalancer.PositionState memory position) internal override {
-        // Check it token0 is native ETH.
-        bool isNative = position.tokens[0] == address(0);
-
-        // Handle approvals.
-        if (!isNative) _checkAndApprovePermit2(position.tokens[0]);
-        _checkAndApprovePermit2(position.tokens[1]);
-
-        // Get new token id.
-        position.id = POSITION_MANAGER.nextTokenId();
-
-        // Calculate liquidity to be added.
-        position.liquidity = LiquidityAmounts.getLiquidityForAmounts(
-            uint160(position.sqrtPrice),
-            TickMath.getSqrtPriceAtTick(position.tickLower),
-            TickMath.getSqrtPriceAtTick(position.tickUpper),
-            balances[0],
-            balances[1]
-        );
-
-        // Cache the pool key.
-        PoolKey memory poolKey = PoolKey(
-            Currency.wrap(position.tokens[0]),
-            Currency.wrap(position.tokens[1]),
-            position.fee,
-            position.tickSpacing,
-            IHooks(position.pool)
-        );
-
-        // Generate calldata to mint new position.
-        bytes memory actions = new bytes(3);
-        actions[0] = bytes1(uint8(Actions.MINT_POSITION));
-        actions[1] = bytes1(uint8(Actions.SETTLE_PAIR));
-        actions[2] = bytes1(uint8(Actions.SWEEP));
-        bytes[] memory params = new bytes[](3);
-        params[0] = abi.encode(
-            poolKey,
-            position.tickLower,
-            position.tickUpper,
-            position.liquidity,
-            type(uint128).max,
-            type(uint128).max,
-            address(this),
-            ""
-        );
-        params[1] = abi.encode(poolKey.currency0, poolKey.currency1);
-        params[2] = abi.encode(poolKey.currency0, address(this));
-
-        // Mint the new position.
-        uint256 ethValue = isNative ? balances[0] : 0;
-        bytes memory mintParams = abi.encode(actions, params);
-        POSITION_MANAGER.modifyLiquidities{ value: ethValue }(mintParams, block.timestamp);
-
-        // Update the balances, token0 might be native ETH.
-        balances[0] = Currency.wrap(position.tokens[0]).balanceOfSelf();
-        balances[1] = ERC20(position.tokens[1]).balanceOf(address(this));
-
-        // If token0 is in native ETH, wrap it.
-        if (isNative) {
-            position.tokens[0] = WETH;
-            IWETH(payable(WETH)).deposit{ value: balances[0] }();
-        }
-    }
-
-    function _mint2(
+    function _mint(
         uint256[] memory balances,
         address,
         Rebalancer.PositionState memory position,

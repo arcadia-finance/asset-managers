@@ -52,27 +52,23 @@ contract RebalancerExtension is Rebalancer {
         balances_ = balances;
     }
 
-    function _mint(uint256[] memory balances, address positionManager, PositionState memory position)
-        internal
-        override
-    { }
-
-    function transferInitiatorFee(
+    function _mint(
         uint256[] memory balances,
+        address positionManager,
         PositionState memory position,
-        bool zeroToOne,
-        uint256 amountInitiatorFee,
-        address initiator
-    ) external returns (uint256[] memory balances_) {
-        _transferInitiatorFee(balances, position, zeroToOne, amountInitiatorFee, initiator);
-        balances_ = balances;
-    }
+        uint256 amount0Desired,
+        uint256 amount1Desired
+    ) internal override { }
 
-    function approve(uint256[] memory balances, InitiatorParams memory initiatorParams, PositionState memory position)
-        external
-        returns (uint256 count)
-    {
-        return _approve(balances, initiatorParams, position);
+    function approveAndTransfer(
+        address initiator,
+        uint256[] memory balances,
+        uint256[] memory fees,
+        address positionManager,
+        PositionState memory position
+    ) external returns (uint256[] memory balances_, uint256 count) {
+        count = _approveAndTransfer(initiator, balances, fees, positionManager, position);
+        balances_ = balances;
     }
 
     function setHook(address account_, address hook) public {

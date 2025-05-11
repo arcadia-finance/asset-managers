@@ -318,44 +318,10 @@ contract RebalancerSlipstream is Rebalancer {
      * @param balances The balances of the underlying tokens held by the Rebalancer.
      * @param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
+     * @param amount0Desired The desired amount of token0 to mint as liquidity.
+     * @param amount1Desired The desired amount of token1 to mint as liquidity.
      */
-    function _mint(uint256[] memory balances, address positionManager, Rebalancer.PositionState memory position)
-        internal
-        override
-    {
-        ERC20(position.tokens[0]).safeApproveWithRetry(address(POSITION_MANAGER), balances[0]);
-        ERC20(position.tokens[1]).safeApproveWithRetry(address(POSITION_MANAGER), balances[1]);
-
-        uint256 amount0;
-        uint256 amount1;
-        (position.id, position.liquidity, amount0, amount1) = POSITION_MANAGER.mint(
-            MintParams({
-                token0: position.tokens[0],
-                token1: position.tokens[1],
-                tickSpacing: position.tickSpacing,
-                tickLower: position.tickLower,
-                tickUpper: position.tickUpper,
-                amount0Desired: balances[0],
-                amount1Desired: balances[1],
-                amount0Min: 0,
-                amount1Min: 0,
-                recipient: address(this),
-                deadline: block.timestamp,
-                sqrtPrice: 0
-            })
-        );
-
-        balances[0] -= amount0;
-        balances[1] -= amount1;
-
-        // If position is a staked slipstream position, stake the position.
-        if (positionManager != address(POSITION_MANAGER)) {
-            POSITION_MANAGER.approve(positionManager, position.id);
-            IStakedSlipstream(positionManager).mint(position.id);
-        }
-    }
-
-    function _mint2(
+    function _mint(
         uint256[] memory balances,
         address positionManager,
         Rebalancer.PositionState memory position,

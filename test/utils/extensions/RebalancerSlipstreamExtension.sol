@@ -67,11 +67,14 @@ contract RebalancerSlipstreamExtension is RebalancerSlipstream {
         position_ = position;
     }
 
-    function mint(uint256[] memory balances, address positionManager, PositionState memory position)
-        external
-        returns (uint256[] memory balances_, PositionState memory position_)
-    {
-        _mint(balances, positionManager, position);
+    function mint(
+        uint256[] memory balances,
+        address positionManager,
+        PositionState memory position,
+        uint256 amount0Desired,
+        uint256 amount1Desired
+    ) external returns (uint256[] memory balances_, PositionState memory position_) {
+        _mint(balances, positionManager, position, amount0Desired, amount1Desired);
         balances_ = balances;
         position_ = position;
     }

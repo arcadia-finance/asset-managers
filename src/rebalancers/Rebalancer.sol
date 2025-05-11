@@ -162,7 +162,7 @@ abstract contract Rebalancer is IActionBase {
     ////////////////////////////////////////////////////////////// */
 
     event AccountInfoSet(address indexed account, address indexed initiator, address indexed strategyHook);
-    event Compound(address indexed account, uint256 id);
+    event Compound(address indexed account, address indexed positionManager, uint256 id);
     event Rebalance(address indexed account, address indexed positionManager, uint256 oldId, uint256 newId);
 
     /* //////////////////////////////////////////////////////////////
@@ -376,7 +376,7 @@ abstract contract Rebalancer is IActionBase {
         // but excess slippage will be subtracted from the initiatorFee.
         // For swaps via a router, tokenOut should be the limiting factor when increasing liquidity.
         // Update balances after the swap.
-        _swap2(balances, fees, initiatorParams, position, rebalanceParams, cache);
+        _swap(balances, fees, initiatorParams, position, rebalanceParams, cache);
 
         // Check that the pool is still balanced after the swap.
         // Since the swap went potentially through the pool itself (but does not have to),
@@ -384,16 +384,17 @@ abstract contract Rebalancer is IActionBase {
         position.sqrtPrice = _getSqrtPrice(position);
         if (!isPoolBalanced(position.sqrtPrice, cache)) revert UnbalancedPool();
 
-        // Mint the new liquidity.
         // As explained before _swap(), tokenOut should be the limiting factor when increasing liquidity
         // therefore we only subtract the initiator fee from the amountOut, not from the amountIn.
-        // Update balances after the mint.
+        // Update balances, id and liquidity after the mint.
         {
             (uint256 amount0Desired, uint256 amount1Desired) =
                 rebalanceParams.zeroToOne ? (balances[0], balances[1] - fees[1]) : (balances[0] - fees[0], balances[1]);
             if (action == CLActions.REBALANCE) {
-                _mint2(balances, positionManager, position, amount0Desired, amount1Desired);
+                // Mint the new Position, update balances, id and liquidity
+                _mint(balances, positionManager, position, amount0Desired, amount1Desired);
             } else {
+                // Increase liquidity, update balances and liquidity
                 _increaseLiquidity(balances, positionManager, position, amount0Desired, amount1Desired);
             }
         }
@@ -411,37 +412,17 @@ abstract contract Rebalancer is IActionBase {
             );
         }
 
-        // Approve the Liquidity Position.
-        ERC721(initiatorParams.positionManager).approve(msg.sender, position.id);
-
-        // Transfer Initiator fees and approve the leftovers.
-        uint256 count = 1;
-        for (uint256 i; i < balances.length; i++) {
-            // Skip assets with no balance.
-            if (balances[i] == 0) continue;
-
-            // If there are leftovers, deposit them back into the Account.
-            if (balances[i] > fees[i]) {
-                balances[i] = balances[i] - fees[i];
-                ERC20(position.tokens[i]).safeApproveWithRetry(msg.sender, balances[i]);
-                count++;
-            } else {
-                fees[i] = balances[i];
-                balances[i] = 0;
-            }
-
-            // Transfer Initiator fees to the initiator.
-            if (fees[i] > 0) ERC20(position.tokens[i]).safeTransfer(initiator, fees[i]);
-        }
+        // Approve the liquidity position and leftovers to be deposited back into the Account.
+        // And transfer the initiator fees to the initiator.
+        uint256 count = _approveAndTransfer(initiator, balances, fees, positionManager, position);
 
         // Encode deposit data for the flash-action.
-        depositData =
-            ArcadiaLogic._encodeDeposit(initiatorParams.positionManager, position.id, count, position.tokens, balances);
+        depositData = ArcadiaLogic._encodeDeposit(positionManager, position.id, count, position.tokens, balances);
 
         if (action == CLActions.REBALANCE) {
-            emit Rebalance(msg.sender, initiatorParams.positionManager, initiatorParams.oldId, position.id);
+            emit Rebalance(msg.sender, positionManager, initiatorParams.oldId, position.id);
         } else {
-            emit Compound(msg.sender, initiatorParams.oldId);
+            emit Compound(msg.sender, positionManager, position.id);
         }
     }
 
@@ -574,6 +555,7 @@ abstract contract Rebalancer is IActionBase {
     /**
      * @notice Swaps one token for another to rebalance the Liquidity Position.
      * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param fees The fees of the underlying tokens to be paid to the initiator.
      * @param initiatorParams A struct with the initiator parameters.
      * @param position A struct with position and pool related variables.
      * @param rebalanceParams A struct with the rebalance parameters.
@@ -581,40 +563,6 @@ abstract contract Rebalancer is IActionBase {
      * @dev Must update the balances and sqrtPrice after the swap.
      */
     function _swap(
-        uint256[] memory balances,
-        InitiatorParams memory initiatorParams,
-        PositionState memory position,
-        RebalanceParams memory rebalanceParams,
-        Cache memory cache
-    ) internal virtual {
-        // Don't do swaps with zero amount.
-        if (rebalanceParams.amountIn == 0) return;
-
-        // Do the actual swap to rebalance the position.
-        // This can be done either directly through the pool, or via a router with custom swap data.
-        if (initiatorParams.swapData.length == 0) {
-            // Calculate a more accurate amountOut, with slippage.
-            uint256 amountOut = RebalanceOptimizationMath._getAmountOutWithSlippage(
-                rebalanceParams.zeroToOne,
-                position.fee,
-                _getPoolLiquidity(position),
-                uint160(position.sqrtPrice),
-                cache.sqrtRatioLower,
-                cache.sqrtRatioUpper,
-                rebalanceParams.zeroToOne ? balances[0] - rebalanceParams.amountInitiatorFee : balances[0],
-                rebalanceParams.zeroToOne ? balances[1] : balances[1] - rebalanceParams.amountInitiatorFee,
-                rebalanceParams.amountIn,
-                rebalanceParams.amountOut
-            );
-            // Don't do swaps with zero amount.
-            if (amountOut == 0) return;
-            _swapViaPool(balances, position, rebalanceParams.zeroToOne, amountOut);
-        } else {
-            _swapViaRouter(balances, position, rebalanceParams.zeroToOne, initiatorParams.swapData);
-        }
-    }
-
-    function _swap2(
         uint256[] memory balances,
         uint256[] memory fees,
         InitiatorParams memory initiatorParams,
@@ -702,19 +650,17 @@ abstract contract Rebalancer is IActionBase {
      * @param balances The balances of the underlying tokens held by the Rebalancer.
      * @param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
+     * @param amount0Desired The desired amount of token0 to mint as liquidity.
+     * @param amount1Desired The desired amount of token1 to mint as liquidity.
      * @dev Must update the balances and liquidity and id after the mint.
      */
-    function _mint(uint256[] memory balances, address positionManager, PositionState memory position)
-        internal
-        virtual;
-
-    function _mint2(
+    function _mint(
         uint256[] memory balances,
         address positionManager,
         PositionState memory position,
         uint256 amount0Desired,
         uint256 amount1Desired
-    ) internal virtual { }
+    ) internal virtual;
 
     /* ///////////////////////////////////////////////////////////////
                     INCREASE LIQUIDITY LOGIC
@@ -738,82 +684,47 @@ abstract contract Rebalancer is IActionBase {
     ) internal virtual { }
 
     /* ///////////////////////////////////////////////////////////////
-                        INITIATOR FEE LOGIC
+                    APPROVE AND TRANSFER LOGIC
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Transfers the initiator fee to the initiator.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
-     * @param position A struct with position and pool related variables.
-     * @param zeroToOne Bool indicating if token0 was swapped to token1 or opposite.
-     * @param amountInitiatorFee The amount of initiator fee.
+     * @notice Approves the liquidity position and leftovers to be deposited back into the Account
+     * and transfers the initiator fees to the initiator.
      * @param initiator The address of the initiator.
-     * @dev Must update the balances after the transfer.
-     */
-    function _transferInitiatorFee(
-        uint256[] memory balances,
-        PositionState memory position,
-        bool zeroToOne,
-        uint256 amountInitiatorFee,
-        address initiator
-    ) internal virtual {
-        if (zeroToOne) {
-            (balances[0], amountInitiatorFee) = balances[0] > amountInitiatorFee
-                ? (balances[0] - amountInitiatorFee, amountInitiatorFee)
-                : (0, balances[0]);
-            if (amountInitiatorFee > 0) {
-                ERC20(position.tokens[0]).safeTransfer(initiator, amountInitiatorFee);
-            }
-        } else {
-            (balances[1], amountInitiatorFee) = balances[1] > amountInitiatorFee
-                ? (balances[1] - amountInitiatorFee, amountInitiatorFee)
-                : (0, balances[1]);
-            if (amountInitiatorFee > 0) {
-                ERC20(position.tokens[1]).safeTransfer(initiator, amountInitiatorFee);
-            }
-        }
-    }
-
-    function _transferInitiatorFees(
-        uint256[] memory balances,
-        uint256[] memory fees,
-        PositionState memory position,
-        address initiator
-    ) internal virtual {
-        for (uint256 i; i < balances.length; i++) {
-            (balances[i], fees[i]) = balances[i] > fees[i] ? (balances[i] - fees[i], fees[i]) : (0, balances[i]);
-            if (fees[i] > 0) {
-                ERC20(position.tokens[i]).safeTransfer(initiator, fees[i]);
-            }
-        }
-    }
-
-    /* ///////////////////////////////////////////////////////////////
-                        APPROVE LOGIC
-    /////////////////////////////////////////////////////////////// */
-
-    /**
-     * @notice Approves the Account to deposit the assets held by the Rebalancer back into the Account.
      * @param balances The balances of the underlying tokens held by the Rebalancer.
-     * @param initiatorParams A struct with the initiator parameters.
+     * @param fees The fees of the underlying tokens to be paid to the initiator.
+     * @param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      * @return count The number of assets approved.
      */
-    function _approve(uint256[] memory balances, InitiatorParams memory initiatorParams, PositionState memory position)
-        internal
-        returns (uint256 count)
-    {
+    function _approveAndTransfer(
+        address initiator,
+        uint256[] memory balances,
+        uint256[] memory fees,
+        address positionManager,
+        PositionState memory position
+    ) internal returns (uint256 count) {
         // Approve the Liquidity Position.
-        ERC721(initiatorParams.positionManager).approve(msg.sender, position.id);
+        ERC721(positionManager).approve(msg.sender, position.id);
 
-        // Approve the ERC20 yield tokens.
+        // Transfer Initiator fees and approve the leftovers.
         count = 1;
-        // Approve Account to redeposit Liquidity Position and leftovers.
         for (uint256 i; i < balances.length; i++) {
-            if (balances[i] > 0) {
+            // Skip assets with no balance.
+            if (balances[i] == 0) continue;
+
+            // If there are leftovers, deposit them back into the Account.
+            if (balances[i] > fees[i]) {
+                balances[i] = balances[i] - fees[i];
                 ERC20(position.tokens[i]).safeApproveWithRetry(msg.sender, balances[i]);
                 count++;
+            } else {
+                fees[i] = balances[i];
+                balances[i] = 0;
             }
+
+            // Transfer Initiator fees to the initiator.
+            if (fees[i] > 0) ERC20(position.tokens[i]).safeTransfer(initiator, fees[i]);
         }
     }
 
