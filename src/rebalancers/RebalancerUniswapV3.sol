@@ -95,41 +95,32 @@ contract RebalancerUniswapV3 is Rebalancer {
 
     /**
      * @notice Returns the underlying assets of the pool.
-     * @param initiatorParams A struct with the initiator parameters.
+     * param positionManager The contract address of the Position Manager.
+     * @param id The id of the Liquidity Position.
      * @return token0 The contract address of token0.
      * @return token1 The contract address of token1.
      */
-    function _getUnderlyingTokens(InitiatorParams memory initiatorParams)
+    function _getUnderlyingTokens(address, uint256 id)
         internal
         view
         override
         returns (address token0, address token1)
     {
-        (,, token0, token1,,,,,,,,) = POSITION_MANAGER.positions(initiatorParams.oldId);
+        (,, token0, token1,,,,,,,,) = POSITION_MANAGER.positions(id);
     }
 
     /**
      * @notice Returns the position and pool related state.
-     * @param initiatorParams A struct with the initiator parameters.
-     * @return balances The balances of the underlying tokens of the position.
+     * param positionManager The contract address of the Position Manager.
+     * @param id The id of the Liquidity Position.
      * @return position A struct with position and pool related variables.
      */
-    function _getPositionState(InitiatorParams memory initiatorParams)
-        internal
-        view
-        override
-        returns (uint256[] memory balances, PositionState memory position)
-    {
+    function _getPositionState(address, uint256 id) internal view override returns (PositionState memory position) {
         // Positions have two underlying tokens.
         position.tokens = new address[](2);
-        balances = new uint256[](2);
-
-        // Rebalancer has withdrawn the underlying tokens from the Account.
-        balances[0] = initiatorParams.amount0;
-        balances[1] = initiatorParams.amount1;
 
         // Get data of the Liquidity Position.
-        position.id = initiatorParams.oldId;
+        position.id = id;
         (
             ,
             ,
@@ -142,7 +133,7 @@ contract RebalancerUniswapV3 is Rebalancer {
             ,
             ,
             ,
-        ) = POSITION_MANAGER.positions(initiatorParams.oldId);
+        ) = POSITION_MANAGER.positions(id);
 
         // Get data of the Liquidity Pool.
         position.pool =
@@ -186,13 +177,10 @@ contract RebalancerUniswapV3 is Rebalancer {
     /**
      * @notice Burns the Liquidity Position.
      * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      */
-    function _burn(
-        uint256[] memory balances,
-        Rebalancer.InitiatorParams memory,
-        Rebalancer.PositionState memory position
-    ) internal override {
+    function _burn(uint256[] memory balances, address, Rebalancer.PositionState memory position) internal override {
         // Remove liquidity of the position and claim outstanding fees to get full amounts of token0 and token1
         // for rebalance.
         POSITION_MANAGER.decreaseLiquidity(
@@ -280,13 +268,10 @@ contract RebalancerUniswapV3 is Rebalancer {
     /**
      * @notice Mints a new Liquidity Position.
      * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      */
-    function _mint(
-        uint256[] memory balances,
-        Rebalancer.InitiatorParams memory,
-        Rebalancer.PositionState memory position
-    ) internal override {
+    function _mint(uint256[] memory balances, address, Rebalancer.PositionState memory position) internal override {
         ERC20(position.tokens[0]).safeApproveWithRetry(address(POSITION_MANAGER), balances[0]);
         ERC20(position.tokens[1]).safeApproveWithRetry(address(POSITION_MANAGER), balances[1]);
 
@@ -314,7 +299,7 @@ contract RebalancerUniswapV3 is Rebalancer {
 
     function _mint2(
         uint256[] memory balances,
-        Rebalancer.InitiatorParams memory,
+        address,
         Rebalancer.PositionState memory position,
         uint256 amount0Desired,
         uint256 amount1Desired

@@ -29,7 +29,7 @@ contract Mint_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Success_mint_NotNative(
         uint128 liquidityPool,
-        Rebalancer.InitiatorParams memory initiatorParams,
+        address positionManager,
         Rebalancer.PositionState memory position,
         Rebalancer.Cache memory cache,
         uint128 balance0,
@@ -75,7 +75,7 @@ contract Mint_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
 
         // When: Calling mint.
         Rebalancer.PositionState memory position_;
-        (balances, position_) = rebalancer.mint(balances, initiatorParams, position);
+        (balances, position_) = rebalancer.mint(balances, positionManager, position);
 
         // Then: Contract is owner of the position.
         assertEq(ERC721(address(positionManagerV4)).ownerOf(position_.id), address(rebalancer));
@@ -93,7 +93,7 @@ contract Mint_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
 
     function testFuzz_Success_mint_IsNative(
         uint128 liquidityPool,
-        Rebalancer.InitiatorParams memory initiatorParams,
+        address positionManager,
         Rebalancer.PositionState memory position,
         Rebalancer.Cache memory cache,
         uint128 balance0,
@@ -139,7 +139,7 @@ contract Mint_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
 
         // When: Calling mint.
         Rebalancer.PositionState memory position_;
-        (balances, position_) = rebalancer.mint(balances, initiatorParams, position);
+        (balances, position_) = rebalancer.mint(balances, positionManager, position);
 
         // Then: Contract is owner of the position.
         assertEq(ERC721(address(positionManagerV4)).ownerOf(position_.id), address(rebalancer));

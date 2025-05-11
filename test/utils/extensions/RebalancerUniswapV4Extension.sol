@@ -30,16 +30,12 @@ contract RebalancerUniswapV4Extension is RebalancerUniswapV4 {
         )
     { }
 
-    function getUnderlyingTokens(InitiatorParams memory initiatorParams) external view returns (address, address) {
-        return _getUnderlyingTokens(initiatorParams);
+    function getUnderlyingTokens(address positionManager, uint256 id) external view returns (address, address) {
+        return _getUnderlyingTokens(positionManager, id);
     }
 
-    function getPositionState(InitiatorParams memory initiatorParams)
-        external
-        view
-        returns (uint256[] memory, PositionState memory)
-    {
-        return _getPositionState(initiatorParams);
+    function getPositionState(address positionManager, uint256 id) external view returns (PositionState memory) {
+        return _getPositionState(positionManager, id);
     }
 
     function getPoolLiquidity(PositionState memory position) external view returns (uint128) {
@@ -50,11 +46,11 @@ contract RebalancerUniswapV4Extension is RebalancerUniswapV4 {
         return _getSqrtPrice(position);
     }
 
-    function burn(uint256[] memory balances, InitiatorParams memory initiatorParams, PositionState memory position)
+    function burn(uint256[] memory balances, address positionManager, PositionState memory position)
         external
         returns (uint256[] memory balances_)
     {
-        _burn(balances, initiatorParams, position);
+        _burn(balances, positionManager, position);
         balances_ = balances;
     }
 
@@ -78,11 +74,11 @@ contract RebalancerUniswapV4Extension is RebalancerUniswapV4 {
         position_ = position;
     }
 
-    function mint(uint256[] memory balances, InitiatorParams memory initiatorParams, PositionState memory position)
+    function mint(uint256[] memory balances, address positionManager, PositionState memory position)
         external
         returns (uint256[] memory balances_, PositionState memory position_)
     {
-        _mint(balances, initiatorParams, position);
+        _mint(balances, positionManager, position);
         balances_ = balances;
         position_ = position;
     }

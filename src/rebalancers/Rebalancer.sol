@@ -282,7 +282,7 @@ abstract contract Rebalancer is IActionBase {
         address token0;
         address token1;
         if (initiatorParams.amount0 > 0 || initiatorParams.amount1 > 0) {
-            (token0, token1) = _getUnderlyingTokens(initiatorParams);
+            (token0, token1) = _getUnderlyingTokens(initiatorParams.positionManager, initiatorParams.oldId);
         }
 
         // Encode data for the flash-action.
@@ -309,11 +309,17 @@ abstract contract Rebalancer is IActionBase {
         // Decode actionTargetData.
         (address initiator, InitiatorParams memory initiatorParams) =
             abi.decode(actionTargetData, (address, InitiatorParams));
+        address positionManager = initiatorParams.positionManager;
         // ToDo add in initiatorParams.
         CLActions action = CLActions.REBALANCE;
 
         // Get all pool and position related state.
-        (uint256[] memory balances, PositionState memory position) = _getPositionState(initiatorParams);
+        PositionState memory position = _getPositionState(positionManager, initiatorParams.oldId);
+
+        // Rebalancer has withdrawn the underlying tokens from the Account.
+        uint256[] memory balances = new uint256[](position.tokens.length);
+        balances[0] = initiatorParams.amount0;
+        balances[1] = initiatorParams.amount1;
         uint256[] memory fees = new uint256[](balances.length);
 
         IStrategyHook hook;
@@ -327,13 +333,12 @@ abstract contract Rebalancer is IActionBase {
             // - Excluding rebalancing of certain positions.
             // - ...
             hook = IStrategyHook(strategyHook[msg.sender]);
-            (position.tickLower, position.tickUpper) = hook.beforeRebalance(
-                msg.sender, initiatorParams.positionManager, position, initiatorParams.strategyData
-            );
+            (position.tickLower, position.tickUpper) =
+                hook.beforeRebalance(msg.sender, positionManager, position, initiatorParams.strategyData);
         }
 
         // Cache variables that are gas expensive to calcultate and used multiple times.
-        Cache memory cache = _getCache(initiator, initiatorParams, position);
+        Cache memory cache = _getCache(initiator, position, initiatorParams.trustedSqrtPrice);
 
         // Check that pool is initially balanced.
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
@@ -344,12 +349,12 @@ abstract contract Rebalancer is IActionBase {
             uint256 claimFee = initiatorInfo[initiator].claimFee;
             // If the claim fee is 0, no need to separately claim fees, as they will be claimed in the burn function.
             if (claimFee > 0 || action == CLActions.COMPOUND) {
-                _claim(balances, fees, initiatorParams, position, claimFee);
+                _claim(balances, fees, positionManager, position, claimFee);
             }
         }
 
         // Remove liquidity of the position, claim outstanding fees/rewards and update balances.
-        if (action == CLActions.REBALANCE) _burn(balances, initiatorParams, position);
+        if (action == CLActions.REBALANCE) _burn(balances, positionManager, position);
 
         // Get the rebalance parameters, based on a hypothetical swap through the pool itself without slippage.
         RebalanceParams memory rebalanceParams = RebalanceLogic._getRebalanceParams(
@@ -383,12 +388,14 @@ abstract contract Rebalancer is IActionBase {
         // As explained before _swap(), tokenOut should be the limiting factor when increasing liquidity
         // therefore we only subtract the initiator fee from the amountOut, not from the amountIn.
         // Update balances after the mint.
-        (uint256 amount0Desired, uint256 amount1Desired) =
-            rebalanceParams.zeroToOne ? (balances[0], balances[1] - fees[1]) : (balances[0] - fees[0], balances[1]);
-        if (action == CLActions.REBALANCE) {
-            _mint2(balances, initiatorParams, position, amount0Desired, amount1Desired);
-        } else {
-            _increaseLiquidity(balances, initiatorParams, position, amount0Desired, amount1Desired);
+        {
+            (uint256 amount0Desired, uint256 amount1Desired) =
+                rebalanceParams.zeroToOne ? (balances[0], balances[1] - fees[1]) : (balances[0] - fees[0], balances[1]);
+            if (action == CLActions.REBALANCE) {
+                _mint2(balances, positionManager, position, amount0Desired, amount1Desired);
+            } else {
+                _increaseLiquidity(balances, positionManager, position, amount0Desired, amount1Desired);
+            }
         }
 
         // Check that the actual liquidity of the position is above the minimum threshold.
@@ -400,11 +407,7 @@ abstract contract Rebalancer is IActionBase {
             // Call the strategy hook after the rebalance (non view function).
             // Can be used to check additional constraints and persist state changes on the hook.
             hook.afterRebalance(
-                msg.sender,
-                initiatorParams.positionManager,
-                initiatorParams.oldId,
-                position,
-                initiatorParams.strategyData
+                msg.sender, positionManager, initiatorParams.oldId, position, initiatorParams.strategyData
             );
         }
 
@@ -469,11 +472,12 @@ abstract contract Rebalancer is IActionBase {
 
     /**
      * @notice Returns the underlying assets of the pool.
-     * @param initiatorParams A struct with the initiator parameters.
+     * @param positionManager The contract address of the Position Manager.
+     * @param id The id of the Liquidity Position.
      * @return token0 The contract address of token0.
      * @return token1 The contract address of token1.
      */
-    function _getUnderlyingTokens(InitiatorParams memory initiatorParams)
+    function _getUnderlyingTokens(address positionManager, uint256 id)
         internal
         view
         virtual
@@ -481,24 +485,24 @@ abstract contract Rebalancer is IActionBase {
 
     /**
      * @notice Returns the position and pool related state.
-     * @param initiatorParams A struct with the initiator parameters.
-     * @return balances The balances of the underlying tokens of the position.
+     * @param positionManager The contract address of the Position Manager.
+     * @param id The id of the Liquidity Position.
      * @return position A struct with position and pool related variables.
      */
-    function _getPositionState(InitiatorParams memory initiatorParams)
+    function _getPositionState(address positionManager, uint256 id)
         internal
         view
         virtual
-        returns (uint256[] memory balances, PositionState memory position);
+        returns (PositionState memory position);
 
     /**
      * @notice Returns the cached variables.
      * @param initiator The address of the initiator.
-     * @param initiatorParams A struct with the initiator parameters.
      * @param position A struct with position and pool related variables.
+     * @param trustedSqrtPrice The sqrtPrice the pool should have, given by the initiator.
      * @return cache A struct with cached variables.
      */
-    function _getCache(address initiator, InitiatorParams memory initiatorParams, PositionState memory position)
+    function _getCache(address initiator, PositionState memory position, uint256 trustedSqrtPrice)
         internal
         view
         virtual
@@ -507,12 +511,8 @@ abstract contract Rebalancer is IActionBase {
         // We do not handle the edge cases where the bounds of the sqrtPrice exceed MIN_SQRT_RATIO or MAX_SQRT_RATIO.
         // This will result in a revert during swapViaPool, if ever needed a different rebalancer has to be deployed.
         cache = Cache({
-            lowerBoundSqrtPrice: initiatorParams.trustedSqrtPrice.mulDivDown(
-                initiatorInfo[initiator].lowerSqrtPriceDeviation, 1e18
-            ),
-            upperBoundSqrtPrice: initiatorParams.trustedSqrtPrice.mulDivDown(
-                initiatorInfo[initiator].upperSqrtPriceDeviation, 1e18
-            ),
+            lowerBoundSqrtPrice: trustedSqrtPrice.mulDivDown(initiatorInfo[initiator].lowerSqrtPriceDeviation, 1e18),
+            upperBoundSqrtPrice: trustedSqrtPrice.mulDivDown(initiatorInfo[initiator].upperSqrtPriceDeviation, 1e18),
             sqrtRatioLower: TickMath.getSqrtPriceAtTick(position.tickLower),
             sqrtRatioUpper: TickMath.getSqrtPriceAtTick(position.tickUpper)
         });
@@ -540,14 +540,14 @@ abstract contract Rebalancer is IActionBase {
      * @notice Claims fees/rewards from a Liquidity Position.
      * @param balances The balances of the underlying tokens held by the Rebalancer.
      * @param fees The fees of the underlying tokens to be paid to the initiator.
-     * @param initiatorParams A struct with the initiator parameters.
+     * @param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      * @dev Must update the balances after the claim.
      */
     function _claim(
         uint256[] memory balances,
         uint256[] memory fees,
-        InitiatorParams memory initiatorParams,
+        address positionManager,
         PositionState memory position,
         uint256 claimFee
     ) internal virtual { }
@@ -559,11 +559,11 @@ abstract contract Rebalancer is IActionBase {
     /**
      * @notice Burns the Liquidity Position.
      * @param balances The balances of the underlying tokens held by the Rebalancer.
-     * @param initiatorParams A struct with the initiator parameters.
+     * @param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      * @dev Must update the balances after the burn.
      */
-    function _burn(uint256[] memory balances, InitiatorParams memory initiatorParams, PositionState memory position)
+    function _burn(uint256[] memory balances, address positionManager, PositionState memory position)
         internal
         virtual;
 
@@ -700,17 +700,17 @@ abstract contract Rebalancer is IActionBase {
     /**
      * @notice Mints a new Liquidity Position.
      * @param balances The balances of the underlying tokens held by the Rebalancer.
-     * @param initiatorParams A struct with the initiator parameters.
+     * @param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      * @dev Must update the balances and liquidity and id after the mint.
      */
-    function _mint(uint256[] memory balances, InitiatorParams memory initiatorParams, PositionState memory position)
+    function _mint(uint256[] memory balances, address positionManager, PositionState memory position)
         internal
         virtual;
 
     function _mint2(
         uint256[] memory balances,
-        InitiatorParams memory initiatorParams,
+        address positionManager,
         PositionState memory position,
         uint256 amount0Desired,
         uint256 amount1Desired
@@ -723,7 +723,7 @@ abstract contract Rebalancer is IActionBase {
     /**
      * @notice Swaps one token for another to rebalance the Liquidity Position.
      * @param balances The balances of the underlying tokens held by the Rebalancer.
-     * @param initiatorParams A struct with the initiator parameters.
+     * @param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      * @param amount0Desired The desired amount of token0 to add as liquidity.
      * @param amount1Desired The desired amount of token1 to add as liquidity.
@@ -731,7 +731,7 @@ abstract contract Rebalancer is IActionBase {
      */
     function _increaseLiquidity(
         uint256[] memory balances,
-        InitiatorParams memory initiatorParams,
+        address positionManager,
         PositionState memory position,
         uint256 amount0Desired,
         uint256 amount1Desired

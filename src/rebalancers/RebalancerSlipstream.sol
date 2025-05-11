@@ -120,64 +120,55 @@ contract RebalancerSlipstream is Rebalancer {
 
     /**
      * @notice Returns the underlying assets of the pool.
-     * @param initiatorParams A struct with the initiator parameters.
+     * param positionManager The contract address of the Position Manager.
+     * @param id The id of the Liquidity Position.
      * @return token0 The contract address of token0.
      * @return token1 The contract address of token1.
      */
-    function _getUnderlyingTokens(InitiatorParams memory initiatorParams)
+    function _getUnderlyingTokens(address, uint256 id)
         internal
         view
         override
         returns (address token0, address token1)
     {
-        (,, token0, token1,,,,,,,,) = POSITION_MANAGER.positions(initiatorParams.oldId);
+        (,, token0, token1,,,,,,,,) = POSITION_MANAGER.positions(id);
     }
 
     /**
      * @notice Returns the position and pool related state.
-     * @param initiatorParams A struct with the initiator parameters.
-     * @return balances The balances of the underlying tokens of the position.
+     * @param positionManager The contract address of the Position Manager.
+     * @param id The id of the Liquidity Position.
      * @return position A struct with position and pool related variables.
      */
-    function _getPositionState(InitiatorParams memory initiatorParams)
+    function _getPositionState(address positionManager, uint256 id)
         internal
         view
         override
-        returns (uint256[] memory balances, PositionState memory position)
+        returns (PositionState memory position)
     {
         // Get data of the Liquidity Position.
+        position.id = id;
         address token0;
         address token1;
         (,, token0, token1, position.tickSpacing, position.tickLower, position.tickUpper, position.liquidity,,,,) =
-            POSITION_MANAGER.positions(initiatorParams.oldId);
+            POSITION_MANAGER.positions(id);
 
         // If it is a non staked position, or the position is staked and the reward token is the same as one of the underlying tokens,
         // there are two underlying assets, otherwise there are three.
-        if (
-            initiatorParams.positionManager == address(POSITION_MANAGER) || token0 == REWARD_TOKEN
-                || token1 == REWARD_TOKEN
-        ) {
+        if (positionManager == address(POSITION_MANAGER) || token0 == REWARD_TOKEN || token1 == REWARD_TOKEN) {
             // Positions have two underlying tokens.
-            balances = new uint256[](2);
             position.tokens = new address[](2);
         } else {
             // Positions have three underlying tokens.
-            balances = new uint256[](3);
             position.tokens = new address[](3);
             position.tokens[2] = REWARD_TOKEN;
         }
         position.tokens[0] = token0;
         position.tokens[1] = token1;
 
-        // Rebalancer has withdrawn the underlying tokens from the Account.
-        balances[0] = initiatorParams.amount0;
-        balances[1] = initiatorParams.amount1;
-
         // Get data of the Liquidity Pool.
-        position.pool = SlipstreamLogic.computeAddress(
-            POOL_IMPLEMENTATION, CL_FACTORY, position.tokens[0], position.tokens[1], position.tickSpacing
-        );
-        position.id = initiatorParams.oldId;
+        position.pool =
+            SlipstreamLogic.computeAddress(POOL_IMPLEMENTATION, CL_FACTORY, token0, token1, position.tickSpacing);
         (position.sqrtPrice, position.tickCurrent,,,,) = ICLPool(position.pool).slot0();
         position.fee = ICLPool(position.pool).fee();
     }
@@ -217,18 +208,17 @@ contract RebalancerSlipstream is Rebalancer {
     /**
      * @notice Burns the Liquidity Position.
      * @param balances The balances of the underlying tokens held by the Rebalancer.
-     * @param initiatorParams A struct with the initiator parameters.
+     * @param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      */
-    function _burn(
-        uint256[] memory balances,
-        Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position
-    ) internal override {
+    function _burn(uint256[] memory balances, address positionManager, Rebalancer.PositionState memory position)
+        internal
+        override
+    {
         // If position is a staked slipstream position, first unstake the position.
-        if (initiatorParams.positionManager != address(POSITION_MANAGER)) {
+        if (positionManager != address(POSITION_MANAGER)) {
             // If rewardToken is an underlying token of the position, add it to the balances
-            uint256 rewards = IStakedSlipstream(initiatorParams.positionManager).burn(position.id);
+            uint256 rewards = IStakedSlipstream(positionManager).burn(position.id);
             if (rewards > 0) {
                 if (balances.length == 3) balances[2] = rewards;
                 else if (position.tokens[0] == REWARD_TOKEN) balances[0] += rewards;
@@ -326,14 +316,13 @@ contract RebalancerSlipstream is Rebalancer {
     /**
      * @notice Mints a new Liquidity Position.
      * @param balances The balances of the underlying tokens held by the Rebalancer.
-     * @param initiatorParams A struct with the initiator parameters.
+     * @param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      */
-    function _mint(
-        uint256[] memory balances,
-        Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position
-    ) internal override {
+    function _mint(uint256[] memory balances, address positionManager, Rebalancer.PositionState memory position)
+        internal
+        override
+    {
         ERC20(position.tokens[0]).safeApproveWithRetry(address(POSITION_MANAGER), balances[0]);
         ERC20(position.tokens[1]).safeApproveWithRetry(address(POSITION_MANAGER), balances[1]);
 
@@ -360,15 +349,15 @@ contract RebalancerSlipstream is Rebalancer {
         balances[1] -= amount1;
 
         // If position is a staked slipstream position, stake the position.
-        if (initiatorParams.positionManager != address(POSITION_MANAGER)) {
-            POSITION_MANAGER.approve(initiatorParams.positionManager, position.id);
-            IStakedSlipstream(initiatorParams.positionManager).mint(position.id);
+        if (positionManager != address(POSITION_MANAGER)) {
+            POSITION_MANAGER.approve(positionManager, position.id);
+            IStakedSlipstream(positionManager).mint(position.id);
         }
     }
 
     function _mint2(
         uint256[] memory balances,
-        Rebalancer.InitiatorParams memory initiatorParams,
+        address positionManager,
         Rebalancer.PositionState memory position,
         uint256 amount0Desired,
         uint256 amount1Desired
@@ -399,9 +388,9 @@ contract RebalancerSlipstream is Rebalancer {
         balances[1] -= amount1;
 
         // If position is a staked slipstream position, stake the position.
-        if (initiatorParams.positionManager != address(POSITION_MANAGER)) {
-            POSITION_MANAGER.approve(initiatorParams.positionManager, position.id);
-            IStakedSlipstream(initiatorParams.positionManager).mint(position.id);
+        if (positionManager != address(POSITION_MANAGER)) {
+            POSITION_MANAGER.approve(positionManager, position.id);
+            IStakedSlipstream(positionManager).mint(position.id);
         }
     }
 }

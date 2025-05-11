@@ -121,17 +121,18 @@ contract RebalancerUniswapV4 is Rebalancer {
 
     /**
      * @notice Returns the underlying assets of the pool.
-     * @param initiatorParams A struct with the initiator parameters.
+     * param positionManager The contract address of the Position Manager.
+     * @param id The id of the Liquidity Position.
      * @return token0 The contract address of token0.
      * @return token1 The contract address of token1.
      */
-    function _getUnderlyingTokens(InitiatorParams memory initiatorParams)
+    function _getUnderlyingTokens(address, uint256 id)
         internal
         view
         override
         returns (address token0, address token1)
     {
-        (PoolKey memory poolKey,) = POSITION_MANAGER.getPoolAndPositionInfo(initiatorParams.oldId);
+        (PoolKey memory poolKey,) = POSITION_MANAGER.getPoolAndPositionInfo(id);
         token0 = Currency.unwrap(poolKey.currency0);
         token1 = Currency.unwrap(poolKey.currency1);
 
@@ -141,32 +142,21 @@ contract RebalancerUniswapV4 is Rebalancer {
 
     /**
      * @notice Returns the position and pool related state.
-     * @param initiatorParams A struct with the initiator parameters.
-     * @return balances The balances of the underlying tokens of the position.
+     * param positionManager The contract address of the Position Manager.
+     * @param id The id of the Liquidity Position.
      * @return position A struct with position and pool related variables.
      */
-    function _getPositionState(InitiatorParams memory initiatorParams)
-        internal
-        view
-        override
-        returns (uint256[] memory balances, PositionState memory position)
-    {
+    function _getPositionState(address, uint256 id) internal view override returns (PositionState memory position) {
         // Positions have two underlying tokens.
         position.tokens = new address[](2);
-        balances = new uint256[](2);
-
-        // Rebalancer has withdrawn the underlying tokens from the Account.
-        balances[0] = initiatorParams.amount0;
-        balances[1] = initiatorParams.amount1;
 
         // Get data of the Liquidity Position.
-        position.id = initiatorParams.oldId;
-        (PoolKey memory poolKey, PositionInfo info) = POSITION_MANAGER.getPoolAndPositionInfo(position.id);
+        position.id = id;
+        (PoolKey memory poolKey, PositionInfo info) = POSITION_MANAGER.getPoolAndPositionInfo(id);
         position.tickLower = info.tickLower();
         position.tickUpper = info.tickUpper();
-        bytes32 positionId = keccak256(
-            abi.encodePacked(address(POSITION_MANAGER), info.tickLower(), info.tickUpper(), bytes32(position.id))
-        );
+        bytes32 positionId =
+            keccak256(abi.encodePacked(address(POSITION_MANAGER), info.tickLower(), info.tickUpper(), bytes32(id)));
         position.liquidity = POOL_MANAGER.getPositionLiquidity(poolKey.toId(), positionId);
 
         // Get data of the Liquidity Pool.
@@ -227,14 +217,10 @@ contract RebalancerUniswapV4 is Rebalancer {
     /**
      * @notice Burns the Liquidity Position.
      * @param balances The balances of the underlying tokens held by the Rebalancer.
-     * @param initiatorParams A struct with the initiator parameters.
+     * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      */
-    function _burn(
-        uint256[] memory balances,
-        Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position
-    ) internal override {
+    function _burn(uint256[] memory balances, address, Rebalancer.PositionState memory position) internal override {
         // Generate calldata to burn the position and collect the underlying assets.
         bytes memory actions = new bytes(2);
         actions[0] = bytes1(uint8(Actions.BURN_POSITION));
@@ -249,8 +235,8 @@ contract RebalancerUniswapV4 is Rebalancer {
         POSITION_MANAGER.modifyLiquidities(burnParams, block.timestamp);
 
         // If token0 is in native ETH, and weth was withdrawn from the account, unwrap it.
-        if (position.tokens[0] == address(0) && initiatorParams.amount0 > 0) {
-            IWETH(WETH).withdraw(initiatorParams.amount0);
+        if (position.tokens[0] == address(0)) {
+            IWETH(WETH).withdraw(ERC20(WETH).balanceOf(address(this)));
         }
 
         // Update the balances, token0 might be native ETH.
@@ -406,13 +392,10 @@ contract RebalancerUniswapV4 is Rebalancer {
     /**
      * @notice Mints a new Liquidity Position.
      * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      */
-    function _mint(
-        uint256[] memory balances,
-        Rebalancer.InitiatorParams memory,
-        Rebalancer.PositionState memory position
-    ) internal override {
+    function _mint(uint256[] memory balances, address, Rebalancer.PositionState memory position) internal override {
         // Check it token0 is native ETH.
         bool isNative = position.tokens[0] == address(0);
 
@@ -478,7 +461,7 @@ contract RebalancerUniswapV4 is Rebalancer {
 
     function _mint2(
         uint256[] memory balances,
-        Rebalancer.InitiatorParams memory,
+        address,
         Rebalancer.PositionState memory position,
         uint256 amount0Desired,
         uint256 amount1Desired

@@ -28,7 +28,6 @@ contract GetPositionState_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Success_getPositionState_Slipstream(
         uint128 liquidityPool,
-        Rebalancer.InitiatorParams memory initiatorParams,
         Rebalancer.PositionState memory position
     ) public {
         // Given: A valid position.
@@ -36,21 +35,14 @@ contract GetPositionState_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream
         setPoolState(liquidityPool, position, false);
         givenValidPositionState(position);
         setPositionState(position);
-        initiatorParams.oldId = uint96(position.id);
-        initiatorParams.positionManager = address(slipstreamPositionManager);
 
         // When: Calling getPositionState.
-        (uint256[] memory balances, Rebalancer.PositionState memory position_) =
-            rebalancer.getPositionState(initiatorParams);
+        Rebalancer.PositionState memory position_ =
+            rebalancer.getPositionState(address(slipstreamPositionManager), position.id);
 
-        // Then: It should return the correct balances.
-        assertEq(balances.length, 2);
-        assertEq(balances[0], initiatorParams.amount0);
-        assertEq(balances[1], initiatorParams.amount1);
-
-        // And: It should return the correct position.
+        // Then: It should return the correct position.
         assertEq(position_.pool, address(poolCl));
-        assertEq(position_.id, initiatorParams.oldId);
+        assertEq(position_.id, position.id);
         assertEq(position_.fee, poolCl.fee());
         assertEq(position_.tickSpacing, TICK_SPACING);
         assertEq(position_.tickCurrent, TickMath.getTickAtSqrtPrice(uint160(position.sqrtPrice)));
@@ -65,7 +57,6 @@ contract GetPositionState_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream
 
     function testFuzz_Success_getPositionState_StakedSlipstream_RewardTokenNotToken0Or1(
         uint128 liquidityPool,
-        Rebalancer.InitiatorParams memory initiatorParams,
         Rebalancer.PositionState memory position
     ) public {
         // Given: A valid position.
@@ -73,22 +64,14 @@ contract GetPositionState_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream
         setPoolState(liquidityPool, position, true);
         givenValidPositionState(position);
         setPositionState(position);
-        initiatorParams.oldId = uint96(position.id);
-        initiatorParams.positionManager = address(stakedSlipstreamAM);
 
         // When: Calling getPositionState.
-        (uint256[] memory balances, Rebalancer.PositionState memory position_) =
-            rebalancer.getPositionState(initiatorParams);
+        Rebalancer.PositionState memory position_ =
+            rebalancer.getPositionState(address(stakedSlipstreamAM), position.id);
 
-        // Then: It should return the correct balances.
-        assertEq(balances.length, 3);
-        assertEq(balances[0], initiatorParams.amount0);
-        assertEq(balances[1], initiatorParams.amount1);
-        assertEq(balances[2], 0);
-
-        // And: It should return the correct position.
+        // Then: It should return the correct position.
         assertEq(position_.pool, address(poolCl));
-        assertEq(position_.id, initiatorParams.oldId);
+        assertEq(position_.id, position.id);
         assertEq(position_.fee, poolCl.fee());
         assertEq(position_.tickSpacing, TICK_SPACING);
         assertEq(position_.tickCurrent, TickMath.getTickAtSqrtPrice(uint160(position.sqrtPrice)));
@@ -104,7 +87,6 @@ contract GetPositionState_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream
 
     function testFuzz_Success_getPositionState_StakedSlipstream_RewardTokenIsToken0Or1(
         uint128 liquidityPool,
-        Rebalancer.InitiatorParams memory initiatorParams,
         Rebalancer.PositionState memory position,
         bytes32 salt
     ) public {
@@ -119,21 +101,14 @@ contract GetPositionState_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream
         setPoolState(liquidityPool, position, true);
         givenValidPositionState(position);
         setPositionState(position);
-        initiatorParams.oldId = uint96(position.id);
-        initiatorParams.positionManager = address(stakedSlipstreamAM);
 
         // When: Calling getPositionState.
-        (uint256[] memory balances, Rebalancer.PositionState memory position_) =
-            rebalancer.getPositionState(initiatorParams);
+        Rebalancer.PositionState memory position_ =
+            rebalancer.getPositionState(address(stakedSlipstreamAM), position.id);
 
-        // Then: It should return the correct balances.
-        assertEq(balances.length, 2);
-        assertEq(balances[0], initiatorParams.amount0);
-        assertEq(balances[1], initiatorParams.amount1);
-
-        // And: It should return the correct position.
+        // Then: It should return the correct position.
         assertEq(position_.pool, address(poolCl));
-        assertEq(position_.id, initiatorParams.oldId);
+        assertEq(position_.id, position.id);
         assertEq(position_.fee, poolCl.fee());
         assertEq(position_.tickSpacing, TICK_SPACING);
         assertEq(position_.tickCurrent, TickMath.getTickAtSqrtPrice(uint160(position.sqrtPrice)));
@@ -148,7 +123,6 @@ contract GetPositionState_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream
 
     function testFuzz_Success_getPositionState_WrappedStakedSlipstream_RewardTokenNotToken0Or1(
         uint128 liquidityPool,
-        Rebalancer.InitiatorParams memory initiatorParams,
         Rebalancer.PositionState memory position
     ) public {
         // Given: A valid position.
@@ -156,22 +130,14 @@ contract GetPositionState_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream
         setPoolState(liquidityPool, position, true);
         givenValidPositionState(position);
         setPositionState(position);
-        initiatorParams.oldId = uint96(position.id);
-        initiatorParams.positionManager = address(wrappedStakedSlipstream);
 
         // When: Calling getPositionState.
-        (uint256[] memory balances, Rebalancer.PositionState memory position_) =
-            rebalancer.getPositionState(initiatorParams);
+        Rebalancer.PositionState memory position_ =
+            rebalancer.getPositionState(address(wrappedStakedSlipstream), position.id);
 
-        // Then: It should return the correct balances.
-        assertEq(balances.length, 3);
-        assertEq(balances[0], initiatorParams.amount0);
-        assertEq(balances[1], initiatorParams.amount1);
-        assertEq(balances[2], 0);
-
-        // And: It should return the correct position.
+        // Then: It should return the correct position.
         assertEq(position_.pool, address(poolCl));
-        assertEq(position_.id, initiatorParams.oldId);
+        assertEq(position_.id, position.id);
         assertEq(position_.fee, poolCl.fee());
         assertEq(position_.tickSpacing, TICK_SPACING);
         assertEq(position_.tickCurrent, TickMath.getTickAtSqrtPrice(uint160(position.sqrtPrice)));
@@ -187,7 +153,6 @@ contract GetPositionState_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream
 
     function testFuzz_Success_getPositionState_WrappedStakedSlipstream_RewardTokenIsToken0Or1(
         uint128 liquidityPool,
-        Rebalancer.InitiatorParams memory initiatorParams,
         Rebalancer.PositionState memory position,
         bytes32 salt
     ) public {
@@ -202,21 +167,14 @@ contract GetPositionState_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream
         setPoolState(liquidityPool, position, true);
         givenValidPositionState(position);
         setPositionState(position);
-        initiatorParams.oldId = uint96(position.id);
-        initiatorParams.positionManager = address(wrappedStakedSlipstream);
 
         // When: Calling getPositionState.
-        (uint256[] memory balances, Rebalancer.PositionState memory position_) =
-            rebalancer.getPositionState(initiatorParams);
+        Rebalancer.PositionState memory position_ =
+            rebalancer.getPositionState(address(wrappedStakedSlipstream), position.id);
 
-        // Then: It should return the correct balances.
-        assertEq(balances.length, 2);
-        assertEq(balances[0], initiatorParams.amount0);
-        assertEq(balances[1], initiatorParams.amount1);
-
-        // And: It should return the correct position.
+        // Then: It should return the correct position.
         assertEq(position_.pool, address(poolCl));
-        assertEq(position_.id, initiatorParams.oldId);
+        assertEq(position_.id, position.id);
         assertEq(position_.fee, poolCl.fee());
         assertEq(position_.tickSpacing, TICK_SPACING);
         assertEq(position_.tickCurrent, TickMath.getTickAtSqrtPrice(uint160(position.sqrtPrice)));

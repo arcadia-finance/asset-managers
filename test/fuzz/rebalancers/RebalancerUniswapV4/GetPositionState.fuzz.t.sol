@@ -25,7 +25,6 @@ contract GetPositionState_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_F
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Success_getPositionState_NotNative(
         uint128 liquidityPool,
-        Rebalancer.InitiatorParams memory initiatorParams,
         Rebalancer.PositionState memory position
     ) public {
         // Given: A valid position.
@@ -33,20 +32,13 @@ contract GetPositionState_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_F
         setPoolState(liquidityPool, position, false);
         givenValidPositionState(position);
         setPositionState(position);
-        initiatorParams.oldId = uint96(position.id);
 
         // When: Calling getPositionState.
-        (uint256[] memory balances, Rebalancer.PositionState memory position_) =
-            rebalancer.getPositionState(initiatorParams);
+        Rebalancer.PositionState memory position_ = rebalancer.getPositionState(address(positionManagerV4), position.id);
 
-        // Then: It should return the correct balances.
-        assertEq(balances.length, 2);
-        assertEq(balances[0], initiatorParams.amount0);
-        assertEq(balances[1], initiatorParams.amount1);
-
-        // And: It should return the correct position.
+        // Then: It should return the correct position.
         assertEq(position_.pool, address(0));
-        assertEq(position_.id, initiatorParams.oldId);
+        assertEq(position_.id, position.id);
         assertEq(position_.fee, POOL_FEE);
         assertEq(position_.tickSpacing, TICK_SPACING);
         assertEq(position_.tickCurrent, TickMath.getTickAtSqrtPrice(uint160(position.sqrtPrice)));
@@ -59,30 +51,22 @@ contract GetPositionState_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_F
         assertEq(position_.tokens[1], address(token1));
     }
 
-    function testFuzz_Success_getPositionState_IsNative(
-        uint128 liquidityPool,
-        Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position
-    ) public {
+    function testFuzz_Success_getPositionState_IsNative(uint128 liquidityPool, Rebalancer.PositionState memory position)
+        public
+    {
         // Given: A valid position.
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position, true);
         givenValidPositionState(position);
         setPositionState(position);
-        initiatorParams.oldId = uint96(position.id);
+        position.id = uint96(position.id);
 
         // When: Calling getPositionState.
-        (uint256[] memory balances, Rebalancer.PositionState memory position_) =
-            rebalancer.getPositionState(initiatorParams);
+        Rebalancer.PositionState memory position_ = rebalancer.getPositionState(address(positionManagerV4), position.id);
 
-        // Then: It should return the correct balances.
-        assertEq(balances.length, 2);
-        assertEq(balances[0], initiatorParams.amount0);
-        assertEq(balances[1], initiatorParams.amount1);
-
-        // And: It should return the correct position.
+        // Then: It should return the correct position.
         assertEq(position_.pool, address(0));
-        assertEq(position_.id, initiatorParams.oldId);
+        assertEq(position_.id, position.id);
         assertEq(position_.fee, POOL_FEE);
         assertEq(position_.tickSpacing, TICK_SPACING);
         assertEq(position_.tickCurrent, TickMath.getTickAtSqrtPrice(uint160(position.sqrtPrice)));

@@ -23,30 +23,22 @@ contract GetPositionState_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_F
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_getPositionState(
-        uint128 liquidityPool,
-        Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position
-    ) public {
+    function testFuzz_Success_getPositionState(uint128 liquidityPool, Rebalancer.PositionState memory position)
+        public
+    {
         // Given: A valid position.
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position);
         givenValidPositionState(position);
         setPositionState(position);
-        initiatorParams.oldId = uint96(position.id);
 
         // When: Calling getPositionState.
-        (uint256[] memory balances, Rebalancer.PositionState memory position_) =
-            rebalancer.getPositionState(initiatorParams);
+        Rebalancer.PositionState memory position_ =
+            rebalancer.getPositionState(address(nonfungiblePositionManager), position.id);
 
-        // Then: It should return the correct balances.
-        assertEq(balances.length, 2);
-        assertEq(balances[0], initiatorParams.amount0);
-        assertEq(balances[1], initiatorParams.amount1);
-
-        // And: It should return the correct position.
+        // Then: It should return the correct position.
         assertEq(position_.pool, address(poolUniswap));
-        assertEq(position_.id, initiatorParams.oldId);
+        assertEq(position_.id, position.id);
         assertEq(position_.fee, POOL_FEE);
         assertEq(position_.tickSpacing, poolUniswap.tickSpacing());
         assertEq(position_.tickCurrent, TickMath.getTickAtSqrtPrice(uint160(position.sqrtPrice)));

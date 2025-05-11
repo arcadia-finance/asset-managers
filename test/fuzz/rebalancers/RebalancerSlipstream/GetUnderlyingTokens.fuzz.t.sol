@@ -24,17 +24,16 @@ contract GetUnderlyingTokens_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstr
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Success_getUnderlyingTokens_Slipstream(
         uint128 liquidityPool,
-        Rebalancer.InitiatorParams memory initiatorParams,
         Rebalancer.PositionState memory position
     ) public {
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position, false);
         givenValidPositionState(position);
         setPositionState(position);
-        initiatorParams.oldId = uint96(position.id);
 
         // When: Calling getUnderlyingTokens.
-        (address token0_, address token1_) = rebalancer.getUnderlyingTokens(initiatorParams);
+        (address token0_, address token1_) =
+            rebalancer.getUnderlyingTokens(address(slipstreamPositionManager), position.id);
 
         // Then: It should return the correct values.
         assertEq(token0_, address(token0));

@@ -32,7 +32,6 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Success_burn_Slipstream(
         uint128 liquidityPool,
-        Rebalancer.InitiatorParams memory initiatorParams,
         Rebalancer.PositionState memory position,
         uint64 balance0,
         uint64 balance1
@@ -42,7 +41,6 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
         setPoolState(liquidityPool, position, false);
         givenValidPositionState(position);
         setPositionState(position);
-        initiatorParams.positionManager = address(slipstreamPositionManager);
 
         // And: Rebalancer has balances.
         uint256[] memory balances = new uint256[](2);
@@ -58,7 +56,7 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
         );
 
         // When: Calling burn.
-        balances = rebalancer.burn(balances, initiatorParams, position);
+        balances = rebalancer.burn(balances, address(slipstreamPositionManager), position);
 
         // Then: It should return the correct balances.
         (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
@@ -75,7 +73,6 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
 
     function testFuzz_Success_burn_StakedSlipstream_RewardTokenNotToken0Or1(
         uint128 liquidityPool,
-        Rebalancer.InitiatorParams memory initiatorParams,
         Rebalancer.PositionState memory position,
         uint64 balance0,
         uint64 balance1,
@@ -87,7 +84,6 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
         setPoolState(liquidityPool, position, true);
         givenValidPositionState(position);
         setPositionState(position);
-        initiatorParams.positionManager = address(stakedSlipstreamAM);
 
         // And : An initial rewardGrowthGlobalX128.
         stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
@@ -120,7 +116,7 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
         );
 
         // When: Calling burn.
-        balances = rebalancer.burn(balances, initiatorParams, position);
+        balances = rebalancer.burn(balances, address(stakedSlipstreamAM), position);
 
         // Then: It should return the correct balances.
         (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
@@ -150,7 +146,6 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
 
     function testFuzz_Success_burn_StakedSlipstream_RewardTokenIsToken0Or1(
         uint128 liquidityPool,
-        Rebalancer.InitiatorParams memory initiatorParams,
         Rebalancer.PositionState memory position,
         uint64 balance0,
         uint64 balance1,
@@ -169,7 +164,6 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
         setPoolState(liquidityPool, position, true);
         givenValidPositionState(position);
         setPositionState(position);
-        initiatorParams.positionManager = address(stakedSlipstreamAM);
 
         // And : An initial rewardGrowthGlobalX128.
         stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
@@ -220,7 +214,7 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
         );
 
         // When: Calling burn.
-        balances = rebalancer.burn(balances, initiatorParams, position);
+        balances = rebalancer.burn(balances, address(stakedSlipstreamAM), position);
 
         // Then: It should return the correct balances.
         (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
@@ -237,7 +231,6 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
 
     function testFuzz_Success_burn_WrappedStakedSlipstream_RewardTokenNotToken0Or1(
         uint128 liquidityPool,
-        Rebalancer.InitiatorParams memory initiatorParams,
         Rebalancer.PositionState memory position,
         uint64 balance0,
         uint64 balance1,
@@ -249,7 +242,6 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
         setPoolState(liquidityPool, position, true);
         givenValidPositionState(position);
         setPositionState(position);
-        initiatorParams.positionManager = address(wrappedStakedSlipstream);
 
         // And : An initial rewardGrowthGlobalX128.
         stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
@@ -282,7 +274,7 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
         );
 
         // When: Calling burn.
-        balances = rebalancer.burn(balances, initiatorParams, position);
+        balances = rebalancer.burn(balances, address(wrappedStakedSlipstream), position);
 
         // Then: It should return the correct balances.
         (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
@@ -312,7 +304,6 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
 
     function testFuzz_Success_burn_WrappedStakedSlipstream_RewardTokenIsToken0Or1(
         uint128 liquidityPool,
-        Rebalancer.InitiatorParams memory initiatorParams,
         Rebalancer.PositionState memory position,
         uint64 balance0,
         uint64 balance1,
@@ -331,7 +322,6 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
         setPoolState(liquidityPool, position, true);
         givenValidPositionState(position);
         setPositionState(position);
-        initiatorParams.positionManager = address(wrappedStakedSlipstream);
 
         // And : An initial rewardGrowthGlobalX128.
         stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
@@ -382,7 +372,7 @@ contract Burn_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
         );
 
         // When: Calling burn.
-        balances = rebalancer.burn(balances, initiatorParams, position);
+        balances = rebalancer.burn(balances, address(wrappedStakedSlipstream), position);
 
         // Then: It should return the correct balances.
         (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(

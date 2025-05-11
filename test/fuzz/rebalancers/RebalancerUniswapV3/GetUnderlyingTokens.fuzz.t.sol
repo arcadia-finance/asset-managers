@@ -22,19 +22,17 @@ contract GetUnderlyingTokens_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_getUnderlyingTokens(
-        uint128 liquidityPool,
-        Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position
-    ) public {
+    function testFuzz_Success_getUnderlyingTokens(uint128 liquidityPool, Rebalancer.PositionState memory position)
+        public
+    {
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position);
         givenValidPositionState(position);
         setPositionState(position);
-        initiatorParams.oldId = uint96(position.id);
 
         // When: Calling getUnderlyingTokens.
-        (address token0_, address token1_) = rebalancer.getUnderlyingTokens(initiatorParams);
+        (address token0_, address token1_) =
+            rebalancer.getUnderlyingTokens(address(nonfungiblePositionManager), position.id);
 
         // Then: It should return the correct values.
         assertEq(token0_, address(token0));

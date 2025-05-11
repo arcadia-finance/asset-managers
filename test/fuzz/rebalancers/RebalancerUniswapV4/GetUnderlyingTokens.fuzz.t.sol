@@ -24,17 +24,15 @@ contract GetUnderlyingTokens_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Success_getUnderlyingTokens_NotNative(
         uint128 liquidityPool,
-        Rebalancer.InitiatorParams memory initiatorParams,
         Rebalancer.PositionState memory position
     ) public {
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position, false);
         givenValidPositionState(position);
         setPositionState(position);
-        initiatorParams.oldId = uint96(position.id);
 
         // When: Calling getUnderlyingTokens.
-        (address token0_, address token1_) = rebalancer.getUnderlyingTokens(initiatorParams);
+        (address token0_, address token1_) = rebalancer.getUnderlyingTokens(address(positionManagerV4), position.id);
 
         // Then: It should return the correct values.
         assertEq(token0_, address(token0));
@@ -43,17 +41,15 @@ contract GetUnderlyingTokens_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV
 
     function testFuzz_Success_getUnderlyingTokens_IsNative(
         uint128 liquidityPool,
-        Rebalancer.InitiatorParams memory initiatorParams,
         Rebalancer.PositionState memory position
     ) public {
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position, true);
         givenValidPositionState(position);
         setPositionState(position);
-        initiatorParams.oldId = uint96(position.id);
 
         // When: Calling getUnderlyingTokens.
-        (address token0_, address token1_) = rebalancer.getUnderlyingTokens(initiatorParams);
+        (address token0_, address token1_) = rebalancer.getUnderlyingTokens(address(positionManagerV4), position.id);
 
         // Then: It should return the correct values.
         assertEq(token0_, address(weth9));

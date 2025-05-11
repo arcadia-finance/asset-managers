@@ -28,7 +28,7 @@ contract Burn_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Success_burn_NotNative(
         uint128 liquidityPool,
-        Rebalancer.InitiatorParams memory initiatorParams,
+        address positionManager,
         Rebalancer.PositionState memory position,
         uint64 balance0,
         uint64 balance1
@@ -51,7 +51,7 @@ contract Burn_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(rebalancer), position.id);
 
         // When: Calling burn.
-        balances = rebalancer.burn(balances, initiatorParams, position);
+        balances = rebalancer.burn(balances, positionManager, position);
 
         // Then: It should return the correct balances.
         (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
@@ -68,7 +68,7 @@ contract Burn_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
 
     function testFuzz_Success_burn_IsNative(
         uint128 liquidityPool,
-        Rebalancer.InitiatorParams memory initiatorParams,
+        address positionManager,
         Rebalancer.PositionState memory position,
         uint64 balance0,
         uint64 balance1
@@ -82,7 +82,6 @@ contract Burn_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
         // And: Rebalancer has balances.
         uint256[] memory balances = new uint256[](2);
         balances[0] = balance0;
-        initiatorParams.amount0 = balance0;
         balances[1] = balance1;
         vm.deal(address(rebalancer), balance0);
         vm.prank(address(rebalancer));
@@ -94,7 +93,7 @@ contract Burn_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(rebalancer), position.id);
 
         // When: Calling burn.
-        balances = rebalancer.burn(balances, initiatorParams, position);
+        balances = rebalancer.burn(balances, positionManager, position);
 
         // Then: It should return the correct balances.
         (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(

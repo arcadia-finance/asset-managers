@@ -29,7 +29,6 @@ contract Mint_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Success_mint_Slipstream(
         uint128 liquidityPool,
-        Rebalancer.InitiatorParams memory initiatorParams,
         Rebalancer.PositionState memory position,
         uint128 balance0,
         uint128 balance1
@@ -38,7 +37,6 @@ contract Mint_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position, false);
         givenValidPositionState(position);
-        initiatorParams.positionManager = address(slipstreamPositionManager);
 
         // And: Liquidity is not 0, does not overflow and is below max liquidity.
         if (position.sqrtPrice <= TickMath.getSqrtPriceAtTick(position.tickLower)) {
@@ -80,7 +78,7 @@ contract Mint_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
 
         // When: Calling mint.
         Rebalancer.PositionState memory position_;
-        (balances, position_) = rebalancer.mint(balances, initiatorParams, position);
+        (balances, position_) = rebalancer.mint(balances, address(slipstreamPositionManager), position);
 
         // Then: Contract is owner of the position.
         assertEq(ERC721(address(slipstreamPositionManager)).ownerOf(position_.id), address(rebalancer));
@@ -98,7 +96,6 @@ contract Mint_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
 
     function testFuzz_Success_mint_StakedSlipstream(
         uint128 liquidityPool,
-        Rebalancer.InitiatorParams memory initiatorParams,
         Rebalancer.PositionState memory position,
         uint128 balance0,
         uint128 balance1
@@ -107,7 +104,6 @@ contract Mint_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position, true);
         givenValidPositionState(position);
-        initiatorParams.positionManager = address(stakedSlipstreamAM);
 
         // And: Liquidity is not 0, does not overflow and is below max liquidity.
         if (position.sqrtPrice <= TickMath.getSqrtPriceAtTick(position.tickLower)) {
@@ -149,7 +145,7 @@ contract Mint_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
 
         // When: Calling mint.
         Rebalancer.PositionState memory position_;
-        (balances, position_) = rebalancer.mint(balances, initiatorParams, position);
+        (balances, position_) = rebalancer.mint(balances, address(stakedSlipstreamAM), position);
 
         // Then: Contract is owner of the position.
         assertEq(ERC721(address(slipstreamPositionManager)).ownerOf(position_.id), address(gauge));
@@ -168,7 +164,6 @@ contract Mint_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
 
     function testFuzz_Success_mint_WrappedStakedSlipstream(
         uint128 liquidityPool,
-        Rebalancer.InitiatorParams memory initiatorParams,
         Rebalancer.PositionState memory position,
         uint128 balance0,
         uint128 balance1
@@ -177,7 +172,6 @@ contract Mint_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position, true);
         givenValidPositionState(position);
-        initiatorParams.positionManager = address(wrappedStakedSlipstream);
 
         // And: Liquidity is not 0, does not overflow and is below max liquidity.
         if (position.sqrtPrice <= TickMath.getSqrtPriceAtTick(position.tickLower)) {
@@ -219,7 +213,7 @@ contract Mint_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
 
         // When: Calling mint.
         Rebalancer.PositionState memory position_;
-        (balances, position_) = rebalancer.mint(balances, initiatorParams, position);
+        (balances, position_) = rebalancer.mint(balances, address(wrappedStakedSlipstream), position);
 
         // Then: Contract is owner of the position.
         assertEq(ERC721(address(slipstreamPositionManager)).ownerOf(position_.id), address(gauge));

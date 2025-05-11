@@ -14,25 +14,25 @@ contract RebalancerExtension is Rebalancer {
 
     function isPositionManager(address positionManager) public view override returns (bool) { }
 
-    function _getUnderlyingTokens(InitiatorParams memory initiatorParams)
+    function _getUnderlyingTokens(address positionManager, uint256 id)
         internal
         view
         override
         returns (address token0, address token1)
     { }
 
-    function _getPositionState(InitiatorParams memory initiatorParams)
+    function _getPositionState(address positionManager, uint256 id)
         internal
         view
         override
-        returns (uint256[] memory balances, PositionState memory)
+        returns (PositionState memory)
     { }
 
     function _getPoolLiquidity(PositionState memory position) internal view override returns (uint128) { }
 
     function _getSqrtPrice(PositionState memory position) internal view override returns (uint160) { }
 
-    function _burn(uint256[] memory balances, InitiatorParams memory initiatorParams, PositionState memory position)
+    function _burn(uint256[] memory balances, address positionManager, PositionState memory position)
         internal
         override
     { }
@@ -52,7 +52,7 @@ contract RebalancerExtension is Rebalancer {
         balances_ = balances;
     }
 
-    function _mint(uint256[] memory balances, InitiatorParams memory initiatorParams, PositionState memory position)
+    function _mint(uint256[] memory balances, address positionManager, PositionState memory position)
         internal
         override
     { }
