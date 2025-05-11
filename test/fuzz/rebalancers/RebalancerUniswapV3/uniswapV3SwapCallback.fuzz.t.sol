@@ -6,6 +6,7 @@ pragma solidity ^0.8.26;
 
 import { RebalancerUniswapV3 } from "../../../../src/rebalancers/RebalancerUniswapV3.sol";
 import { RebalancerUniswapV3_Fuzz_Test } from "./_RebalancerUniswapV3.fuzz.t.sol";
+import { UniswapV3 } from "../../../../src/base/UniswapV3.sol";
 
 /**
  * @notice Fuzz tests for the function "uniswapV3SwapCallback" of contract "RebalancerUniswapV3".
@@ -42,7 +43,7 @@ contract UniswapV3SwapCallback_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswa
         // Then: It should revert.
         bytes memory data = abi.encode(address(token0), address(token1), POOL_FEE);
         vm.prank(caller);
-        vm.expectRevert(RebalancerUniswapV3.OnlyPool.selector);
+        vm.expectRevert(UniswapV3.OnlyPool.selector);
         rebalancer.uniswapV3SwapCallback(amount0Delta, amount1Delta, data);
     }
 

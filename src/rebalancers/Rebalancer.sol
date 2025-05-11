@@ -4,6 +4,7 @@
  */
 pragma solidity ^0.8.26;
 
+import { AbstractBase } from "../base/AbstractBase.sol";
 import { ActionData, IActionBase } from "../../lib/accounts-v2/src/interfaces/IActionBase.sol";
 import { ArcadiaLogic } from "./libraries/ArcadiaLogic.sol";
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
@@ -31,7 +32,7 @@ import { TickMath } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src
  * based on a hypothetical optimal swap through the pool itself without slippage.
  * This protects the Account owners from incompetent or malicious initiators who route swaps poorly, or try to skim off liquidity from the position.
  */
-abstract contract Rebalancer is IActionBase {
+abstract contract Rebalancer is IActionBase, AbstractBase {
     using FixedPointMathLib for uint256;
     using SafeApprove for ERC20;
     using SafeTransferLib for ERC20;
@@ -408,12 +409,6 @@ abstract contract Rebalancer is IActionBase {
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Returns if a position manager matches the position manager(s) of the rebalancer.
-     * @param positionManager the contract address of the position manager to check.
-     */
-    function isPositionManager(address positionManager) public view virtual returns (bool);
-
-    /**
      * @notice Returns if the pool of a Liquidity Position is balanced.
      * @param sqrtPrice The sqrtPrice of the pool.
      * @param cache A struct with cached variables.
@@ -427,31 +422,6 @@ abstract contract Rebalancer is IActionBase {
     /* ///////////////////////////////////////////////////////////////
                               GETTERS
     /////////////////////////////////////////////////////////////// */
-
-    /**
-     * @notice Returns the underlying assets of the pool.
-     * @param positionManager The contract address of the Position Manager.
-     * @param id The id of the Liquidity Position.
-     * @return token0 The contract address of token0.
-     * @return token1 The contract address of token1.
-     */
-    function _getUnderlyingTokens(address positionManager, uint256 id)
-        internal
-        view
-        virtual
-        returns (address token0, address token1);
-
-    /**
-     * @notice Returns the position and pool related state.
-     * @param positionManager The contract address of the Position Manager.
-     * @param id The id of the Liquidity Position.
-     * @return position A struct with position and pool related variables.
-     */
-    function _getPositionState(address positionManager, uint256 id)
-        internal
-        view
-        virtual
-        returns (PositionState memory position);
 
     /**
      * @notice Returns the cached variables.
@@ -475,55 +445,6 @@ abstract contract Rebalancer is IActionBase {
             sqrtRatioUpper: TickMath.getSqrtPriceAtTick(position.tickUpper)
         });
     }
-
-    /**
-     * @notice Returns the liquidity of the Pool.
-     * @param position A struct with position and pool related variables.
-     * @return liquidity The liquidity of the Pool.
-     */
-    function _getPoolLiquidity(PositionState memory position) internal view virtual returns (uint128 liquidity);
-
-    /**
-     * @notice Returns the sqrtPrice of the Pool.
-     * @param position A struct with position and pool related variables.
-     * @return sqrtPrice The sqrtPrice of the Pool.
-     */
-    function _getSqrtPrice(PositionState memory position) internal view virtual returns (uint160 sqrtPrice);
-
-    /* ///////////////////////////////////////////////////////////////
-                            CLAIM LOGIC
-    /////////////////////////////////////////////////////////////// */
-
-    /**
-     * @notice Claims fees/rewards from a Liquidity Position.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
-     * @param fees The fees of the underlying tokens to be paid to the initiator.
-     * @param positionManager The contract address of the Position Manager.
-     * @param position A struct with position and pool related variables.
-     * @dev Must update the balances after the claim.
-     */
-    function _claim(
-        uint256[] memory balances,
-        uint256[] memory fees,
-        address positionManager,
-        PositionState memory position,
-        uint256 claimFee
-    ) internal virtual { }
-
-    /* ///////////////////////////////////////////////////////////////
-                             BURN LOGIC
-    /////////////////////////////////////////////////////////////// */
-
-    /**
-     * @notice Burns the Liquidity Position.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
-     * @param positionManager The contract address of the Position Manager.
-     * @param position A struct with position and pool related variables.
-     * @dev Must update the balances after the burn.
-     */
-    function _burn(uint256[] memory balances, address positionManager, PositionState memory position)
-        internal
-        virtual;
 
     /* ///////////////////////////////////////////////////////////////
                              SWAP LOGIC
@@ -575,18 +496,6 @@ abstract contract Rebalancer is IActionBase {
     }
 
     /**
-     * @notice Swaps one token for another, directly through the pool itself.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
-     * @param position A struct with position and pool related variables.
-     * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
-     * @param amountOut The amount of tokenOut that must be swapped to.
-     * @dev Must update the balances and sqrtPrice after the swap.
-     */
-    function _swapViaPool(uint256[] memory balances, PositionState memory position, bool zeroToOne, uint256 amountOut)
-        internal
-        virtual;
-
-    /**
      * @notice Swaps one token for another, via a router with custom swap data.
      * @param balances The balances of the underlying tokens held by the Rebalancer.
      * @param position A struct with position and pool related variables.
@@ -617,48 +526,6 @@ abstract contract Rebalancer is IActionBase {
         balances[0] = ERC20(position.tokens[0]).balanceOf(address(this));
         balances[1] = ERC20(position.tokens[1]).balanceOf(address(this));
     }
-
-    /* ///////////////////////////////////////////////////////////////
-                             MINT LOGIC
-    /////////////////////////////////////////////////////////////// */
-
-    /**
-     * @notice Mints a new Liquidity Position.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
-     * @param positionManager The contract address of the Position Manager.
-     * @param position A struct with position and pool related variables.
-     * @param amount0Desired The desired amount of token0 to mint as liquidity.
-     * @param amount1Desired The desired amount of token1 to mint as liquidity.
-     * @dev Must update the balances and liquidity and id after the mint.
-     */
-    function _mint(
-        uint256[] memory balances,
-        address positionManager,
-        PositionState memory position,
-        uint256 amount0Desired,
-        uint256 amount1Desired
-    ) internal virtual;
-
-    /* ///////////////////////////////////////////////////////////////
-                    INCREASE LIQUIDITY LOGIC
-    /////////////////////////////////////////////////////////////// */
-
-    /**
-     * @notice Swaps one token for another to rebalance the Liquidity Position.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
-     * @param positionManager The contract address of the Position Manager.
-     * @param position A struct with position and pool related variables.
-     * @param amount0Desired The desired amount of token0 to add as liquidity.
-     * @param amount1Desired The desired amount of token1 to add as liquidity.
-     * @dev Must update the balances and sqrtPrice after the swap.
-     */
-    function _increaseLiquidity(
-        uint256[] memory balances,
-        address positionManager,
-        PositionState memory position,
-        uint256 amount0Desired,
-        uint256 amount1Desired
-    ) internal virtual { }
 
     /* ///////////////////////////////////////////////////////////////
                     APPROVE AND TRANSFER LOGIC

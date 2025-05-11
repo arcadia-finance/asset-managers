@@ -4,7 +4,7 @@
  */
 pragma solidity ^0.8.26;
 
-import { RebalancerSlipstream } from "../../../../src/rebalancers/RebalancerSlipstream.sol";
+import { Slipstream } from "../../../../src/base/Slipstream.sol";
 import { RebalancerSlipstream_Fuzz_Test } from "./_RebalancerSlipstream.fuzz.t.sol";
 
 /**
@@ -42,7 +42,7 @@ contract UniswapV3SwapCallback_RebalancerSlipstream_Fuzz_Test is RebalancerSlips
         // Then: It should revert.
         bytes memory data = abi.encode(address(token0), address(token1), TICK_SPACING);
         vm.prank(caller);
-        vm.expectRevert(RebalancerSlipstream.OnlyPool.selector);
+        vm.expectRevert(Slipstream.OnlyPool.selector);
         rebalancer.uniswapV3SwapCallback(amount0Delta, amount1Delta, data);
     }
 
