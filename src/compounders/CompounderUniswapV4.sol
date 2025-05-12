@@ -4,29 +4,28 @@
  */
 pragma solidity ^0.8.26;
 
+import { Compounder } from "./Compounder2.sol";
 import { Currency } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
 import { ERC20 } from "../../lib/accounts-v2/lib/solmate/src/tokens/ERC20.sol";
 import { IWETH } from "../rebalancers/interfaces/IWETH.sol";
 import { PositionState } from "../state/PositionState.sol";
-import { Rebalancer } from "./Rebalancer.sol";
 import { SafeApprove } from "../libraries/SafeApprove.sol";
 import { UniswapV4 } from "../base/UniswapV4.sol";
 
 /**
- * @title Rebalancer for Uniswap V4 Liquidity Positions.
- * @notice The Rebalancer is an Asset Manager for Arcadia Accounts.
- * It will allow third parties to trigger the rebalancing functionality for a Liquidity Position in the Account.
- * The owner of an Arcadia Account should set an initiator via setAccountInfo() that will be permisionned to rebalance
- * all Liquidity Positions held in that Account.
- * @dev The initiator will provide a trusted sqrtPrice input at the time of rebalance to mitigate frontrunning risks.
- * This input serves as a reference point for calculating the maximum allowed deviation during the rebalancing process,
- * ensuring that rebalancing remains within a controlled price range.
- * @dev The contract guarantees a limited slippage with each rebalance by enforcing a minimum amount of liquidity that must be added,
- * based on a hypothetical optimal swap through the pool itself without slippage.
- * This protects the Account owners from incompetent or malicious initiators who route swaps poorly, or try to skim off liquidity from the position.
- * @dev The rebalancer must not be used for Pools of native ETH - WETH.
+ * @title Compounder for Uniswap V4 Liquidity Positions.
+ * @author Pragma Labs
+ * @notice The Compounder will act as an Asset Manager for Arcadia Accounts.
+ * It will allow third parties (initiators) to trigger the compounding functionality for a Liquidity Position in the Account.
+ * The Arcadia Account owner must set a specific initiator that will be permissioned to compound the positions in their Account.
+ * Compounding can only be triggered if certain conditions are met and the initiator will get a small fee for the service provided.
+ * The compounding will collect the fees earned by a position and increase the liquidity of the position by those fees.
+ * Depending on current tick of the pool and the position range, fees will be deposited in appropriate ratio.
+ * @dev The initiator will provide a trusted sqrtPrice input at the time of compounding to mitigate frontrunning risks.
+ * This input serves as a reference point for calculating the maximum allowed deviation during the compounding process,
+ * ensuring that the execution remains within a controlled price range.
  */
-contract RebalancerUniswapV4 is Rebalancer, UniswapV4 {
+contract CompounderUniswapV3 is Compounder, UniswapV4 {
     using SafeApprove for ERC20;
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -55,7 +54,7 @@ contract RebalancerUniswapV4 is Rebalancer, UniswapV4 {
         address poolManager,
         address weth
     )
-        Rebalancer(arcadiaFactory, maxTolerance, maxInitiatorFee, minLiquidityRatio)
+        Compounder(arcadiaFactory, maxTolerance, maxInitiatorFee, minLiquidityRatio)
         UniswapV4(positionManager, permit2, poolManager, weth)
     { }
 
@@ -81,7 +80,6 @@ contract RebalancerUniswapV4 is Rebalancer, UniswapV4 {
     ) internal override {
         // Decode the swap data.
         (address router, uint256 amountIn, bytes memory data) = abi.decode(swapData, (address, uint256, bytes));
-        if (router == strategyHook[msg.sender]) revert InvalidRouter();
 
         // Handle pools with native ETH.
         address token0 = position.tokens[0];

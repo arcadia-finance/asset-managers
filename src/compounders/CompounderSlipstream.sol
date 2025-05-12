@@ -5,10 +5,10 @@
 pragma solidity ^0.8.26;
 
 import { Compounder } from "./Compounder2.sol";
-import { UniswapV3 } from "../base/UniswapV3.sol";
+import { Slipstream } from "../base/Slipstream.sol";
 
 /**
- * @title Compounder for Uniswap V3 Liquidity Positions.
+ * @title Compounder for Slipstream Liquidity Positions.
  * @author Pragma Labs
  * @notice The Compounder will act as an Asset Manager for Arcadia Accounts.
  * It will allow third parties (initiators) to trigger the compounding functionality for a Liquidity Position in the Account.
@@ -20,7 +20,7 @@ import { UniswapV3 } from "../base/UniswapV3.sol";
  * This input serves as a reference point for calculating the maximum allowed deviation during the compounding process,
  * ensuring that the execution remains within a controlled price range.
  */
-contract CompounderUniswapV3 is Compounder, UniswapV3 {
+contract CompounderSlipstream is Compounder, Slipstream {
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
     ////////////////////////////////////////////////////////////// */
@@ -33,8 +33,12 @@ contract CompounderUniswapV3 is Compounder, UniswapV3 {
      * relative to the ideal amountIn, with 18 decimals precision.
      * @param minLiquidityRatio The ratio of the minimum amount of liquidity that must be minted,
      * relative to the hypothetical amount of liquidity when we rebalance without slippage, with 18 decimals precision.
-     * @param positionManager The contract address of the Uniswap v3 Position Manager.
-     * @param uniswapV3Factory The contract address of the Uniswap v3 Factory.
+     * @param positionManager The contract address of the Slipstream Position Manager.
+     * @param cLFactory The contract address of the Slipstream Factory.
+     * @param poolImplementation The contract address of the Slipstream Pool Implementation.
+     * @param rewardToken The contract address of the Reward Token (Aero).
+     * @param stakedSlipstreamAm The contract address of the Staked Slipstream Asset Module.
+     * @param stakedSlipstreamWrapper The contract address of the Staked Slipstream Wrapper.
      */
     constructor(
         address arcadiaFactory,
@@ -42,9 +46,13 @@ contract CompounderUniswapV3 is Compounder, UniswapV3 {
         uint256 maxInitiatorFee,
         uint256 minLiquidityRatio,
         address positionManager,
-        address uniswapV3Factory
+        address cLFactory,
+        address poolImplementation,
+        address rewardToken,
+        address stakedSlipstreamAm,
+        address stakedSlipstreamWrapper
     )
         Compounder(arcadiaFactory, maxTolerance, maxInitiatorFee, minLiquidityRatio)
-        UniswapV3(positionManager, uniswapV3Factory)
+        Slipstream(positionManager, cLFactory, poolImplementation, rewardToken, stakedSlipstreamAm, stakedSlipstreamWrapper)
     { }
 }

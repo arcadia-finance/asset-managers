@@ -5,7 +5,7 @@
 pragma solidity ^0.8.22;
 
 import { PositionState } from "../../../src/state/PositionState.sol";
-import { RebalanceParams } from "../../../src/rebalancers/libraries/RebalanceLogic.sol";
+import { RebalanceParams } from "../../../src/libraries/RebalanceLogic.sol";
 import { RebalancerUniswapV4 } from "../../../src/rebalancers/RebalancerUniswapV4.sol";
 
 contract RebalancerUniswapV4Extension is RebalancerUniswapV4 {

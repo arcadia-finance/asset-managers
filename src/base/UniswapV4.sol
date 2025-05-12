@@ -86,7 +86,7 @@ abstract contract UniswapV4 is AbstractBase {
      * @notice Returns if a position manager matches the position manager(s) of the rebalancer.
      * @param positionManager the contract address of the position manager to check.
      */
-    function isPositionManager(address positionManager) public view override returns (bool) {
+    function isPositionManager(address positionManager) public view virtual override returns (bool) {
         return positionManager == address(POSITION_MANAGER);
     }
 
@@ -104,6 +104,7 @@ abstract contract UniswapV4 is AbstractBase {
     function _getUnderlyingTokens(address, uint256 id)
         internal
         view
+        virtual
         override
         returns (address token0, address token1)
     {
@@ -121,7 +122,13 @@ abstract contract UniswapV4 is AbstractBase {
      * @param id The id of the Liquidity Position.
      * @return position A struct with position and pool related variables.
      */
-    function _getPositionState(address, uint256 id) internal view override returns (PositionState memory position) {
+    function _getPositionState(address, uint256 id)
+        internal
+        view
+        virtual
+        override
+        returns (PositionState memory position)
+    {
         // Positions have two underlying tokens.
         position.tokens = new address[](2);
 
@@ -148,7 +155,13 @@ abstract contract UniswapV4 is AbstractBase {
      * @param position A struct with position and pool related variables.
      * @return liquidity The liquidity of the Pool.
      */
-    function _getPoolLiquidity(PositionState memory position) internal view override returns (uint128 liquidity) {
+    function _getPoolLiquidity(PositionState memory position)
+        internal
+        view
+        virtual
+        override
+        returns (uint128 liquidity)
+    {
         PoolKey memory poolKey = PoolKey(
             Currency.wrap(position.tokens[0]),
             Currency.wrap(position.tokens[1]),
@@ -164,7 +177,7 @@ abstract contract UniswapV4 is AbstractBase {
      * @param position A struct with position and pool related variables.
      * @return sqrtPrice The sqrtPrice of the Pool.
      */
-    function _getSqrtPrice(PositionState memory position) internal view override returns (uint160 sqrtPrice) {
+    function _getSqrtPrice(PositionState memory position) internal view virtual override returns (uint160 sqrtPrice) {
         PoolKey memory poolKey = PoolKey(
             Currency.wrap(position.tokens[0]),
             Currency.wrap(position.tokens[1]),
@@ -193,7 +206,7 @@ abstract contract UniswapV4 is AbstractBase {
         address,
         PositionState memory position,
         uint256 claimFee
-    ) internal override {
+    ) internal virtual override {
         // Cache the currencies.
         Currency currency0 = Currency.wrap(position.tokens[0]);
         Currency currency1 = Currency.wrap(position.tokens[1]);
@@ -232,7 +245,7 @@ abstract contract UniswapV4 is AbstractBase {
      * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      */
-    function _unstake(uint256[] memory balances, address, PositionState memory position) internal override {
+    function _unstake(uint256[] memory balances, address, PositionState memory position) internal virtual override {
         // If token0 is in native ETH, and weth was withdrawn from the account, unwrap it.
         if (position.tokens[0] == address(0)) {
             uint256 wethBalance = ERC20(WETH).balanceOf(address(this));
@@ -253,7 +266,7 @@ abstract contract UniswapV4 is AbstractBase {
      * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      */
-    function _burn(uint256[] memory balances, address, PositionState memory position) internal override {
+    function _burn(uint256[] memory balances, address, PositionState memory position) internal virtual override {
         // Cache the currencies.
         Currency currency0 = Currency.wrap(position.tokens[0]);
         Currency currency1 = Currency.wrap(position.tokens[1]);
@@ -287,6 +300,7 @@ abstract contract UniswapV4 is AbstractBase {
      */
     function _swapViaPool(uint256[] memory balances, PositionState memory position, bool zeroToOne, uint256 amountOut)
         internal
+        virtual
         override
     {
         // Do the swap.
@@ -321,7 +335,7 @@ abstract contract UniswapV4 is AbstractBase {
      * @param data The encoded swap parameters and pool key.
      * @return results The encoded BalanceDelta result from the swap operation.
      */
-    function unlockCallback(bytes calldata data) external payable returns (bytes memory results) {
+    function unlockCallback(bytes calldata data) external payable virtual returns (bytes memory results) {
         if (msg.sender != address(POOL_MANAGER)) revert OnlyPoolManager();
 
         (IPoolManager.SwapParams memory params, PoolKey memory poolKey) =
@@ -388,7 +402,7 @@ abstract contract UniswapV4 is AbstractBase {
         PositionState memory position,
         uint256 amount0Desired,
         uint256 amount1Desired
-    ) internal override {
+    ) internal virtual override {
         // Check if token0 is native ETH.
         bool isNative = position.tokens[0] == address(0);
 
@@ -465,7 +479,7 @@ abstract contract UniswapV4 is AbstractBase {
         PositionState memory position,
         uint256 amount0Desired,
         uint256 amount1Desired
-    ) internal override {
+    ) internal virtual override {
         // Check if token0 is native ETH.
         bool isNative = position.tokens[0] == address(0);
 
@@ -516,7 +530,7 @@ abstract contract UniswapV4 is AbstractBase {
      * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      */
-    function _stake(uint256[] memory balances, address, PositionState memory position) internal override {
+    function _stake(uint256[] memory balances, address, PositionState memory position) internal virtual override {
         // If token0 is in native ETH, wrap it.
         if (position.tokens[0] == address(0)) {
             position.tokens[0] = WETH;

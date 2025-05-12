@@ -4,9 +4,9 @@
  */
 pragma solidity ^0.8.22;
 
-import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { LiquidityAmounts } from "../../libraries/LiquidityAmounts.sol";
-import { CLMath } from "../../libraries/CLMath.sol";
+import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { LiquidityAmounts } from "./LiquidityAmounts.sol";
+import { CLMath } from "./CLMath.sol";
 
 struct RebalanceParams {
     // Bool indicating if token0 has to be swapped to token1 or opposite.

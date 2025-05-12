@@ -8,7 +8,7 @@ import { CLMath } from "../../../../src/libraries/CLMath.sol";
 import { FixedPoint96 } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
 import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { LiquidityAmounts } from "../../../../src/libraries/LiquidityAmounts.sol";
-import { RebalanceLogic, RebalanceParams } from "../../../../src/rebalancers/libraries/RebalanceLogic.sol";
+import { RebalanceLogic, RebalanceParams } from "../../../../src/libraries/RebalanceLogic.sol";
 import { RebalanceLogic_Fuzz_Test } from "./_RebalanceLogic.fuzz.t.sol";
 import { stdError } from "../../../../lib/accounts-v2/lib/forge-std/src/StdError.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";

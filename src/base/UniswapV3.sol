@@ -64,7 +64,7 @@ abstract contract UniswapV3 is AbstractBase {
      * @notice Returns if a position manager matches the position manager(s) of the rebalancer.
      * @param positionManager the contract address of the position manager to check.
      */
-    function isPositionManager(address positionManager) public view override returns (bool) {
+    function isPositionManager(address positionManager) public view virtual override returns (bool) {
         return positionManager == address(POSITION_MANAGER);
     }
 
@@ -82,6 +82,7 @@ abstract contract UniswapV3 is AbstractBase {
     function _getUnderlyingTokens(address, uint256 id)
         internal
         view
+        virtual
         override
         returns (address token0, address token1)
     {
@@ -94,7 +95,13 @@ abstract contract UniswapV3 is AbstractBase {
      * @param id The id of the Liquidity Position.
      * @return position A struct with position and pool related variables.
      */
-    function _getPositionState(address, uint256 id) internal view override returns (PositionState memory position) {
+    function _getPositionState(address, uint256 id)
+        internal
+        view
+        virtual
+        override
+        returns (PositionState memory position)
+    {
         // Positions have two underlying tokens.
         position.tokens = new address[](2);
 
@@ -126,7 +133,13 @@ abstract contract UniswapV3 is AbstractBase {
      * @param position A struct with position and pool related variables.
      * @return liquidity The liquidity of the Pool.
      */
-    function _getPoolLiquidity(PositionState memory position) internal view override returns (uint128 liquidity) {
+    function _getPoolLiquidity(PositionState memory position)
+        internal
+        view
+        virtual
+        override
+        returns (uint128 liquidity)
+    {
         liquidity = IUniswapV3Pool(position.pool).liquidity();
     }
 
@@ -135,7 +148,7 @@ abstract contract UniswapV3 is AbstractBase {
      * @param position A struct with position and pool related variables.
      * @return sqrtPrice The sqrtPrice of the Pool.
      */
-    function _getSqrtPrice(PositionState memory position) internal view override returns (uint160 sqrtPrice) {
+    function _getSqrtPrice(PositionState memory position) internal view virtual override returns (uint160 sqrtPrice) {
         (sqrtPrice,,,,,,) = IUniswapV3Pool(position.pool).slot0();
     }
 
@@ -157,7 +170,7 @@ abstract contract UniswapV3 is AbstractBase {
         address,
         PositionState memory position,
         uint256 claimFee
-    ) internal override {
+    ) internal virtual override {
         // We assume that the amount of tokens to collect never exceeds type(uint128).max.
         (uint256 amount0, uint256 amount1) = POSITION_MANAGER.collect(
             CollectParams({
@@ -185,7 +198,7 @@ abstract contract UniswapV3 is AbstractBase {
      * param positionManager The contract address of the Position Manager.
      * param position A struct with position and pool related variables.
      */
-    function _unstake(uint256[] memory, address, PositionState memory) internal override { }
+    function _unstake(uint256[] memory, address, PositionState memory) internal virtual override { }
 
     /* ///////////////////////////////////////////////////////////////
                              BURN LOGIC
@@ -197,7 +210,7 @@ abstract contract UniswapV3 is AbstractBase {
      * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      */
-    function _burn(uint256[] memory balances, address, PositionState memory position) internal override {
+    function _burn(uint256[] memory balances, address, PositionState memory position) internal virtual override {
         // Remove liquidity of the position and claim outstanding fees to get full amounts of token0 and token1
         // for rebalance.
         POSITION_MANAGER.decreaseLiquidity(
@@ -239,6 +252,7 @@ abstract contract UniswapV3 is AbstractBase {
      */
     function _swapViaPool(uint256[] memory balances, PositionState memory position, bool zeroToOne, uint256 amountOut)
         internal
+        virtual
         override
     {
         // Do the swap.
@@ -263,7 +277,7 @@ abstract contract UniswapV3 is AbstractBase {
      * the end of the swap. If positive, the callback must send that amount of token1 to the position.
      * @param data Any data passed by this contract via the IUniswapV3Pool.swap() call.
      */
-    function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external {
+    function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external virtual {
         // Check that callback came from an actual Uniswap V3 Pool.
         (address token0, address token1, uint24 fee) = abi.decode(data, (address, address, uint24));
 
@@ -294,7 +308,7 @@ abstract contract UniswapV3 is AbstractBase {
         PositionState memory position,
         uint256 amount0Desired,
         uint256 amount1Desired
-    ) internal override {
+    ) internal virtual override {
         ERC20(position.tokens[0]).safeApproveWithRetry(address(POSITION_MANAGER), amount0Desired);
         ERC20(position.tokens[1]).safeApproveWithRetry(address(POSITION_MANAGER), amount1Desired);
 
@@ -338,7 +352,7 @@ abstract contract UniswapV3 is AbstractBase {
         PositionState memory position,
         uint256 amount0Desired,
         uint256 amount1Desired
-    ) internal override {
+    ) internal virtual override {
         ERC20(position.tokens[0]).safeApproveWithRetry(address(POSITION_MANAGER), amount0Desired);
         ERC20(position.tokens[1]).safeApproveWithRetry(address(POSITION_MANAGER), amount1Desired);
 
@@ -369,5 +383,5 @@ abstract contract UniswapV3 is AbstractBase {
      * param positionManager The contract address of the Position Manager.
      * param position A struct with position and pool related variables.
      */
-    function _stake(uint256[] memory, address, PositionState memory) internal override { }
+    function _stake(uint256[] memory, address, PositionState memory) internal virtual override { }
 }

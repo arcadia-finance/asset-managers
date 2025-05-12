@@ -92,7 +92,7 @@ abstract contract Slipstream is AbstractBase {
      * @notice Returns if a position manager matches the position manager(s) of the rebalancer.
      * @param positionManager the contract address of the position manager to check.
      */
-    function isPositionManager(address positionManager) public view override returns (bool) {
+    function isPositionManager(address positionManager) public view virtual override returns (bool) {
         return (
             positionManager == address(STAKED_SLIPSTREAM_AM) || positionManager == address(STAKED_SLIPSTREAM_WRAPPER)
                 || positionManager == address(POSITION_MANAGER)
@@ -113,6 +113,7 @@ abstract contract Slipstream is AbstractBase {
     function _getUnderlyingTokens(address, uint256 id)
         internal
         view
+        virtual
         override
         returns (address token0, address token1)
     {
@@ -128,6 +129,7 @@ abstract contract Slipstream is AbstractBase {
     function _getPositionState(address positionManager, uint256 id)
         internal
         view
+        virtual
         override
         returns (PositionState memory position)
     {
@@ -163,7 +165,13 @@ abstract contract Slipstream is AbstractBase {
      * @param position A struct with position and pool related variables.
      * @return liquidity The liquidity of the Pool.
      */
-    function _getPoolLiquidity(PositionState memory position) internal view override returns (uint128 liquidity) {
+    function _getPoolLiquidity(PositionState memory position)
+        internal
+        view
+        virtual
+        override
+        returns (uint128 liquidity)
+    {
         liquidity = ICLPool(position.pool).liquidity();
     }
 
@@ -172,7 +180,7 @@ abstract contract Slipstream is AbstractBase {
      * @param position A struct with position and pool related variables.
      * @return sqrtPrice The sqrtPrice of the Pool.
      */
-    function _getSqrtPrice(PositionState memory position) internal view override returns (uint160 sqrtPrice) {
+    function _getSqrtPrice(PositionState memory position) internal view virtual override returns (uint160 sqrtPrice) {
         (sqrtPrice,,,,,) = ICLPool(position.pool).slot0();
     }
 
@@ -194,7 +202,7 @@ abstract contract Slipstream is AbstractBase {
         address positionManager,
         PositionState memory position,
         uint256 claimFee
-    ) internal override {
+    ) internal virtual override {
         if (positionManager != address(POSITION_MANAGER)) {
             // If position is a staked slipstream position, claim the rewards.
             uint256 rewards = IStakedSlipstream(positionManager).claimReward(position.id);
@@ -241,6 +249,7 @@ abstract contract Slipstream is AbstractBase {
      */
     function _unstake(uint256[] memory balances, address positionManager, PositionState memory position)
         internal
+        virtual
         override
     {
         // If position is a staked slipstream position, unstake the position.
@@ -265,7 +274,7 @@ abstract contract Slipstream is AbstractBase {
      * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      */
-    function _burn(uint256[] memory balances, address, PositionState memory position) internal override {
+    function _burn(uint256[] memory balances, address, PositionState memory position) internal virtual override {
         // Remove liquidity of the position and claim outstanding fees to get full amounts of token0 and token1
         // for rebalance.
         POSITION_MANAGER.decreaseLiquidity(
@@ -307,6 +316,7 @@ abstract contract Slipstream is AbstractBase {
      */
     function _swapViaPool(uint256[] memory balances, PositionState memory position, bool zeroToOne, uint256 amountOut)
         internal
+        virtual
         override
     {
         // Do the swap.
@@ -331,7 +341,7 @@ abstract contract Slipstream is AbstractBase {
      * the end of the swap. If positive, the callback must send that amount of token1 to the position.
      * @param data Any data passed by this contract via the ICLPool.swap() call.
      */
-    function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external {
+    function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external virtual {
         // Check that callback came from an actual Slipstream Pool.
         (address token0, address token1, int24 tickSpacing) = abi.decode(data, (address, address, int24));
 
@@ -365,7 +375,7 @@ abstract contract Slipstream is AbstractBase {
         PositionState memory position,
         uint256 amount0Desired,
         uint256 amount1Desired
-    ) internal override {
+    ) internal virtual override {
         ERC20(position.tokens[0]).safeApproveWithRetry(address(POSITION_MANAGER), amount0Desired);
         ERC20(position.tokens[1]).safeApproveWithRetry(address(POSITION_MANAGER), amount1Desired);
 
@@ -410,7 +420,7 @@ abstract contract Slipstream is AbstractBase {
         PositionState memory position,
         uint256 amount0Desired,
         uint256 amount1Desired
-    ) internal override {
+    ) internal virtual override {
         ERC20(position.tokens[0]).safeApproveWithRetry(address(POSITION_MANAGER), amount0Desired);
         ERC20(position.tokens[1]).safeApproveWithRetry(address(POSITION_MANAGER), amount1Desired);
 
@@ -441,7 +451,11 @@ abstract contract Slipstream is AbstractBase {
      * @param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      */
-    function _stake(uint256[] memory, address positionManager, PositionState memory position) internal override {
+    function _stake(uint256[] memory, address positionManager, PositionState memory position)
+        internal
+        virtual
+        override
+    {
         // If position is a staked slipstream position, stake the position.
         if (positionManager != address(POSITION_MANAGER)) {
             POSITION_MANAGER.approve(positionManager, position.id);

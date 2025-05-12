@@ -4,9 +4,9 @@
  */
 pragma solidity ^0.8.22;
 
-import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { LiquidityAmounts } from "../../libraries/LiquidityAmounts.sol";
-import { SqrtPriceMath } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/SqrtPriceMath.sol";
+import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { LiquidityAmounts } from "./LiquidityAmounts.sol";
+import { SqrtPriceMath } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/SqrtPriceMath.sol";
 
 library RebalanceOptimizationMath {
     using FixedPointMathLib for uint256;

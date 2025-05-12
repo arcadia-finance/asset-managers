@@ -11,8 +11,7 @@ import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/ut
 import { ERC721 } from "../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IAccount } from "./interfaces/IAccount.sol";
-import { IArcadiaFactory } from "./interfaces/IArcadiaFactory.sol";
-import { IStrategyHook } from "./interfaces/IStrategyHook.sol";
+import { IArcadiaFactory } from "../rebalancers/interfaces/IArcadiaFactory.sol";
 import { PositionState } from "../state/PositionState.sol";
 import { RebalanceLogic, RebalanceParams } from "../libraries/RebalanceLogic.sol";
 import { RebalanceOptimizationMath } from "../libraries/RebalanceOptimizationMath.sol";
@@ -20,19 +19,19 @@ import { SafeApprove } from "../libraries/SafeApprove.sol";
 import { TickMath } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
 /**
- * @title Abstract Rebalancer for Concentrated Liquidity Positions.
- * @notice The Rebalancer is an Asset Manager for Arcadia Accounts.
- * It will allow third parties to trigger the rebalancing functionality for a Liquidity Position in the Account.
- * The owner of an Arcadia Account should set an initiator via setAccountInfo() that will be permisionned to rebalance
- * all Liquidity Positions held in that Account.
- * @dev The initiator will provide a trusted sqrtPrice input at the time of rebalance to mitigate frontrunning risks.
- * This input serves as a reference point for calculating the maximum allowed deviation during the rebalancing process,
- * ensuring that rebalancing remains within a controlled price range.
- * @dev The contract guarantees a limited slippage with each rebalance by enforcing a minimum amount of liquidity that must be added,
- * based on a hypothetical optimal swap through the pool itself without slippage.
- * This protects the Account owners from incompetent or malicious initiators who route swaps poorly, or try to skim off liquidity from the position.
+ * @title Abstract Compounder for Concentrated Liquidity Positions.
+ * @author Pragma Labs
+ * @notice The Compounder will act as an Asset Manager for Arcadia Accounts.
+ * It will allow third parties (initiators) to trigger the compounding functionality for a Liquidity Position in the Account.
+ * The Arcadia Account owner must set a specific initiator that will be permissioned to compound the positions in their Account.
+ * Compounding can only be triggered if certain conditions are met and the initiator will get a small fee for the service provided.
+ * The compounding will collect the fees earned by a position and increase the liquidity of the position by those fees.
+ * Depending on current tick of the pool and the position range, fees will be deposited in appropriate ratio.
+ * @dev The initiator will provide a trusted sqrtPrice input at the time of compounding to mitigate frontrunning risks.
+ * This input serves as a reference point for calculating the maximum allowed deviation during the compounding process,
+ * ensuring that the execution remains within a controlled price range.
  */
-abstract contract Rebalancer is IActionBase, AbstractBase {
+abstract contract Compounder is IActionBase, AbstractBase {
     using FixedPointMathLib for uint256;
     using SafeApprove for ERC20;
     using SafeTransferLib for ERC20;
@@ -68,15 +67,12 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
     // A mapping that sets the approved initiator per owner per ccount.
     mapping(address owner => mapping(address account => address initiator)) public accountToInitiator;
 
-    // A mapping that sets a strategy hook per account.
-    mapping(address account => address hook) public strategyHook;
-
     // A struct with the initiator parameters.
     struct InitiatorParams {
         // The contract address of the position manager.
         address positionManager;
         // The id of the position.
-        uint96 oldId;
+        uint96 id;
         // The amount of token0 withdrawn from the account.
         uint128 amount0;
         // The amount of token1 withdrawn from the account.
@@ -85,8 +81,6 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
         uint256 trustedSqrtPrice;
         // Calldata provided by the initiator to execute the swap.
         bytes swapData;
-        // Strategy specific Calldata provided by the initiator.
-        bytes strategyData;
     }
 
     // A struct with cached variables.
@@ -134,8 +128,8 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
                                 EVENTS
     ////////////////////////////////////////////////////////////// */
 
-    event AccountInfoSet(address indexed account, address indexed initiator, address indexed strategyHook);
-    event Rebalance(address indexed account, address indexed positionManager, uint256 oldId, uint256 newId);
+    event AccountInfoSet(address indexed account, address indexed initiator);
+    event Compound(address indexed account, address indexed positionManager, uint256 id);
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -165,21 +159,16 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
      * @notice Sets the required information for an Account.
      * @param account_ The contract address of the Arcadia Account to set the information for.
      * @param initiator The address of the initiator.
-     * @param hook The contract address of the hook.
-     * @param strategyData Strategy specific data stored in the hook.
      */
-    function setAccountInfo(address account_, address initiator, address hook, bytes calldata strategyData) external {
+    function setAccountInfo(address account_, address initiator) external {
         if (account != address(0)) revert Reentered();
         if (!ARCADIA_FACTORY.isAccount(account_)) revert NotAnAccount();
         address owner = IAccount(account_).owner();
         if (msg.sender != owner) revert OnlyAccountOwner();
 
         accountToInitiator[owner][account_] = initiator;
-        strategyHook[account_] = hook;
 
-        IStrategyHook(hook).setStrategy(account_, strategyData);
-
-        emit AccountInfoSet(account_, initiator, hook);
+        emit AccountInfoSet(account_, initiator);
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -241,7 +230,7 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
      * @param account_ The contract address of the account.
      * @param initiatorParams A struct with the initiator parameters.
      */
-    function rebalance(address account_, InitiatorParams calldata initiatorParams) external {
+    function compound(address account_, InitiatorParams calldata initiatorParams) external {
         // If the initiator is set, account_ is an actual Arcadia Account.
         if (account != address(0)) revert Reentered();
         if (accountToInitiator[IAccount(account_).owner()][account_] != msg.sender) revert InvalidInitiator();
@@ -254,13 +243,13 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
         address token0;
         address token1;
         if (initiatorParams.amount0 > 0 || initiatorParams.amount1 > 0) {
-            (token0, token1) = _getUnderlyingTokens(initiatorParams.positionManager, initiatorParams.oldId);
+            (token0, token1) = _getUnderlyingTokens(initiatorParams.positionManager, initiatorParams.id);
         }
 
         // Encode data for the flash-action.
         bytes memory actionData = ArcadiaLogic._encodeAction(
             initiatorParams.positionManager,
-            initiatorParams.oldId,
+            initiatorParams.id,
             token0,
             token1,
             initiatorParams.amount0,
@@ -292,25 +281,13 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
         address positionManager = initiatorParams.positionManager;
 
         // Get all pool and position related state.
-        PositionState memory position = _getPositionState(positionManager, initiatorParams.oldId);
+        PositionState memory position = _getPositionState(positionManager, initiatorParams.id);
 
         // Rebalancer has withdrawn the underlying tokens from the Account.
         uint256[] memory balances = new uint256[](position.tokens.length);
         balances[0] = initiatorParams.amount0;
         balances[1] = initiatorParams.amount1;
         uint256[] memory fees = new uint256[](balances.length);
-
-        // Call the strategy hook before the rebalance (view function, cannot modify state of pool or old position).
-        // The strategy hook will return the new ticks of the position
-        // (we override ticks of the memory pointer of the old position as these are no longer needed after this call).
-        // Hook can be used to enforce additional strategy specific constraints, specific to the Account/Id.
-        // Such as:
-        // - Minimum Cool Down Periods.
-        // - Excluding rebalancing of certain positions.
-        // - ...
-        IStrategyHook hook = IStrategyHook(strategyHook[msg.sender]);
-        (position.tickLower, position.tickUpper) =
-            hook.beforeRebalance(msg.sender, positionManager, position, initiatorParams.strategyData);
 
         // Cache variables that are gas expensive to calcultate and used multiple times.
         Cache memory cache = _getCache(initiator, position, initiatorParams.trustedSqrtPrice);
@@ -319,18 +296,11 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
         if (!isPoolBalanced(position.sqrtPrice, cache)) revert UnbalancedPool();
 
-        {
-            // Claim pending fees/rewards and update balances.
-            // If the claim fee is 0, no need to separately claim fees, as they will be claimed in the burn function.
-            uint256 claimFee = initiatorInfo[initiator].claimFee;
-            if (claimFee > 0) _claim(balances, fees, positionManager, position, claimFee);
-        }
+        // Claim pending fees/rewards and update balances.
+        _claim(balances, fees, positionManager, position, initiatorInfo[initiator].claimFee);
 
         // If the position is staked, unstake it.
         _unstake(balances, positionManager, position);
-
-        // Remove liquidity of the position, claim outstanding fees/rewards and update balances.
-        _burn(balances, positionManager, position);
 
         // Get the rebalance parameters, based on a hypothetical swap through the pool itself without slippage.
         RebalanceParams memory rebalanceParams = RebalanceLogic._getRebalanceParams(
@@ -362,11 +332,13 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
 
         // As explained before _swap(), tokenOut should be the limiting factor when increasing liquidity
         // therefore we only subtract the initiator fee from the amountOut, not from the amountIn.
-        // Update balances, id and liquidity after the mint.
-
-        (uint256 amount0Desired, uint256 amount1Desired) =
-            rebalanceParams.zeroToOne ? (balances[0], balances[1] - fees[1]) : (balances[0] - fees[0], balances[1]);
-        _mint(balances, positionManager, position, amount0Desired, amount1Desired);
+        // Increase liquidity, update balances and delta liquidity.
+        {
+            (uint256 amount0Desired, uint256 amount1Desired) =
+                rebalanceParams.zeroToOne ? (balances[0], balances[1] - fees[1]) : (balances[0] - fees[0], balances[1]);
+            // Increase liquidity, update balances and liquidity
+            _increaseLiquidity(balances, positionManager, position, amount0Desired, amount1Desired);
+        }
 
         // Check that the actual liquidity of the position is above the minimum threshold.
         // This prevents loss of principal of the liquidity position due to slippage,
@@ -376,10 +348,6 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
         // If the position is staked, stake it.
         _stake(balances, positionManager, position);
 
-        // Call the strategy hook after the rebalance (non view function).
-        // Can be used to check additional constraints and persist state changes on the hook.
-        hook.afterRebalance(msg.sender, positionManager, initiatorParams.oldId, position, initiatorParams.strategyData);
-
         // Approve the liquidity position and leftovers to be deposited back into the Account.
         // And transfer the initiator fees to the initiator.
         uint256 count = _approveAndTransfer(initiator, balances, fees, positionManager, position);
@@ -387,7 +355,7 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
         // Encode deposit data for the flash-action.
         depositData = ArcadiaLogic._encodeDeposit(positionManager, position.id, position.tokens, balances, count);
 
-        emit Rebalance(msg.sender, positionManager, initiatorParams.oldId, position.id);
+        emit Compound(msg.sender, positionManager, position.id);
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -499,7 +467,6 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
     ) internal virtual {
         // Decode the swap data.
         (address router, uint256 amountIn, bytes memory data) = abi.decode(swapData, (address, uint256, bytes));
-        if (router == strategyHook[msg.sender]) revert InvalidRouter();
 
         // Approve token to swap.
         ERC20(zeroToOne ? position.tokens[0] : position.tokens[1]).safeApproveWithRetry(router, amountIn);

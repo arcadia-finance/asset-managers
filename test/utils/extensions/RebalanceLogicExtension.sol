@@ -4,7 +4,7 @@
  */
 pragma solidity ^0.8.22;
 
-import { RebalanceLogic, RebalanceParams } from "../../../src/rebalancers/libraries/RebalanceLogic.sol";
+import { RebalanceLogic, RebalanceParams } from "../../../src/libraries/RebalanceLogic.sol";
 
 contract RebalanceLogicExtension {
     function getRebalanceParams(

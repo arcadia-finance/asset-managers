@@ -4,7 +4,6 @@
  */
 pragma solidity ^0.8.26;
 
-import { PositionState } from "../state/PositionState.sol";
 import { Rebalancer } from "./Rebalancer.sol";
 import { UniswapV3 } from "../base/UniswapV3.sol";
 

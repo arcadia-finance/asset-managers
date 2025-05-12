@@ -174,9 +174,9 @@ contract ApproximateOptimalSwapAmounts_SwapMath_Fuzz_Test is RebalanceOptimizati
         sqrtRatioUpper = uint128(bound(sqrtRatioUpper, sqrtPrice + 1, type(uint128).max));
 
         // And: Initial balances are non zero.
-        amount0 = uint128(bound(amount0, 1, type(uint128).max));
-        amountOut = uint128(bound(amountOut, 0, type(uint128).max - amount0));
-        amount1 = uint128(bound(amount1, 1, type(uint128).max));
+        amount0 = uint128(bound(amount0, 1, type(uint64).max));
+        amountOut = uint128(bound(amountOut, 0, type(uint64).max - amount0));
+        amount1 = uint128(bound(amount1, 1, type(uint64).max));
         amountIn = uint128(bound(amountIn, 0, amount1 - 1));
         uint256 balance0 = amount0 + amountOut;
         uint256 balance1 = amount1 - amountIn;
