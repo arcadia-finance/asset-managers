@@ -29,8 +29,7 @@ contract CompounderSlipstream is Compounder, Slipstream {
      * @param arcadiaFactory The contract address of the Arcadia Factory.
      * @param maxTolerance The maximum allowed deviation of the actual pool price for any initiator,
      * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
-     * @param maxInitiatorFee The maximum fee an initiator can set,
-     * relative to the ideal amountIn, with 18 decimals precision.
+     * @param maxFee The maximum fee an initiator can set, with 18 decimals precision.
      * @param minLiquidityRatio The ratio of the minimum amount of liquidity that must be minted,
      * relative to the hypothetical amount of liquidity when we rebalance without slippage, with 18 decimals precision.
      * @param positionManager The contract address of the Slipstream Position Manager.
@@ -43,7 +42,7 @@ contract CompounderSlipstream is Compounder, Slipstream {
     constructor(
         address arcadiaFactory,
         uint256 maxTolerance,
-        uint256 maxInitiatorFee,
+        uint256 maxFee,
         uint256 minLiquidityRatio,
         address positionManager,
         address cLFactory,
@@ -52,7 +51,7 @@ contract CompounderSlipstream is Compounder, Slipstream {
         address stakedSlipstreamAm,
         address stakedSlipstreamWrapper
     )
-        Compounder(arcadiaFactory, maxTolerance, maxInitiatorFee, minLiquidityRatio)
+        Compounder(arcadiaFactory, maxTolerance, maxFee, minLiquidityRatio)
         Slipstream(positionManager, cLFactory, poolImplementation, rewardToken, stakedSlipstreamAm, stakedSlipstreamWrapper)
     { }
 }

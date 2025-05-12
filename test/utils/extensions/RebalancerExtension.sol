@@ -9,8 +9,8 @@ import { RebalanceParams } from "../../../src/libraries/RebalanceLogic.sol";
 import { Rebalancer } from "../../../src/rebalancers/Rebalancer.sol";
 
 contract RebalancerExtension is Rebalancer {
-    constructor(address arcadiaFactory, uint256 maxTolerance, uint256 maxInitiatorFee, uint256 minLiquidityRatio)
-        Rebalancer(arcadiaFactory, maxTolerance, maxInitiatorFee, minLiquidityRatio)
+    constructor(address arcadiaFactory, uint256 maxTolerance, uint256 maxFee, uint256 minLiquidityRatio)
+        Rebalancer(arcadiaFactory, maxTolerance, maxFee, minLiquidityRatio)
     { }
 
     function isPositionManager(address positionManager) public view override returns (bool) { }

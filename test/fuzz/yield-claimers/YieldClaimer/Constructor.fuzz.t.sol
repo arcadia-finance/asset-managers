@@ -29,7 +29,7 @@ contract Constructor_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         address uniswapV3PositionManager,
         address uniswapV4PositionManager,
         address weth,
-        uint256 maxInitiatorFee
+        uint256 maxFee
     ) public {
         vm.prank(users.owner);
         YieldClaimer yieldClaimer_ = new YieldClaimer(
@@ -41,9 +41,9 @@ contract Constructor_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
             uniswapV3PositionManager,
             uniswapV4PositionManager,
             weth,
-            maxInitiatorFee
+            maxFee
         );
 
-        assertEq(yieldClaimer_.MAX_INITIATOR_FEE(), maxInitiatorFee);
+        assertEq(yieldClaimer_.MAX_FEE(), maxFee);
     }
 }

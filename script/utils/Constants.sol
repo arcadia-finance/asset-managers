@@ -62,7 +62,7 @@ library Rebalancers {
 
 library RebalancerParameters {
     uint256 constant MAX_TOLERANCE = 0.01 * 1e18; // 1%
-    uint256 constant MAX_INITIATOR_FEE = 0.2 * 1e18; // 20%
+    uint256 constant MAX_FEE = 0.2 * 1e18; // 20%
     uint256 constant MIN_LIQUIDITY_RATIO = 0.98 * 1e18; // 98%
 }
 
@@ -71,5 +71,5 @@ library YieldClaimers {
 }
 
 library YieldClaimerParameters {
-    uint256 constant MAX_INITIATOR_FEE = 0.2 * 1e18; // 20%
+    uint256 constant MAX_FEE = 0.2 * 1e18; // 20%
 }

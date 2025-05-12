@@ -16,7 +16,7 @@ contract YieldClaimerExtension is YieldClaimer {
         address uniswapV3PositionManager,
         address uniswapV4PositionManager,
         address weth,
-        uint256 maxInitiatorFee
+        uint256 maxFee
     )
         YieldClaimer(
             factory,
@@ -27,7 +27,7 @@ contract YieldClaimerExtension is YieldClaimer {
             uniswapV3PositionManager,
             uniswapV4PositionManager,
             weth,
-            maxInitiatorFee
+            maxFee
         )
     { }
 

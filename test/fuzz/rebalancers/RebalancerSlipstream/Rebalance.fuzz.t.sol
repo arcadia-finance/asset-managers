@@ -114,9 +114,9 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
 
         // And: The initiator is set.
         tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
-        fee = bound(fee, 0.001 * 1e18, MAX_INITIATOR_FEE);
+        fee = bound(fee, 0.001 * 1e18, MAX_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
+        rebalancer.setInitiatorInfo(0, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
@@ -165,9 +165,9 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
 
         // And: The initiator is set.
         tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
-        fee = bound(fee, 0.001 * 1e18, MAX_INITIATOR_FEE);
+        fee = bound(fee, 0.001 * 1e18, MAX_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
+        rebalancer.setInitiatorInfo(0, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
@@ -261,9 +261,9 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
 
         // And: The initiator is set.
         tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
-        fee = bound(fee, 0.001 * 1e18, MAX_INITIATOR_FEE);
+        fee = bound(fee, 0.001 * 1e18, MAX_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
+        rebalancer.setInitiatorInfo(0, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
@@ -362,9 +362,9 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
 
         // And: The initiator is set.
         tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
-        fee = bound(fee, 0.001 * 1e18, MAX_INITIATOR_FEE);
+        fee = bound(fee, 0.001 * 1e18, MAX_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
+        rebalancer.setInitiatorInfo(0, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")

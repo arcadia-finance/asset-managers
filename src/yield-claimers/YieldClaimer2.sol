@@ -29,7 +29,7 @@ abstract contract YieldClaimer is IActionBase, AbstractBase {
     IArcadiaFactory public immutable ARCADIA_FACTORY;
 
     // The maximum fee an initiator can set, with 18 decimals precision.
-    uint256 public immutable MAX_CLAIM_FEE;
+    uint256 public immutable MAX_FEE;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
@@ -89,11 +89,11 @@ abstract contract YieldClaimer is IActionBase, AbstractBase {
 
     /**
      * @param arcadiaFactory The contract address of the Arcadia Factory.
-     * @param maxClaimFee The maximum fee an initiator can set.
+     * @param maxFee The maximum fee an initiator can set, with 18 decimals precision.
      */
-    constructor(address arcadiaFactory, uint256 maxClaimFee) {
+    constructor(address arcadiaFactory, uint256 maxFee) {
         ARCADIA_FACTORY = IArcadiaFactory(arcadiaFactory);
-        MAX_CLAIM_FEE = maxClaimFee;
+        MAX_FEE = maxFee;
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -127,10 +127,10 @@ abstract contract YieldClaimer is IActionBase, AbstractBase {
 
     /**
      * @notice Sets the fee requested by an initiator on the amount of yield claimed.
-     * @param initiatorFee_ The fee paid to the initiator, with 18 decimals precision.
+     * @param claimFee The fee charged on claimed fees/rewards by the initiator, with 18 decimals precision.
      * @dev An initiator can update its fee but can only decrease it.
      */
-    function setInitiatorInfo(uint256 initiatorFee_) external {
+    function setInitiatorInfo(uint256 claimFee) external {
         if (account != address(0)) revert Reentered();
 
         // Cache struct
@@ -139,14 +139,14 @@ abstract contract YieldClaimer is IActionBase, AbstractBase {
         // Check if initiator is already set.
         if (initiatorInfo_.set) {
             // If so, the initiator can only decrease the fee.
-            if (initiatorFee_ > initiatorInfo_.claimFee) revert InvalidValue();
+            if (claimFee > initiatorInfo_.claimFee) revert InvalidValue();
         } else {
             // If not, the fee can not exceed a certain threshold.
-            if (initiatorFee_ > MAX_CLAIM_FEE) revert InvalidValue();
+            if (claimFee > MAX_FEE) revert InvalidValue();
             initiatorInfo_.set = true;
         }
 
-        initiatorInfo_.claimFee = uint64(initiatorFee_);
+        initiatorInfo_.claimFee = uint64(claimFee);
 
         initiatorInfo[msg.sender] = initiatorInfo_;
     }

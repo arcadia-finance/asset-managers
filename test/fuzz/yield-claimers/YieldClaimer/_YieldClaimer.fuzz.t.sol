@@ -71,10 +71,8 @@ abstract contract YieldClaimer_Fuzz_Test is Fuzz_Test {
         account.initialize(users.accountOwner, address(registry), address(0));
     }
 
-    function deployYieldClaimer(uint256 maxInitiatorFee) internal {
-        deployYieldClaimer(
-            address(0), address(0), address(0), address(0), address(0), address(0), address(0), maxInitiatorFee
-        );
+    function deployYieldClaimer(uint256 maxFee) internal {
+        deployYieldClaimer(address(0), address(0), address(0), address(0), address(0), address(0), address(0), maxFee);
     }
 
     function deployYieldClaimer(
@@ -85,7 +83,7 @@ abstract contract YieldClaimer_Fuzz_Test is Fuzz_Test {
         address uniswapV3PositionManager_,
         address uniswapV4PositionManager_,
         address weth_,
-        uint256 maxInitiatorFee
+        uint256 maxFee
     ) internal {
         vm.prank(users.owner);
         yieldClaimer = new YieldClaimerExtension(
@@ -97,7 +95,7 @@ abstract contract YieldClaimer_Fuzz_Test is Fuzz_Test {
             uniswapV3PositionManager_,
             uniswapV4PositionManager_,
             weth_,
-            maxInitiatorFee
+            maxFee
         );
 
         // And : YieldClaimer is allowed as Asset Manager

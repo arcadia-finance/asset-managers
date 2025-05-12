@@ -12,7 +12,7 @@ contract RebalancerUniswapV4Extension is RebalancerUniswapV4 {
     constructor(
         address arcadiaFactory,
         uint256 maxTolerance,
-        uint256 maxInitiatorFee,
+        uint256 maxFee,
         uint256 minLiquidityRatio,
         address positionManager,
         address permit2,
@@ -22,7 +22,7 @@ contract RebalancerUniswapV4Extension is RebalancerUniswapV4 {
         RebalancerUniswapV4(
             arcadiaFactory,
             maxTolerance,
-            maxInitiatorFee,
+            maxFee,
             minLiquidityRatio,
             positionManager,
             permit2,

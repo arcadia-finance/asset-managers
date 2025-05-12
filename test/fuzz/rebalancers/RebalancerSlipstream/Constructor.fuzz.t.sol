@@ -23,14 +23,14 @@ contract Constructor_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz
     function testFuzz_Success_Constructor(
         address arcadiaFactory,
         uint256 maxTolerance,
-        uint256 maxInitiatorFee,
+        uint256 maxFee,
         uint256 maxSlippageRatio
     ) public {
         vm.prank(users.owner);
         RebalancerSlipstreamExtension rebalancer_ = new RebalancerSlipstreamExtension(
             arcadiaFactory,
             maxTolerance,
-            maxInitiatorFee,
+            maxFee,
             maxSlippageRatio,
             address(slipstreamPositionManager),
             address(cLFactory),
@@ -42,7 +42,7 @@ contract Constructor_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz
 
         assertEq(address(rebalancer_.ARCADIA_FACTORY()), arcadiaFactory);
         assertEq(rebalancer_.MAX_TOLERANCE(), maxTolerance);
-        assertEq(rebalancer_.MAX_INITIATOR_FEE(), maxInitiatorFee);
+        assertEq(rebalancer_.MAX_FEE(), maxFee);
         assertEq(rebalancer_.MIN_LIQUIDITY_RATIO(), maxSlippageRatio);
     }
 }

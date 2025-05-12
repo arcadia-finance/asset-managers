@@ -40,7 +40,7 @@ contract SlipstreamCompounder is IActionBase {
     uint256 public immutable MAX_TOLERANCE;
 
     // The maximum fee an initiator can set, with 18 decimals precision.
-    uint256 public immutable MAX_INITIATOR_FEE;
+    uint256 public immutable MAX_FEE;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
@@ -116,7 +116,7 @@ contract SlipstreamCompounder is IActionBase {
      * allowed deviation of the sqrtPrice for the lower and upper boundaries.
      */
     constructor(uint256 maxTolerance, uint256 maxInitiatorShare) {
-        MAX_INITIATOR_FEE = maxInitiatorShare;
+        MAX_FEE = maxInitiatorShare;
         MAX_TOLERANCE = maxTolerance;
     }
 
@@ -410,7 +410,7 @@ contract SlipstreamCompounder is IActionBase {
             }
         } else {
             // If not, the parameters can not exceed certain thresholds.
-            if (fee > MAX_INITIATOR_FEE || tolerance > MAX_TOLERANCE) {
+            if (fee > MAX_FEE || tolerance > MAX_TOLERANCE) {
                 revert InvalidValue();
             }
         }

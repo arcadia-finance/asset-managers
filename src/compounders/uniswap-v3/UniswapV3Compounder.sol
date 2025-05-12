@@ -40,7 +40,7 @@ contract UniswapV3Compounder is IActionBase {
     uint256 public immutable MAX_TOLERANCE;
 
     // The maximum fee an initiator can set, with 18 decimals precision.
-    uint256 public immutable MAX_INITIATOR_FEE;
+    uint256 public immutable MAX_FEE;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
@@ -108,14 +108,14 @@ contract UniswapV3Compounder is IActionBase {
     /**
      * @param maxTolerance The maximum allowed deviation of the actual pool price for any initiator,
      * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
-     * @param maxInitiatorFee The maximum initiator fee an initiator can set.
+     * @param maxFee The maximum initiator fee an initiator can set.
      * @dev The tolerance for the pool price will be converted to an upper and lower max sqrtPrice deviation,
      * using the square root of the basis (one with 18 decimals precision) +- tolerance (18 decimals precision).
      * The tolerance boundaries are symmetric around the price, but taking the square root will result in a different
      * allowed deviation of the sqrtPrice for the lower and upper boundaries.
      */
-    constructor(uint256 maxTolerance, uint256 maxInitiatorFee) {
-        MAX_INITIATOR_FEE = maxInitiatorFee;
+    constructor(uint256 maxTolerance, uint256 maxFee) {
+        MAX_FEE = maxFee;
         MAX_TOLERANCE = maxTolerance;
     }
 
@@ -409,7 +409,7 @@ contract UniswapV3Compounder is IActionBase {
             }
         } else {
             // If not, the parameters can not exceed certain thresholds.
-            if (fee > MAX_INITIATOR_FEE || tolerance > MAX_TOLERANCE) {
+            if (fee > MAX_FEE || tolerance > MAX_TOLERANCE) {
                 revert InvalidValue();
             }
         }

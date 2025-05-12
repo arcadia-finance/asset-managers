@@ -27,6 +27,6 @@ contract Constructor_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder_Fuzz
         SlipstreamCompounder compounder_ = new SlipstreamCompounder(maxTolerance, maxInitiatorShare);
 
         assertEq(compounder_.MAX_TOLERANCE(), maxTolerance);
-        assertEq(compounder_.MAX_INITIATOR_FEE(), maxInitiatorShare);
+        assertEq(compounder_.MAX_FEE(), maxInitiatorShare);
     }
 }

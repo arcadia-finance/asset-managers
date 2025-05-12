@@ -12,7 +12,7 @@ contract RebalancerSlipstreamExtension is RebalancerSlipstream {
     constructor(
         address arcadiaFactory,
         uint256 maxTolerance,
-        uint256 maxInitiatorFee,
+        uint256 maxFee,
         uint256 minLiquidityRatio,
         address positionManager,
         address cLFactory,
@@ -24,7 +24,7 @@ contract RebalancerSlipstreamExtension is RebalancerSlipstream {
         RebalancerSlipstream(
             arcadiaFactory,
             maxTolerance,
-            maxInitiatorFee,
+            maxFee,
             minLiquidityRatio,
             positionManager,
             cLFactory,

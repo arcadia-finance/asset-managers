@@ -17,7 +17,7 @@ abstract contract RebalanceOptimizationMath_Fuzz_Test is Fuzz_Test {
                             CONSTANTS
     /////////////////////////////////////////////////////////////// */
 
-    uint256 internal constant MAX_INITIATOR_FEE = 0.01 * 1e18;
+    uint256 internal constant MAX_FEE = 0.01 * 1e18;
 
     /*////////////////////////////////////////////////////////////////
                             VARIABLES

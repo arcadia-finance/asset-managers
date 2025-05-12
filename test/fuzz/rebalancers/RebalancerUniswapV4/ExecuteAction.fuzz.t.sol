@@ -77,7 +77,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         // And: The initiator is set.
         tolerance = bound(tolerance, 0, MAX_TOLERANCE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
+        rebalancer.setInitiatorInfo(0, MAX_FEE, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
@@ -144,7 +144,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         // And: The initiator is set.
         tolerance = bound(tolerance, 0, MAX_TOLERANCE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
+        rebalancer.setInitiatorInfo(0, MAX_FEE, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
@@ -225,9 +225,9 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
         // And: The initiator is set.
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
-        fee = bound(fee, 0, MAX_INITIATOR_FEE);
+        fee = bound(fee, 0, MAX_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
+        rebalancer.setInitiatorInfo(0, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
@@ -299,9 +299,9 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
         // And: The initiator is set.
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
-        fee = bound(fee, 0, MAX_INITIATOR_FEE);
+        fee = bound(fee, 0, MAX_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
+        rebalancer.setInitiatorInfo(0, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
@@ -400,9 +400,9 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
         // And: The initiator is set.
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
-        fee = bound(fee, 0, MAX_INITIATOR_FEE);
+        fee = bound(fee, 0, MAX_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
+        rebalancer.setInitiatorInfo(0, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
@@ -508,9 +508,9 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
         // And: The initiator is set.
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
-        fee = bound(fee, 0, MAX_INITIATOR_FEE);
+        fee = bound(fee, 0, MAX_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
+        rebalancer.setInitiatorInfo(0, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account), initiator, address(strategyHook), abi.encode(address(0), address(token1), "")
@@ -611,9 +611,9 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
         // And: The initiator is set.
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
-        fee = bound(fee, 0, MAX_INITIATOR_FEE);
+        fee = bound(fee, 0, MAX_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
+        rebalancer.setInitiatorInfo(0, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account), initiator, address(strategyHook), abi.encode(address(0), address(token1), "")
