@@ -33,14 +33,19 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         uint128 liquidityPool,
         PositionState memory position,
         uint64 balance0,
-        uint64 balance1
+        uint64 balance1,
+        uint80 swap0,
+        uint80 swap1,
+        uint256 claimFee
     ) public {
-        uint256 claimFee = 0;
         // Given: A valid position.
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position, false);
         givenValidPositionState(position);
         setPositionState(position);
+
+        // And: claimFee is below 100%.
+        claimFee = uint64(bound(claimFee, 0, 1e18));
 
         // And: Base has balances.
         uint256[] memory balances = new uint256[](2);
@@ -48,6 +53,10 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         balances[1] = balance1;
         deal(address(token0), address(base), balance0, true);
         deal(address(token1), address(base), balance1, true);
+
+        // And: position has fees.
+        generateFees(swap0, swap1);
+        (uint256 fee0, uint256 fee1) = getFeeAmounts(position.id);
 
         // Transfer position to Base.
         vm.prank(users.liquidityProvider);
@@ -58,10 +67,13 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         (balances, fees) = base.claim(balances, fees, address(slipstreamPositionManager), position, claimFee);
 
         // Then: It should return the correct balances.
-        assertEq(balances[0], balance0);
-        assertEq(balances[1], balance1);
+        assertEq(balances[0], uint256(balance0) + fee0);
+        assertEq(balances[1], uint256(balance1) + fee1);
         assertEq(balances[0], token0.balanceOf(address(base)));
         assertEq(balances[1], token1.balanceOf(address(base)));
+
+        assertEq(fees[0], fee0 * claimFee / 1e18);
+        assertEq(fees[1], fee1 * claimFee / 1e18);
     }
 
     function testFuzz_Success_claim_StakedSlipstream_RewardTokenNotToken0Or1(
@@ -70,14 +82,17 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         uint64 balance0,
         uint64 balance1,
         uint256 rewardGrowthGlobalX128Last,
-        uint256 rewardGrowthGlobalX128Current
+        uint256 rewardGrowthGlobalX128Current,
+        uint64 claimFee
     ) public {
-        uint256 claimFee = 0;
         // Given: A valid position.
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position, true);
         givenValidPositionState(position);
         setPositionState(position);
+
+        // And: claimFee is below 100%.
+        claimFee = uint64(bound(claimFee, 0, 1e18));
 
         // And : An initial rewardGrowthGlobalX128.
         stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
@@ -108,12 +123,6 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
             rewardGrowthGlobalX128Current
         );
-
-        // When: Calling claim.
-        uint256[] memory fees = new uint256[](balances.length);
-        (balances, fees) = base.claim(balances, fees, address(stakedSlipstreamAM), position, claimFee);
-
-        // Then: It should return the correct balances.
         uint256 rewards;
         if (
             TickMath.getSqrtPriceAtTick(position.tickLower) < position.sqrtPrice
@@ -124,13 +133,24 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
                 rewardGrowthInsideX128 = rewardGrowthGlobalX128Current - rewardGrowthGlobalX128Last;
             }
             rewards = FullMath.mulDiv(rewardGrowthInsideX128, position.liquidity, FixedPoint128.Q128);
+            if (claimFee > 0) vm.assume(rewards < type(uint256).max / claimFee);
         }
+
+        // When: Calling claim.
+        uint256[] memory fees = new uint256[](balances.length);
+        (balances, fees) = base.claim(balances, fees, address(stakedSlipstreamAM), position, claimFee);
+
+        // Then: It should return the correct balances.
         assertEq(balances[0], balance0);
         assertEq(balances[1], balance1);
         assertEq(balances[2], rewards);
         assertEq(balances[0], token0.balanceOf(address(base)));
         assertEq(balances[1], token1.balanceOf(address(base)));
         assertEq(balances[2], ERC20(AERO).balanceOf(address(base)));
+
+        assertEq(fees[0], 0);
+        assertEq(fees[1], 0);
+        assertEq(fees[2], rewards * claimFee / 1e18);
     }
 
     function testFuzz_Success_claim_StakedSlipstream_RewardTokenIsToken0Or1(
@@ -140,9 +160,9 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         uint64 balance1,
         uint256 rewardGrowthGlobalX128Last,
         uint256 rewardGrowthGlobalX128Current,
-        bytes32 salt
+        bytes32 salt,
+        uint256 claimFee
     ) public {
-        uint256 claimFee = 0;
         // Given: Aero is an underlying token of the position.
         token0 = new ERC20Mock{ salt: salt }("TokenA", "TOKA", 0);
         token1 = ERC20Mock(AERO);
@@ -154,6 +174,9 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         setPoolState(liquidityPool, position, true);
         givenValidPositionState(position);
         setPositionState(position);
+
+        // And: claimFee is below 100%.
+        claimFee = uint64(bound(claimFee, 0, 1e18));
 
         // And : An initial rewardGrowthGlobalX128.
         stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
@@ -177,6 +200,7 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
                 rewardGrowthInsideX128 = rewardGrowthGlobalX128Current - rewardGrowthGlobalX128Last;
             }
             rewards = FullMath.mulDiv(rewardGrowthInsideX128, position.liquidity, FixedPoint128.Q128);
+            if (claimFee > 0) vm.assume(rewards < type(uint256).max / claimFee);
         }
         if (address(token0) == AERO) {
             balance0 = uint64(bound(balance0, 0, type(uint256).max - rewards));
@@ -212,6 +236,9 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         assertEq(balances[1], balance1 + (address(token1) == AERO ? rewards : 0));
         assertEq(balances[0], token0.balanceOf(address(base)));
         assertEq(balances[1], token1.balanceOf(address(base)));
+
+        assertEq(fees[0], (address(token0) == AERO ? rewards * claimFee / 1e18 : 0));
+        assertEq(fees[1], (address(token1) == AERO ? rewards * claimFee / 1e18 : 0));
     }
 
     function testFuzz_Success_claim_WrappedStakedSlipstream_RewardTokenNotToken0Or1(
@@ -220,14 +247,17 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         uint64 balance0,
         uint64 balance1,
         uint256 rewardGrowthGlobalX128Last,
-        uint256 rewardGrowthGlobalX128Current
+        uint256 rewardGrowthGlobalX128Current,
+        uint64 claimFee
     ) public {
-        uint256 claimFee = 0;
         // Given: A valid position.
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position, true);
         givenValidPositionState(position);
         setPositionState(position);
+
+        // And: claimFee is below 100%.
+        claimFee = uint64(bound(claimFee, 0, 1e18));
 
         // And : An initial rewardGrowthGlobalX128.
         stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
@@ -258,12 +288,6 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
             rewardGrowthGlobalX128Current
         );
-
-        // When: Calling claim.
-        uint256[] memory fees = new uint256[](balances.length);
-        (balances, fees) = base.claim(balances, fees, address(wrappedStakedSlipstream), position, claimFee);
-
-        // Then: It should return the correct balances.
         uint256 rewards;
         if (
             TickMath.getSqrtPriceAtTick(position.tickLower) < position.sqrtPrice
@@ -274,13 +298,24 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
                 rewardGrowthInsideX128 = rewardGrowthGlobalX128Current - rewardGrowthGlobalX128Last;
             }
             rewards = FullMath.mulDiv(rewardGrowthInsideX128, position.liquidity, FixedPoint128.Q128);
+            if (claimFee > 0) vm.assume(rewards < type(uint256).max / claimFee);
         }
+
+        // When: Calling claim.
+        uint256[] memory fees = new uint256[](balances.length);
+        (balances, fees) = base.claim(balances, fees, address(wrappedStakedSlipstream), position, claimFee);
+
+        // Then: It should return the correct balances.
         assertEq(balances[0], balance0);
         assertEq(balances[1], balance1);
         assertEq(balances[2], rewards);
         assertEq(balances[0], token0.balanceOf(address(base)));
         assertEq(balances[1], token1.balanceOf(address(base)));
         assertEq(balances[2], ERC20(AERO).balanceOf(address(base)));
+
+        assertEq(fees[0], 0);
+        assertEq(fees[1], 0);
+        assertEq(fees[2], rewards * claimFee / 1e18);
     }
 
     function testFuzz_Success_claim_WrappedStakedSlipstream_RewardTokenIsToken0Or1(
@@ -290,9 +325,9 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         uint64 balance1,
         uint256 rewardGrowthGlobalX128Last,
         uint256 rewardGrowthGlobalX128Current,
-        bytes32 salt
+        bytes32 salt,
+        uint64 claimFee
     ) public {
-        uint256 claimFee = 0;
         // Given: Aero is an underlying token of the position.
         token0 = new ERC20Mock{ salt: salt }("TokenA", "TOKA", 0);
         token1 = ERC20Mock(AERO);
@@ -304,6 +339,9 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         setPoolState(liquidityPool, position, true);
         givenValidPositionState(position);
         setPositionState(position);
+
+        // And: claimFee is below 100%.
+        claimFee = uint64(bound(claimFee, 0, 1e18));
 
         // And : An initial rewardGrowthGlobalX128.
         stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
@@ -327,6 +365,7 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
                 rewardGrowthInsideX128 = rewardGrowthGlobalX128Current - rewardGrowthGlobalX128Last;
             }
             rewards = FullMath.mulDiv(rewardGrowthInsideX128, position.liquidity, FixedPoint128.Q128);
+            if (claimFee > 0) vm.assume(rewards < type(uint256).max / claimFee);
         }
         if (address(token0) == AERO) {
             balance0 = uint64(bound(balance0, 0, type(uint256).max - rewards));
@@ -362,5 +401,8 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         assertEq(balances[1], balance1 + (address(token1) == AERO ? rewards : 0));
         assertEq(balances[0], token0.balanceOf(address(base)));
         assertEq(balances[1], token1.balanceOf(address(base)));
+
+        assertEq(fees[0], (address(token0) == AERO ? rewards * claimFee / 1e18 : 0));
+        assertEq(fees[1], (address(token1) == AERO ? rewards * claimFee / 1e18 : 0));
     }
 }

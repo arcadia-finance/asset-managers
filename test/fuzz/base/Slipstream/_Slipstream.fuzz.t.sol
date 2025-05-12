@@ -4,13 +4,16 @@
  */
 pragma solidity ^0.8.26;
 
+import { CLSwapRouterFixture } from "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/CLSwapRouter.f.sol";
 import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { FixedPoint96 } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint96.sol";
+import { FixedPoint128 } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
 import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { Fuzz_Test } from "../../Fuzz.t.sol";
 import { ICLGauge } from "../../../../lib/accounts-v2/src/asset-modules/Slipstream/interfaces/ICLGauge.sol";
 import { ICLPoolExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/extensions/interfaces/ICLPoolExtension.sol";
+import { ICLSwapRouter } from "../../../../lib/accounts-v2/test/utils/fixtures/slipstream/interfaces/ICLSwapRouter.sol";
 import { PositionState } from "../../../../src/state/PositionState.sol";
 import { SlipstreamExtension } from "../../../utils/extensions/SlipstreamExtension.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
@@ -24,7 +27,12 @@ import { WrappedStakedSlipstreamFixture } from
 /**
  * @notice Common logic needed by all "Slipstream" fuzz tests.
  */
-abstract contract Slipstream_Fuzz_Test is Fuzz_Test, SlipstreamFixture, WrappedStakedSlipstreamFixture {
+abstract contract Slipstream_Fuzz_Test is
+    Fuzz_Test,
+    SlipstreamFixture,
+    WrappedStakedSlipstreamFixture,
+    CLSwapRouterFixture
+{
     /*////////////////////////////////////////////////////////////////
                             CONSTANTS
     /////////////////////////////////////////////////////////////// */
@@ -71,6 +79,7 @@ abstract contract Slipstream_Fuzz_Test is Fuzz_Test, SlipstreamFixture, WrappedS
         deployAerodromePeriphery();
         deploySlipstream();
         deployCLGaugeFactory();
+        CLSwapRouterFixture.deploySwapRouter(address(cLFactory), address(weth9));
 
         // Deploy Staked Position Managers.
         deployStakedSlipstreamAM();
@@ -205,5 +214,112 @@ abstract contract Slipstream_Fuzz_Test is Fuzz_Test, SlipstreamFixture, WrappedS
         registry.addAssetModule(address(stakedSlipstreamAM));
         stakedSlipstreamAM.initialize();
         vm.stopPrank();
+    }
+
+    function generateFees(uint256 amount0, uint256 amount1) public {
+        vm.startPrank(users.liquidityProvider);
+        // Swap token0 for token1
+        uint256 amountIn;
+        if (amount0 > 0) {
+            amountIn = amount0 * 1e6 / poolCl.fee();
+
+            deal(address(token0), users.liquidityProvider, amountIn, true);
+            token0.approve(address(clSwapRouter), amountIn);
+            clSwapRouter.exactInputSingle(
+                ICLSwapRouter.ExactInputSingleParams({
+                    tokenIn: address(token0),
+                    tokenOut: address(token1),
+                    tickSpacing: poolCl.tickSpacing(),
+                    recipient: users.liquidityProvider,
+                    deadline: block.timestamp,
+                    amountIn: amountIn,
+                    amountOutMinimum: 0,
+                    sqrtPriceLimitX96: 0
+                })
+            );
+        }
+
+        // Swap token1 for token0
+        if (amount1 > 0) {
+            amountIn = amount1 * 1e6 / poolCl.fee();
+
+            deal(address(token1), users.liquidityProvider, amountIn, true);
+            token1.approve(address(clSwapRouter), amountIn);
+            clSwapRouter.exactInputSingle(
+                ICLSwapRouter.ExactInputSingleParams({
+                    tokenIn: address(token1),
+                    tokenOut: address(token0),
+                    tickSpacing: poolCl.tickSpacing(),
+                    recipient: users.liquidityProvider,
+                    deadline: block.timestamp,
+                    amountIn: amountIn,
+                    amountOutMinimum: 0,
+                    sqrtPriceLimitX96: 0
+                })
+            );
+        }
+        vm.stopPrank();
+    }
+
+    function getFeeAmounts(uint256 id) internal view returns (uint256 amount0, uint256 amount1) {
+        (
+            ,
+            ,
+            ,
+            ,
+            ,
+            int24 tickLower,
+            int24 tickUpper,
+            uint256 liquidity,
+            uint256 feeGrowthInside0LastX128,
+            uint256 feeGrowthInside1LastX128,
+            uint256 tokensOwed0,
+            uint256 tokensOwed1
+        ) = slipstreamPositionManager.positions(id);
+
+        (uint256 feeGrowthInside0CurrentX128, uint256 feeGrowthInside1CurrentX128) =
+            _getFeeGrowthInside(tickLower, tickUpper);
+
+        // Calculate the total amount of fees by adding the already realized fees (tokensOwed),
+        // to the accumulated fees since the last time the position was updated:
+        // (feeGrowthInsideCurrentX128 - feeGrowthInsideLastX128) * liquidity.
+        // Fee calculations in NonfungiblePositionManager.sol overflow (without reverting) when
+        // one or both terms, or their sum, is bigger than a uint128.
+        // This is however much bigger than any realistic situation.
+        unchecked {
+            amount0 = FullMath.mulDiv(
+                feeGrowthInside0CurrentX128 - feeGrowthInside0LastX128, liquidity, FixedPoint128.Q128
+            ) + tokensOwed0;
+            amount1 = FullMath.mulDiv(
+                feeGrowthInside1CurrentX128 - feeGrowthInside1LastX128, liquidity, FixedPoint128.Q128
+            ) + tokensOwed1;
+        }
+    }
+
+    function _getFeeGrowthInside(int24 tickLower, int24 tickUpper)
+        internal
+        view
+        returns (uint256 feeGrowthInside0X128, uint256 feeGrowthInside1X128)
+    {
+        (, int24 tickCurrent,,,,) = poolCl.slot0();
+        (,,, uint256 lowerFeeGrowthOutside0X128, uint256 lowerFeeGrowthOutside1X128,,,,,) = poolCl.ticks(tickLower);
+        (,,, uint256 upperFeeGrowthOutside0X128, uint256 upperFeeGrowthOutside1X128,,,,,) = poolCl.ticks(tickUpper);
+
+        // Calculate the fee growth inside of the Liquidity Range since the last time the position was updated.
+        // feeGrowthInside can overflow (without reverting), as is the case in the Uniswap fee calculations.
+        unchecked {
+            if (tickCurrent < tickLower) {
+                feeGrowthInside0X128 = lowerFeeGrowthOutside0X128 - upperFeeGrowthOutside0X128;
+                feeGrowthInside1X128 = lowerFeeGrowthOutside1X128 - upperFeeGrowthOutside1X128;
+            } else if (tickCurrent < tickUpper) {
+                feeGrowthInside0X128 =
+                    poolCl.feeGrowthGlobal0X128() - lowerFeeGrowthOutside0X128 - upperFeeGrowthOutside0X128;
+                feeGrowthInside1X128 =
+                    poolCl.feeGrowthGlobal1X128() - lowerFeeGrowthOutside1X128 - upperFeeGrowthOutside1X128;
+            } else {
+                feeGrowthInside0X128 = upperFeeGrowthOutside0X128 - lowerFeeGrowthOutside0X128;
+                feeGrowthInside1X128 = upperFeeGrowthOutside1X128 - lowerFeeGrowthOutside1X128;
+            }
+        }
     }
 }

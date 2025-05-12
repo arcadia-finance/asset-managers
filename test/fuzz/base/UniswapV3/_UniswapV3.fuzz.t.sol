@@ -7,24 +7,29 @@ pragma solidity ^0.8.26;
 import { Base_Test } from "../../../../lib/accounts-v2/test/Base.t.sol";
 import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { FixedPoint96 } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint96.sol";
+import { FixedPoint128 } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
 import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { Fuzz_Test } from "../../Fuzz.t.sol";
+import { ISwapRouter02 } from
+    "../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/interfaces/ISwapRouter02.sol";
 import { IUniswapV3PoolExtension } from
     "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/IUniswapV3PoolExtension.sol";
 import { PositionState } from "../../../../src/state/PositionState.sol";
-import { UniswapV3Extension } from "../../../utils/extensions/UniswapV3Extension.sol";
+import { SwapRouter02Fixture } from
+    "../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/SwapRouter02Fixture.f.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 import { UniswapHelpers } from "../../../utils/uniswap-v3/UniswapHelpers.sol";
 import { UniswapV3AMExtension } from "../../../../lib/accounts-v2/test/utils/extensions/UniswapV3AMExtension.sol";
 import { UniswapV3AMFixture } from
     "../../../../lib/accounts-v2/test/utils/fixtures/arcadia-accounts/UniswapV3AMFixture.f.sol";
 import { UniswapV3Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";
+import { UniswapV3Extension } from "../../../utils/extensions/UniswapV3Extension.sol";
 import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
 
 /**
  * @notice Common logic needed by all "UniswapV3" fuzz tests.
  */
-abstract contract UniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, UniswapV3AMFixture {
+abstract contract UniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, UniswapV3AMFixture, SwapRouter02Fixture {
     /*////////////////////////////////////////////////////////////////
                             CONSTANTS
     /////////////////////////////////////////////////////////////// */
@@ -63,8 +68,11 @@ abstract contract UniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, UniswapV3A
         // Deploy Arcadia Accounts Contracts.
         deployArcadiaAccounts();
 
-        // Deploy fixture for Uniswap V3.
+        // Deploy fixtures for Uniswap V3.
         UniswapV3Fixture.setUp();
+        SwapRouter02Fixture.deploySwapRouter02(
+            address(0), address(uniswapV3Factory), address(nonfungiblePositionManager), address(weth9)
+        );
 
         // Deploy test contract.
         base = new UniswapV3Extension(address(nonfungiblePositionManager), address(uniswapV3Factory));
@@ -180,5 +188,110 @@ abstract contract UniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, UniswapV3A
         bytecode = address(uniV3AM).code;
         bytecode = Utils.veryBadBytesReplacer(bytecode, POOL_INIT_CODE_HASH, poolExtensionInitCodeHash);
         vm.etch(address(uniV3AM), bytecode);
+    }
+
+    function generateFees(uint256 amount0, uint256 amount1) public {
+        vm.startPrank(users.liquidityProvider);
+        // Swap token0 for token1
+        uint256 amountIn;
+        if (amount0 > 0) {
+            amountIn = amount0 * 1e6 / poolUniswap.fee();
+
+            deal(address(token0), users.liquidityProvider, amountIn, true);
+            token0.approve(address(swapRouter), amountIn);
+            swapRouter.exactInputSingle(
+                ISwapRouter02.ExactInputSingleParams({
+                    tokenIn: address(token0),
+                    tokenOut: address(token1),
+                    fee: poolUniswap.fee(),
+                    recipient: users.liquidityProvider,
+                    amountIn: amountIn,
+                    amountOutMinimum: 0,
+                    sqrtPriceLimitX96: 0
+                })
+            );
+        }
+
+        // Swap token1 for token0
+        if (amount1 > 0) {
+            amountIn = amount1 * 1e6 / poolUniswap.fee();
+
+            deal(address(token1), users.liquidityProvider, amountIn, true);
+            token1.approve(address(swapRouter), amountIn);
+            swapRouter.exactInputSingle(
+                ISwapRouter02.ExactInputSingleParams({
+                    tokenIn: address(token1),
+                    tokenOut: address(token0),
+                    fee: poolUniswap.fee(),
+                    recipient: users.liquidityProvider,
+                    amountIn: amountIn,
+                    amountOutMinimum: 0,
+                    sqrtPriceLimitX96: 0
+                })
+            );
+        }
+        vm.stopPrank();
+    }
+
+    function getFeeAmounts(uint256 id) internal view returns (uint256 amount0, uint256 amount1) {
+        (
+            ,
+            ,
+            ,
+            ,
+            ,
+            int24 tickLower,
+            int24 tickUpper,
+            uint256 liquidity,
+            uint256 feeGrowthInside0LastX128,
+            uint256 feeGrowthInside1LastX128,
+            uint256 tokensOwed0,
+            uint256 tokensOwed1
+        ) = nonfungiblePositionManager.positions(id);
+
+        (uint256 feeGrowthInside0CurrentX128, uint256 feeGrowthInside1CurrentX128) =
+            _getFeeGrowthInside(tickLower, tickUpper);
+
+        // Calculate the total amount of fees by adding the already realized fees (tokensOwed),
+        // to the accumulated fees since the last time the position was updated:
+        // (feeGrowthInsideCurrentX128 - feeGrowthInsideLastX128) * liquidity.
+        // Fee calculations in NonfungiblePositionManager.sol overflow (without reverting) when
+        // one or both terms, or their sum, is bigger than a uint128.
+        // This is however much bigger than any realistic situation.
+        unchecked {
+            amount0 = FullMath.mulDiv(
+                feeGrowthInside0CurrentX128 - feeGrowthInside0LastX128, liquidity, FixedPoint128.Q128
+            ) + tokensOwed0;
+            amount1 = FullMath.mulDiv(
+                feeGrowthInside1CurrentX128 - feeGrowthInside1LastX128, liquidity, FixedPoint128.Q128
+            ) + tokensOwed1;
+        }
+    }
+
+    function _getFeeGrowthInside(int24 tickLower, int24 tickUpper)
+        internal
+        view
+        returns (uint256 feeGrowthInside0X128, uint256 feeGrowthInside1X128)
+    {
+        (, int24 tickCurrent,,,,,) = poolUniswap.slot0();
+        (,, uint256 lowerFeeGrowthOutside0X128, uint256 lowerFeeGrowthOutside1X128,,,,) = poolUniswap.ticks(tickLower);
+        (,, uint256 upperFeeGrowthOutside0X128, uint256 upperFeeGrowthOutside1X128,,,,) = poolUniswap.ticks(tickUpper);
+
+        // Calculate the fee growth inside of the Liquidity Range since the last time the position was updated.
+        // feeGrowthInside can overflow (without reverting), as is the case in the Uniswap fee calculations.
+        unchecked {
+            if (tickCurrent < tickLower) {
+                feeGrowthInside0X128 = lowerFeeGrowthOutside0X128 - upperFeeGrowthOutside0X128;
+                feeGrowthInside1X128 = lowerFeeGrowthOutside1X128 - upperFeeGrowthOutside1X128;
+            } else if (tickCurrent < tickUpper) {
+                feeGrowthInside0X128 =
+                    poolUniswap.feeGrowthGlobal0X128() - lowerFeeGrowthOutside0X128 - upperFeeGrowthOutside0X128;
+                feeGrowthInside1X128 =
+                    poolUniswap.feeGrowthGlobal1X128() - lowerFeeGrowthOutside1X128 - upperFeeGrowthOutside1X128;
+            } else {
+                feeGrowthInside0X128 = upperFeeGrowthOutside0X128 - lowerFeeGrowthOutside0X128;
+                feeGrowthInside1X128 = upperFeeGrowthOutside1X128 - lowerFeeGrowthOutside1X128;
+            }
+        }
     }
 }
