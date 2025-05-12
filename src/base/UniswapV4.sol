@@ -553,4 +553,13 @@ abstract contract UniswapV4 is AbstractBase {
             PERMIT_2.approve(token, address(POSITION_MANAGER), type(uint160).max, type(uint48).max);
         }
     }
+
+    /* ///////////////////////////////////////////////////////////////
+                      NATIVE ETH HANDLER
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Receives native ether.
+     */
+    receive() external payable { }
 }

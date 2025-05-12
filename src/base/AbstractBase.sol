@@ -184,4 +184,16 @@ abstract contract AbstractBase {
     function _stake(uint256[] memory balances, address positionManager, PositionState memory position)
         internal
         virtual;
+
+    /* ///////////////////////////////////////////////////////////////
+                      ERC721 HANDLER FUNCTION
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Returns the onERC721Received selector.
+     * @dev Required to receive ERC721 tokens via safeTransferFrom.
+     */
+    function onERC721Received(address, address, uint256, bytes calldata) public pure returns (bytes4) {
+        return this.onERC721Received.selector;
+    }
 }

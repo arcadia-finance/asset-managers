@@ -524,25 +524,4 @@ abstract contract Compounder is IActionBase, AbstractBase {
             if (fees[i] > 0) ERC20(position.tokens[i]).safeTransfer(initiator, fees[i]);
         }
     }
-
-    /* ///////////////////////////////////////////////////////////////
-                      ERC721 HANDLER FUNCTION
-    /////////////////////////////////////////////////////////////// */
-
-    /**
-     * @notice Returns the onERC721Received selector.
-     * @dev Required to receive ERC721 tokens via safeTransferFrom.
-     */
-    function onERC721Received(address, address, uint256, bytes calldata) public pure returns (bytes4) {
-        return this.onERC721Received.selector;
-    }
-
-    /* ///////////////////////////////////////////////////////////////
-                      NATIVE ETH HANDLER
-    /////////////////////////////////////////////////////////////// */
-
-    /**
-     * @notice Receives native ether.
-     */
-    receive() external payable { }
 }

@@ -308,9 +308,9 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         );
 
         // And: A new position with a valid tick range below current tick.
-        tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, position.tickCurrent - 2));
+        tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, position.tickCurrent - 11));
         tickLower = tickLower / position.tickSpacing * position.tickSpacing;
-        tickUpper = int24(bound(tickUpper, tickLower + 1, position.tickCurrent - 1));
+        tickUpper = int24(bound(tickUpper, tickLower + 10, position.tickCurrent - 1));
         tickUpper = tickUpper / position.tickSpacing * position.tickSpacing;
         initiatorParams.strategyData = abi.encode(tickLower, tickUpper);
 
@@ -517,9 +517,9 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         );
 
         // And: A new position with a valid tick range below current tick.
-        tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, position.tickCurrent - 2));
+        tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, position.tickCurrent - 11));
         tickLower = tickLower / position.tickSpacing * position.tickSpacing;
-        tickUpper = int24(bound(tickUpper, tickLower + 1, position.tickCurrent - 1));
+        tickUpper = int24(bound(tickUpper, tickLower + 10, position.tickCurrent - 1));
         tickUpper = tickUpper / position.tickSpacing * position.tickSpacing;
         initiatorParams.strategyData = abi.encode(tickLower, tickUpper);
 

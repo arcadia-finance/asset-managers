@@ -462,4 +462,13 @@ abstract contract Slipstream is AbstractBase {
             IStakedSlipstream(positionManager).mint(position.id);
         }
     }
+
+    /* ///////////////////////////////////////////////////////////////
+                      NATIVE ETH HANDLER
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Receives native ether.
+     */
+    receive() external payable { }
 }
