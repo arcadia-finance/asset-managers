@@ -8,11 +8,13 @@ import { AbstractBase } from "./AbstractBase.sol";
 import {
     CollectParams,
     DecreaseLiquidityParams,
+    IncreaseLiquidityParams,
     IPositionManagerV3,
     MintParams
 } from "../interfaces/IPositionManagerV3.sol";
 import { CLMath } from "../libraries/CLMath.sol";
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
+import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IUniswapV3Pool } from "../interfaces/IUniswapV3Pool.sol";
 import { PoolAddress } from "../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/PoolAddress.sol";
 import { PositionState } from "../state/PositionState.sol";
@@ -22,6 +24,7 @@ import { SafeApprove } from "../libraries/SafeApprove.sol";
  * @title Base implementation for managing Uniswap V3 Liquidity Positions.
  */
 abstract contract UniswapV3 is AbstractBase {
+    using FixedPointMathLib for uint256;
     using SafeApprove for ERC20;
     using SafeTransferLib for ERC20;
     /* //////////////////////////////////////////////////////////////
@@ -144,17 +147,45 @@ abstract contract UniswapV3 is AbstractBase {
      * @notice Claims fees/rewards from a Liquidity Position.
      * @param balances The balances of the underlying tokens held by the Rebalancer.
      * @param fees The fees of the underlying tokens to be paid to the initiator.
-     * @param positionManager The contract address of the Position Manager.
+     * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
-     * @dev Must update the balances after the claim.
+     * @param claimFee The fee charged on the claimed fees of the liquidity position, with 18 decimals precision.
      */
     function _claim(
         uint256[] memory balances,
         uint256[] memory fees,
-        address positionManager,
+        address,
         PositionState memory position,
         uint256 claimFee
-    ) internal override { }
+    ) internal override {
+        // We assume that the amount of tokens to collect never exceeds type(uint128).max.
+        (uint256 amount0, uint256 amount1) = POSITION_MANAGER.collect(
+            CollectParams({
+                tokenId: position.id,
+                recipient: address(this),
+                amount0Max: type(uint128).max,
+                amount1Max: type(uint128).max
+            })
+        );
+        balances[0] += amount0;
+        balances[1] += amount1;
+
+        // Calculate claim fees.
+        fees[0] += amount0.mulDivDown(claimFee, 1e18);
+        fees[1] += amount1.mulDivDown(claimFee, 1e18);
+    }
+
+    /* ///////////////////////////////////////////////////////////////
+                          UNSTAKING LOGIC
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Unstakes a Liquidity Position.
+     * param balances The balances of the underlying tokens held by the Rebalancer.
+     * param positionManager The contract address of the Position Manager.
+     * param position A struct with position and pool related variables.
+     */
+    function _unstake(uint256[] memory, address, PositionState memory) internal override { }
 
     /* ///////////////////////////////////////////////////////////////
                              BURN LOGIC
@@ -296,17 +327,47 @@ abstract contract UniswapV3 is AbstractBase {
     /**
      * @notice Swaps one token for another to rebalance the Liquidity Position.
      * @param balances The balances of the underlying tokens held by the Rebalancer.
-     * @param positionManager The contract address of the Position Manager.
+     * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      * @param amount0Desired The desired amount of token0 to add as liquidity.
      * @param amount1Desired The desired amount of token1 to add as liquidity.
-     * @dev Must update the balances and sqrtPrice after the swap.
      */
     function _increaseLiquidity(
         uint256[] memory balances,
-        address positionManager,
+        address,
         PositionState memory position,
         uint256 amount0Desired,
         uint256 amount1Desired
-    ) internal override { }
+    ) internal override {
+        ERC20(position.tokens[0]).safeApproveWithRetry(address(POSITION_MANAGER), amount0Desired);
+        ERC20(position.tokens[1]).safeApproveWithRetry(address(POSITION_MANAGER), amount1Desired);
+
+        uint256 amount0;
+        uint256 amount1;
+        (position.liquidity, amount0, amount1) = POSITION_MANAGER.increaseLiquidity(
+            IncreaseLiquidityParams({
+                tokenId: position.id,
+                amount0Desired: amount0Desired,
+                amount1Desired: amount1Desired,
+                amount0Min: 0,
+                amount1Min: 0,
+                deadline: block.timestamp
+            })
+        );
+
+        balances[0] -= amount0;
+        balances[1] -= amount1;
+    }
+
+    /* ///////////////////////////////////////////////////////////////
+                          STAKING LOGIC
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Stakes a Liquidity Position.
+     * param balances The balances of the underlying tokens held by the Rebalancer.
+     * param positionManager The contract address of the Position Manager.
+     * param position A struct with position and pool related variables.
+     */
+    function _stake(uint256[] memory, address, PositionState memory) internal override { }
 }

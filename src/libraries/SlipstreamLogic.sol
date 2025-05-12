@@ -6,13 +6,13 @@ pragma solidity ^0.8.26;
 
 library SlipstreamLogic {
     /**
-     *  @notice Deterministically computes the pool address given the factory and PoolKey
+     *  @notice Deterministically computes the pool address.
      *  @param poolImplementation The contract address of the Slipstream Pool implementation.
      *  @param factory The contract address of the Slipstream factory.
      *  @param token0 Contract address of token0.
      *  @param token1 Contract address of token1.
-     *  @param tickSpacing The tick spacing of the pool
-     *  @return pool The contract address of the pool
+     *  @param tickSpacing The tick spacing of the pool.
+     *  @return pool The contract address of the pool.
      */
     function computeAddress(
         address poolImplementation,
@@ -30,7 +30,11 @@ library SlipstreamLogic {
     }
 
     /**
-     * @notice Computes the address of a clone deployed using {Clones-cloneDeterministic}.
+     * @notice Computes the address of a clone deployed.
+     * @param master The contract address of the master.
+     * @param salt The salt of the clone.
+     * @param deployer The deployer of the clone.
+     * @return predicted The predicted address of the clone.
      */
     function predictDeterministicAddress(address master, bytes32 salt, address deployer)
         internal

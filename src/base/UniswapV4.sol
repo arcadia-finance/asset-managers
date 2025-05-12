@@ -10,6 +10,7 @@ import { BalanceDelta } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core
 import { CLMath } from "../libraries/CLMath.sol";
 import { Currency } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
+import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IHooks } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/interfaces/IHooks.sol";
 import { IPermit2 } from "../rebalancers/interfaces/IPermit2.sol";
 import { IPoolManager } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/interfaces/IPoolManager.sol";
@@ -27,6 +28,7 @@ import { TickMath } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src
  * @title Base implementation for managing Uniswap V4 Liquidity Positions.
  */
 abstract contract UniswapV4 is AbstractBase {
+    using FixedPointMathLib for uint256;
     using SafeApprove for ERC20;
     using SafeTransferLib for ERC20;
     using StateLibrary for IPoolManager;
@@ -181,17 +183,65 @@ abstract contract UniswapV4 is AbstractBase {
      * @notice Claims fees/rewards from a Liquidity Position.
      * @param balances The balances of the underlying tokens held by the Rebalancer.
      * @param fees The fees of the underlying tokens to be paid to the initiator.
-     * @param positionManager The contract address of the Position Manager.
+     * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      * @dev Must update the balances after the claim.
      */
     function _claim(
         uint256[] memory balances,
         uint256[] memory fees,
-        address positionManager,
+        address,
         PositionState memory position,
         uint256 claimFee
-    ) internal override { }
+    ) internal override {
+        // Cache the currencies.
+        Currency currency0 = Currency.wrap(position.tokens[0]);
+        Currency currency1 = Currency.wrap(position.tokens[1]);
+
+        // Generate calldata to collect fees (decrease liquidity with liquidityDelta = 0).
+        bytes memory actions = new bytes(2);
+        actions[0] = bytes1(uint8(Actions.DECREASE_LIQUIDITY));
+        actions[1] = bytes1(uint8(Actions.TAKE_PAIR));
+        bytes[] memory params = new bytes[](2);
+        params[0] = abi.encode(position.id, 0, 0, 0, "");
+        params[1] = abi.encode(currency0, currency1, address(this));
+
+        bytes memory decreaseLiquidityParams = abi.encode(actions, params);
+        POSITION_MANAGER.modifyLiquidities(decreaseLiquidityParams, block.timestamp);
+
+        // Get the balances, token0 might be native ETH.
+        uint256 balance0 = currency0.balanceOfSelf();
+        uint256 balance1 = ERC20(position.tokens[1]).balanceOf(address(this));
+
+        // Calculate claim fees.
+        fees[0] += (balance0 - balances[0]).mulDivDown(claimFee, 1e18);
+        fees[1] += (balance1 - balances[1]).mulDivDown(claimFee, 1e18);
+
+        // Update the balances.
+        balances[0] = balance0;
+        balances[1] = balance1;
+    }
+
+    /* ///////////////////////////////////////////////////////////////
+                          UNSTAKING LOGIC
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Unstakes a Liquidity Position.
+     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * param positionManager The contract address of the Position Manager.
+     * @param position A struct with position and pool related variables.
+     */
+    function _unstake(uint256[] memory balances, address, PositionState memory position) internal override {
+        // If token0 is in native ETH, and weth was withdrawn from the account, unwrap it.
+        if (position.tokens[0] == address(0)) {
+            uint256 wethBalance = ERC20(WETH).balanceOf(address(this));
+            if (wethBalance > 0) {
+                IWETH(WETH).withdraw(wethBalance);
+                balances[0] += wethBalance;
+            }
+        }
+    }
 
     /* ///////////////////////////////////////////////////////////////
                              BURN LOGIC
@@ -204,26 +254,23 @@ abstract contract UniswapV4 is AbstractBase {
      * @param position A struct with position and pool related variables.
      */
     function _burn(uint256[] memory balances, address, PositionState memory position) internal override {
+        // Cache the currencies.
+        Currency currency0 = Currency.wrap(position.tokens[0]);
+        Currency currency1 = Currency.wrap(position.tokens[1]);
+
         // Generate calldata to burn the position and collect the underlying assets.
         bytes memory actions = new bytes(2);
         actions[0] = bytes1(uint8(Actions.BURN_POSITION));
         actions[1] = bytes1(uint8(Actions.TAKE_PAIR));
         bytes[] memory params = new bytes[](2);
-        Currency currency0 = Currency.wrap(position.tokens[0]);
-        Currency currency1 = Currency.wrap(position.tokens[1]);
         params[0] = abi.encode(position.id, 0, 0, "");
         params[1] = abi.encode(currency0, currency1, address(this));
 
         bytes memory burnParams = abi.encode(actions, params);
         POSITION_MANAGER.modifyLiquidities(burnParams, block.timestamp);
 
-        // If token0 is in native ETH, and weth was withdrawn from the account, unwrap it.
-        if (position.tokens[0] == address(0)) {
-            IWETH(WETH).withdraw(ERC20(WETH).balanceOf(address(this)));
-        }
-
         // Update the balances, token0 might be native ETH.
-        balances[0] = Currency.wrap(position.tokens[0]).balanceOfSelf();
+        balances[0] = currency0.balanceOfSelf();
         balances[1] = ERC20(position.tokens[1]).balanceOf(address(this));
     }
 
@@ -342,7 +389,7 @@ abstract contract UniswapV4 is AbstractBase {
         uint256 amount0Desired,
         uint256 amount1Desired
     ) internal override {
-        // Check it token0 is native ETH.
+        // Check if token0 is native ETH.
         bool isNative = position.tokens[0] == address(0);
 
         // Handle approvals.
@@ -395,14 +442,8 @@ abstract contract UniswapV4 is AbstractBase {
         POSITION_MANAGER.modifyLiquidities{ value: ethValue }(mintParams, block.timestamp);
 
         // Update the balances, token0 might be native ETH.
-        balances[0] = Currency.wrap(position.tokens[0]).balanceOfSelf();
+        balances[0] = poolKey.currency0.balanceOfSelf();
         balances[1] = ERC20(position.tokens[1]).balanceOf(address(this));
-
-        // If token0 is in native ETH, wrap it.
-        if (isNative) {
-            position.tokens[0] = WETH;
-            IWETH(payable(WETH)).deposit{ value: balances[0] }();
-        }
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -412,7 +453,7 @@ abstract contract UniswapV4 is AbstractBase {
     /**
      * @notice Swaps one token for another to rebalance the Liquidity Position.
      * @param balances The balances of the underlying tokens held by the Rebalancer.
-     * @param positionManager The contract address of the Position Manager.
+     * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      * @param amount0Desired The desired amount of token0 to add as liquidity.
      * @param amount1Desired The desired amount of token1 to add as liquidity.
@@ -420,11 +461,68 @@ abstract contract UniswapV4 is AbstractBase {
      */
     function _increaseLiquidity(
         uint256[] memory balances,
-        address positionManager,
+        address,
         PositionState memory position,
         uint256 amount0Desired,
         uint256 amount1Desired
-    ) internal override { }
+    ) internal override {
+        // Check if token0 is native ETH.
+        bool isNative = position.tokens[0] == address(0);
+
+        // Handle approvals.
+        if (!isNative) _checkAndApprovePermit2(position.tokens[0]);
+        _checkAndApprovePermit2(position.tokens[1]);
+
+        // Calculate liquidity to be added.
+        position.liquidity = LiquidityAmounts.getLiquidityForAmounts(
+            uint160(position.sqrtPrice),
+            TickMath.getSqrtPriceAtTick(position.tickLower),
+            TickMath.getSqrtPriceAtTick(position.tickUpper),
+            amount0Desired,
+            amount1Desired
+        );
+
+        // Cache the currencies.
+        Currency currency0 = Currency.wrap(position.tokens[0]);
+        Currency currency1 = Currency.wrap(position.tokens[1]);
+
+        // Generate calldata to mint new position.
+        bytes memory actions = new bytes(3);
+        actions[0] = bytes1(uint8(Actions.INCREASE_LIQUIDITY));
+        actions[1] = bytes1(uint8(Actions.SETTLE_PAIR));
+        actions[2] = bytes1(uint8(Actions.SWEEP));
+        bytes[] memory params = new bytes[](3);
+        params[0] = abi.encode(position.id, position.liquidity, type(uint128).max, type(uint128).max, "");
+        params[1] = abi.encode(currency0, currency1);
+        params[2] = abi.encode(currency0, address(this));
+
+        // Mint the new position.
+        uint256 ethValue = isNative ? amount0Desired : 0;
+        bytes memory increaseLiquidityParams = abi.encode(actions, params);
+        POSITION_MANAGER.modifyLiquidities{ value: ethValue }(increaseLiquidityParams, block.timestamp);
+
+        // Update the balances, token0 might be native ETH.
+        balances[0] = currency0.balanceOfSelf();
+        balances[1] = ERC20(position.tokens[1]).balanceOf(address(this));
+    }
+
+    /* ///////////////////////////////////////////////////////////////
+                          STAKING LOGIC
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Stakes a Liquidity Position.
+     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * param positionManager The contract address of the Position Manager.
+     * @param position A struct with position and pool related variables.
+     */
+    function _stake(uint256[] memory balances, address, PositionState memory position) internal override {
+        // If token0 is in native ETH, wrap it.
+        if (position.tokens[0] == address(0)) {
+            position.tokens[0] = WETH;
+            IWETH(payable(WETH)).deposit{ value: balances[0] }();
+        }
+    }
 
     /* ///////////////////////////////////////////////////////////////
                                HELPERS

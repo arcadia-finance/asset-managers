@@ -41,6 +41,11 @@ contract RebalancerExtension is Rebalancer {
         uint256 claimFee
     ) internal override { }
 
+    function _unstake(uint256[] memory balances, address positionManager, PositionState memory position)
+        internal
+        override
+    { }
+
     function _burn(uint256[] memory balances, address positionManager, PositionState memory position)
         internal
         override
@@ -76,6 +81,11 @@ contract RebalancerExtension is Rebalancer {
         uint256 amount0Desired,
         uint256 amount1Desired
     ) internal override { }
+
+    function _stake(uint256[] memory balances, address positionManager, PositionState memory position)
+        internal
+        override
+    { }
 
     function approveAndTransfer(
         address initiator,

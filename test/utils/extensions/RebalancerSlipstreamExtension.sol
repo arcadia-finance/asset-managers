@@ -51,6 +51,26 @@ contract RebalancerSlipstreamExtension is RebalancerSlipstream {
         return _getSqrtPrice(position);
     }
 
+    function claim(
+        uint256[] memory balances,
+        uint256[] memory fees,
+        address positionManager,
+        PositionState memory position,
+        uint256 claimFee
+    ) external returns (uint256[] memory balances_, uint256[] memory fees_) {
+        _claim(balances, fees, positionManager, position, claimFee);
+        balances_ = balances;
+        fees_ = fees;
+    }
+
+    function unstake(uint256[] memory balances, address positionManager, PositionState memory position)
+        external
+        returns (uint256[] memory balances_)
+    {
+        _unstake(balances, positionManager, position);
+        balances_ = balances;
+    }
+
     function burn(uint256[] memory balances, address positionManager, PositionState memory position)
         external
         returns (uint256[] memory balances_)
@@ -78,6 +98,26 @@ contract RebalancerSlipstreamExtension is RebalancerSlipstream {
         _mint(balances, positionManager, position, amount0Desired, amount1Desired);
         balances_ = balances;
         position_ = position;
+    }
+
+    function increaseLiquidity(
+        uint256[] memory balances,
+        address positionManager,
+        PositionState memory position,
+        uint256 amount0Desired,
+        uint256 amount1Desired
+    ) external returns (uint256[] memory balances_, PositionState memory position_) {
+        _increaseLiquidity(balances, positionManager, position, amount0Desired, amount1Desired);
+        balances_ = balances;
+        position_ = position;
+    }
+
+    function stake(uint256[] memory balances, address positionManager, PositionState memory position)
+        external
+        returns (uint256[] memory balances_)
+    {
+        _stake(balances, positionManager, position);
+        balances_ = balances;
     }
 
     function setHook(address account_, address hook) public {

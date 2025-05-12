@@ -152,10 +152,7 @@ contract Mint_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
         assertEq(position_.liquidity, stateView.getPositionLiquidity(poolKey.toId(), positionId));
 
         // And: Correct balances should be returned.
-        assertEq(balances[0], weth9.balanceOf(address(rebalancer)));
+        assertEq(balances[0], address(rebalancer).balance);
         assertEq(balances[1], token1.balanceOf(address(rebalancer)));
-
-        // And: token0 is weth.
-        assertEq(position_.tokens[0], address(weth9));
     }
 }

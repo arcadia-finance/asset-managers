@@ -8,11 +8,13 @@ import { AbstractBase } from "./AbstractBase.sol";
 import {
     CollectParams,
     DecreaseLiquidityParams,
+    IncreaseLiquidityParams,
     ICLPositionManager,
     MintParams
 } from "../rebalancers/interfaces/ICLPositionManager.sol";
 import { CLMath } from "../libraries/CLMath.sol";
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
+import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { ICLPool } from "../rebalancers/interfaces/ICLPool.sol";
 import { IStakedSlipstream } from "../rebalancers/interfaces/IStakedSlipstream.sol";
 import { PositionState } from "../state/PositionState.sol";
@@ -23,6 +25,7 @@ import { SafeApprove } from "../libraries/SafeApprove.sol";
  * @title Base implementation for managing Slipstream Liquidity Positions.
  */
 abstract contract Slipstream is AbstractBase {
+    using FixedPointMathLib for uint256;
     using SafeApprove for ERC20;
     using SafeTransferLib for ERC20;
     /* //////////////////////////////////////////////////////////////
@@ -183,7 +186,7 @@ abstract contract Slipstream is AbstractBase {
      * @param fees The fees of the underlying tokens to be paid to the initiator.
      * @param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
-     * @dev Must update the balances after the claim.
+     * @param claimFee The fee charged on the claimed fees of the liquidity position, with 18 decimals precision.
      */
     function _claim(
         uint256[] memory balances,
@@ -191,7 +194,66 @@ abstract contract Slipstream is AbstractBase {
         address positionManager,
         PositionState memory position,
         uint256 claimFee
-    ) internal override { }
+    ) internal override {
+        if (positionManager != address(POSITION_MANAGER)) {
+            // If position is a staked slipstream position, claim the rewards.
+            uint256 rewards = IStakedSlipstream(positionManager).claimReward(position.id);
+            if (rewards > 0) {
+                uint256 fee = rewards.mulDivDown(claimFee, 1e18);
+                if (balances.length == 3) {
+                    (balances[2], fees[2]) = (balances[2] + rewards, fees[2] + fee);
+                }
+                // If rewardToken is an underlying token of the position, add it to the balances
+                else if (position.tokens[0] == REWARD_TOKEN) {
+                    (balances[0], fees[0]) = (balances[0] + rewards, fees[0] + fee);
+                } else {
+                    (balances[1], fees[1]) = (balances[1] + rewards, fees[1] + fee);
+                }
+            }
+        } else {
+            // We assume that the amount of tokens to collect never exceeds type(uint128).max.
+            (uint256 amount0, uint256 amount1) = POSITION_MANAGER.collect(
+                CollectParams({
+                    tokenId: position.id,
+                    recipient: address(this),
+                    amount0Max: type(uint128).max,
+                    amount1Max: type(uint128).max
+                })
+            );
+            balances[0] += amount0;
+            balances[1] += amount1;
+
+            // Calculate claim fees.
+            fees[0] += amount0.mulDivDown(claimFee, 1e18);
+            fees[1] += amount1.mulDivDown(claimFee, 1e18);
+        }
+    }
+
+    /* ///////////////////////////////////////////////////////////////
+                          UNSTAKING LOGIC
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Unstakes a Liquidity Position.
+     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param positionManager The contract address of the Position Manager.
+     * @param position A struct with position and pool related variables.
+     */
+    function _unstake(uint256[] memory balances, address positionManager, PositionState memory position)
+        internal
+        override
+    {
+        // If position is a staked slipstream position, unstake the position.
+        if (positionManager != address(POSITION_MANAGER)) {
+            uint256 rewards = IStakedSlipstream(positionManager).burn(position.id);
+            if (rewards > 0) {
+                if (balances.length == 3) balances[2] = rewards;
+                // If rewardToken is an underlying token of the position, add it to the balances
+                else if (position.tokens[0] == REWARD_TOKEN) balances[0] += rewards;
+                else balances[1] += rewards;
+            }
+        }
+    }
 
     /* ///////////////////////////////////////////////////////////////
                              BURN LOGIC
@@ -200,24 +262,10 @@ abstract contract Slipstream is AbstractBase {
     /**
      * @notice Burns the Liquidity Position.
      * @param balances The balances of the underlying tokens held by the Rebalancer.
-     * @param positionManager The contract address of the Position Manager.
+     * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      */
-    function _burn(uint256[] memory balances, address positionManager, PositionState memory position)
-        internal
-        override
-    {
-        // If position is a staked slipstream position, first unstake the position.
-        if (positionManager != address(POSITION_MANAGER)) {
-            // If rewardToken is an underlying token of the position, add it to the balances
-            uint256 rewards = IStakedSlipstream(positionManager).burn(position.id);
-            if (rewards > 0) {
-                if (balances.length == 3) balances[2] = rewards;
-                else if (position.tokens[0] == REWARD_TOKEN) balances[0] += rewards;
-                else balances[1] += rewards;
-            }
-        }
-
+    function _burn(uint256[] memory balances, address, PositionState memory position) internal override {
         // Remove liquidity of the position and claim outstanding fees to get full amounts of token0 and token1
         // for rebalance.
         POSITION_MANAGER.decreaseLiquidity(
@@ -306,14 +354,14 @@ abstract contract Slipstream is AbstractBase {
     /**
      * @notice Mints a new Liquidity Position.
      * @param balances The balances of the underlying tokens held by the Rebalancer.
-     * @param positionManager The contract address of the Position Manager.
+     * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      * @param amount0Desired The desired amount of token0 to mint as liquidity.
      * @param amount1Desired The desired amount of token1 to mint as liquidity.
      */
     function _mint(
         uint256[] memory balances,
-        address positionManager,
+        address,
         PositionState memory position,
         uint256 amount0Desired,
         uint256 amount1Desired
@@ -342,12 +390,6 @@ abstract contract Slipstream is AbstractBase {
 
         balances[0] -= amount0;
         balances[1] -= amount1;
-
-        // If position is a staked slipstream position, stake the position.
-        if (positionManager != address(POSITION_MANAGER)) {
-            POSITION_MANAGER.approve(positionManager, position.id);
-            IStakedSlipstream(positionManager).mint(position.id);
-        }
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -357,17 +399,53 @@ abstract contract Slipstream is AbstractBase {
     /**
      * @notice Swaps one token for another to rebalance the Liquidity Position.
      * @param balances The balances of the underlying tokens held by the Rebalancer.
-     * @param positionManager The contract address of the Position Manager.
+     * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      * @param amount0Desired The desired amount of token0 to add as liquidity.
      * @param amount1Desired The desired amount of token1 to add as liquidity.
-     * @dev Must update the balances and sqrtPrice after the swap.
      */
     function _increaseLiquidity(
         uint256[] memory balances,
-        address positionManager,
+        address,
         PositionState memory position,
         uint256 amount0Desired,
         uint256 amount1Desired
-    ) internal override { }
+    ) internal override {
+        ERC20(position.tokens[0]).safeApproveWithRetry(address(POSITION_MANAGER), amount0Desired);
+        ERC20(position.tokens[1]).safeApproveWithRetry(address(POSITION_MANAGER), amount1Desired);
+
+        uint256 amount0;
+        uint256 amount1;
+        (position.liquidity, amount0, amount1) = POSITION_MANAGER.increaseLiquidity(
+            IncreaseLiquidityParams({
+                tokenId: position.id,
+                amount0Desired: amount0Desired,
+                amount1Desired: amount1Desired,
+                amount0Min: 0,
+                amount1Min: 0,
+                deadline: block.timestamp
+            })
+        );
+
+        balances[0] -= amount0;
+        balances[1] -= amount1;
+    }
+
+    /* ///////////////////////////////////////////////////////////////
+                          STAKING LOGIC
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Stakes a Liquidity Position.
+     * param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param positionManager The contract address of the Position Manager.
+     * @param position A struct with position and pool related variables.
+     */
+    function _stake(uint256[] memory, address positionManager, PositionState memory position) internal override {
+        // If position is a staked slipstream position, stake the position.
+        if (positionManager != address(POSITION_MANAGER)) {
+            POSITION_MANAGER.approve(positionManager, position.id);
+            IStakedSlipstream(positionManager).mint(position.id);
+        }
+    }
 }

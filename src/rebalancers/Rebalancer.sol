@@ -6,7 +6,7 @@ pragma solidity ^0.8.26;
 
 import { AbstractBase } from "../base/AbstractBase.sol";
 import { ActionData, IActionBase } from "../../lib/accounts-v2/src/interfaces/IActionBase.sol";
-import { ArcadiaLogic } from "./libraries/ArcadiaLogic.sol";
+import { ArcadiaLogic } from "../libraries/ArcadiaLogic.sol";
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { ERC721 } from "../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
@@ -264,7 +264,15 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
         }
 
         // Encode data for the flash-action.
-        bytes memory actionData = ArcadiaLogic._encodeAction(msg.sender, initiatorParams, token0, token1);
+        bytes memory actionData = ArcadiaLogic._encodeAction(
+            initiatorParams.positionManager,
+            initiatorParams.oldId,
+            token0,
+            token1,
+            initiatorParams.amount0,
+            initiatorParams.amount1,
+            abi.encode(msg.sender, initiatorParams)
+        );
 
         // Call flashAction() with this contract as actionTarget.
         IAccount(account_).flashAction(address(this), actionData);
@@ -275,7 +283,7 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
 
     /**
      * @notice Callback function called by the Arcadia Account during the flashAction.
-     * @param actionTargetData A bytes object containing a struct with the assetData of the position and the address of the initiator.
+     * @param actionTargetData A bytes object containing the initiator and initiatorParams.
      * @return depositData A struct with the asset data of the Liquidity Position and with the leftovers after mint, if any.
      * @dev The Liquidity Position is already transferred to this contract before executeAction() is called.
      * @dev When rebalancing we will burn the current Liquidity Position and mint a new one with a new tokenId.
@@ -331,6 +339,9 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
             }
         }
 
+        // If the position is staked, unstake it.
+        _unstake(balances, positionManager, position);
+
         // Remove liquidity of the position, claim outstanding fees/rewards and update balances.
         if (action == CLActions.REBALANCE) _burn(balances, positionManager, position);
 
@@ -382,6 +393,9 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
         // or malicious initiators who remove liquidity during a custom swap.
         if (position.liquidity < rebalanceParams.minLiquidity) revert InsufficientLiquidity();
 
+        // If the position is staked, stake it.
+        _stake(balances, positionManager, position);
+
         if (action == CLActions.REBALANCE) {
             // Call the strategy hook after the rebalance (non view function).
             // Can be used to check additional constraints and persist state changes on the hook.
@@ -395,7 +409,7 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
         uint256 count = _approveAndTransfer(initiator, balances, fees, positionManager, position);
 
         // Encode deposit data for the flash-action.
-        depositData = ArcadiaLogic._encodeDeposit(positionManager, position.id, count, position.tokens, balances);
+        depositData = ArcadiaLogic._encodeDeposit(positionManager, position.id, position.tokens, balances, count);
 
         if (action == CLActions.REBALANCE) {
             emit Rebalance(msg.sender, positionManager, initiatorParams.oldId, position.id);

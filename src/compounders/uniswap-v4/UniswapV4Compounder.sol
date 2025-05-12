@@ -407,7 +407,7 @@ contract UniswapV4Compounder is IActionBase {
         uint256 sqrtRatioUpper,
         uint256 id
     ) internal {
-        // Check it token0 is native ETH.
+        // Check if token0 is native ETH.
         bool isNative = Currency.unwrap(poolKey.currency0) == address(0);
 
         // Handle approvals.

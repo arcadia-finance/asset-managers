@@ -85,6 +85,20 @@ abstract contract AbstractBase {
     ) internal virtual;
 
     /* ///////////////////////////////////////////////////////////////
+                          UNSTAKING LOGIC
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Unstakes a Liquidity Position.
+     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param positionManager The contract address of the Position Manager.
+     * @param position A struct with position and pool related variables.
+     */
+    function _unstake(uint256[] memory balances, address positionManager, PositionState memory position)
+        internal
+        virtual;
+
+    /* ///////////////////////////////////////////////////////////////
                              BURN LOGIC
     /////////////////////////////////////////////////////////////// */
 
@@ -147,7 +161,7 @@ abstract contract AbstractBase {
      * @param position A struct with position and pool related variables.
      * @param amount0Desired The desired amount of token0 to add as liquidity.
      * @param amount1Desired The desired amount of token1 to add as liquidity.
-     * @dev Must update the balances and sqrtPrice after the swap.
+     * @dev Must update the balances and delta liquidity.
      */
     function _increaseLiquidity(
         uint256[] memory balances,
@@ -156,4 +170,18 @@ abstract contract AbstractBase {
         uint256 amount0Desired,
         uint256 amount1Desired
     ) internal virtual;
+
+    /* ///////////////////////////////////////////////////////////////
+                          STAKING LOGIC
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Unstakes a Liquidity Position.
+     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param positionManager The contract address of the Position Manager.
+     * @param position A struct with position and pool related variables.
+     */
+    function _stake(uint256[] memory balances, address positionManager, PositionState memory position)
+        internal
+        virtual;
 }

@@ -5,16 +5,14 @@
 pragma solidity ^0.8.26;
 
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
-import { LiquidityAmounts } from "../../../../src/libraries/LiquidityAmounts.sol";
 import { PositionState } from "../../../../src/state/PositionState.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RebalancerUniswapV4_Fuzz_Test } from "./_RebalancerUniswapV4.fuzz.t.sol";
-import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
 /**
- * @notice Fuzz tests for the function "_burn" of contract "RebalancerUniswapV4".
+ * @notice Fuzz tests for the function "_stake" of contract "RebalancerUniswapV4".
  */
-contract Burn_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
+contract Stake_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
@@ -26,12 +24,12 @@ contract Burn_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_burn_NotNative(
+    function testFuzz_Success_stake_NotNative(
         uint128 liquidityPool,
         address positionManager,
         PositionState memory position,
-        uint64 balance0,
-        uint64 balance1
+        uint128 balance0,
+        uint128 balance1
     ) public {
         // Given: A valid position.
         liquidityPool = givenValidPoolState(liquidityPool, position);
@@ -50,28 +48,26 @@ contract Burn_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
         vm.prank(users.liquidityProvider);
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(rebalancer), position.id);
 
-        // When: Calling burn.
-        balances = rebalancer.burn(balances, positionManager, position);
+        // When: Calling stake.
+        PositionState memory position_;
+        (balances, position_) = rebalancer.stake(balances, positionManager, position);
 
-        // Then: It should return the correct balances.
-        (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
-            uint160(position.sqrtPrice),
-            TickMath.getSqrtPriceAtTick(position.tickLower),
-            TickMath.getSqrtPriceAtTick(position.tickUpper),
-            position.liquidity
-        );
-        assertEq(balances[0], balance0 + amount0);
-        assertEq(balances[1], balance1 + amount1);
+        // Then: Contract is owner of the position.
+        assertEq(ERC721(address(positionManagerV4)).ownerOf(position_.id), address(rebalancer));
+
+        // And: Correct balances should be returned.
+        assertEq(balances[0], balance0);
+        assertEq(balances[1], balance1);
         assertEq(balances[0], token0.balanceOf(address(rebalancer)));
         assertEq(balances[1], token1.balanceOf(address(rebalancer)));
     }
 
-    function testFuzz_Success_burn_IsNative(
+    function testFuzz_Success_stake_IsNative(
         uint128 liquidityPool,
         address positionManager,
         PositionState memory position,
-        uint64 balance0,
-        uint64 balance1
+        uint128 balance0,
+        uint128 balance1
     ) public {
         // Given: A valid position.
         liquidityPool = givenValidPoolState(liquidityPool, position);
@@ -90,19 +86,22 @@ contract Burn_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
         vm.prank(users.liquidityProvider);
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(rebalancer), position.id);
 
-        // When: Calling burn.
-        balances = rebalancer.burn(balances, positionManager, position);
+        // When: Calling stake.
+        PositionState memory position_;
+        (balances, position_) = rebalancer.stake(balances, positionManager, position);
 
-        // Then: It should return the correct balances.
-        (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
-            uint160(position.sqrtPrice),
-            TickMath.getSqrtPriceAtTick(position.tickLower),
-            TickMath.getSqrtPriceAtTick(position.tickUpper),
-            position.liquidity
-        );
-        assertEq(balances[0], balance0 + amount0);
-        assertEq(balances[1], balance1 + amount1);
-        assertEq(balances[0], address(rebalancer).balance);
+        // Then: Contract is owner of the position.
+        assertEq(ERC721(address(positionManagerV4)).ownerOf(position_.id), address(rebalancer));
+
+        // And: Correct balances should be returned.
+        assertEq(balances[0], balance0);
+        assertEq(balances[1], balance1);
+        assertEq(balances[0], weth9.balanceOf(address(rebalancer)));
         assertEq(balances[1], token1.balanceOf(address(rebalancer)));
+
+        assertEq(0, address(rebalancer).balance);
+
+        // And: token0 is weth.
+        assertEq(position_.tokens[0], address(weth9));
     }
 }
