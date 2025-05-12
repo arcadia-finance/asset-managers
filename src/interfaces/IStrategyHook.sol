@@ -4,8 +4,7 @@
  */
 pragma solidity ^0.8.22;
 
-import { PositionState } from "../../state/PositionState.sol";
-import { Rebalancer } from "../Rebalancer.sol";
+import { PositionState } from "../state/PositionState.sol";
 
 interface IStrategyHook {
     function beforeRebalance(

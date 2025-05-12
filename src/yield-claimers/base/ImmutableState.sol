@@ -4,13 +4,13 @@
  */
 pragma solidity ^0.8.26;
 
-import { IFactory } from "../../interfaces/IFactory.sol";
+import { IArcadiaFactory } from "../../interfaces/IArcadiaFactory.sol";
 import { IPositionManagerV4 } from "../interfaces/IPositionManagerV4.sol";
 import { IWETH } from "../interfaces/IWETH.sol";
 
 abstract contract ImmutableState {
     // The contract address of the Arcadia Factory.
-    IFactory internal immutable FACTORY;
+    IArcadiaFactory internal immutable FACTORY;
 
     // The contract address of reward token (AERO).
     address internal immutable REWARD_TOKEN;
@@ -53,7 +53,7 @@ abstract contract ImmutableState {
         address uniswapV4PositionManager,
         address weth
     ) {
-        FACTORY = IFactory(factory);
+        FACTORY = IArcadiaFactory(factory);
         REWARD_TOKEN = rewardToken;
         SLIPSTREAM_POSITION_MANAGER = slipstreamPositionManager;
         STAKED_SLIPSTREAM_AM = stakedSlipstreamAM;

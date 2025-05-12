@@ -12,10 +12,10 @@ import { Currency } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IHooks } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/interfaces/IHooks.sol";
-import { IPermit2 } from "../rebalancers/interfaces/IPermit2.sol";
+import { IPermit2 } from "../interfaces/IPermit2.sol";
 import { IPoolManager } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/interfaces/IPoolManager.sol";
-import { IPositionManagerV4 } from "../rebalancers/interfaces/IPositionManagerV4.sol";
-import { IWETH } from "../rebalancers/interfaces/IWETH.sol";
+import { IPositionManagerV4 } from "../interfaces/IPositionManagerV4.sol";
+import { IWETH } from "../interfaces/IWETH.sol";
 import { LiquidityAmounts } from "../libraries/LiquidityAmounts.sol";
 import { PoolKey } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 import { PositionInfo } from "../../lib/accounts-v2/lib/v4-periphery/src/libraries/PositionInfoLibrary.sol";

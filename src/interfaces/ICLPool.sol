@@ -2,8 +2,27 @@
 pragma solidity ^0.8.22;
 
 interface ICLPool {
-    function observe(uint32[] calldata secondsAgos)
+    function fee() external view returns (uint24);
+
+    function liquidity() external view returns (uint128 liquidity);
+
+    function slot0()
         external
         view
-        returns (int56[] memory tickCumulatives, uint160[] memory secondsPerLiquidityCumulativeX128s);
+        returns (
+            uint160 sqrtPrice,
+            int24 tick,
+            uint16 observationIndex,
+            uint16 observationCardinality,
+            uint16 observationCardinalityNext,
+            bool unlocked
+        );
+
+    function swap(
+        address recipient,
+        bool zeroForOne,
+        int256 amountSpecified,
+        uint160 sqrtPriceLimit,
+        bytes calldata data
+    ) external returns (int256 amount0, int256 amount1);
 }

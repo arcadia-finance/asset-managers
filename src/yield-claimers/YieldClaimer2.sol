@@ -10,7 +10,7 @@ import { ArcadiaLogic } from "../libraries/ArcadiaLogic.sol";
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { ERC721 } from "../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { IAccount } from "./interfaces/IAccount.sol";
-import { IArcadiaFactory } from "../rebalancers/interfaces/IArcadiaFactory.sol";
+import { IArcadiaFactory } from "../interfaces/IArcadiaFactory.sol";
 import { PositionState } from "../state/PositionState.sol";
 import { SafeApprove } from "../libraries/SafeApprove.sol";
 

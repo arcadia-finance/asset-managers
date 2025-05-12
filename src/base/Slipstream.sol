@@ -11,12 +11,12 @@ import {
     IncreaseLiquidityParams,
     ICLPositionManager,
     MintParams
-} from "../rebalancers/interfaces/ICLPositionManager.sol";
+} from "../interfaces/ICLPositionManager.sol";
 import { CLMath } from "../libraries/CLMath.sol";
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { ICLPool } from "../rebalancers/interfaces/ICLPool.sol";
-import { IStakedSlipstream } from "../rebalancers/interfaces/IStakedSlipstream.sol";
+import { ICLPool } from "../interfaces/ICLPool.sol";
+import { IStakedSlipstream } from "../interfaces/IStakedSlipstream.sol";
 import { PositionState } from "../state/PositionState.sol";
 import { SlipstreamLogic } from "../libraries/SlipstreamLogic.sol";
 import { SafeApprove } from "../libraries/SafeApprove.sol";

@@ -5,7 +5,7 @@
 pragma solidity ^0.8.22;
 
 import { HookMock } from "../../../utils/mocks/HookMock.sol";
-import { IWETH } from "../../../../src/rebalancers/interfaces/IWETH.sol";
+import { IWETH } from "../../../../src/interfaces/IWETH.sol";
 import { PositionState } from "../../../../src/state/PositionState.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RebalancerUniswapV4_Fuzz_Test } from "./_RebalancerUniswapV4.fuzz.t.sol";

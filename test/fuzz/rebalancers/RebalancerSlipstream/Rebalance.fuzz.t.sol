@@ -64,6 +64,9 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         // And: account_ has no owner() function.
         vm.assume(account_.code.length == 0);
 
+        // And: Account is not a precompile.
+        vm.assume(account_ > address(20));
+
         // When : calling rebalance
         // Then : it should revert
         vm.prank(caller);

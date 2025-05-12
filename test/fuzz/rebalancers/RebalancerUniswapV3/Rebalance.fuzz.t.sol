@@ -60,6 +60,9 @@ contract Rebalance_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Tes
         // And: account_ has no owner() function.
         vm.assume(account_.code.length == 0);
 
+        // And: Account is not a precompile.
+        vm.assume(account_ > address(20));
+
         // When : calling rebalance
         // Then : it should revert
         vm.prank(caller);

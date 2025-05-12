@@ -11,7 +11,7 @@ import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/ut
 import { ERC721 } from "../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IAccount } from "./interfaces/IAccount.sol";
-import { IArcadiaFactory } from "../rebalancers/interfaces/IArcadiaFactory.sol";
+import { IArcadiaFactory } from "../interfaces/IArcadiaFactory.sol";
 import { PositionState } from "../state/PositionState.sol";
 import { RebalanceLogic, RebalanceParams } from "../libraries/RebalanceLogic.sol";
 import { RebalanceOptimizationMath } from "../libraries/RebalanceOptimizationMath.sol";

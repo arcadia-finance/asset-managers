@@ -6,7 +6,7 @@ pragma solidity ^0.8.26;
 
 import { Currency } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
 import { ERC20 } from "../../lib/accounts-v2/lib/solmate/src/tokens/ERC20.sol";
-import { IWETH } from "../rebalancers/interfaces/IWETH.sol";
+import { IWETH } from "../interfaces/IWETH.sol";
 import { PositionState } from "../state/PositionState.sol";
 import { Rebalancer } from "./Rebalancer.sol";
 import { SafeApprove } from "../libraries/SafeApprove.sol";

@@ -4,7 +4,7 @@
  */
 pragma solidity ^0.8.26;
 
-import { ICLPool } from "../../../../src/rebalancers/interfaces/ICLPool.sol";
+import { ICLPool } from "../../../../src/interfaces/ICLPool.sol";
 import { PositionState } from "../../../../src/state/PositionState.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RebalancerSlipstream_Fuzz_Test } from "./_RebalancerSlipstream.fuzz.t.sol";

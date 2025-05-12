@@ -4,7 +4,7 @@
  */
 pragma solidity ^0.8.22;
 
-import { IFactory } from "../../interfaces/IFactory.sol";
+import { IArcadiaFactory } from "../../interfaces/IArcadiaFactory.sol";
 import { SlipstreamLogic } from "../slipstream/libraries/SlipstreamLogic.sol";
 import { SlipstreamCompounderHelperLogic } from "./libraries/slipstream/SlipstreamCompounderHelperLogic.sol";
 import { SlipstreamLogic } from "../slipstream/libraries/SlipstreamLogic.sol";
@@ -23,7 +23,7 @@ contract CompounderHelper {
                                CONSTANTS
     ////////////////////////////////////////////////////////////// */
 
-    IFactory internal immutable FACTORY;
+    IArcadiaFactory internal immutable FACTORY;
     UniswapV4CompounderHelper internal immutable UNISWAPV4_COMPOUNDER_HELPER;
 
     /* //////////////////////////////////////////////////////////////
@@ -31,7 +31,7 @@ contract CompounderHelper {
     ////////////////////////////////////////////////////////////// */
 
     constructor(address factory_, address uniswapV4CompounderHelper) {
-        FACTORY = IFactory(factory_);
+        FACTORY = IArcadiaFactory(factory_);
         UNISWAPV4_COMPOUNDER_HELPER = UniswapV4CompounderHelper(uniswapV4CompounderHelper);
     }
 
