@@ -85,8 +85,8 @@ abstract contract RebalancerSlipstream_Fuzz_Test is Fuzz_Test, SlipstreamFixture
         // Deploy test contract.
         rebalancer = new RebalancerSlipstreamExtension(
             address(factory),
-            MAX_TOLERANCE,
             MAX_FEE,
+            MAX_TOLERANCE,
             MIN_LIQUIDITY_RATIO,
             address(slipstreamPositionManager),
             address(cLFactory),

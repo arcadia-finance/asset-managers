@@ -70,8 +70,8 @@ abstract contract RebalancerUniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, 
         // Deploy test contract.
         rebalancer = new RebalancerUniswapV3Extension(
             address(factory),
-            MAX_TOLERANCE,
             MAX_FEE,
+            MAX_TOLERANCE,
             MIN_LIQUIDITY_RATIO,
             address(nonfungiblePositionManager),
             address(uniswapV3Factory)

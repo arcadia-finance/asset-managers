@@ -11,12 +11,12 @@ import { RebalancerUniswapV3 } from "../../../src/rebalancers/RebalancerUniswapV
 contract RebalancerUniswapV3Extension is RebalancerUniswapV3 {
     constructor(
         address arcadiaFactory,
-        uint256 maxTolerance,
         uint256 maxFee,
+        uint256 maxTolerance,
         uint256 minLiquidityRatio,
         address positionManager,
         address uniswapV3Factory
-    ) RebalancerUniswapV3(arcadiaFactory, maxTolerance, maxFee, minLiquidityRatio, positionManager, uniswapV3Factory) { }
+    ) RebalancerUniswapV3(arcadiaFactory, maxFee, maxTolerance, minLiquidityRatio, positionManager, uniswapV3Factory) { }
 
     function getUnderlyingTokens(address positionManager, uint256 id) external view returns (address, address) {
         return _getUnderlyingTokens(positionManager, id);

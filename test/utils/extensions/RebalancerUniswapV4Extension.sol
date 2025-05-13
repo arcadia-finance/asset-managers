@@ -11,8 +11,8 @@ import { RebalancerUniswapV4 } from "../../../src/rebalancers/RebalancerUniswapV
 contract RebalancerUniswapV4Extension is RebalancerUniswapV4 {
     constructor(
         address arcadiaFactory,
-        uint256 maxTolerance,
         uint256 maxFee,
+        uint256 maxTolerance,
         uint256 minLiquidityRatio,
         address positionManager,
         address permit2,
@@ -21,8 +21,8 @@ contract RebalancerUniswapV4Extension is RebalancerUniswapV4 {
     )
         RebalancerUniswapV4(
             arcadiaFactory,
-            maxTolerance,
             maxFee,
+            maxTolerance,
             minLiquidityRatio,
             positionManager,
             permit2,
