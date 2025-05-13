@@ -6,15 +6,18 @@ pragma solidity ^0.8.26;
 
 import { ArcadiaOracle } from "../../../../lib/accounts-v2/test/utils/mocks/oracles/ArcadiaOracle.sol";
 import { BitPackingLib } from "../../../../lib/accounts-v2/src/libraries/BitPackingLib.sol";
+import { Currency } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
 import { DefaultUniswapV4AM } from "../../../../lib/accounts-v2/src/asset-modules/UniswapV4/DefaultUniswapV4AM.sol";
 import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { FixedPoint96 } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint96.sol";
+import { FixedPoint128 } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
 import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { Fuzz_Test } from "../../Fuzz.t.sol";
 import { IPoolManager } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/interfaces/IPoolManager.sol";
 import { NativeTokenAM } from "../../../../lib/accounts-v2/src/asset-modules/native-token/NativeTokenAM.sol";
 import { PoolId } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolId.sol";
 import { PoolKey } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
+import { PositionInfo } from "../../../../lib/accounts-v2/lib/v4-periphery/src/libraries/PositionInfoLibrary.sol";
 import { PositionState } from "../../../../src/state/PositionState.sol";
 import { UniswapV4Extension } from "../../../utils/extensions/UniswapV4Extension.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
@@ -210,5 +213,55 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         erc20AM.addAsset(address(weth9), BitPackingLib.pack(BA_TO_QA_SINGLE, oracleEthToUsdArr));
         nativeTokenAM.addAsset(address(0), BitPackingLib.pack(BA_TO_QA_SINGLE, oracleEthToUsdArr));
         vm.stopPrank();
+    }
+
+    function generateFees(uint256 amount0, uint256 amount1) public {
+        // Calculate expected feeGrowth difference in order to obtain desired fee
+        // (fee * Q128) / liquidity = diff in Q128.
+        // As fee amount is calculated based on deducting feeGrowthOutside from feeGrowthGlobal,
+        // no need to test with fuzzed feeGrowthOutside values as no risk of potential rounding errors (we're not testing UniV4 contracts).
+        uint256 deltaFeeGrowth0X128 = amount0 * FixedPoint128.Q128 / stateView.getLiquidity(poolKey.toId());
+        uint256 deltaFeeGrowth1X128 = amount1 * FixedPoint128.Q128 / stateView.getLiquidity(poolKey.toId());
+
+        // And : Set state
+        poolManager.setFeeGrowthGlobal(poolKey.toId(), deltaFeeGrowth0X128, deltaFeeGrowth1X128);
+
+        // And : Mint fee to the pool
+        Currency.unwrap(poolKey.currency0) == address(0)
+            ? vm.deal(address(poolManager), address(poolManager).balance + amount0)
+            : token0.mint(address(poolManager), amount0);
+
+        token1.mint(address(poolManager), amount1);
+    }
+
+    function getFeeAmounts(uint256 id) internal view returns (uint256 amount0, uint256 amount1) {
+        PositionInfo info = positionManagerV4.positionInfo(id);
+
+        (uint256 feeGrowthInside0CurrentX128, uint256 feeGrowthInside1CurrentX128) =
+            stateView.getFeeGrowthInside(poolKey.toId(), info.tickLower(), info.tickUpper());
+
+        bytes32 positionId =
+            keccak256(abi.encodePacked(address(positionManagerV4), info.tickLower(), info.tickUpper(), bytes32(id)));
+
+        (, uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128) =
+            stateView.getPositionInfo(poolKey.toId(), positionId);
+
+        // Calculate accumulated fees since the last time the position was updated:
+        // (feeGrowthInsideCurrentX128 - feeGrowthInsideLastX128) * liquidity.
+        // Fee calculations in PositionManager.sol overflow (without reverting) when
+        // one or both terms, or their sum, is bigger than a uint128.
+        // This is however much bigger than any realistic situation.
+        unchecked {
+            amount0 = FullMath.mulDiv(
+                feeGrowthInside0CurrentX128 - feeGrowthInside0LastX128,
+                positionManagerV4.getPositionLiquidity(id),
+                FixedPoint128.Q128
+            );
+            amount1 = FullMath.mulDiv(
+                feeGrowthInside1CurrentX128 - feeGrowthInside1LastX128,
+                positionManagerV4.getPositionLiquidity(id),
+                FixedPoint128.Q128
+            );
+        }
     }
 }

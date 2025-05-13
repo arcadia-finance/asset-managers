@@ -38,6 +38,9 @@ contract Claim_UniswapV3_Fuzz_Test is UniswapV3_Fuzz_Test {
         givenValidPositionState(position);
         setPositionState(position);
 
+        // And: claimFee is below 100%.
+        claimFee = uint64(bound(claimFee, 0, 1e18));
+
         // And: Base has balances.
         uint256[] memory balances = new uint256[](2);
         balances[0] = balance0;
@@ -48,9 +51,6 @@ contract Claim_UniswapV3_Fuzz_Test is UniswapV3_Fuzz_Test {
         // And: position has fees.
         generateFees(swap0, swap1);
         (uint256 fee0, uint256 fee1) = getFeeAmounts(position.id);
-
-        // And: claimFee is below 100%.
-        claimFee = uint64(bound(claimFee, 0, 1e18));
 
         // And: Transfer position to Base.
         vm.prank(users.liquidityProvider);
