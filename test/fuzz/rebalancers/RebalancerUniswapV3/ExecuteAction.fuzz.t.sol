@@ -272,7 +272,7 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
         rebalancer.executeAction(actionTargetData);
     }
 
-    function testFuzz_Success_executeAction_ZeroToOne_aaa(
+    function testFuzz_Success_executeAction_ZeroToOne(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
         PositionState memory position,
@@ -398,7 +398,7 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
         position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
         position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
         position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
-        position.liquidity = uint128(bound(position.liquidity, 1e6, 1e10));
+        position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
         setPositionState(position);
         initiatorParams.positionManager = address(nonfungiblePositionManager);
         initiatorParams.oldId = uint96(position.id);

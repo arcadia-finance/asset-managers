@@ -367,7 +367,6 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
         // As explained before _swap(), tokenOut should be the limiting factor when increasing liquidity
         // therefore we only subtract the initiator fee from the amountOut, not from the amountIn.
         // Update balances, id and liquidity after the mint.
-
         (uint256 amount0Desired, uint256 amount1Desired) =
             rebalanceParams.zeroToOne ? (balances[0], balances[1] - fees[1]) : (balances[0] - fees[0], balances[1]);
         _mint(balances, positionManager, position, amount0Desired, amount1Desired);

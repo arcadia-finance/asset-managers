@@ -4,8 +4,8 @@
  */
 pragma solidity ^0.8.26;
 
-import { UniswapV3_Fuzz_Test } from "../../base/UniswapV3/_UniswapV3.fuzz.t.sol";
 import { RebalancerUniswapV3Extension } from "../../../utils/extensions/RebalancerUniswapV3Extension.sol";
+import { UniswapV3_Fuzz_Test } from "../../base/UniswapV3/_UniswapV3.fuzz.t.sol";
 import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
 
 /**

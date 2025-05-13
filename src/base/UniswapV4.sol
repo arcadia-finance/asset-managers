@@ -211,6 +211,10 @@ abstract contract UniswapV4 is AbstractBase {
         Currency currency0 = Currency.wrap(position.tokens[0]);
         Currency currency1 = Currency.wrap(position.tokens[1]);
 
+        // If token0 is native ETH, we need to set the Rebalancer balance to 0,
+        // since the assets withdrawn from trhe account are in wet and not in native ETH.
+        if (position.tokens[0] == address(0)) balances[0] = 0;
+
         // Generate calldata to collect fees (decrease liquidity with liquidityDelta = 0).
         bytes memory actions = new bytes(2);
         actions[0] = bytes1(uint8(Actions.DECREASE_LIQUIDITY));

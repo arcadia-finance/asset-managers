@@ -130,7 +130,7 @@ contract Rebalance_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Tes
         rebalancer.rebalance(address(account), initiatorParams);
     }
 
-    function testFuzz_Success_rebalancePosition_aaa(
+    function testFuzz_Success_rebalancePosition(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
         PositionState memory position,

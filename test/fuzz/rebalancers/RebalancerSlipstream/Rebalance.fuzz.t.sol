@@ -8,6 +8,8 @@ import { AccountV1 } from "../../../../lib/accounts-v2/src/accounts/AccountV1.so
 import { AccountSpot } from "../../../../lib/accounts-v2/src/accounts/AccountSpot.sol";
 import { DefaultHook } from "../../../utils/mocks/DefaultHook.sol";
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
+import { FixedPoint128 } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
+import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { PositionState } from "../../../../src/state/PositionState.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RebalancerSlipstream_Fuzz_Test } from "./_RebalancerSlipstream.fuzz.t.sol";
@@ -138,6 +140,7 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
         PositionState memory position,
+        uint256 feeSeed,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
@@ -167,7 +170,7 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
         fee = bound(fee, 0.001 * 1e18, MAX_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(0, fee, tolerance, MIN_LIQUIDITY_RATIO);
+        rebalancer.setInitiatorInfo(fee, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
@@ -183,6 +186,10 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         // And: Limited leftovers.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, type(uint8).max));
         initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, 0, type(uint8).max));
+
+        // And: position has fees.
+        feeSeed = uint256(bound(feeSeed, 0, type(uint56).max));
+        generateFees(feeSeed, feeSeed);
 
         // And: Account owns the position.
         vm.prank(users.liquidityProvider);
@@ -235,7 +242,8 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         int24 tickUpper,
         address initiator,
         uint256 tolerance,
-        uint256 fee
+        uint256 fee,
+        uint256 rewards
     ) public {
         // Given: A valid position in range (has both tokens).
         liquidityPool = givenValidPoolState(liquidityPool, position);
@@ -255,6 +263,18 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         stakedSlipstreamAM.mint(position.id);
         vm.stopPrank();
 
+        // And: Position earned rewards.
+        rewards = bound(rewards, 1e3, type(uint64).max);
+        {
+            uint256 rewardGrowthGlobalX128Current = FullMath.mulDiv(rewards, FixedPoint128.Q128, position.liquidity);
+            vm.warp(block.timestamp + 1);
+            deal(AERO, address(gauge), type(uint256).max, true);
+            stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
+            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
+                rewardGrowthGlobalX128Current
+            );
+        }
+
         // And: Rebalancer is allowed as Asset Manager
         vm.prank(users.accountOwner);
         account.setAssetManager(address(rebalancer), true);
@@ -263,7 +283,7 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
         fee = bound(fee, 0.001 * 1e18, MAX_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(0, fee, tolerance, MIN_LIQUIDITY_RATIO);
+        rebalancer.setInitiatorInfo(fee, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
@@ -329,7 +349,8 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         int24 tickUpper,
         address initiator,
         uint256 tolerance,
-        uint256 fee
+        uint256 fee,
+        uint256 rewards
     ) public {
         // Given: A valid position in range (has both tokens).
         liquidityPool = givenValidPoolState(liquidityPool, position);
@@ -349,6 +370,18 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         wrappedStakedSlipstream.mint(position.id);
         vm.stopPrank();
 
+        // And: Position earned rewards.
+        rewards = bound(rewards, 1e3, type(uint64).max);
+        {
+            uint256 rewardGrowthGlobalX128Current = FullMath.mulDiv(rewards, FixedPoint128.Q128, position.liquidity);
+            vm.warp(block.timestamp + 1);
+            deal(AERO, address(gauge), type(uint256).max, true);
+            stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
+            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
+                rewardGrowthGlobalX128Current
+            );
+        }
+
         // And: Spot Account is used.
         vm.prank(users.accountOwner);
         account = AccountV1(address(new AccountSpot(address(factory))));
@@ -364,7 +397,7 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
         fee = bound(fee, 0.001 * 1e18, MAX_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(0, fee, tolerance, MIN_LIQUIDITY_RATIO);
+        rebalancer.setInitiatorInfo(fee, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")

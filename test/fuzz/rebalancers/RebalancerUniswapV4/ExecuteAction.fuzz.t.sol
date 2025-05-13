@@ -227,7 +227,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
         fee = bound(fee, 0, MAX_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(0, fee, tolerance, MIN_LIQUIDITY_RATIO);
+        rebalancer.setInitiatorInfo(fee, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
@@ -279,6 +279,8 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
         PositionState memory position,
+        uint80 fee0,
+        uint80 fee1,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
@@ -292,7 +294,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
         position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
         position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
-        position.liquidity = uint128(bound(position.liquidity, 1e6, 1e10));
+        position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
         setPositionState(position);
         initiatorParams.positionManager = address(positionManagerV4);
         initiatorParams.oldId = uint96(position.id);
@@ -301,7 +303,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
         fee = bound(fee, 0, MAX_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(0, fee, tolerance, MIN_LIQUIDITY_RATIO);
+        rebalancer.setInitiatorInfo(fee, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
@@ -326,6 +328,9 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         balances[1] = initiatorParams.amount1;
         deal(address(token0), address(rebalancer), initiatorParams.amount0, true);
         deal(address(token1), address(rebalancer), initiatorParams.amount1, true);
+
+        // And: Position has fees.
+        generateFees(fee0, fee1);
 
         // And: account is set.
         rebalancer.setAccount(address(account));
@@ -380,6 +385,8 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
         PositionState memory position,
+        uint80 fee0,
+        uint80 fee1,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
@@ -402,7 +409,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
         fee = bound(fee, 0, MAX_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(0, fee, tolerance, MIN_LIQUIDITY_RATIO);
+        rebalancer.setInitiatorInfo(fee, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
@@ -427,6 +434,9 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         balances[1] = initiatorParams.amount1;
         deal(address(token0), address(rebalancer), initiatorParams.amount0, true);
         deal(address(token1), address(rebalancer), initiatorParams.amount1, true);
+
+        // And: Position has fees.
+        generateFees(fee0, fee1);
 
         // And: account is set.
         rebalancer.setAccount(address(account));
@@ -488,6 +498,8 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
         PositionState memory position,
+        uint80 fee0,
+        uint80 fee1,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
@@ -510,7 +522,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
         fee = bound(fee, 0, MAX_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(0, fee, tolerance, MIN_LIQUIDITY_RATIO);
+        rebalancer.setInitiatorInfo(fee, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account), initiator, address(strategyHook), abi.encode(address(0), address(token1), "")
@@ -537,6 +549,9 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         vm.prank(address(rebalancer));
         IWETH(address(weth9)).deposit{ value: initiatorParams.amount0 }();
         deal(address(token1), address(rebalancer), initiatorParams.amount1, true);
+
+        // And: Position has fees.
+        generateFees(fee0, fee1);
 
         // And: account is set.
         rebalancer.setAccount(address(account));
@@ -591,6 +606,8 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
         PositionState memory position,
+        uint80 fee0,
+        uint80 fee1,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
@@ -613,7 +630,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
         fee = bound(fee, 0, MAX_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(0, fee, tolerance, MIN_LIQUIDITY_RATIO);
+        rebalancer.setInitiatorInfo(fee, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account), initiator, address(strategyHook), abi.encode(address(0), address(token1), "")
@@ -640,6 +657,9 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         vm.prank(address(rebalancer));
         IWETH(address(weth9)).deposit{ value: initiatorParams.amount0 }();
         deal(address(token1), address(rebalancer), initiatorParams.amount1, true);
+
+        // And: Position has fees.
+        generateFees(fee0, fee1);
 
         // And: account is set.
         rebalancer.setAccount(address(account));

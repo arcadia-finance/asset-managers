@@ -5,6 +5,7 @@
 pragma solidity ^0.8.26;
 
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
+import { IWETH } from "../../../../src/interfaces/IWETH.sol";
 import { PositionState } from "../../../../src/state/PositionState.sol";
 import { UniswapV4_Fuzz_Test } from "./_UniswapV4.fuzz.t.sol";
 
@@ -95,6 +96,8 @@ contract Claim_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
         balances[0] = balance0;
         balances[1] = balance1;
         vm.deal(address(base), balance0);
+        vm.prank(address(base));
+        IWETH(address(weth9)).deposit{ value: balance0 }();
         deal(address(token1), address(base), balance1, true);
 
         // And: position has fees.
@@ -110,10 +113,13 @@ contract Claim_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
         (balances, fees) = base.claim(balances, fees, positionManager, position, claimFee);
 
         // Then: It should return the correct balances.
-        assertEq(balances[0], uint256(balance0) + fee0_);
+        assertEq(balances[0], fee0_);
         assertEq(balances[1], uint256(balance1) + fee1_);
         assertEq(balances[0], address(base).balance);
         assertEq(balances[1], token1.balanceOf(address(base)));
+
+        // balance0 is in weth and should not be taken into account for native eth!!!
+        assertEq(balance0, weth9.balanceOf(address(base)));
 
         assertEq(fees[0], fee0_ * claimFee / 1e18);
         assertEq(fees[1], fee1_ * claimFee / 1e18);
