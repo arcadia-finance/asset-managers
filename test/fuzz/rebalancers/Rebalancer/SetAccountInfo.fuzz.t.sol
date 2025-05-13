@@ -29,6 +29,24 @@ contract SetAccountInfo_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
+    function testFuzz_Revert_setAccountInfo_Reentered(
+        address caller,
+        address account_,
+        address initiator,
+        address hook,
+        bytes calldata strategyData
+    ) public {
+        // Given: Account is set.
+        vm.assume(account_ != address(0));
+        rebalancer.setAccount(account_);
+
+        // When: calling rebalance
+        // Then: it should revert
+        vm.prank(caller);
+        vm.expectRevert(Rebalancer.Reentered.selector);
+        rebalancer.setAccountInfo(account_, initiator, hook, strategyData);
+    }
+
     function testFuzz_Revert_setAccountInfo_NotAnAccount(
         address caller,
         address account_,

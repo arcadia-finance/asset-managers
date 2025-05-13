@@ -23,6 +23,25 @@ contract SetInitiatorInfo_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
+    function testFuzz_Revert_setInitiatorInfo_Reentered(
+        address initiator,
+        address account_,
+        uint256 claimFee,
+        uint256 swapFee,
+        uint256 tolerance,
+        uint256 minLiquidityRatio
+    ) public {
+        // Given: Account is set.
+        vm.assume(account_ != address(0));
+        rebalancer.setAccount(account_);
+
+        // When: calling rebalance
+        // Then: it should revert
+        vm.prank(initiator);
+        vm.expectRevert(Rebalancer.Reentered.selector);
+        rebalancer.setInitiatorInfo(claimFee, swapFee, tolerance, minLiquidityRatio);
+    }
+
     function testFuzz_Revert_setInitiatorInfo_NotInitialised_InvalidClaimFee(
         address initiator,
         uint256 claimFee,

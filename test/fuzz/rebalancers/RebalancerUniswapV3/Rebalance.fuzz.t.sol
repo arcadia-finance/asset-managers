@@ -130,10 +130,11 @@ contract Rebalance_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Tes
         rebalancer.rebalance(address(account), initiatorParams);
     }
 
-    function testFuzz_Success_rebalancePosition(
+    function testFuzz_Success_rebalancePosition_aaa(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
         PositionState memory position,
+        uint256 feeSeed,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
@@ -163,7 +164,7 @@ contract Rebalance_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Tes
         tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
         fee = bound(fee, 0.001 * 1e18, MAX_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(0, fee, tolerance, MIN_LIQUIDITY_RATIO);
+        rebalancer.setInitiatorInfo(fee, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
@@ -175,6 +176,10 @@ contract Rebalance_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Tes
         tickUpper = int24(bound(tickUpper, tickLower + 10_000, BOUND_TICK_UPPER));
         tickUpper = tickUpper / position.tickSpacing * position.tickSpacing;
         initiatorParams.strategyData = abi.encode(tickLower, tickUpper);
+
+        // And: position has fees.
+        feeSeed = uint256(bound(feeSeed, 0, type(uint56).max));
+        generateFees(feeSeed, feeSeed);
 
         // And: Limited leftovers.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, type(uint8).max));
