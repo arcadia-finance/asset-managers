@@ -18,35 +18,35 @@ contract CLMathExtension {
         return CLMath._getSwapParams(sqrtPrice, sqrtRatioLower, sqrtRatioUpper, balance0, balance1, fee);
     }
 
-    function getSpotValue(uint256 sqrtPriceX96, bool zeroToOne, uint256 amountIn)
+    function getSpotValue(uint256 sqrtPrice, bool zeroToOne, uint256 amountIn)
         external
         pure
         returns (uint256 amountOut)
     {
-        return CLMath._getSpotValue(sqrtPriceX96, zeroToOne, amountIn);
+        return CLMath._getSpotValue(sqrtPrice, zeroToOne, amountIn);
     }
 
-    function getAmountOut(uint256 sqrtPriceX96, bool zeroToOne, uint256 amountIn, uint256 fee)
+    function getAmountOut(uint256 sqrtPrice, bool zeroToOne, uint256 amountIn, uint256 fee)
         external
         pure
         returns (uint256 amountOut)
     {
-        return CLMath._getAmountOut(sqrtPriceX96, zeroToOne, amountIn, fee);
+        return CLMath._getAmountOut(sqrtPrice, zeroToOne, amountIn, fee);
     }
 
-    function getAmountIn(uint256 sqrtPriceX96, bool zeroToOne, uint256 amountOut, uint256 fee)
+    function getAmountIn(uint256 sqrtPrice, bool zeroToOne, uint256 amountOut, uint256 fee)
         external
         pure
         returns (uint256 amountIn)
     {
-        return CLMath._getAmountIn(sqrtPriceX96, zeroToOne, amountOut, fee);
+        return CLMath._getAmountIn(sqrtPrice, zeroToOne, amountOut, fee);
     }
 
-    function getTargetRatio(uint256 sqrtPriceX96, uint256 sqrtRatioLower, uint256 sqrtRatioUpper)
+    function getTargetRatio(uint256 sqrtPrice, uint256 sqrtRatioLower, uint256 sqrtRatioUpper)
         external
         pure
         returns (uint256 targetRatio)
     {
-        return CLMath._getTargetRatio(sqrtPriceX96, sqrtRatioLower, sqrtRatioUpper);
+        return CLMath._getTargetRatio(sqrtPrice, sqrtRatioLower, sqrtRatioUpper);
     }
 }

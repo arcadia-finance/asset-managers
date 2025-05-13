@@ -26,81 +26,77 @@ contract GetSpotValue_CLMath_Fuzz_Test is CLMath_Fuzz_Test {
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Revert_getSpotValue_OverflowPriceX96(uint256 sqrtPriceX96, bool zeroToOne, uint256 amountIn)
+    function testFuzz_Revert_getSpotValue_OverflowPriceX96(uint256 sqrtPrice, bool zeroToOne, uint256 amountIn)
         public
     {
-        // Given: sqrtPriceX96 is bigger than type(uint128).max -> overflow.
-        sqrtPriceX96 = bound(sqrtPriceX96, uint256(type(uint128).max) + 1, type(uint256).max);
+        // Given: sqrtPrice is bigger than type(uint128).max -> overflow.
+        sqrtPrice = bound(sqrtPrice, uint256(type(uint128).max) + 1, type(uint256).max);
 
         // When: Calling _getSpotValue().
         // Then: It should revert.
         vm.expectRevert(stdError.arithmeticError);
-        cLMath.getSpotValue(sqrtPriceX96, zeroToOne, amountIn);
+        cLMath.getSpotValue(sqrtPrice, zeroToOne, amountIn);
     }
 
-    function testFuzz_Revert_getSpotValue_ZeroToOne_OverflowFullMath(uint256 sqrtPriceX96, uint256 amountIn) public {
-        // Given: sqrtPriceX96 is smaller than type(uint128).max, but bigger than Q96.
-        sqrtPriceX96 = bound(sqrtPriceX96, FixedPoint96.Q96 + 1, type(uint128).max);
+    function testFuzz_Revert_getSpotValue_ZeroToOne_OverflowFullMath(uint256 sqrtPrice, uint256 amountIn) public {
+        // Given: sqrtPrice is smaller than type(uint128).max, but bigger than Q96.
+        sqrtPrice = bound(sqrtPrice, FixedPoint96.Q96 + 1, type(uint128).max);
 
         // And: amountIn is too big.
         amountIn = bound(
-            amountIn,
-            FullMath.mulDivRoundingUp(type(uint256).max, CLMath.Q192, sqrtPriceX96 ** 2) + 1,
-            type(uint256).max
+            amountIn, FullMath.mulDivRoundingUp(type(uint256).max, CLMath.Q192, sqrtPrice ** 2) + 1, type(uint256).max
         );
 
         // When: Calling _getSpotValue().
         // Then: It should revert.
         vm.expectRevert(bytes(""));
-        cLMath.getSpotValue(sqrtPriceX96, true, amountIn);
+        cLMath.getSpotValue(sqrtPrice, true, amountIn);
     }
 
-    function testFuzz_Revert_getSpotValue_OneToZero_OverflowFullMath(uint256 sqrtPriceX96, uint256 amountIn) public {
-        // Given: sqrtPriceX96 is smaller than type(uint128).max
-        sqrtPriceX96 = bound(sqrtPriceX96, 0, FixedPoint96.Q96 - 1);
+    function testFuzz_Revert_getSpotValue_OneToZero_OverflowFullMath(uint256 sqrtPrice, uint256 amountIn) public {
+        // Given: sqrtPrice is smaller than type(uint128).max
+        sqrtPrice = bound(sqrtPrice, 0, FixedPoint96.Q96 - 1);
 
         // And: amountIn is too small.
         amountIn = bound(
-            amountIn,
-            FullMath.mulDivRoundingUp(type(uint256).max, sqrtPriceX96 ** 2, CLMath.Q192) + 1,
-            type(uint256).max
+            amountIn, FullMath.mulDivRoundingUp(type(uint256).max, sqrtPrice ** 2, CLMath.Q192) + 1, type(uint256).max
         );
 
         // When: Calling _getSpotValue().
         // Then: It should revert.
         vm.expectRevert(bytes(""));
-        cLMath.getSpotValue(sqrtPriceX96, false, amountIn);
+        cLMath.getSpotValue(sqrtPrice, false, amountIn);
     }
 
-    function testFuzz_Success_getSpotValue_ZeroToOne(uint256 sqrtPriceX96, uint256 amountIn) public {
-        // Given: sqrtPriceX96 is smaller than type(uint128).max, but bigger than Q96.
-        sqrtPriceX96 = bound(sqrtPriceX96, 0, type(uint128).max);
+    function testFuzz_Success_getSpotValue_ZeroToOne(uint256 sqrtPrice, uint256 amountIn) public {
+        // Given: sqrtPrice is smaller than type(uint128).max, but bigger than Q96.
+        sqrtPrice = bound(sqrtPrice, 0, type(uint128).max);
 
         // And: amountIn is not too big.
-        if (sqrtPriceX96 > FixedPoint96.Q96) {
-            amountIn = bound(amountIn, 0, FullMath.mulDiv(type(uint256).max, CLMath.Q192, sqrtPriceX96 ** 2));
+        if (sqrtPrice > FixedPoint96.Q96) {
+            amountIn = bound(amountIn, 0, FullMath.mulDiv(type(uint256).max, CLMath.Q192, sqrtPrice ** 2));
         }
 
         // When: Calling _getSpotValue().
-        uint256 amountOut = cLMath.getSpotValue(sqrtPriceX96, true, amountIn);
+        uint256 amountOut = cLMath.getSpotValue(sqrtPrice, true, amountIn);
 
         // Then: It should return the correct value.
-        assertEq(amountOut, FullMath.mulDiv(amountIn, sqrtPriceX96 ** 2, CLMath.Q192));
+        assertEq(amountOut, FullMath.mulDiv(amountIn, sqrtPrice ** 2, CLMath.Q192));
     }
 
-    function testFuzz_Success_getSpotValue_OneToZero(uint256 sqrtPriceX96, uint256 amountIn) public {
-        // Given: sqrtPriceX96 is smaller than type(uint128).max, but bigger than 0.
-        sqrtPriceX96 = bound(sqrtPriceX96, 1, type(uint128).max);
+    function testFuzz_Success_getSpotValue_OneToZero(uint256 sqrtPrice, uint256 amountIn) public {
+        // Given: sqrtPrice is smaller than type(uint128).max, but bigger than 0.
+        sqrtPrice = bound(sqrtPrice, 1, type(uint128).max);
 
         // And: amountIn is not too big.
-        if (sqrtPriceX96 < FixedPoint96.Q96) {
-            amountIn = bound(amountIn, 0, FullMath.mulDiv(type(uint256).max, sqrtPriceX96 ** 2, CLMath.Q192));
+        if (sqrtPrice < FixedPoint96.Q96) {
+            amountIn = bound(amountIn, 0, FullMath.mulDiv(type(uint256).max, sqrtPrice ** 2, CLMath.Q192));
         }
 
         // When: Calling _getSpotValue().
-        uint256 amountOut = cLMath.getSpotValue(sqrtPriceX96, false, amountIn);
+        uint256 amountOut = cLMath.getSpotValue(sqrtPrice, false, amountIn);
 
         // Then: It should return the correct value.
-        assertEq(amountOut, FullMath.mulDiv(amountIn, CLMath.Q192, sqrtPriceX96 ** 2));
+        assertEq(amountOut, FullMath.mulDiv(amountIn, CLMath.Q192, sqrtPrice ** 2));
     }
 }

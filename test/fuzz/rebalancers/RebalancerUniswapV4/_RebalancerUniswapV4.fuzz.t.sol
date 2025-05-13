@@ -15,6 +15,7 @@ import { IPoolManager } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v
 import { NativeTokenAM } from "../../../../lib/accounts-v2/src/asset-modules/native-token/NativeTokenAM.sol";
 import { PoolId } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolId.sol";
 import { PoolKey } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
+import { PositionState } from "../../../../src/state/PositionState.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RebalancerUniswapV4Extension } from "../../../utils/extensions/RebalancerUniswapV4Extension.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
@@ -36,7 +37,7 @@ abstract contract RebalancerUniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
     int24 internal constant TICK_SPACING = 1;
 
     uint256 internal constant MAX_TOLERANCE = 0.02 * 1e18;
-    uint256 internal constant MAX_INITIATOR_FEE = 0.01 * 1e18;
+    uint256 internal constant MAX_FEE = 0.01 * 1e18;
     uint256 internal constant MIN_LIQUIDITY_RATIO = 0.99 * 1e18;
 
     /*////////////////////////////////////////////////////////////////
@@ -78,8 +79,8 @@ abstract contract RebalancerUniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         // Deploy test contract.
         rebalancer = new RebalancerUniswapV4Extension(
             address(factory),
+            MAX_FEE,
             MAX_TOLERANCE,
-            MAX_INITIATOR_FEE,
             MIN_LIQUIDITY_RATIO,
             address(positionManagerV4),
             address(permit2),
@@ -96,7 +97,7 @@ abstract contract RebalancerUniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         id = initUniswapV4(2 ** 96, type(uint64).max, POOL_FEE, TICK_SPACING, false);
     }
 
-    function initUniswapV4(uint160 sqrtPriceX96, uint128 liquidityPool, uint24 fee, int24 tickSpacing, bool native)
+    function initUniswapV4(uint160 sqrtPrice, uint128 liquidityPool, uint24 fee, int24 tickSpacing, bool native)
         internal
         returns (uint256 id)
     {
@@ -105,14 +106,14 @@ abstract contract RebalancerUniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         token1 = new ERC20Mock("TokenB", "TOKB", 0);
         (token0, token1) = (token0 < token1) ? (token0, token1) : (token1, token0);
 
-        addAssetsToArcadia(sqrtPriceX96);
+        addAssetsToArcadia(sqrtPrice);
 
         // Create pool.
         if (native) {
             deployNativeAM();
-            poolKey = initializePoolV4(address(0), address(token1), uint160(sqrtPriceX96), address(0), fee, tickSpacing);
+            poolKey = initializePoolV4(address(0), address(token1), uint160(sqrtPrice), address(0), fee, tickSpacing);
         } else {
-            poolKey = initializePoolV4(address(token0), address(token1), sqrtPriceX96, address(0), fee, tickSpacing);
+            poolKey = initializePoolV4(address(token0), address(token1), sqrtPrice, address(0), fee, tickSpacing);
         }
 
         // Create initial position.
@@ -127,15 +128,15 @@ abstract contract RebalancerUniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         );
     }
 
-    function addAssetsToArcadia(uint256 sqrtPriceX96) internal {
-        uint256 price0 = FullMath.mulDiv(1e18, sqrtPriceX96 ** 2, FixedPoint96.Q96 ** 2);
+    function addAssetsToArcadia(uint256 sqrtPrice) internal {
+        uint256 price0 = FullMath.mulDiv(1e18, sqrtPrice ** 2, FixedPoint96.Q96 ** 2);
         uint256 price1 = 1e18;
 
         addAssetToArcadia(address(token0), int256(price0));
         addAssetToArcadia(address(token1), int256(price1));
     }
 
-    function givenValidPoolState(uint128 liquidityPool, Rebalancer.PositionState memory position)
+    function givenValidPoolState(uint128 liquidityPool, PositionState memory position)
         internal
         view
         returns (uint128 liquidityPool_)
@@ -144,26 +145,26 @@ abstract contract RebalancerUniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         position.pool = address(0);
 
         // And: Reasonable current price.
-        position.sqrtPriceX96 =
-            uint160(bound(position.sqrtPriceX96, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3));
+        position.sqrtPrice =
+            uint160(bound(position.sqrtPrice, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3));
 
         // And: Pool has reasonable liquidity.
         liquidityPool_ =
             uint128(bound(liquidityPool, UniswapHelpers.maxLiquidity(1) / 1000, UniswapHelpers.maxLiquidity(1) / 10));
-        position.sqrtPriceX96 = uint160(position.sqrtPriceX96);
-        position.tickCurrent = TickMath.getTickAtSqrtPrice(uint160(position.sqrtPriceX96));
+        position.sqrtPrice = uint160(position.sqrtPrice);
+        position.tickCurrent = TickMath.getTickAtSqrtPrice(uint160(position.sqrtPrice));
         position.fee = POOL_FEE;
         position.tickSpacing = TICK_SPACING;
     }
 
-    function setPoolState(uint128 liquidityPool, Rebalancer.PositionState memory position, bool native) internal {
-        initUniswapV4(uint160(position.sqrtPriceX96), liquidityPool, position.fee, position.tickSpacing, native);
+    function setPoolState(uint128 liquidityPool, PositionState memory position, bool native) internal {
+        initUniswapV4(uint160(position.sqrtPrice), liquidityPool, position.fee, position.tickSpacing, native);
         position.tokens = new address[](2);
         position.tokens[0] = native ? address(0) : address(token0);
         position.tokens[1] = address(token1);
     }
 
-    function givenValidPositionState(Rebalancer.PositionState memory position) internal view {
+    function givenValidPositionState(PositionState memory position) internal view {
         int24 tickSpacing = position.tickSpacing;
         position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, BOUND_TICK_UPPER - 2 * tickSpacing));
         position.tickLower = position.tickLower / tickSpacing * tickSpacing;
@@ -172,7 +173,7 @@ abstract contract RebalancerUniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         position.liquidity = uint128(bound(position.liquidity, 1e6, stateView.getLiquidity(poolKey.toId()) / 1e3));
     }
 
-    function setPositionState(Rebalancer.PositionState memory position) internal {
+    function setPositionState(PositionState memory position) internal {
         position.id = mintPositionV4(
             poolKey,
             position.tickLower,

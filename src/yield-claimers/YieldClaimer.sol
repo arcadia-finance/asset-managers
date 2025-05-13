@@ -29,7 +29,7 @@ contract YieldClaimer is IActionBase, ImmutableState, StakedSlipstreamLogic, Uni
     ////////////////////////////////////////////////////////////// */
 
     // The maximum fee an initiator can set, with 18 decimals precision.
-    uint256 public immutable MAX_INITIATOR_FEE;
+    uint256 public immutable MAX_FEE;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
@@ -83,7 +83,7 @@ contract YieldClaimer is IActionBase, ImmutableState, StakedSlipstreamLogic, Uni
      * @param uniswapV3PositionManager The contract address of the Uniswap V3 Position Manager.
      * @param uniswapV4PositionManager The contract address of the Uniswap V4 Position Manager.
      * @param weth The contract address of WETH.
-     * @param maxInitiatorFee The maximum fee (with 18 decimals precision) that an initiator can set.
+     * @param maxFee The maximum fee (with 18 decimals precision) that an initiator can set.
      */
     constructor(
         address factory,
@@ -94,7 +94,7 @@ contract YieldClaimer is IActionBase, ImmutableState, StakedSlipstreamLogic, Uni
         address uniswapV3PositionManager,
         address uniswapV4PositionManager,
         address weth,
-        uint256 maxInitiatorFee
+        uint256 maxFee
     )
         ImmutableState(
             factory,
@@ -107,7 +107,7 @@ contract YieldClaimer is IActionBase, ImmutableState, StakedSlipstreamLogic, Uni
             weth
         )
     {
-        MAX_INITIATOR_FEE = maxInitiatorFee;
+        MAX_FEE = maxFee;
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -241,7 +241,7 @@ contract YieldClaimer is IActionBase, ImmutableState, StakedSlipstreamLogic, Uni
             if (initiatorFee_ > initiatorFee[msg.sender]) revert InvalidValue();
         } else {
             // If not, the fee can not exceed a certain threshold.
-            if (initiatorFee_ > MAX_INITIATOR_FEE) revert InvalidValue();
+            if (initiatorFee_ > MAX_FEE) revert InvalidValue();
             initiatorSet[msg.sender] = true;
         }
 

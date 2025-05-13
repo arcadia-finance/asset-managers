@@ -40,10 +40,10 @@ contract IsCompoundable_UniswapV4CompounderHelper_Fuzz_Test is UniswapV4Compound
 
         // Create pool with 1% trade fee.
         uint24 fee = 1e4;
-        uint160 sqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(1e18, 1e18);
+        uint160 sqrtPrice = UniswapV3Logic._getSqrtPrice(1e18, 1e18);
 
         stablePoolKey =
-            initializePoolV4(address(token0), address(token1), uint160(sqrtPriceX96), address(0), fee, TICK_SPACING);
+            initializePoolV4(address(token0), address(token1), uint160(sqrtPrice), address(0), fee, TICK_SPACING);
 
         // Set smaller initiator share.
         uint256 initiatorShare = 0.005 * 1e18;
@@ -51,7 +51,7 @@ contract IsCompoundable_UniswapV4CompounderHelper_Fuzz_Test is UniswapV4Compound
         uniswapV4Compounder.setInitiatorInfo(TOLERANCE, initiatorShare);
 
         uint256 liquidity = LiquidityAmountsExtension.getLiquidityForAmounts(
-            sqrtPriceX96,
+            sqrtPrice,
             TickMath.getSqrtPriceAtTick(-1000),
             TickMath.getSqrtPriceAtTick(1000),
             1_000_000 * 10 ** token0.decimals(),
@@ -89,10 +89,10 @@ contract IsCompoundable_UniswapV4CompounderHelper_Fuzz_Test is UniswapV4Compound
 
         // Create pool with 1% trade fee.
         uint24 fee = 1e4;
-        uint160 sqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(1e18, 1e18);
+        uint160 sqrtPrice = UniswapV3Logic._getSqrtPrice(1e18, 1e18);
 
         stablePoolKey =
-            initializePoolV4(address(token0), address(token1), uint160(sqrtPriceX96), address(0), fee, TICK_SPACING);
+            initializePoolV4(address(token0), address(token1), uint160(sqrtPrice), address(0), fee, TICK_SPACING);
 
         // Set smaller initiator share.
         uint256 initiatorShare = 0.005 * 1e18;
@@ -100,7 +100,7 @@ contract IsCompoundable_UniswapV4CompounderHelper_Fuzz_Test is UniswapV4Compound
         uniswapV4Compounder.setInitiatorInfo(TOLERANCE, initiatorShare);
 
         uint256 liquidity = LiquidityAmountsExtension.getLiquidityForAmounts(
-            sqrtPriceX96,
+            sqrtPrice,
             TickMath.getSqrtPriceAtTick(-1000),
             TickMath.getSqrtPriceAtTick(1000),
             1_000_000 * 10 ** token0.decimals(),
@@ -137,13 +137,12 @@ contract IsCompoundable_UniswapV4CompounderHelper_Fuzz_Test is UniswapV4Compound
         addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
 
         // Create pool with 1% trade fee.
-        uint160 sqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(1e18, 1e18);
-        stablePoolKey = initializePoolV4(
-            address(token0), address(token1), uint160(sqrtPriceX96), address(0), POOL_FEE, TICK_SPACING
-        );
+        uint160 sqrtPrice = UniswapV3Logic._getSqrtPrice(1e18, 1e18);
+        stablePoolKey =
+            initializePoolV4(address(token0), address(token1), uint160(sqrtPrice), address(0), POOL_FEE, TICK_SPACING);
 
         uint256 liquidity = LiquidityAmountsExtension.getLiquidityForAmounts(
-            sqrtPriceX96,
+            sqrtPrice,
             TickMath.getSqrtPriceAtTick(-1000),
             TickMath.getSqrtPriceAtTick(1000),
             1_000_000 * 10 ** token0.decimals(),
@@ -163,12 +162,12 @@ contract IsCompoundable_UniswapV4CompounderHelper_Fuzz_Test is UniswapV4Compound
         setFeeState(feeData, stablePoolKey, uint128(liquidity));
 
         // When : Calling isCompoundable()
-        (bool isCompoundable_, address compounder_, uint160 sqrtPriceX96_) =
+        (bool isCompoundable_, address compounder_, uint160 sqrtPrice_) =
             compounderHelper.isCompoundable(tokenId, address(positionManagerV4), address(account));
 
         // Then : It should return "true"
         assertEq(isCompoundable_, true);
         assertEq(compounder_, address(uniswapV4Compounder));
-        assertEq(sqrtPriceX96, sqrtPriceX96_);
+        assertEq(sqrtPrice, sqrtPrice_);
     }
 }

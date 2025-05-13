@@ -5,6 +5,7 @@
 pragma solidity ^0.8.26;
 
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { PositionState } from "../../../src/state/PositionState.sol";
 import { Rebalancer } from "../../../src/rebalancers/Rebalancer.sol";
 import { StrategyHook } from "../../../src/rebalancers/periphery/StrategyHook.sol";
 import { TickMath } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
@@ -67,12 +68,12 @@ contract DefaultHook is StrategyHook {
      * @dev We do not handle the edge cases where the new ticks might exceed MIN_TICK or MAX_TICK.
      * This will result in a revert during the mint, if ever needed a different rebalancer has to be deployed.
      */
-    function beforeRebalance(
-        address account,
-        address,
-        Rebalancer.PositionState memory position,
-        bytes memory strategyData
-    ) external view override returns (int24 tickLower, int24 tickUpper) {
+    function beforeRebalance(address account, address, PositionState memory position, bytes memory strategyData)
+        external
+        view
+        override
+        returns (int24 tickLower, int24 tickUpper)
+    {
         if (
             position.tokens[0] != strategyInfo[msg.sender][account].token0
                 || position.tokens[1] != strategyInfo[msg.sender][account].token1
@@ -99,14 +100,14 @@ contract DefaultHook is StrategyHook {
                     tickInitializableBelowCurrent - tickRange / (2 * position.tickSpacing) * position.tickSpacing;
             } else {
                 // For tick ranges that are an even multiple of the tick spacing,
-                // we use a symmetric spacing initializable tick that is closest to the current sqrtPriceX96.
+                // we use a symmetric spacing initializable tick that is closest to the current sqrtPrice.
                 // If we have for instance a position with a range of 4 tick spacings,
-                // and the current sqrtPriceX96 is closest to first tick that can be initialised below tickCurrent:
+                // and the current sqrtPrice is closest to first tick that can be initialised below tickCurrent:
                 // - The tickLower will be 2 tick spacing below that tick.
                 // - The tickUpper will be 2 tick spacings above that tick.
-                // And vica versa when the current sqrtPriceX96 is closest to first tick that can be initialised above tickCurrent.
+                // And vica versa when the current sqrtPrice is closest to first tick that can be initialised above tickCurrent.
                 int24 tickClosest =
-                    _getClosestInitializableTick(position.tickSpacing, position.tickCurrent, position.sqrtPriceX96);
+                    _getClosestInitializableTick(position.tickSpacing, position.tickCurrent, position.sqrtPrice);
                 tickLower = tickClosest - tickRange / 2;
             }
             tickUpper = tickLower + tickRange;
@@ -117,10 +118,10 @@ contract DefaultHook is StrategyHook {
      * @notice Calculates the closest initializable tick to the current sqrtPrice.
      * @param tickSpacing The tick spacing of the pool.
      * @param tickCurrent The current tick.
-     * @param sqrtPriceX96 The current sqrtPriceX96.
+     * @param sqrtPrice The current sqrtPrice.
      * @return tickClosest TThe closest initializable tick to the current sqrtPrice.
      */
-    function _getClosestInitializableTick(int24 tickSpacing, int24 tickCurrent, uint256 sqrtPriceX96)
+    function _getClosestInitializableTick(int24 tickSpacing, int24 tickCurrent, uint256 sqrtPrice)
         internal
         pure
         returns (int24 tickClosest)
@@ -131,8 +132,8 @@ contract DefaultHook is StrategyHook {
         uint256 sqrtPriceBelow = TickMath.getSqrtPriceAtTick(tickBelow);
         uint256 sqrtPriceAbove = TickMath.getSqrtPriceAtTick(tickAbove);
 
-        // Find the initializable tick that is closest to the current sqrtPriceX96.
-        tickClosest = (sqrtPriceAbove.mulDivDown(1e18, sqrtPriceX96) > sqrtPriceX96.mulDivDown(1e18, sqrtPriceBelow))
+        // Find the initializable tick that is closest to the current sqrtPrice.
+        tickClosest = (sqrtPriceAbove.mulDivDown(1e18, sqrtPrice) > sqrtPrice.mulDivDown(1e18, sqrtPriceBelow))
             ? tickBelow
             : tickBelow + tickSpacing;
     }
@@ -149,8 +150,5 @@ contract DefaultHook is StrategyHook {
      * param newPosition The state of the new position.
      * param strategyData Encoded data containing strategy parameters.
      */
-    function afterRebalance(address, address, uint256, Rebalancer.PositionState memory, bytes memory)
-        external
-        override
-    { }
+    function afterRebalance(address, address, uint256, PositionState memory, bytes memory) external override { }
 }

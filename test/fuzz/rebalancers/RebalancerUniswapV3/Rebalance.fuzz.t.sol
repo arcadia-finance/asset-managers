@@ -6,6 +6,7 @@ pragma solidity ^0.8.26;
 
 import { DefaultHook } from "../../../utils/mocks/DefaultHook.sol";
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
+import { PositionState } from "../../../../src/state/PositionState.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RebalancerUniswapV3_Fuzz_Test } from "./_RebalancerUniswapV3.fuzz.t.sol";
 
@@ -56,6 +57,12 @@ contract Rebalance_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Tes
         // Given: Account is not an Arcadia Account.
         vm.assume(!factory.isAccount(account_));
 
+        // And: account_ has no owner() function.
+        vm.assume(account_.code.length == 0);
+
+        // And: Account is not a precompile.
+        vm.assume(account_ > address(20));
+
         // When : calling rebalance
         // Then : it should revert
         vm.prank(caller);
@@ -90,6 +97,9 @@ contract Rebalance_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Tes
         vm.assume(newOwner != account.owner());
         vm.assume(newOwner != address(0));
 
+        // And : initiator is not address(0).
+        vm.assume(initiator != address(0));
+
         // And: Rebalancer is allowed as Asset Manager.
         vm.prank(users.accountOwner);
         account.setAssetManager(address(rebalancer), true);
@@ -100,9 +110,9 @@ contract Rebalance_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Tes
 
         // And: The initiator is set.
         tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
-        fee = bound(fee, 0.001 * 1e18, MAX_INITIATOR_FEE);
+        fee = bound(fee, 0.001 * 1e18, MAX_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
+        rebalancer.setInitiatorInfo(0, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
@@ -120,10 +130,11 @@ contract Rebalance_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Tes
         rebalancer.rebalance(address(account), initiatorParams);
     }
 
-    function testFuzz_Success_rebalancePosition(
+    function testFuzz_Success_rebalancePosition_aaa(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
+        uint256 feeSeed,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
@@ -151,9 +162,9 @@ contract Rebalance_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Tes
 
         // And: The initiator is set.
         tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
-        fee = bound(fee, 0.001 * 1e18, MAX_INITIATOR_FEE);
+        fee = bound(fee, 0.001 * 1e18, MAX_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
+        rebalancer.setInitiatorInfo(fee, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
@@ -165,6 +176,10 @@ contract Rebalance_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Tes
         tickUpper = int24(bound(tickUpper, tickLower + 10_000, BOUND_TICK_UPPER));
         tickUpper = tickUpper / position.tickSpacing * position.tickSpacing;
         initiatorParams.strategyData = abi.encode(tickLower, tickUpper);
+
+        // And: position has fees.
+        feeSeed = uint256(bound(feeSeed, 0, type(uint56).max));
+        generateFees(feeSeed, feeSeed);
 
         // And: Limited leftovers.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, type(uint8).max));
@@ -202,7 +217,7 @@ contract Rebalance_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Tes
         }
 
         // And: The pool is balanced.
-        initiatorParams.trustedSqrtPriceX96 = position.sqrtPriceX96;
+        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
 
         // When: Calling rebalance().
         initiatorParams.swapData = "";

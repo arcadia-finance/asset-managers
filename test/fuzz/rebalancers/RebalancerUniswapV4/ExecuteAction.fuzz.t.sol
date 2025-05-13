@@ -8,7 +8,8 @@ import { ActionData } from "../../../../lib/accounts-v2/src/interfaces/IActionBa
 import { DefaultHook } from "../../../utils/mocks/DefaultHook.sol";
 import { ERC20 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC20.sol";
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
-import { IWETH } from "../../../../src/rebalancers/interfaces/IWETH.sol";
+import { IWETH } from "../../../../src/interfaces/IWETH.sol";
+import { PositionState } from "../../../../src/state/PositionState.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { RebalancerUniswapV4_Fuzz_Test } from "./_RebalancerUniswapV4.fuzz.t.sol";
 import { RouterMock } from "../../../utils/mocks/RouterMock.sol";
@@ -59,7 +60,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
     function testFuzz_Revert_executeAction_UnbalancedPoolBeforeSwap(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
@@ -76,7 +77,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         // And: The initiator is set.
         tolerance = bound(tolerance, 0, MAX_TOLERANCE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
+        rebalancer.setInitiatorInfo(0, MAX_FEE, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
@@ -103,10 +104,10 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
         // And: The pool is unbalanced.
         {
-            (, uint256 lowerSqrtPriceDeviation,,) = rebalancer.initiatorInfo(initiator);
-            initiatorParams.trustedSqrtPriceX96 = bound(
-                initiatorParams.trustedSqrtPriceX96,
-                position.sqrtPriceX96 * 1e18 / lowerSqrtPriceDeviation + lowerSqrtPriceDeviation,
+            (, uint256 lowerSqrtPriceDeviation,,,) = rebalancer.initiatorInfo(initiator);
+            initiatorParams.trustedSqrtPrice = bound(
+                initiatorParams.trustedSqrtPrice,
+                position.sqrtPrice * 1e18 / lowerSqrtPriceDeviation + lowerSqrtPriceDeviation,
                 type(uint160).max
             );
         }
@@ -122,7 +123,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
     function testFuzz_Revert_executeAction_UnbalancedPoolAfterSwap(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
@@ -143,7 +144,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         // And: The initiator is set.
         tolerance = bound(tolerance, 0, MAX_TOLERANCE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
+        rebalancer.setInitiatorInfo(0, MAX_FEE, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
@@ -173,21 +174,21 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         rebalancer.setAccount(address(account));
 
         // And: The pool is initially balanced.
-        initiatorParams.trustedSqrtPriceX96 = position.sqrtPriceX96;
+        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
 
         // And: The pool is unbalanced after the swap.
         {
-            (, uint256 lowerSqrtPriceDeviation,,) = rebalancer.initiatorInfo(initiator);
-            uint256 lowerBoundSqrtPriceX96 = initiatorParams.trustedSqrtPriceX96 * lowerSqrtPriceDeviation / 1e18;
-            uint256 newSqrtPriceX96 = bound(position.sqrtPriceX96, TickMath.MIN_SQRT_PRICE, lowerBoundSqrtPriceX96);
+            (, uint256 lowerSqrtPriceDeviation,,,) = rebalancer.initiatorInfo(initiator);
+            uint256 lowerBoundSqrtPrice = initiatorParams.trustedSqrtPrice * lowerSqrtPriceDeviation / 1e18;
+            uint256 newSqrtPrice = bound(position.sqrtPrice, TickMath.MIN_SQRT_PRICE, lowerBoundSqrtPrice);
 
             RouterSetPoolPriceUniV4Mock router = new RouterSetPoolPriceUniV4Mock();
             bytes memory routerData = abi.encodeWithSelector(
                 RouterSetPoolPriceUniV4Mock.swap.selector,
                 address(poolManager),
                 poolKey.toId(),
-                TickMath.getTickAtSqrtPrice(uint160(newSqrtPriceX96)),
-                uint160(newSqrtPriceX96)
+                TickMath.getTickAtSqrtPrice(uint160(newSqrtPrice)),
+                uint160(newSqrtPrice)
             );
             initiatorParams.swapData = abi.encode(address(router), 0, routerData);
         }
@@ -203,7 +204,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
     function testFuzz_Revert_executeAction_InsufficientLiquidity(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
@@ -224,9 +225,9 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
         // And: The initiator is set.
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
-        fee = bound(fee, 0, MAX_INITIATOR_FEE);
+        fee = bound(fee, 0, MAX_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
+        rebalancer.setInitiatorInfo(0, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
@@ -256,7 +257,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         rebalancer.setAccount(address(account));
 
         // And: The pool is balanced.
-        initiatorParams.trustedSqrtPriceX96 = position.sqrtPriceX96;
+        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
 
         // And: Swap is not optimal resulting in little liquidity.
         {
@@ -277,7 +278,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
     function testFuzz_Success_executeAction_NotNative_ZeroToOne(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
@@ -298,18 +299,18 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
         // And: The initiator is set.
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
-        fee = bound(fee, 0, MAX_INITIATOR_FEE);
+        fee = bound(fee, 0, MAX_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
+        rebalancer.setInitiatorInfo(0, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
         );
 
         // And: A new position with a valid tick range below current tick.
-        tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, position.tickCurrent - 2));
+        tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, position.tickCurrent - 11));
         tickLower = tickLower / position.tickSpacing * position.tickSpacing;
-        tickUpper = int24(bound(tickUpper, tickLower + 1, position.tickCurrent - 1));
+        tickUpper = int24(bound(tickUpper, tickLower + 10, position.tickCurrent - 1));
         tickUpper = tickUpper / position.tickSpacing * position.tickSpacing;
         initiatorParams.strategyData = abi.encode(tickLower, tickUpper);
 
@@ -330,7 +331,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         rebalancer.setAccount(address(account));
 
         // And: The pool is balanced.
-        initiatorParams.trustedSqrtPriceX96 = position.sqrtPriceX96;
+        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
 
         // And: Swap is successful.
         {
@@ -378,7 +379,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
     function testFuzz_Success_executeAction_NotNative_OneToZero(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
@@ -399,9 +400,9 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
         // And: The initiator is set.
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
-        fee = bound(fee, 0, MAX_INITIATOR_FEE);
+        fee = bound(fee, 0, MAX_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
+        rebalancer.setInitiatorInfo(0, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
@@ -431,7 +432,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         rebalancer.setAccount(address(account));
 
         // And: The pool is balanced.
-        initiatorParams.trustedSqrtPriceX96 = position.sqrtPriceX96;
+        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
 
         // And: Swap is successful.
         {
@@ -486,7 +487,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
     function testFuzz_Success_executeAction_IsNative_ZeroToOne(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
@@ -507,18 +508,18 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
         // And: The initiator is set.
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
-        fee = bound(fee, 0, MAX_INITIATOR_FEE);
+        fee = bound(fee, 0, MAX_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
+        rebalancer.setInitiatorInfo(0, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account), initiator, address(strategyHook), abi.encode(address(0), address(token1), "")
         );
 
         // And: A new position with a valid tick range below current tick.
-        tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, position.tickCurrent - 2));
+        tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, position.tickCurrent - 11));
         tickLower = tickLower / position.tickSpacing * position.tickSpacing;
-        tickUpper = int24(bound(tickUpper, tickLower + 1, position.tickCurrent - 1));
+        tickUpper = int24(bound(tickUpper, tickLower + 10, position.tickCurrent - 1));
         tickUpper = tickUpper / position.tickSpacing * position.tickSpacing;
         initiatorParams.strategyData = abi.encode(tickLower, tickUpper);
 
@@ -541,7 +542,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         rebalancer.setAccount(address(account));
 
         // And: The pool is balanced.
-        initiatorParams.trustedSqrtPriceX96 = position.sqrtPriceX96;
+        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
 
         // And: Swap is successful.
         {
@@ -589,7 +590,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
     function testFuzz_Success_executeAction_IsNative_OneToZero(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         int24 tickLower,
         int24 tickUpper,
         address initiator,
@@ -610,9 +611,9 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
         // And: The initiator is set.
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
-        fee = bound(fee, 0, MAX_INITIATOR_FEE);
+        fee = bound(fee, 0, MAX_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
+        rebalancer.setInitiatorInfo(0, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account), initiator, address(strategyHook), abi.encode(address(0), address(token1), "")
@@ -644,7 +645,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         rebalancer.setAccount(address(account));
 
         // And: The pool is balanced.
-        initiatorParams.trustedSqrtPriceX96 = position.sqrtPriceX96;
+        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
 
         // And: Swap is successful.
         {

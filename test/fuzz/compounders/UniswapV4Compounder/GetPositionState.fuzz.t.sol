@@ -36,29 +36,29 @@ contract GetPositionState_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_F
         // And : State is persisted
         uint256 tokenId = setState(testVars, stablePoolKey);
 
-        (uint160 sqrtPriceX96_,,,) = stateView.getSlot0(stablePoolKey.toId());
+        (uint160 sqrtPrice_,,,) = stateView.getSlot0(stablePoolKey.toId());
 
         // When : Calling getPositionState()
         (UniswapV4Compounder.PositionState memory position, PoolKey memory poolKey) =
-            compounder.getPositionState(tokenId, sqrtPriceX96_, initiator);
+            compounder.getPositionState(tokenId, sqrtPrice_, initiator);
 
         // Then : It should return the correct values
         assertEq(position.sqrtRatioLower, TickMath.getSqrtRatioAtTick(testVars.tickLower));
         assertEq(position.sqrtRatioUpper, TickMath.getSqrtRatioAtTick(testVars.tickUpper));
 
-        (uint160 sqrtPriceX96,,,) = stateView.getSlot0(stablePoolKey.toId());
+        (uint160 sqrtPrice,,,) = stateView.getSlot0(stablePoolKey.toId());
 
-        assertEq(position.sqrtPriceX96, sqrtPriceX96);
+        assertEq(position.sqrtPrice, sqrtPrice);
 
-        uint256 trustedSqrtPriceX96 = uint256(sqrtPriceX96_);
+        uint256 trustedSqrtPrice = uint256(sqrtPrice_);
 
         (uint64 upperSqrtPriceDeviation, uint64 lowerSqrtPriceDeviation,) = compounder.initiatorInfo(initiator);
 
-        uint256 lowerBoundSqrtPriceX96 = trustedSqrtPriceX96.mulDivDown(uint256(lowerSqrtPriceDeviation), 1e18);
-        uint256 upperBoundSqrtPriceX96 = trustedSqrtPriceX96.mulDivDown(uint256(upperSqrtPriceDeviation), 1e18);
+        uint256 lowerBoundSqrtPrice = trustedSqrtPrice.mulDivDown(uint256(lowerSqrtPriceDeviation), 1e18);
+        uint256 upperBoundSqrtPrice = trustedSqrtPrice.mulDivDown(uint256(upperSqrtPriceDeviation), 1e18);
 
-        assertEq(position.lowerBoundSqrtPriceX96, lowerBoundSqrtPriceX96);
-        assertEq(position.upperBoundSqrtPriceX96, upperBoundSqrtPriceX96);
+        assertEq(position.lowerBoundSqrtPrice, lowerBoundSqrtPrice);
+        assertEq(position.upperBoundSqrtPrice, upperBoundSqrtPrice);
 
         assertEq(PoolId.unwrap(poolKey.toId()), PoolId.unwrap(stablePoolKey.toId()));
     }

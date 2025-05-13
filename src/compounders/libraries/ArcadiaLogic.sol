@@ -18,14 +18,14 @@ library ArcadiaLogic {
      * @param initiator The address of the initiator.
      * @param nonfungiblePositionManager The contract address of the UniswapV3 NonfungiblePositionManager.
      * @param id The id of the Liquidity Position.
-     * @param trustedSqrtPriceX96 The pool sqrtPriceX96 provided at the time of calling compoundFees().
+     * @param trustedSqrtPrice The pool sqrtPrice provided at the time of calling compoundFees().
      * @return actionData Bytes string with the encoded actionData.
      */
     function _encodeActionData(
         address initiator,
         address nonfungiblePositionManager,
         uint256 id,
-        uint256 trustedSqrtPriceX96
+        uint256 trustedSqrtPrice
     ) internal pure returns (bytes memory actionData) {
         // Encode Uniswap V3 position that has to be withdrawn from and deposited back into the Account.
         address[] memory assets_ = new address[](1);
@@ -46,7 +46,7 @@ library ArcadiaLogic {
         IPermit2.PermitBatchTransferFrom memory permit;
 
         // Data required by this contract when Account does the executeAction() callback during the flash-action.
-        bytes memory compoundData = abi.encode(assetData, initiator, trustedSqrtPriceX96);
+        bytes memory compoundData = abi.encode(assetData, initiator, trustedSqrtPrice);
 
         // Encode the actionData.
         actionData = abi.encode(assetData, transferFromOwner, permit, signature, compoundData);

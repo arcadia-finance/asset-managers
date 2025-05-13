@@ -11,18 +11,18 @@ import { UniswapV4Logic } from "../../../src/compounders/uniswap-v4/libraries/Un
 contract UniswapV4CompounderExtension is UniswapV4Compounder {
     constructor(uint256 maxTolerance, uint256 maxInitiatorShare) UniswapV4Compounder(maxTolerance, maxInitiatorShare) { }
 
-    function getSqrtPriceX96(uint256 priceToken0, uint256 priceToken1) public pure returns (uint256) {
-        return UniswapV4Logic._getSqrtPriceX96(priceToken0, priceToken1);
+    function getSqrtPrice(uint256 priceToken0, uint256 priceToken1) public pure returns (uint256) {
+        return UniswapV4Logic._getSqrtPrice(priceToken0, priceToken1);
     }
 
     function swap(
         PoolKey memory poolKey,
-        uint256 lowerBoundSqrtPriceX96,
-        uint256 upperBoundSqrtPriceX96,
+        uint256 lowerBoundSqrtPrice,
+        uint256 upperBoundSqrtPrice,
         bool zeroToOne,
         uint256 amountOut
     ) public returns (bool) {
-        return _swap(poolKey, lowerBoundSqrtPriceX96, upperBoundSqrtPriceX96, zeroToOne, amountOut);
+        return _swap(poolKey, lowerBoundSqrtPrice, upperBoundSqrtPrice, zeroToOne, amountOut);
     }
 
     function collectFees(uint256 tokenId, PoolKey memory poolKey)

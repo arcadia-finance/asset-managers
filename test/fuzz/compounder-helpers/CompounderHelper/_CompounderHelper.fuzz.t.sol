@@ -49,7 +49,7 @@ abstract contract CompounderHelper_Fuzz_Test is
 
     // 0,5% to 11% fee on swaps.
     uint256 MIN_INITIATOR_SHARE = 0.005 * 1e18;
-    uint256 MAX_INITIATOR_FEE = 0.11 * 1e18;
+    uint256 MAX_FEE = 0.11 * 1e18;
     // 10 % initiator fee
     uint256 INITIATOR_SHARE = 0.1 * 1e18;
 
@@ -98,9 +98,9 @@ abstract contract CompounderHelper_Fuzz_Test is
         deploySlipstreamAM();
         deployUniswapV4AM();
 
-        deployUniswapV3Compounder(MAX_TOLERANCE, MAX_INITIATOR_FEE);
-        deploySlipstreamCompounder(MAX_TOLERANCE, MAX_INITIATOR_FEE);
-        deployUniswapV4Compounder(MAX_TOLERANCE, MAX_INITIATOR_FEE);
+        deployUniswapV3Compounder(MAX_TOLERANCE, MAX_FEE);
+        deploySlipstreamCompounder(MAX_TOLERANCE, MAX_FEE);
+        deployUniswapV4Compounder(MAX_TOLERANCE, MAX_FEE);
 
         // And : Compounder is allowed as Asset Manager
         vm.startPrank(users.accountOwner);

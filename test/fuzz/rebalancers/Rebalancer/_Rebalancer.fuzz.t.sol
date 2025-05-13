@@ -22,7 +22,7 @@ abstract contract Rebalancer_Fuzz_Test is Fuzz_Test, UniswapV3Fixture {
     uint24 internal constant POOL_FEE = 100;
 
     uint256 internal constant MAX_TOLERANCE = 0.02 * 1e18;
-    uint256 internal constant MAX_INITIATOR_FEE = 0.01 * 1e18;
+    uint256 internal constant MAX_FEE = 0.01 * 1e18;
     uint256 internal constant MIN_LIQUIDITY_RATIO = 0.99 * 1e18;
 
     /*////////////////////////////////////////////////////////////////
@@ -59,19 +59,19 @@ abstract contract Rebalancer_Fuzz_Test is Fuzz_Test, UniswapV3Fixture {
         (token0, token1) = (token0 < token1) ? (token0, token1) : (token1, token0);
 
         // Deploy test contract.
-        rebalancer = new RebalancerExtension(address(factory), MAX_TOLERANCE, MAX_INITIATOR_FEE, MIN_LIQUIDITY_RATIO);
+        rebalancer = new RebalancerExtension(address(factory), MAX_FEE, MAX_TOLERANCE, MIN_LIQUIDITY_RATIO);
     }
 
     /*////////////////////////////////////////////////////////////////
                         HELPER FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
-    function deployAndInitUniswapV3(uint160 sqrtPriceX96, uint128 liquidityPool) internal {
+    function deployAndInitUniswapV3(uint160 sqrtPrice, uint128 liquidityPool) internal {
         // Deploy fixture for Uniswap V3.
         UniswapV3Fixture.setUp();
 
         // Create pool.
-        poolUniswap = createPoolUniV3(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
+        poolUniswap = createPoolUniV3(address(token0), address(token1), POOL_FEE, sqrtPrice, 300);
 
         // Create initial position.
         addLiquidityUniV3(

@@ -54,7 +54,7 @@ contract SetInitiatorInfo_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder
         tolerance = bound(tolerance, 0, type(uint88).max);
 
         // And: fee is > Max Initiator Fee
-        initiatorShare = bound(initiatorShare, compounder.MAX_INITIATOR_FEE() + 1, type(uint256).max);
+        initiatorShare = bound(initiatorShare, compounder.MAX_FEE() + 1, type(uint256).max);
 
         // When: calling compoundFees.
         // Then: it should revert.
@@ -73,7 +73,7 @@ contract SetInitiatorInfo_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder
         vm.assume(upperSqrtPriceDeviation == 0);
 
         // And: fee is < Max Initiator Fee.
-        initiatorShare = bound(initiatorShare, 0, compounder.MAX_INITIATOR_FEE());
+        initiatorShare = bound(initiatorShare, 0, compounder.MAX_FEE());
 
         // Given : Tolerance is > maximum tolerance.
         tolerance = bound(tolerance, compounder.MAX_TOLERANCE() + 1, type(uint88).max);
@@ -93,7 +93,7 @@ contract SetInitiatorInfo_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder
         uint256 newInitiatorShare
     ) public {
         // Given: Initiator is initialised.
-        initInitiatorShare = bound(initInitiatorShare, 0, compounder.MAX_INITIATOR_FEE());
+        initInitiatorShare = bound(initInitiatorShare, 0, compounder.MAX_FEE());
         initTolerance = bound(initTolerance, 0, compounder.MAX_TOLERANCE());
         vm.prank(initiator_);
         compounder.setInitiatorInfo(initTolerance, initInitiatorShare);
@@ -119,7 +119,7 @@ contract SetInitiatorInfo_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder
         uint256 newFee
     ) public {
         // Given: Initiator is initialised.
-        initFee = bound(initFee, 0, compounder.MAX_INITIATOR_FEE());
+        initFee = bound(initFee, 0, compounder.MAX_FEE());
         initTolerance = bound(initTolerance, 0, compounder.MAX_TOLERANCE());
         vm.prank(initiator_);
         compounder.setInitiatorInfo(initTolerance, initFee);
@@ -148,7 +148,7 @@ contract SetInitiatorInfo_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder
         vm.assume(upperSqrtPriceDeviation == 0);
 
         // And: fee is < Max Initiator Fee.
-        fee = bound(fee, 0, compounder.MAX_INITIATOR_FEE());
+        fee = bound(fee, 0, compounder.MAX_FEE());
 
         // And: tolerance is < maximum tolerance.
         tolerance = bound(tolerance, 0, compounder.MAX_TOLERANCE());
@@ -175,7 +175,7 @@ contract SetInitiatorInfo_SlipstreamCompounder_Fuzz_Test is SlipstreamCompounder
         uint256 newFee
     ) public {
         // Given: Initiator is initialised.
-        initFee = bound(initFee, 0, compounder.MAX_INITIATOR_FEE());
+        initFee = bound(initFee, 0, compounder.MAX_FEE());
         initTolerance = bound(initTolerance, 0, compounder.MAX_TOLERANCE());
         vm.prank(initiator_);
         compounder.setInitiatorInfo(initTolerance, initFee);

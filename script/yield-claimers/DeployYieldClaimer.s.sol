@@ -27,7 +27,7 @@ contract DeployYieldClaimer is Base_AssetManagers_Script {
             PositionManagers.UNISWAP_V3,
             PositionManagers.UNISWAP_V4,
             Assets.WETH,
-            YieldClaimerParameters.MAX_INITIATOR_FEE
+            YieldClaimerParameters.MAX_FEE
         );
         vm.stopBroadcast();
     }

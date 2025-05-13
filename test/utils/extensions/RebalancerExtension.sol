@@ -4,48 +4,57 @@
  */
 pragma solidity ^0.8.22;
 
-import { RebalanceParams } from "../../../src/rebalancers/libraries/RebalanceLogic.sol";
+import { PositionState } from "../../../src/state/PositionState.sol";
+import { RebalanceParams } from "../../../src/libraries/RebalanceLogic.sol";
 import { Rebalancer } from "../../../src/rebalancers/Rebalancer.sol";
 
 contract RebalancerExtension is Rebalancer {
-    constructor(address arcadiaFactory, uint256 maxTolerance, uint256 maxInitiatorFee, uint256 minLiquidityRatio)
-        Rebalancer(arcadiaFactory, maxTolerance, maxInitiatorFee, minLiquidityRatio)
+    constructor(address arcadiaFactory, uint256 maxFee, uint256 maxTolerance, uint256 minLiquidityRatio)
+        Rebalancer(arcadiaFactory, maxFee, maxTolerance, minLiquidityRatio)
     { }
 
     function isPositionManager(address positionManager) public view override returns (bool) { }
 
-    function _getUnderlyingTokens(InitiatorParams memory initiatorParams)
+    function _getUnderlyingTokens(address positionManager, uint256 id)
         internal
         view
         override
         returns (address token0, address token1)
     { }
 
-    function _getPositionState(InitiatorParams memory initiatorParams)
+    function _getPositionState(address positionManager, uint256 id)
         internal
         view
         override
-        returns (uint256[] memory balances, PositionState memory)
+        returns (PositionState memory)
     { }
 
     function _getPoolLiquidity(PositionState memory position) internal view override returns (uint128) { }
 
-    function _getSqrtPriceX96(PositionState memory position) internal view override returns (uint160) { }
+    function _getSqrtPrice(PositionState memory position) internal view override returns (uint160) { }
 
-    function _burn(
+    function _claim(
         uint256[] memory balances,
-        InitiatorParams memory initiatorParams,
+        uint256[] memory fees,
+        address positionManager,
         PositionState memory position,
-        Cache memory cache
+        uint256 claimFee
     ) internal override { }
 
-    function _swapViaPool(
-        uint256[] memory balances,
-        PositionState memory position,
-        RebalanceParams memory rebalanceParams,
-        Cache memory cache,
-        uint256 amountOut
-    ) internal override { }
+    function _unstake(uint256[] memory balances, address positionManager, PositionState memory position)
+        internal
+        override
+    { }
+
+    function _burn(uint256[] memory balances, address positionManager, PositionState memory position)
+        internal
+        override
+    { }
+
+    function _swapViaPool(uint256[] memory balances, PositionState memory position, bool zeroToOne, uint256 amountOut)
+        internal
+        override
+    { }
 
     function swapViaRouter(
         uint256[] memory balances,
@@ -59,27 +68,34 @@ contract RebalancerExtension is Rebalancer {
 
     function _mint(
         uint256[] memory balances,
-        InitiatorParams memory initiatorParams,
+        address positionManager,
         PositionState memory position,
-        Cache memory cache
+        uint256 amount0Desired,
+        uint256 amount1Desired
     ) internal override { }
 
-    function transferInitiatorFee(
+    function _increaseLiquidity(
         uint256[] memory balances,
+        address positionManager,
         PositionState memory position,
-        bool zeroToOne,
-        uint256 amountInitiatorFee,
-        address initiator
-    ) external returns (uint256[] memory balances_) {
-        _transferInitiatorFee(balances, position, zeroToOne, amountInitiatorFee, initiator);
-        balances_ = balances;
-    }
+        uint256 amount0Desired,
+        uint256 amount1Desired
+    ) internal override { }
 
-    function approve(uint256[] memory balances, InitiatorParams memory initiatorParams, PositionState memory position)
-        external
-        returns (uint256 count)
-    {
-        return _approve(balances, initiatorParams, position);
+    function _stake(uint256[] memory balances, address positionManager, PositionState memory position)
+        internal
+        override
+    { }
+
+    function approveAndTransfer(
+        address initiator,
+        uint256[] memory balances,
+        uint256[] memory fees,
+        address positionManager,
+        PositionState memory position
+    ) external returns (uint256[] memory balances_, uint256 count) {
+        count = _approveAndTransfer(initiator, balances, fees, positionManager, position);
+        balances_ = balances;
     }
 
     function setHook(address account_, address hook) public {

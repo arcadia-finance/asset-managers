@@ -4,79 +4,103 @@
  */
 pragma solidity ^0.8.22;
 
-import { RebalanceParams } from "../../../src/rebalancers/libraries/RebalanceLogic.sol";
+import { PositionState } from "../../../src/state/PositionState.sol";
+import { RebalanceParams } from "../../../src/libraries/RebalanceLogic.sol";
 import { RebalancerUniswapV3 } from "../../../src/rebalancers/RebalancerUniswapV3.sol";
 
 contract RebalancerUniswapV3Extension is RebalancerUniswapV3 {
     constructor(
         address arcadiaFactory,
+        uint256 maxFee,
         uint256 maxTolerance,
-        uint256 maxInitiatorFee,
         uint256 minLiquidityRatio,
         address positionManager,
         address uniswapV3Factory
-    )
-        RebalancerUniswapV3(
-            arcadiaFactory,
-            maxTolerance,
-            maxInitiatorFee,
-            minLiquidityRatio,
-            positionManager,
-            uniswapV3Factory
-        )
-    { }
+    ) RebalancerUniswapV3(arcadiaFactory, maxFee, maxTolerance, minLiquidityRatio, positionManager, uniswapV3Factory) { }
 
-    function getUnderlyingTokens(InitiatorParams memory initiatorParams) external view returns (address, address) {
-        return _getUnderlyingTokens(initiatorParams);
+    function getUnderlyingTokens(address positionManager, uint256 id) external view returns (address, address) {
+        return _getUnderlyingTokens(positionManager, id);
     }
 
-    function getPositionState(InitiatorParams memory initiatorParams)
-        external
-        view
-        returns (uint256[] memory, PositionState memory)
-    {
-        return _getPositionState(initiatorParams);
+    function getPositionState(address positionManager, uint256 id) external view returns (PositionState memory) {
+        return _getPositionState(positionManager, id);
     }
 
     function getPoolLiquidity(PositionState memory position) external view returns (uint128) {
         return _getPoolLiquidity(position);
     }
 
-    function getSqrtPriceX96(PositionState memory position) external view returns (uint160) {
-        return _getSqrtPriceX96(position);
+    function getSqrtPrice(PositionState memory position) external view returns (uint160) {
+        return _getSqrtPrice(position);
     }
 
-    function burn(
+    function claim(
         uint256[] memory balances,
-        InitiatorParams memory initiatorParams,
+        uint256[] memory fees,
+        address positionManager,
         PositionState memory position,
-        Cache memory cache
-    ) external returns (uint256[] memory balances_) {
-        _burn(balances, initiatorParams, position, cache);
+        uint256 claimFee
+    ) external returns (uint256[] memory balances_, uint256[] memory fees_) {
+        _claim(balances, fees, positionManager, position, claimFee);
+        balances_ = balances;
+        fees_ = fees;
+    }
+
+    function unstake(uint256[] memory balances, address positionManager, PositionState memory position)
+        external
+        returns (uint256[] memory balances_)
+    {
+        _unstake(balances, positionManager, position);
         balances_ = balances;
     }
 
-    function swapViaPool(
-        uint256[] memory balances,
-        PositionState memory position,
-        RebalanceParams memory rebalanceParams,
-        Cache memory cache,
-        uint256 amountOut
-    ) external returns (uint256[] memory balances_, PositionState memory position_) {
-        _swapViaPool(balances, position, rebalanceParams, cache, amountOut);
+    function burn(uint256[] memory balances, address positionManager, PositionState memory position)
+        external
+        returns (uint256[] memory balances_)
+    {
+        _burn(balances, positionManager, position);
+        balances_ = balances;
+    }
+
+    function swapViaPool(uint256[] memory balances, PositionState memory position, bool zeroToOne, uint256 amountOut)
+        external
+        returns (uint256[] memory balances_, PositionState memory position_)
+    {
+        _swapViaPool(balances, position, zeroToOne, amountOut);
         balances_ = balances;
         position_ = position;
     }
 
     function mint(
         uint256[] memory balances,
-        InitiatorParams memory initiatorParams,
+        address positionManager,
         PositionState memory position,
-        Cache memory cache
+        uint256 amount0Desired,
+        uint256 amount1Desired
     ) external returns (uint256[] memory balances_, PositionState memory position_) {
-        _mint(balances, initiatorParams, position, cache);
+        _mint(balances, positionManager, position, amount0Desired, amount1Desired);
         balances_ = balances;
         position_ = position;
+    }
+
+    function increaseLiquidity(
+        uint256[] memory balances,
+        address positionManager,
+        PositionState memory position,
+        uint256 amount0Desired,
+        uint256 amount1Desired
+    ) external returns (uint256[] memory balances_, PositionState memory position_) {
+        _increaseLiquidity(balances, positionManager, position, amount0Desired, amount1Desired);
+        balances_ = balances;
+        position_ = position;
+    }
+
+    function stake(uint256[] memory balances, address positionManager, PositionState memory position)
+        external
+        returns (uint256[] memory balances_)
+    {
+        _stake(balances, positionManager, position);
+        balances_ = balances;
     }
 
     function setHook(address account_, address hook) public {

@@ -51,8 +51,8 @@ contract Swap_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_Fuzz_Test {
         addAssetToArcadia(address(token0), int256(10 ** token0.decimals()));
         addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
 
-        uint160 sqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPoolUniV3(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
+        uint160 sqrtPrice = UniswapV3Logic._getSqrtPrice(1e18, 1e18);
+        usdStablePool = createPoolUniV3(address(token0), address(token1), POOL_FEE, sqrtPrice, 300);
 
         // And : Liquidity has been added for both tokens
         addLiquidityUniV3(
@@ -70,7 +70,7 @@ contract Swap_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_Fuzz_Test {
             position.token0 = address(token0);
             position.token1 = address(token1);
             position.fee = POOL_FEE;
-            position.lowerBoundSqrtPriceX96 = sqrtPriceX96 * uint256(lowerSqrtPriceDeviation) / 1e18;
+            position.lowerBoundSqrtPrice = sqrtPrice * uint256(lowerSqrtPriceDeviation) / 1e18;
             position.pool = address(usdStablePool);
         }
 
@@ -103,8 +103,8 @@ contract Swap_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_Fuzz_Test {
         addAssetToArcadia(address(token0), int256(10 ** token0.decimals()));
         addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
 
-        uint160 sqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPoolUniV3(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
+        uint160 sqrtPrice = UniswapV3Logic._getSqrtPrice(1e18, 1e18);
+        usdStablePool = createPoolUniV3(address(token0), address(token1), POOL_FEE, sqrtPrice, 300);
 
         // And : Liquidity has been added for both tokens
         addLiquidityUniV3(
@@ -122,7 +122,7 @@ contract Swap_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_Fuzz_Test {
             position.token0 = address(token0);
             position.token1 = address(token1);
             position.fee = POOL_FEE;
-            position.upperBoundSqrtPriceX96 = sqrtPriceX96 * uint256(upperSqrtPriceDeviation) / 1e18;
+            position.upperBoundSqrtPrice = sqrtPrice * uint256(upperSqrtPriceDeviation) / 1e18;
             position.pool = address(usdStablePool);
         }
 
@@ -155,8 +155,8 @@ contract Swap_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_Fuzz_Test {
         addAssetToArcadia(address(token0), int256(10 ** token0.decimals()));
         addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
 
-        uint160 sqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPoolUniV3(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
+        uint160 sqrtPrice = UniswapV3Logic._getSqrtPrice(1e18, 1e18);
+        usdStablePool = createPoolUniV3(address(token0), address(token1), POOL_FEE, sqrtPrice, 300);
 
         // And : Liquidity has been added for both tokens
         addLiquidityUniV3(
@@ -174,7 +174,7 @@ contract Swap_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_Fuzz_Test {
             position.token0 = address(token0);
             position.token1 = address(token1);
             position.fee = POOL_FEE;
-            position.lowerBoundSqrtPriceX96 = sqrtPriceX96 * uint256(lowerSqrtPriceDeviation) / 1e18;
+            position.lowerBoundSqrtPrice = sqrtPrice * uint256(lowerSqrtPriceDeviation) / 1e18;
             position.pool = address(usdStablePool);
         }
 
@@ -207,8 +207,8 @@ contract Swap_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_Fuzz_Test {
         addAssetToArcadia(address(token0), int256(10 ** token0.decimals()));
         addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
 
-        uint160 sqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPoolUniV3(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
+        uint160 sqrtPrice = UniswapV3Logic._getSqrtPrice(1e18, 1e18);
+        usdStablePool = createPoolUniV3(address(token0), address(token1), POOL_FEE, sqrtPrice, 300);
 
         // And : Liquidity has been added for both tokens
         addLiquidityUniV3(
@@ -226,7 +226,7 @@ contract Swap_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_Fuzz_Test {
             position.token0 = address(token0);
             position.token1 = address(token1);
             position.fee = POOL_FEE;
-            position.upperBoundSqrtPriceX96 = sqrtPriceX96 * uint256(upperSqrtPriceDeviation) / 1e18;
+            position.upperBoundSqrtPrice = sqrtPrice * uint256(upperSqrtPriceDeviation) / 1e18;
             position.pool = address(usdStablePool);
         }
 

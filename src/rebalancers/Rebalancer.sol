@@ -4,16 +4,18 @@
  */
 pragma solidity ^0.8.26;
 
+import { AbstractBase } from "../base/AbstractBase.sol";
 import { ActionData, IActionBase } from "../../lib/accounts-v2/src/interfaces/IActionBase.sol";
-import { ArcadiaLogic } from "./libraries/ArcadiaLogic.sol";
+import { ArcadiaLogic } from "../libraries/ArcadiaLogic.sol";
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { ERC721 } from "../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { IAccount } from "./interfaces/IAccount.sol";
-import { IArcadiaFactory } from "./interfaces/IArcadiaFactory.sol";
-import { IStrategyHook } from "./interfaces/IStrategyHook.sol";
-import { RebalanceLogic, RebalanceParams } from "./libraries/RebalanceLogic.sol";
-import { RebalanceOptimizationMath } from "./libraries/RebalanceOptimizationMath.sol";
+import { IAccount } from "../interfaces/IAccount.sol";
+import { IArcadiaFactory } from "../interfaces/IArcadiaFactory.sol";
+import { IStrategyHook } from "../interfaces/IStrategyHook.sol";
+import { PositionState } from "../state/PositionState.sol";
+import { RebalanceLogic, RebalanceParams } from "../libraries/RebalanceLogic.sol";
+import { RebalanceOptimizationMath } from "../libraries/RebalanceOptimizationMath.sol";
 import { SafeApprove } from "../libraries/SafeApprove.sol";
 import { TickMath } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
@@ -23,14 +25,14 @@ import { TickMath } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src
  * It will allow third parties to trigger the rebalancing functionality for a Liquidity Position in the Account.
  * The owner of an Arcadia Account should set an initiator via setAccountInfo() that will be permisionned to rebalance
  * all Liquidity Positions held in that Account.
- * @dev The initiator will provide a trusted sqrtPriceX96 input at the time of rebalance to mitigate frontrunning risks.
+ * @dev The initiator will provide a trusted sqrtPrice input at the time of rebalance to mitigate frontrunning risks.
  * This input serves as a reference point for calculating the maximum allowed deviation during the rebalancing process,
  * ensuring that rebalancing remains within a controlled price range.
  * @dev The contract guarantees a limited slippage with each rebalance by enforcing a minimum amount of liquidity that must be added,
  * based on a hypothetical optimal swap through the pool itself without slippage.
  * This protects the Account owners from incompetent or malicious initiators who route swaps poorly, or try to skim off liquidity from the position.
  */
-abstract contract Rebalancer is IActionBase {
+abstract contract Rebalancer is IActionBase, AbstractBase {
     using FixedPointMathLib for uint256;
     using SafeApprove for ERC20;
     using SafeTransferLib for ERC20;
@@ -42,7 +44,7 @@ abstract contract Rebalancer is IActionBase {
     IArcadiaFactory public immutable ARCADIA_FACTORY;
 
     // The maximum fee an initiator can set, with 18 decimals precision.
-    uint256 public immutable MAX_INITIATOR_FEE;
+    uint256 public immutable MAX_FEE;
 
     // The maximum deviation of the actual pool price, in % with 18 decimals precision.
     uint256 public immutable MAX_TOLERANCE;
@@ -79,60 +81,36 @@ abstract contract Rebalancer is IActionBase {
         uint128 amount0;
         // The amount of token1 withdrawn from the account.
         uint128 amount1;
-        // The sqrtPriceX96 th epool should have, given by the initiator.
-        uint256 trustedSqrtPriceX96;
+        // The sqrtPrice the pool should have, given by the initiator.
+        uint256 trustedSqrtPrice;
         // Calldata provided by the initiator to execute the swap.
         bytes swapData;
         // Strategy specific Calldata provided by the initiator.
         bytes strategyData;
     }
 
-    // A struct with the position and pool state.
-    struct PositionState {
-        // The contract address of the pool.
-        address pool;
-        // The id of the position.
-        uint256 id;
-        // The fee of the pool
-        uint24 fee;
-        // The tickspacing of the pool.
-        int24 tickSpacing;
-        // The current tick of the pool.
-        int24 tickCurrent;
-        // The lower tick of the position.
-        int24 tickUpper;
-        // The upper tick of the position.
-        int24 tickLower;
-        // The liquidity of the position.
-        uint128 liquidity;
-        // The sqrtpriceX96 of the pool.
-        uint256 sqrtPriceX96;
-        // The underlying tokens of the pool.
-        address[] tokens;
-    }
-
     // A struct with cached variables.
     struct Cache {
-        // The lower bound the sqrtpriceX96 can have for the pool to be balanced.
-        uint256 lowerBoundSqrtPriceX96;
-        // The lower bound the sqrtpriceX96 can have for the pool to be balanced.
-        uint256 upperBoundSqrtPriceX96;
+        // The lower bound the sqrtPrice can have for the pool to be balanced.
+        uint256 lowerBoundSqrtPrice;
+        // The lower bound the sqrtPrice can have for the pool to be balanced.
+        uint256 upperBoundSqrtPrice;
         // The sqrtRatio of the lower tick.
         uint160 sqrtRatioLower;
         // The sqrtRatio of the upper tick.
         uint160 sqrtRatioUpper;
-        // Implementation specific data.
-        bytes data;
     }
 
     // A struct with information for each specific initiator.
     struct InitiatorInfo {
-        // The maximum relative deviation the pool can have from the trustedSqrtPriceX96, with 18 decimals precision.
-        uint64 upperSqrtPriceDeviation;
-        // The miminumù relative deviation the pool can have from the trustedSqrtPriceX96, with 18 decimals precision.
-        uint64 lowerSqrtPriceDeviation;
+        // The fee charged on the claimed fees of the liquidity position, with 18 decimals precision.
+        uint64 claimFee;
         // The fee charged on the ideal (without slippage) amountIn by the initiator, with 18 decimals precision.
-        uint64 fee;
+        uint64 swapFee;
+        // The maximum relative deviation the pool can have from the trustedSqrtPrice, with 18 decimals precision.
+        uint64 upperSqrtPriceDeviation;
+        // The miminumù relative deviation the pool can have from the trustedSqrtPrice, with 18 decimals precision.
+        uint64 lowerSqrtPriceDeviation;
         // The ratio that limits the amount of slippage of the swap, with 18 decimals precision.
         uint64 minLiquidityRatio;
     }
@@ -165,17 +143,16 @@ abstract contract Rebalancer is IActionBase {
 
     /**
      * @param arcadiaFactory The contract address of the Arcadia Factory.
+     * @param maxFee The maximum fee an initiator can set, with 18 decimals precision.
      * @param maxTolerance The maximum allowed deviation of the actual pool price for any initiator,
      * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
-     * @param maxInitiatorFee The maximum fee an initiator can set,
-     * relative to the ideal amountIn, with 18 decimals precision.
      * @param minLiquidityRatio The ratio of the minimum amount of liquidity that must be minted,
      * relative to the hypothetical amount of liquidity when we rebalance without slippage, with 18 decimals precision.
      */
-    constructor(address arcadiaFactory, uint256 maxTolerance, uint256 maxInitiatorFee, uint256 minLiquidityRatio) {
+    constructor(address arcadiaFactory, uint256 maxFee, uint256 maxTolerance, uint256 minLiquidityRatio) {
         ARCADIA_FACTORY = IArcadiaFactory(arcadiaFactory);
+        MAX_FEE = maxFee;
         MAX_TOLERANCE = maxTolerance;
-        MAX_INITIATOR_FEE = maxInitiatorFee;
         MIN_LIQUIDITY_RATIO = minLiquidityRatio;
     }
 
@@ -210,17 +187,20 @@ abstract contract Rebalancer is IActionBase {
 
     /**
      * @notice Sets the information requested for an initiator.
+     * @param claimFee The fee charged on claimed fees/rewards by the initiator, with 18 decimals precision.
+     * @param swapFee The fee charged on the ideal (without slippage) amountIn by the initiator, with 18 decimals precision.
      * @param tolerance The maximum deviation of the actual pool price,
      * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
-     * @param fee The fee paid to the initiator, with 18 decimals precision.
      * @param minLiquidityRatio The ratio of the minimum amount of liquidity that must be minted,
      * relative to the hypothetical amount of liquidity when we rebalance without slippage, with 18 decimals precision.
      * @dev The tolerance for the pool price will be converted to an upper and lower max sqrtPrice deviation,
      * using the square root of the basis (one with 18 decimals precision) +- tolerance (18 decimals precision).
      * The tolerance boundaries are symmetric around the price, but taking the square root will result in a different
-     * allowed deviation of the sqrtPriceX96 for the lower and upper boundaries.
+     * allowed deviation of the sqrtPrice for the lower and upper boundaries.
      */
-    function setInitiatorInfo(uint256 tolerance, uint256 fee, uint256 minLiquidityRatio) external {
+    function setInitiatorInfo(uint256 claimFee, uint256 swapFee, uint256 tolerance, uint256 minLiquidityRatio)
+        external
+    {
         if (account != address(0)) revert Reentered();
 
         // Cache struct
@@ -233,20 +213,22 @@ abstract contract Rebalancer is IActionBase {
         if (initiatorInfo_.minLiquidityRatio > 0) {
             // If so, the initiator can only change parameters to more favourable values for users.
             if (
-                fee > initiatorInfo_.fee || upperSqrtPriceDeviation > initiatorInfo_.upperSqrtPriceDeviation
+                claimFee > initiatorInfo_.claimFee || swapFee > initiatorInfo_.swapFee
+                    || upperSqrtPriceDeviation > initiatorInfo_.upperSqrtPriceDeviation
                     || minLiquidityRatio < initiatorInfo_.minLiquidityRatio || minLiquidityRatio > 1e18
             ) revert InvalidValue();
         } else {
             // If not, the parameters can not exceed certain thresholds.
             if (
-                fee > MAX_INITIATOR_FEE || tolerance > MAX_TOLERANCE || minLiquidityRatio < MIN_LIQUIDITY_RATIO
-                    || minLiquidityRatio > 1e18
+                claimFee > MAX_FEE || swapFee > MAX_FEE || tolerance > MAX_TOLERANCE
+                    || minLiquidityRatio < MIN_LIQUIDITY_RATIO || minLiquidityRatio > 1e18
             ) {
                 revert InvalidValue();
             }
         }
 
-        initiatorInfo_.fee = uint64(fee);
+        initiatorInfo_.claimFee = uint64(claimFee);
+        initiatorInfo_.swapFee = uint64(swapFee);
         initiatorInfo_.minLiquidityRatio = uint64(minLiquidityRatio);
         initiatorInfo_.lowerSqrtPriceDeviation = uint64(FixedPointMathLib.sqrt((1e18 - tolerance) * 1e18));
         initiatorInfo_.upperSqrtPriceDeviation = upperSqrtPriceDeviation;
@@ -276,11 +258,19 @@ abstract contract Rebalancer is IActionBase {
         address token0;
         address token1;
         if (initiatorParams.amount0 > 0 || initiatorParams.amount1 > 0) {
-            (token0, token1) = _getUnderlyingTokens(initiatorParams);
+            (token0, token1) = _getUnderlyingTokens(initiatorParams.positionManager, initiatorParams.oldId);
         }
 
         // Encode data for the flash-action.
-        bytes memory actionData = ArcadiaLogic._encodeAction(msg.sender, initiatorParams, token0, token1);
+        bytes memory actionData = ArcadiaLogic._encodeAction(
+            initiatorParams.positionManager,
+            initiatorParams.oldId,
+            token0,
+            token1,
+            initiatorParams.amount0,
+            initiatorParams.amount1,
+            abi.encode(msg.sender, initiatorParams)
+        );
 
         // Call flashAction() with this contract as actionTarget.
         IAccount(account_).flashAction(address(this), actionData);
@@ -291,7 +281,7 @@ abstract contract Rebalancer is IActionBase {
 
     /**
      * @notice Callback function called by the Arcadia Account during the flashAction.
-     * @param actionTargetData A bytes object containing a struct with the assetData of the position and the address of the initiator.
+     * @param actionTargetData A bytes object containing the initiator and initiatorParams.
      * @return depositData A struct with the asset data of the Liquidity Position and with the leftovers after mint, if any.
      * @dev The Liquidity Position is already transferred to this contract before executeAction() is called.
      * @dev When rebalancing we will burn the current Liquidity Position and mint a new one with a new tokenId.
@@ -303,9 +293,16 @@ abstract contract Rebalancer is IActionBase {
         // Decode actionTargetData.
         (address initiator, InitiatorParams memory initiatorParams) =
             abi.decode(actionTargetData, (address, InitiatorParams));
+        address positionManager = initiatorParams.positionManager;
 
         // Get all pool and position related state.
-        (uint256[] memory balances, PositionState memory position) = _getPositionState(initiatorParams);
+        PositionState memory position = _getPositionState(positionManager, initiatorParams.oldId);
+
+        // Rebalancer has withdrawn the underlying tokens from the Account.
+        uint256[] memory balances = new uint256[](position.tokens.length);
+        balances[0] = initiatorParams.amount0;
+        balances[1] = initiatorParams.amount1;
+        uint256[] memory fees = new uint256[](balances.length);
 
         // Call the strategy hook before the rebalance (view function, cannot modify state of pool or old position).
         // The strategy hook will return the new ticks of the position
@@ -317,73 +314,84 @@ abstract contract Rebalancer is IActionBase {
         // - ...
         IStrategyHook hook = IStrategyHook(strategyHook[msg.sender]);
         (position.tickLower, position.tickUpper) =
-            hook.beforeRebalance(msg.sender, initiatorParams.positionManager, position, initiatorParams.strategyData);
+            hook.beforeRebalance(msg.sender, positionManager, position, initiatorParams.strategyData);
 
         // Cache variables that are gas expensive to calcultate and used multiple times.
-        Cache memory cache = _getCache(initiator, initiatorParams, position);
+        Cache memory cache = _getCache(initiator, position, initiatorParams.trustedSqrtPrice);
 
         // Check that pool is initially balanced.
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
-        if (isPoolUnbalanced(position, cache)) revert UnbalancedPool();
+        if (!isPoolBalanced(position.sqrtPrice, cache)) revert UnbalancedPool();
+
+        {
+            // Claim pending fees/rewards and update balances.
+            // If the claim fee is 0, no need to separately claim fees, as they will be claimed in the burn function.
+            uint256 claimFee = initiatorInfo[initiator].claimFee;
+            if (claimFee > 0) _claim(balances, fees, positionManager, position, claimFee);
+        }
+
+        // If the position is staked, unstake it.
+        _unstake(balances, positionManager, position);
 
         // Remove liquidity of the position, claim outstanding fees/rewards and update balances.
-        _burn(balances, initiatorParams, position, cache);
+        _burn(balances, positionManager, position);
 
         // Get the rebalance parameters, based on a hypothetical swap through the pool itself without slippage.
         RebalanceParams memory rebalanceParams = RebalanceLogic._getRebalanceParams(
             initiatorInfo[initiator].minLiquidityRatio,
             position.fee,
-            initiatorInfo[initiator].fee,
-            position.sqrtPriceX96,
+            initiatorInfo[initiator].swapFee,
+            position.sqrtPrice,
             cache.sqrtRatioLower,
             cache.sqrtRatioUpper,
-            balances[0],
-            balances[1]
+            balances[0] - fees[0],
+            balances[1] - fees[1]
         );
+        if (rebalanceParams.zeroToOne) fees[0] += rebalanceParams.amountInitiatorFee;
+        else fees[1] += rebalanceParams.amountInitiatorFee;
 
-        // Do the actual swap to rebalance the position.
+        // Do the swap to rebalance the position.
         // This can be done either directly through the pool, or via a router with custom swap data.
         // For swaps directly through the pool, if slippage is bigger than calculated, the transaction will not immediately revert,
         // but excess slippage will be subtracted from the initiatorFee.
         // For swaps via a router, tokenOut should be the limiting factor when increasing liquidity.
         // Update balances after the swap.
-        _swap(balances, initiatorParams, position, rebalanceParams, cache);
+        _swap(balances, fees, initiatorParams, position, rebalanceParams, cache);
 
         // Check that the pool is still balanced after the swap.
-        if (isPoolUnbalanced(position, cache)) revert UnbalancedPool();
+        // Since the swap went potentially through the pool itself (but does not have to),
+        // the sqrtPrice might have moved and brought the pool out of balance.
+        position.sqrtPrice = _getSqrtPrice(position);
+        if (!isPoolBalanced(position.sqrtPrice, cache)) revert UnbalancedPool();
 
-        // Mint the new liquidity position.
-        // We mint with the total available balances of token0 and token1, not subtracting the initiator fee.
-        // Leftovers must be in tokenIn, otherwise the total tokenIn balance will be added as liquidity,
-        // and the initiator fee will be 0 (but the transaction will not revert).
-        // Update balances after the mint.
-        _mint(balances, initiatorParams, position, cache);
+        // As explained before _swap(), tokenOut should be the limiting factor when increasing liquidity
+        // therefore we only subtract the initiator fee from the amountOut, not from the amountIn.
+        // Update balances, id and liquidity after the mint.
+
+        (uint256 amount0Desired, uint256 amount1Desired) =
+            rebalanceParams.zeroToOne ? (balances[0], balances[1] - fees[1]) : (balances[0] - fees[0], balances[1]);
+        _mint(balances, positionManager, position, amount0Desired, amount1Desired);
 
         // Check that the actual liquidity of the position is above the minimum threshold.
         // This prevents loss of principal of the liquidity position due to slippage,
         // or malicious initiators who remove liquidity during a custom swap.
         if (position.liquidity < rebalanceParams.minLiquidity) revert InsufficientLiquidity();
 
+        // If the position is staked, stake it.
+        _stake(balances, positionManager, position);
+
         // Call the strategy hook after the rebalance (non view function).
         // Can be used to check additional constraints and persist state changes on the hook.
-        hook.afterRebalance(
-            msg.sender, initiatorParams.positionManager, initiatorParams.oldId, position, initiatorParams.strategyData
-        );
+        hook.afterRebalance(msg.sender, positionManager, initiatorParams.oldId, position, initiatorParams.strategyData);
 
-        // Transfer fee to the initiator.
-        // Update balances after the transfer.
-        _transferInitiatorFee(
-            balances, position, rebalanceParams.zeroToOne, rebalanceParams.amountInitiatorFee, initiator
-        );
-
-        // Approve assets to deposit them back into the Account.
-        uint256 count = _approve(balances, initiatorParams, position);
+        // Approve the liquidity position and leftovers to be deposited back into the Account.
+        // And transfer the initiator fees to the initiator.
+        uint256 count = _approveAndTransfer(initiator, balances, fees, positionManager, position);
 
         // Encode deposit data for the flash-action.
-        depositData =
-            ArcadiaLogic._encodeDeposit(initiatorParams.positionManager, position.id, count, position.tokens, balances);
+        depositData = ArcadiaLogic._encodeDeposit(positionManager, position.id, position.tokens, balances, count);
 
-        emit Rebalance(msg.sender, initiatorParams.positionManager, initiatorParams.oldId, position.id);
+        emit Rebalance(msg.sender, positionManager, initiatorParams.oldId, position.id);
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -391,25 +399,14 @@ abstract contract Rebalancer is IActionBase {
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Returns if a position manager matches the position manager(s) of the rebalancer.
-     * @param positionManager the contract address of the position manager to check.
-     */
-    function isPositionManager(address positionManager) public view virtual returns (bool);
-
-    /**
-     * @notice Returns if the pool of a Liquidity Position is unbalanced.
-     * @param position A struct with position and pool related variables.
+     * @notice Returns if the pool of a Liquidity Position is balanced.
+     * @param sqrtPrice The sqrtPrice of the pool.
      * @param cache A struct with cached variables.
-     * @return isPoolUnbalanced_ Bool indicating if the pool is unbalanced.
+     * @return isBalanced Bool indicating if the pool is balanced.
      */
-    function isPoolUnbalanced(PositionState memory position, Cache memory cache)
-        public
-        pure
-        returns (bool isPoolUnbalanced_)
-    {
-        // Check if current priceX96 of the Pool is within accepted tolerance of the calculated trusted priceX96.
-        isPoolUnbalanced_ = position.sqrtPriceX96 <= cache.lowerBoundSqrtPriceX96
-            || position.sqrtPriceX96 >= cache.upperBoundSqrtPriceX96;
+    function isPoolBalanced(uint256 sqrtPrice, Cache memory cache) public pure returns (bool isBalanced) {
+        // Check if current price of the Pool is within accepted tolerance of the calculated trusted price.
+        isBalanced = sqrtPrice > cache.lowerBoundSqrtPrice && sqrtPrice < cache.upperBoundSqrtPrice;
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -417,89 +414,27 @@ abstract contract Rebalancer is IActionBase {
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Returns the underlying assets of the pool.
-     * @param initiatorParams A struct with the initiator parameters.
-     * @return token0 The contract address of token0.
-     * @return token1 The contract address of token1.
-     */
-    function _getUnderlyingTokens(InitiatorParams memory initiatorParams)
-        internal
-        view
-        virtual
-        returns (address token0, address token1);
-
-    /**
-     * @notice Returns the position and pool related state.
-     * @param initiatorParams A struct with the initiator parameters.
-     * @return balances The balances of the underlying tokens of the position.
-     * @return position A struct with position and pool related variables.
-     */
-    function _getPositionState(InitiatorParams memory initiatorParams)
-        internal
-        view
-        virtual
-        returns (uint256[] memory balances, PositionState memory position);
-
-    /**
      * @notice Returns the cached variables.
      * @param initiator The address of the initiator.
-     * @param initiatorParams A struct with the initiator parameters.
      * @param position A struct with position and pool related variables.
+     * @param trustedSqrtPrice The sqrtPrice the pool should have, given by the initiator.
      * @return cache A struct with cached variables.
      */
-    function _getCache(address initiator, InitiatorParams memory initiatorParams, PositionState memory position)
+    function _getCache(address initiator, PositionState memory position, uint256 trustedSqrtPrice)
         internal
         view
         virtual
         returns (Cache memory cache)
     {
-        // We do not handle the edge cases where the bounds of the sqrtPriceX96 exceed MIN_SQRT_RATIO or MAX_SQRT_RATIO.
+        // We do not handle the edge cases where the bounds of the sqrtPrice exceed MIN_SQRT_RATIO or MAX_SQRT_RATIO.
         // This will result in a revert during swapViaPool, if ever needed a different rebalancer has to be deployed.
         cache = Cache({
-            lowerBoundSqrtPriceX96: initiatorParams.trustedSqrtPriceX96.mulDivDown(
-                initiatorInfo[initiator].lowerSqrtPriceDeviation, 1e18
-            ),
-            upperBoundSqrtPriceX96: initiatorParams.trustedSqrtPriceX96.mulDivDown(
-                initiatorInfo[initiator].upperSqrtPriceDeviation, 1e18
-            ),
+            lowerBoundSqrtPrice: trustedSqrtPrice.mulDivDown(initiatorInfo[initiator].lowerSqrtPriceDeviation, 1e18),
+            upperBoundSqrtPrice: trustedSqrtPrice.mulDivDown(initiatorInfo[initiator].upperSqrtPriceDeviation, 1e18),
             sqrtRatioLower: TickMath.getSqrtPriceAtTick(position.tickLower),
-            sqrtRatioUpper: TickMath.getSqrtPriceAtTick(position.tickUpper),
-            data: ""
+            sqrtRatioUpper: TickMath.getSqrtPriceAtTick(position.tickUpper)
         });
     }
-
-    /**
-     * @notice Returns the liquidity of the Pool.
-     * @param position A struct with position and pool related variables.
-     * @return liquidity The liquidity of the Pool.
-     */
-    function _getPoolLiquidity(PositionState memory position) internal view virtual returns (uint128 liquidity);
-
-    /**
-     * @notice Returns the sqrtPriceX96 of the Pool.
-     * @param position A struct with position and pool related variables.
-     * @return sqrtPriceX96 The sqrtPriceX96 of the Pool.
-     */
-    function _getSqrtPriceX96(PositionState memory position) internal view virtual returns (uint160 sqrtPriceX96);
-
-    /* ///////////////////////////////////////////////////////////////
-                             BURN LOGIC
-    /////////////////////////////////////////////////////////////// */
-
-    /**
-     * @notice Burns the Liquidity Position.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
-     * @param initiatorParams A struct with the initiator parameters.
-     * @param position A struct with position and pool related variables.
-     * @param cache A struct with cached variables.
-     * @dev Must update the balances after the burn.
-     */
-    function _burn(
-        uint256[] memory balances,
-        InitiatorParams memory initiatorParams,
-        PositionState memory position,
-        Cache memory cache
-    ) internal virtual;
 
     /* ///////////////////////////////////////////////////////////////
                              SWAP LOGIC
@@ -508,14 +443,16 @@ abstract contract Rebalancer is IActionBase {
     /**
      * @notice Swaps one token for another to rebalance the Liquidity Position.
      * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param fees The fees of the underlying tokens to be paid to the initiator.
      * @param initiatorParams A struct with the initiator parameters.
      * @param position A struct with position and pool related variables.
      * @param rebalanceParams A struct with the rebalance parameters.
      * @param cache A struct with cached variables.
-     * @dev Must update the balances and sqrtPriceX96 after the swap.
+     * @dev Must update the balances and sqrtPrice after the swap.
      */
     function _swap(
         uint256[] memory balances,
+        uint256[] memory fees,
         InitiatorParams memory initiatorParams,
         PositionState memory position,
         RebalanceParams memory rebalanceParams,
@@ -532,38 +469,21 @@ abstract contract Rebalancer is IActionBase {
                 rebalanceParams.zeroToOne,
                 position.fee,
                 _getPoolLiquidity(position),
-                uint160(position.sqrtPriceX96),
+                uint160(position.sqrtPrice),
                 cache.sqrtRatioLower,
                 cache.sqrtRatioUpper,
-                rebalanceParams.zeroToOne ? balances[0] - rebalanceParams.amountInitiatorFee : balances[0],
-                rebalanceParams.zeroToOne ? balances[1] : balances[1] - rebalanceParams.amountInitiatorFee,
+                balances[0] - fees[0],
+                balances[1] - fees[1],
                 rebalanceParams.amountIn,
                 rebalanceParams.amountOut
             );
             // Don't do swaps with zero amount.
             if (amountOut == 0) return;
-            _swapViaPool(balances, position, rebalanceParams, cache, amountOut);
+            _swapViaPool(balances, position, rebalanceParams.zeroToOne, amountOut);
         } else {
             _swapViaRouter(balances, position, rebalanceParams.zeroToOne, initiatorParams.swapData);
         }
     }
-
-    /**
-     * @notice Swaps one token for another, directly through the pool itself.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
-     * @param position A struct with position and pool related variables.
-     * @param rebalanceParams A struct with the rebalance parameters.
-     * @param cache A struct with cached variables.
-     * @param amountOut The amount of tokenOut that must be swapped to.
-     * @dev Must update the balances and sqrtPriceX96 after the swap.
-     */
-    function _swapViaPool(
-        uint256[] memory balances,
-        PositionState memory position,
-        RebalanceParams memory rebalanceParams,
-        Cache memory cache,
-        uint256 amountOut
-    ) internal virtual;
 
     /**
      * @notice Swaps one token for another, via a router with custom swap data.
@@ -592,120 +512,53 @@ abstract contract Rebalancer is IActionBase {
         (bool success, bytes memory result) = router.call(data);
         require(success, string(result));
 
-        // Pool should still be balanced (within tolerance boundaries) after the swap.
-        // Since the swap went potentially through the pool itself (but does not have to),
-        // the sqrtPriceX96 might have moved and brought the pool out of balance.
-        // By fetching the sqrtPriceX96, the transaction will revert in that case on the balance check.
-        position.sqrtPriceX96 = _getSqrtPriceX96(position);
-
         // Update the balances.
         balances[0] = ERC20(position.tokens[0]).balanceOf(address(this));
         balances[1] = ERC20(position.tokens[1]).balanceOf(address(this));
     }
 
     /* ///////////////////////////////////////////////////////////////
-                             MINT LOGIC
+                    APPROVE AND TRANSFER LOGIC
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Mints a new Liquidity Position.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
-     * @param initiatorParams A struct with the initiator parameters.
-     * @param position A struct with position and pool related variables.
-     * @param cache A struct with cached variables.
-     * @dev Must update the balances and liquidity and id after the mint.
-     */
-    function _mint(
-        uint256[] memory balances,
-        InitiatorParams memory initiatorParams,
-        PositionState memory position,
-        Cache memory cache
-    ) internal virtual;
-
-    /* ///////////////////////////////////////////////////////////////
-                        INITIATOR FEE LOGIC
-    /////////////////////////////////////////////////////////////// */
-
-    /**
-     * @notice Transfers the initiator fee to the initiator.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
-     * @param position A struct with position and pool related variables.
-     * @param zeroToOne Bool indicating if token0 was swapped to token1 or opposite.
-     * @param amountInitiatorFee The amount of initiator fee.
+     * @notice Approves the liquidity position and leftovers to be deposited back into the Account
+     * and transfers the initiator fees to the initiator.
      * @param initiator The address of the initiator.
-     * @dev Must update the balances after the transfer.
-     */
-    function _transferInitiatorFee(
-        uint256[] memory balances,
-        PositionState memory position,
-        bool zeroToOne,
-        uint256 amountInitiatorFee,
-        address initiator
-    ) internal virtual {
-        if (zeroToOne) {
-            (balances[0], amountInitiatorFee) = balances[0] > amountInitiatorFee
-                ? (balances[0] - amountInitiatorFee, amountInitiatorFee)
-                : (0, balances[0]);
-            if (amountInitiatorFee > 0) {
-                ERC20(position.tokens[0]).safeTransfer(initiator, amountInitiatorFee);
-            }
-        } else {
-            (balances[1], amountInitiatorFee) = balances[1] > amountInitiatorFee
-                ? (balances[1] - amountInitiatorFee, amountInitiatorFee)
-                : (0, balances[1]);
-            if (amountInitiatorFee > 0) {
-                ERC20(position.tokens[1]).safeTransfer(initiator, amountInitiatorFee);
-            }
-        }
-    }
-
-    /* ///////////////////////////////////////////////////////////////
-                        APPROVE LOGIC
-    /////////////////////////////////////////////////////////////// */
-
-    /**
-     * @notice Approves the Account to deposit the assets held by the Rebalancer back into the Account.
      * @param balances The balances of the underlying tokens held by the Rebalancer.
-     * @param initiatorParams A struct with the initiator parameters.
+     * @param fees The fees of the underlying tokens to be paid to the initiator.
+     * @param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      * @return count The number of assets approved.
      */
-    function _approve(uint256[] memory balances, InitiatorParams memory initiatorParams, PositionState memory position)
-        internal
-        returns (uint256 count)
-    {
+    function _approveAndTransfer(
+        address initiator,
+        uint256[] memory balances,
+        uint256[] memory fees,
+        address positionManager,
+        PositionState memory position
+    ) internal returns (uint256 count) {
         // Approve the Liquidity Position.
-        ERC721(initiatorParams.positionManager).approve(msg.sender, position.id);
+        ERC721(positionManager).approve(msg.sender, position.id);
 
-        // Approve the ERC20 yield tokens.
+        // Transfer Initiator fees and approve the leftovers.
         count = 1;
-        // Approve Account to redeposit Liquidity Position and leftovers.
         for (uint256 i; i < balances.length; i++) {
-            if (balances[i] > 0) {
+            // Skip assets with no balance.
+            if (balances[i] == 0) continue;
+
+            // If there are leftovers, deposit them back into the Account.
+            if (balances[i] > fees[i]) {
+                balances[i] = balances[i] - fees[i];
                 ERC20(position.tokens[i]).safeApproveWithRetry(msg.sender, balances[i]);
                 count++;
+            } else {
+                fees[i] = balances[i];
+                balances[i] = 0;
             }
+
+            // Transfer Initiator fees to the initiator.
+            if (fees[i] > 0) ERC20(position.tokens[i]).safeTransfer(initiator, fees[i]);
         }
     }
-
-    /* ///////////////////////////////////////////////////////////////
-                      ERC721 HANDLER FUNCTION
-    /////////////////////////////////////////////////////////////// */
-
-    /**
-     * @notice Returns the onERC721Received selector.
-     * @dev Required to receive ERC721 tokens via safeTransferFrom.
-     */
-    function onERC721Received(address, address, uint256, bytes calldata) public pure returns (bytes4) {
-        return this.onERC721Received.selector;
-    }
-
-    /* ///////////////////////////////////////////////////////////////
-                      NATIVE ETH HANDLER
-    /////////////////////////////////////////////////////////////// */
-
-    /**
-     * @notice Receives native ether.
-     */
-    receive() external payable { }
 }

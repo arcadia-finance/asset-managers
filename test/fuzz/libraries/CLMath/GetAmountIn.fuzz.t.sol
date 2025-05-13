@@ -34,100 +34,92 @@ contract GetAmountIn_CLMath_Fuzz_Test is CLMath_Fuzz_Test {
                               TESTS
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Revert_getAmountIn_OverflowPriceX96(
-        uint256 sqrtPriceX96,
+        uint256 sqrtPrice,
         bool zeroToOne,
         uint256 amountOut,
         uint256 fee
     ) public {
-        // Given: sqrtPriceX96 is bigger than type(uint128).max -> overflow.
-        sqrtPriceX96 = bound(sqrtPriceX96, uint256(type(uint128).max) + 1, type(uint256).max);
+        // Given: sqrtPrice is bigger than type(uint128).max -> overflow.
+        sqrtPrice = bound(sqrtPrice, uint256(type(uint128).max) + 1, type(uint256).max);
 
         // When: Calling _getAmountIn().
         // Then: It should revert.
         vm.expectRevert(bytes(""));
-        cLMath.getAmountIn(sqrtPriceX96, zeroToOne, amountOut, fee);
+        cLMath.getAmountIn(sqrtPrice, zeroToOne, amountOut, fee);
     }
 
-    function testFuzz_Revert_getAmountIn_ZeroToOne_OverflowFullMath(
-        uint256 sqrtPriceX96,
-        uint256 amountOut,
-        uint256 fee
-    ) public {
-        // Given: sqrtPriceX96 is smaller than type(uint128).max
-        sqrtPriceX96 = bound(sqrtPriceX96, 0, FixedPoint96.Q96 - 1);
+    function testFuzz_Revert_getAmountIn_ZeroToOne_OverflowFullMath(uint256 sqrtPrice, uint256 amountOut, uint256 fee)
+        public
+    {
+        // Given: sqrtPrice is smaller than type(uint128).max
+        sqrtPrice = bound(sqrtPrice, 0, FixedPoint96.Q96 - 1);
 
         // And: amountOut is too small.
         amountOut = bound(
-            amountOut,
-            FullMath.mulDivRoundingUp(type(uint256).max, sqrtPriceX96 ** 2, CLMath.Q192) + 1,
-            type(uint256).max
+            amountOut, FullMath.mulDivRoundingUp(type(uint256).max, sqrtPrice ** 2, CLMath.Q192) + 1, type(uint256).max
         );
 
         // When: Calling _getAmountIn().
         // Then: It should revert.
         vm.expectRevert(bytes(""));
-        cLMath.getAmountIn(sqrtPriceX96, true, amountOut, fee);
+        cLMath.getAmountIn(sqrtPrice, true, amountOut, fee);
     }
 
-    function testFuzz_Revert_getAmountIn_OneToZero_OverflowFullMath(
-        uint256 sqrtPriceX96,
-        uint256 amountOut,
-        uint256 fee
-    ) public {
-        // Given: sqrtPriceX96 is smaller than type(uint128).max, but bigger than Q96.
-        sqrtPriceX96 = bound(sqrtPriceX96, FixedPoint96.Q96 + 1, type(uint128).max);
+    function testFuzz_Revert_getAmountIn_OneToZero_OverflowFullMath(uint256 sqrtPrice, uint256 amountOut, uint256 fee)
+        public
+    {
+        // Given: sqrtPrice is smaller than type(uint128).max, but bigger than Q96.
+        sqrtPrice = bound(sqrtPrice, FixedPoint96.Q96 + 1, type(uint128).max);
 
         // And: amountOut is too big.
         amountOut = bound(
-            amountOut,
-            FullMath.mulDivRoundingUp(type(uint256).max, CLMath.Q192, sqrtPriceX96 ** 2) + 1,
-            type(uint256).max
+            amountOut, FullMath.mulDivRoundingUp(type(uint256).max, CLMath.Q192, sqrtPrice ** 2) + 1, type(uint256).max
         );
 
         // When: Calling _getAmountIn().
         // Then: It should revert.
         vm.expectRevert(bytes(""));
-        cLMath.getAmountIn(sqrtPriceX96, false, amountOut, fee);
+        cLMath.getAmountIn(sqrtPrice, false, amountOut, fee);
     }
 
-    function testFuzz_Success_getAmountIn_ZeroToOne(uint256 sqrtPriceX96, uint256 amountOut, uint256 fee) public {
-        // Given: sqrtPriceX96 is smaller than type(uint128).max, but bigger than 0.
-        sqrtPriceX96 = bound(sqrtPriceX96, 1, type(uint128).max);
+    function testFuzz_Success_getAmountIn_ZeroToOne(uint256 sqrtPrice, uint256 amountOut, uint256 fee) public {
+        // Given: sqrtPrice is smaller than type(uint128).max, but bigger than 0.
+        sqrtPrice = bound(sqrtPrice, 1, type(uint128).max);
 
         // And: fee is smaller than 100%.
         fee = bound(fee, 0, 1e18 - 1);
 
         // And: amountOut is not too big.
-        if (sqrtPriceX96 < FixedPoint96.Q96 * 1e9) {
-            amountOut = bound(amountOut, 0, FullMath.mulDiv(type(uint256).max / 1e18, sqrtPriceX96 ** 2, CLMath.Q192));
+        if (sqrtPrice < FixedPoint96.Q96 * 1e9) {
+            amountOut = bound(amountOut, 0, FullMath.mulDiv(type(uint256).max / 1e18, sqrtPrice ** 2, CLMath.Q192));
         }
 
         // When: Calling _getAmountIn().
-        uint256 amountIn = cLMath.getAmountIn(sqrtPriceX96, true, amountOut, fee);
+        uint256 amountIn = cLMath.getAmountIn(sqrtPrice, true, amountOut, fee);
 
         // Then: It should return the correct value.
-        uint256 amountInWithoutFees = FullMath.mulDiv(amountOut, CLMath.Q192, sqrtPriceX96 ** 2);
+        uint256 amountInWithoutFees = FullMath.mulDiv(amountOut, CLMath.Q192, sqrtPrice ** 2);
         uint256 amountInExpected = amountInWithoutFees * 1e18 / (1e18 - fee);
         assertEq(amountIn, amountInExpected);
     }
 
-    function testFuzz_Success_getAmountIn_OneToZero(uint256 sqrtPriceX96, uint256 amountOut, uint256 fee) public {
-        // Given: sqrtPriceX96 is smaller than type(uint128).max, but bigger than Q96.
-        sqrtPriceX96 = bound(sqrtPriceX96, 0, type(uint128).max);
+    function testFuzz_Success_getAmountIn_OneToZero(uint256 sqrtPrice, uint256 amountOut, uint256 fee) public {
+        // Given: sqrtPrice is smaller than type(uint128).max, but bigger than Q96.
+        sqrtPrice = bound(sqrtPrice, 0, type(uint128).max);
 
         // And: fee is smaller than 100%.
         fee = bound(fee, 0, 1e18 - 1);
 
         // And: amountOut is not too big.
-        if (sqrtPriceX96 * 1e9 > FixedPoint96.Q96) {
-            amountOut = bound(amountOut, 0, FullMath.mulDiv(type(uint256).max / 1e18, CLMath.Q192, sqrtPriceX96 ** 2));
+        if (sqrtPrice * 1e9 > FixedPoint96.Q96) {
+            amountOut = bound(amountOut, 0, FullMath.mulDiv(type(uint256).max / 1e18, CLMath.Q192, sqrtPrice ** 2));
         }
 
         // When: Calling _getAmountIn().
-        uint256 amountIn = cLMath.getAmountIn(sqrtPriceX96, false, amountOut, fee);
+        uint256 amountIn = cLMath.getAmountIn(sqrtPrice, false, amountOut, fee);
 
         // Then: It should return the correct value.
-        uint256 amountInWithoutFees = FullMath.mulDiv(amountOut, sqrtPriceX96 ** 2, CLMath.Q192);
+        uint256 amountInWithoutFees = FullMath.mulDiv(amountOut, sqrtPrice ** 2, CLMath.Q192);
         uint256 amountInExpected = amountInWithoutFees * 1e18 / (1e18 - fee);
         assertEq(amountIn, amountInExpected);
     }

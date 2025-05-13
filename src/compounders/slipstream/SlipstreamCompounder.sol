@@ -24,7 +24,7 @@ import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/l
  * Compounding can only be triggered if certain conditions are met and the initiator will get a small fee for the service provided.
  * The compounding will collect the fees earned by a position and increase the liquidity of the position by those fees.
  * Depending on current tick of the pool and the position range, fees will be deposited in appropriate ratio.
- * @dev The initiator will provide a trusted sqrtPriceX96 input at the time of compounding to mitigate frontrunning risks.
+ * @dev The initiator will provide a trusted sqrtPrice input at the time of compounding to mitigate frontrunning risks.
  * This input serves as a reference point for calculating the maximum allowed deviation during the compounding process,
  * ensuring that the execution remains within a controlled price range.
  */
@@ -40,7 +40,7 @@ contract SlipstreamCompounder is IActionBase {
     uint256 public immutable MAX_TOLERANCE;
 
     // The maximum fee an initiator can set, with 18 decimals precision.
-    uint256 public immutable MAX_INITIATOR_FEE;
+    uint256 public immutable MAX_FEE;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
@@ -61,11 +61,11 @@ contract SlipstreamCompounder is IActionBase {
         address token0;
         address token1;
         int24 tickSpacing;
-        uint256 sqrtPriceX96;
+        uint256 sqrtPrice;
         uint256 sqrtRatioLower;
         uint256 sqrtRatioUpper;
-        uint256 lowerBoundSqrtPriceX96;
-        uint256 upperBoundSqrtPriceX96;
+        uint256 lowerBoundSqrtPrice;
+        uint256 upperBoundSqrtPrice;
     }
 
     // A struct with variables to track the fee balances, only used in memory.
@@ -113,10 +113,10 @@ contract SlipstreamCompounder is IActionBase {
      * @dev The tolerance for the pool price will be converted to an upper and lower max sqrtPrice deviation,
      * using the square root of the basis (one with 18 decimals precision) +- tolerance (18 decimals precision).
      * The tolerance boundaries are symmetric around the price, but taking the square root will result in a different
-     * allowed deviation of the sqrtPriceX96 for the lower and upper boundaries.
+     * allowed deviation of the sqrtPrice for the lower and upper boundaries.
      */
     constructor(uint256 maxTolerance, uint256 maxInitiatorShare) {
-        MAX_INITIATOR_FEE = maxInitiatorShare;
+        MAX_FEE = maxInitiatorShare;
         MAX_TOLERANCE = maxTolerance;
     }
 
@@ -128,9 +128,9 @@ contract SlipstreamCompounder is IActionBase {
      * @notice Compounds the fees earned by a Slipstream Liquidity Position owned by an Arcadia Account.
      * @param account_ The Arcadia Account owning the position.
      * @param id The id of the Liquidity Position.
-     * @param trustedSqrtPriceX96 The pool sqrtPriceX96 provided at the time of calling compoundFees().
+     * @param trustedSqrtPrice The pool sqrtPrice provided at the time of calling compoundFees().
      */
-    function compoundFees(address account_, uint256 id, uint256 trustedSqrtPriceX96) external {
+    function compoundFees(address account_, uint256 id, uint256 trustedSqrtPrice) external {
         // If the initiator is set, account_ is an actual Arcadia Account.
         if (account != address(0)) revert Reentered();
         if (accountToInitiator[account_] != msg.sender) revert InitiatorNotValid();
@@ -139,9 +139,8 @@ contract SlipstreamCompounder is IActionBase {
         account = account_;
 
         // Encode data for the flash-action.
-        bytes memory actionData = ArcadiaLogic._encodeActionData(
-            msg.sender, address(SlipstreamLogic.POSITION_MANAGER), id, trustedSqrtPriceX96
-        );
+        bytes memory actionData =
+            ArcadiaLogic._encodeActionData(msg.sender, address(SlipstreamLogic.POSITION_MANAGER), id, trustedSqrtPrice);
 
         // Call flashAction() with this contract as actionTarget.
         IAccount(account_).flashAction(address(this), actionData);
@@ -171,12 +170,12 @@ contract SlipstreamCompounder is IActionBase {
 
         // Decode compoundData.
         address initiator;
-        uint256 trustedSqrtPriceX96;
-        (assetData, initiator, trustedSqrtPriceX96) = abi.decode(compoundData, (ActionData, address, uint256));
+        uint256 trustedSqrtPrice;
+        (assetData, initiator, trustedSqrtPrice) = abi.decode(compoundData, (ActionData, address, uint256));
         uint256 id = assetData.assetIds[0];
 
         // Fetch and cache all position related data.
-        PositionState memory position = getPositionState(id, trustedSqrtPriceX96, initiator);
+        PositionState memory position = getPositionState(id, trustedSqrtPrice, initiator);
 
         // Check that pool is initially balanced.
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
@@ -254,24 +253,24 @@ contract SlipstreamCompounder is IActionBase {
         pure
         returns (bool zeroToOne, uint256 amountOut)
     {
-        if (position.sqrtPriceX96 >= position.sqrtRatioUpper) {
+        if (position.sqrtPrice >= position.sqrtRatioUpper) {
             // Position is out of range and fully in token 1.
             // Swap full amount of token0 to token1.
             zeroToOne = true;
-            amountOut = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
-        } else if (position.sqrtPriceX96 <= position.sqrtRatioLower) {
+            amountOut = SlipstreamLogic._getAmountOut(position.sqrtPrice, true, fees.amount0);
+        } else if (position.sqrtPrice <= position.sqrtRatioLower) {
             // Position is out of range and fully in token 0.
             // Swap full amount of token1 to token0.
             zeroToOne = false;
-            amountOut = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, false, fees.amount1);
+            amountOut = SlipstreamLogic._getAmountOut(position.sqrtPrice, false, fees.amount1);
         } else {
             // Position is in range.
             // Rebalance fees so that the ratio of the fee values matches with ratio of the position.
             uint256 targetRatio =
-                SlipstreamLogic._getTargetRatio(position.sqrtPriceX96, position.sqrtRatioLower, position.sqrtRatioUpper);
+                SlipstreamLogic._getTargetRatio(position.sqrtPrice, position.sqrtRatioLower, position.sqrtRatioUpper);
 
             // Calculate the total fee value in token1 equivalent:
-            uint256 fee0ValueInToken1 = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, true, fees.amount0);
+            uint256 fee0ValueInToken1 = SlipstreamLogic._getAmountOut(position.sqrtPrice, true, fees.amount0);
             uint256 totalFeeValueInToken1 = fees.amount1 + fee0ValueInToken1;
             uint256 currentRatio = fees.amount1.mulDivDown(1e18, totalFeeValueInToken1);
 
@@ -283,7 +282,7 @@ contract SlipstreamCompounder is IActionBase {
                 // Swap token1 partially to token0.
                 zeroToOne = false;
                 uint256 amountIn = (currentRatio - targetRatio).mulDivDown(totalFeeValueInToken1, 1e18);
-                amountOut = SlipstreamLogic._getAmountOut(position.sqrtPriceX96, false, amountIn);
+                amountOut = SlipstreamLogic._getAmountOut(position.sqrtPrice, false, amountIn);
             }
         }
     }
@@ -303,8 +302,7 @@ contract SlipstreamCompounder is IActionBase {
         if (amountOut == 0) return false;
 
         // Pool should still be balanced (within tolerance boundaries) after the swap.
-        uint160 sqrtPriceLimitX96 =
-            uint160(zeroToOne ? position.lowerBoundSqrtPriceX96 : position.upperBoundSqrtPriceX96);
+        uint160 sqrtPriceLimitX96 = uint160(zeroToOne ? position.lowerBoundSqrtPrice : position.upperBoundSqrtPrice);
 
         // Do the swap.
         bytes memory data = abi.encode(position.token0, position.token1, position.tickSpacing);
@@ -342,11 +340,11 @@ contract SlipstreamCompounder is IActionBase {
     /**
      * @notice Fetches all required position data from third part contracts.
      * @param id The id of the Liquidity Position.
-     * @param trustedSqrtPriceX96 The pool sqrtPriceX96 provided at the time of calling compoundFees().
+     * @param trustedSqrtPrice The pool sqrtPrice provided at the time of calling compoundFees().
      * @param initiator The address of the initiator.
      * @return position Struct with the position data.
      */
-    function getPositionState(uint256 id, uint256 trustedSqrtPriceX96, address initiator)
+    function getPositionState(uint256 id, uint256 trustedSqrtPrice, address initiator)
         public
         view
         virtual
@@ -362,13 +360,13 @@ contract SlipstreamCompounder is IActionBase {
 
         // Get data of the Liquidity Pool.
         position.pool = SlipstreamLogic._computePoolAddress(position.token0, position.token1, position.tickSpacing);
-        (position.sqrtPriceX96,,,,,) = ICLPool(position.pool).slot0();
+        (position.sqrtPrice,,,,,) = ICLPool(position.pool).slot0();
 
-        // Calculate the upper and lower bounds of sqrtPriceX96 for the Pool to be balanced.
-        position.lowerBoundSqrtPriceX96 =
-            trustedSqrtPriceX96.mulDivDown(initiatorInfo[initiator].lowerSqrtPriceDeviation, 1e18);
-        position.upperBoundSqrtPriceX96 =
-            trustedSqrtPriceX96.mulDivDown(initiatorInfo[initiator].upperSqrtPriceDeviation, 1e18);
+        // Calculate the upper and lower bounds of sqrtPrice for the Pool to be balanced.
+        position.lowerBoundSqrtPrice =
+            trustedSqrtPrice.mulDivDown(initiatorInfo[initiator].lowerSqrtPriceDeviation, 1e18);
+        position.upperBoundSqrtPrice =
+            trustedSqrtPrice.mulDivDown(initiatorInfo[initiator].upperSqrtPriceDeviation, 1e18);
     }
 
     /**
@@ -378,8 +376,8 @@ contract SlipstreamCompounder is IActionBase {
      */
     function isPoolUnbalanced(PositionState memory position) public pure returns (bool isPoolUnbalanced_) {
         // Check if current priceX96 of the Pool is within accepted tolerance of the calculated trusted priceX96.
-        isPoolUnbalanced_ = position.sqrtPriceX96 < position.lowerBoundSqrtPriceX96
-            || position.sqrtPriceX96 > position.upperBoundSqrtPriceX96;
+        isPoolUnbalanced_ =
+            position.sqrtPrice < position.lowerBoundSqrtPrice || position.sqrtPrice > position.upperBoundSqrtPrice;
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -388,12 +386,12 @@ contract SlipstreamCompounder is IActionBase {
 
     /**
      * @notice Sets the information requested for an initiator.
-     * @param tolerance The maximum deviation of the actual pool price compared to the trustedSqrtPriceX96 provided by the initiator.
+     * @param tolerance The maximum deviation of the actual pool price compared to the trustedSqrtPrice provided by the initiator.
      * @param fee The fee paid to the initiator, with 18 decimals precision.
      * @dev The tolerance for the pool price will be converted to an upper and lower max sqrtPrice deviation,
      * using the square root of the basis (one with 18 decimals precision) +- tolerance (18 decimals precision).
      * The tolerance boundaries are symmetric around the price, but taking the square root will result in a different
-     * allowed deviation of the sqrtPriceX96 for the lower and upper boundaries.
+     * allowed deviation of the sqrtPrice for the lower and upper boundaries.
      */
     function setInitiatorInfo(uint256 tolerance, uint256 fee) external {
         if (account != address(0)) revert Reentered();
@@ -412,7 +410,7 @@ contract SlipstreamCompounder is IActionBase {
             }
         } else {
             // If not, the parameters can not exceed certain thresholds.
-            if (fee > MAX_INITIATOR_FEE || tolerance > MAX_TOLERANCE) {
+            if (fee > MAX_FEE || tolerance > MAX_TOLERANCE) {
                 revert InvalidValue();
             }
         }

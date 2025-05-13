@@ -45,7 +45,7 @@ abstract contract SlipstreamCompounder_Fuzz_Test is
 
     // 0,5% to 11% fee on swaps.
     uint256 MIN_INITIATOR_SHARE = 0.005 * 1e18;
-    uint256 MAX_INITIATOR_FEE = 0.11 * 1e18;
+    uint256 MAX_FEE = 0.11 * 1e18;
     // 10 % initiator fee
     uint256 INITIATOR_SHARE = 0.1 * 1e18;
 
@@ -97,7 +97,7 @@ abstract contract SlipstreamCompounder_Fuzz_Test is
         CLQuoterFixture.deployQuoter(address(cLFactory), address(weth9));
 
         deploySlipstreamAM();
-        deployCompounder(MAX_TOLERANCE, MAX_INITIATOR_FEE);
+        deployCompounder(MAX_TOLERANCE, MAX_FEE);
 
         // Add two stable tokens with 6 and 18 decimals.
         token0 = new ERC20Mock("Token 6d", "TOK6", 6);
@@ -108,8 +108,8 @@ abstract contract SlipstreamCompounder_Fuzz_Test is
         addAssetToArcadia(address(token1), int256(10 ** MOCK_ORACLE_DECIMALS));
 
         // Create UniswapV3 pool.
-        uint256 sqrtPriceX96 = compounder.getSqrtPriceX96(10 ** token1.decimals(), 10 ** token0.decimals());
-        usdStablePool = createPoolCL(address(token0), address(token1), TICK_SPACING, uint160(sqrtPriceX96), 300);
+        uint256 sqrtPrice = compounder.getSqrtPrice(10 ** token1.decimals(), 10 ** token0.decimals());
+        usdStablePool = createPoolCL(address(token0), address(token1), TICK_SPACING, uint160(sqrtPrice), 300);
 
         // And : Compounder is allowed as Asset Manager
         vm.prank(users.accountOwner);

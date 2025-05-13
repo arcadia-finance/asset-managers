@@ -26,43 +26,43 @@ contract GetTargetRatio_CLMath_Fuzz_Test is CLMath_Fuzz_Test {
                               TESTS
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Revert_getTargetRatio_OverflowPriceX96(
-        uint256 sqrtPriceX96,
+        uint256 sqrtPrice,
         uint256 sqrtRatioLower,
         uint256 sqrtRatioUpper
     ) public {
-        // Given: sqrtPriceX96 is bigger than type(uint128).max -> overflow.
-        sqrtPriceX96 = bound(sqrtPriceX96, uint256(type(uint128).max) + 1, TickMath.MAX_SQRT_PRICE - 1);
+        // Given: sqrtPrice is bigger than type(uint128).max -> overflow.
+        sqrtPrice = bound(sqrtPrice, uint256(type(uint128).max) + 1, TickMath.MAX_SQRT_PRICE - 1);
 
-        // And: sqrtRatioLower is smaller than sqrtPriceX96.
-        sqrtRatioLower = bound(sqrtRatioLower, TickMath.MIN_SQRT_PRICE, sqrtPriceX96 - 1);
+        // And: sqrtRatioLower is smaller than sqrtPrice.
+        sqrtRatioLower = bound(sqrtRatioLower, TickMath.MIN_SQRT_PRICE, sqrtPrice - 1);
 
-        // And: sqrtRatioUpper is bigger than sqrtPriceX96.
-        sqrtRatioUpper = bound(sqrtRatioUpper, sqrtPriceX96 + 1, TickMath.MAX_SQRT_PRICE);
+        // And: sqrtRatioUpper is bigger than sqrtPrice.
+        sqrtRatioUpper = bound(sqrtRatioUpper, sqrtPrice + 1, TickMath.MAX_SQRT_PRICE);
 
         // When: Calling _getTargetRatio().
         // Then: It should revert.
         vm.expectRevert(bytes(""));
-        cLMath.getTargetRatio(sqrtPriceX96, sqrtRatioLower, sqrtRatioUpper);
+        cLMath.getTargetRatio(sqrtPrice, sqrtRatioLower, sqrtRatioUpper);
     }
 
-    function testFuzz_Success_getTargetRatio(uint256 sqrtPriceX96, uint256 sqrtRatioLower, uint256 sqrtRatioUpper)
+    function testFuzz_Success_getTargetRatio(uint256 sqrtPrice, uint256 sqrtRatioLower, uint256 sqrtRatioUpper)
         public
     {
-        // Given: sqrtPriceX96 is smaller than type(uint128).max.
-        sqrtPriceX96 = bound(sqrtPriceX96, TickMath.MIN_SQRT_PRICE + 1, uint256(type(uint128).max));
+        // Given: sqrtPrice is smaller than type(uint128).max.
+        sqrtPrice = bound(sqrtPrice, TickMath.MIN_SQRT_PRICE + 1, uint256(type(uint128).max));
 
-        // And: sqrtRatioLower is smaller than sqrtPriceX96.
-        sqrtRatioLower = bound(sqrtRatioLower, TickMath.MIN_SQRT_PRICE, sqrtPriceX96 - 1);
+        // And: sqrtRatioLower is smaller than sqrtPrice.
+        sqrtRatioLower = bound(sqrtRatioLower, TickMath.MIN_SQRT_PRICE, sqrtPrice - 1);
 
-        // And: sqrtRatioUpper is bigger than sqrtPriceX96.
-        sqrtRatioUpper = bound(sqrtRatioUpper, sqrtPriceX96 + 1, TickMath.MAX_SQRT_PRICE);
+        // And: sqrtRatioUpper is bigger than sqrtPrice.
+        sqrtRatioUpper = bound(sqrtRatioUpper, sqrtPrice + 1, TickMath.MAX_SQRT_PRICE);
 
         // When: Calling _getTargetRatio().
-        uint256 targetRatio = cLMath.getTargetRatio(sqrtPriceX96, sqrtRatioLower, sqrtRatioUpper);
+        uint256 targetRatio = cLMath.getTargetRatio(sqrtPrice, sqrtRatioLower, sqrtRatioUpper);
 
         // Then: It should return the correct value.
-        uint256 numerator = sqrtPriceX96 - sqrtRatioLower;
-        uint256 denominator = 2 * sqrtPriceX96 - sqrtRatioLower - sqrtPriceX96 ** 2 / sqrtRatioUpper;
+        uint256 numerator = sqrtPrice - sqrtRatioLower;
+        uint256 denominator = 2 * sqrtPrice - sqrtRatioLower - sqrtPrice ** 2 / sqrtRatioUpper;
         uint256 targetRatioExpected = numerator * 1e18 / denominator;
         assertEq(targetRatio, targetRatioExpected);
     }

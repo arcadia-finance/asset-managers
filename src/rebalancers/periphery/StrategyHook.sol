@@ -4,6 +4,7 @@
  */
 pragma solidity ^0.8.26;
 
+import { PositionState } from "../../state/PositionState.sol";
 import { Rebalancer } from "../Rebalancer.sol";
 
 /**
@@ -42,7 +43,7 @@ abstract contract StrategyHook {
     function beforeRebalance(
         address account,
         address positionManager,
-        Rebalancer.PositionState memory position,
+        PositionState memory position,
         bytes memory strategyData
     ) external view virtual returns (int24 tickLower, int24 tickUpper);
 
@@ -62,7 +63,7 @@ abstract contract StrategyHook {
         address account,
         address positionManager,
         uint256 oldId,
-        Rebalancer.PositionState memory newPosition,
+        PositionState memory newPosition,
         bytes memory strategyData
     ) external virtual;
 }

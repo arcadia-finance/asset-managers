@@ -43,7 +43,7 @@ library SlipstreamCompounderHelperLogic {
      * @param account The address of the Arcadia Account.
      * @return isCompoundable_ Bool indicating if the fees can be compounded.
      * @return compounder_ The address of the Compounder contract.
-     * @return sqrtPriceX96 The current sqrtPriceX96 of the pool.
+     * @return sqrtPrice The current sqrtPrice of the pool.
      * @dev While this function does not persist state changes, it cannot be declared as view function.
      * Since quoteExactOutputSingle() of Uniswap's Quoter02.sol uses a try - except pattern where it first
      * does the swap (with state changes), next it reverts (state changes are not persisted) and information about
@@ -51,14 +51,14 @@ library SlipstreamCompounderHelperLogic {
      */
     function _isCompoundable(uint256 id, address account)
         internal
-        returns (bool isCompoundable_, address compounder_, uint160 sqrtPriceX96)
+        returns (bool isCompoundable_, address compounder_, uint160 sqrtPrice)
     {
-        // Get current sqrtPriceX96 of the pool.
+        // Get current sqrtPrice of the pool.
         {
             (,, address token0, address token1, int24 tickSpacing,,,,,,,) =
                 SlipstreamLogic.POSITION_MANAGER.positions(id);
             address pool = SlipstreamLogic._computePoolAddress(token0, token1, tickSpacing);
-            (sqrtPriceX96,,,,,) = ICLPool(pool).slot0();
+            (sqrtPrice,,,,,) = ICLPool(pool).slot0();
         }
 
         // Get the initiator.
@@ -66,9 +66,9 @@ library SlipstreamCompounderHelperLogic {
         if (initiator == address(0)) return (false, address(0), 0);
 
         // Fetch and cache all position related data.
-        PositionState memory position = COMPOUNDER.getPositionState(id, uint256(sqrtPriceX96), initiator);
+        PositionState memory position = COMPOUNDER.getPositionState(id, uint256(sqrtPrice), initiator);
 
-        // It should never be unbalanced at this point as we fetch currentSqrtPriceX96 above.
+        // It should never be unbalanced at this point as we fetch currentSqrtPrice above.
         if (COMPOUNDER.isPoolUnbalanced(position)) return (false, address(0), 0);
 
         // Get fee amounts
@@ -104,7 +104,7 @@ library SlipstreamCompounderHelperLogic {
         // The balances of the fees after swapping must be bigger than the actual input amount when increasing liquidity.
         // Due to slippage, or for pools with high swapping fees this might not always hold.
         (uint256 amount0, uint256 amount1) = _getLiquidityAmounts(position, desiredAmounts);
-        return (balances.amount0 > amount0 && balances.amount1 > amount1, address(COMPOUNDER), sqrtPriceX96);
+        return (balances.amount0 > amount0 && balances.amount1 > amount1, address(COMPOUNDER), sqrtPrice);
     }
 
     /**
@@ -127,11 +127,11 @@ library SlipstreamCompounderHelperLogic {
         if (amountOut == 0) return (false, 0);
 
         // Max slippage: Pool should still be balanced after the swap.
-        uint256 sqrtPriceLimitX96 = zeroToOne ? position.lowerBoundSqrtPriceX96 : position.upperBoundSqrtPriceX96;
+        uint256 sqrtPriceLimitX96 = zeroToOne ? position.lowerBoundSqrtPrice : position.upperBoundSqrtPrice;
 
         // Quote the swap.
-        uint160 sqrtPriceX96After;
-        (amountIn, sqrtPriceX96After,,) = QUOTER.quoteExactOutputSingle(
+        uint160 sqrtPriceAfter;
+        (amountIn, sqrtPriceAfter,,) = QUOTER.quoteExactOutputSingle(
             QuoteExactOutputSingleParams({
                 tokenIn: zeroToOne ? position.token0 : position.token1,
                 tokenOut: zeroToOne ? position.token1 : position.token0,
@@ -142,10 +142,10 @@ library SlipstreamCompounderHelperLogic {
         );
 
         // Check if max slippage was exceeded (sqrtPriceLimitX96 is reached).
-        isPoolUnbalanced = sqrtPriceX96After == sqrtPriceLimitX96 ? true : false;
+        isPoolUnbalanced = sqrtPriceAfter == sqrtPriceLimitX96 ? true : false;
 
-        // Update the sqrtPriceX96 of the pool.
-        position.sqrtPriceX96 = sqrtPriceX96After;
+        // Update the sqrtPrice of the pool.
+        position.sqrtPrice = sqrtPriceAfter;
     }
 
     /**
@@ -243,17 +243,14 @@ library SlipstreamCompounderHelperLogic {
         returns (uint256 amount0, uint256 amount1)
     {
         uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
-            uint160(position.sqrtPriceX96),
+            uint160(position.sqrtPrice),
             uint160(position.sqrtRatioLower),
             uint160(position.sqrtRatioUpper),
             amountsDesired.amount0,
             amountsDesired.amount1
         );
         (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
-            uint160(position.sqrtPriceX96),
-            uint160(position.sqrtRatioLower),
-            uint160(position.sqrtRatioUpper),
-            liquidity
+            uint160(position.sqrtPrice), uint160(position.sqrtRatioLower), uint160(position.sqrtRatioUpper), liquidity
         );
     }
 }

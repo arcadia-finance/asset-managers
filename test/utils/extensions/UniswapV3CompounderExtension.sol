@@ -10,8 +10,8 @@ import { UniswapV3Logic } from "../../../src/compounders/uniswap-v3/libraries/Un
 contract UniswapV3CompounderExtension is UniswapV3Compounder {
     constructor(uint256 maxTolerance, uint256 maxInitiatorShare) UniswapV3Compounder(maxTolerance, maxInitiatorShare) { }
 
-    function getSqrtPriceX96(uint256 priceToken0, uint256 priceToken1) public pure returns (uint256) {
-        return UniswapV3Logic._getSqrtPriceX96(priceToken0, priceToken1);
+    function getSqrtPrice(uint256 priceToken0, uint256 priceToken1) public pure returns (uint256) {
+        return UniswapV3Logic._getSqrtPrice(priceToken0, priceToken1);
     }
 
     function swap(PositionState memory position, bool zeroToOne, uint256 amountOut) public returns (bool) {

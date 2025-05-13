@@ -38,8 +38,8 @@ contract IsCompoundable_UniswapV3CompounderHelper_Fuzz_Test is UniswapV3Compound
 
         // Create pool with 1% trade fee.
         uint24 fee = 1e4;
-        uint160 sqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPoolUniV3(address(token0), address(token1), fee, sqrtPriceX96, 300);
+        uint160 sqrtPrice = UniswapV3Logic._getSqrtPrice(1e18, 1e18);
+        usdStablePool = createPoolUniV3(address(token0), address(token1), fee, sqrtPrice, 300);
 
         // Redeploy compounder with small initiator share
         uint256 initiatorShare = 0.005 * 1e18;
@@ -79,8 +79,8 @@ contract IsCompoundable_UniswapV3CompounderHelper_Fuzz_Test is UniswapV3Compound
 
         // Create pool with 1% trade fee.
         uint24 fee = 1e4;
-        uint160 sqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPoolUniV3(address(token0), address(token1), fee, sqrtPriceX96, 300);
+        uint160 sqrtPrice = UniswapV3Logic._getSqrtPrice(1e18, 1e18);
+        usdStablePool = createPoolUniV3(address(token0), address(token1), fee, sqrtPrice, 300);
 
         // Redeploy compounder with small initiator share
         uint256 initiatorShare = 0.005 * 1e18;
@@ -118,8 +118,8 @@ contract IsCompoundable_UniswapV3CompounderHelper_Fuzz_Test is UniswapV3Compound
         addAssetToArcadia(address(token0), int256(10 ** token0.decimals()));
         addAssetToArcadia(address(token1), int256(10 ** token1.decimals()));
 
-        uint160 sqrtPriceX96 = UniswapV3Logic._getSqrtPriceX96(1e18, 1e18);
-        usdStablePool = createPoolUniV3(address(token0), address(token1), POOL_FEE, sqrtPriceX96, 300);
+        uint160 sqrtPrice = UniswapV3Logic._getSqrtPrice(1e18, 1e18);
+        usdStablePool = createPoolUniV3(address(token0), address(token1), POOL_FEE, sqrtPrice, 300);
 
         // Liquidity has been added for both tokens
         (uint256 tokenId,,) = addLiquidityUniV3(
@@ -154,14 +154,14 @@ contract IsCompoundable_UniswapV3CompounderHelper_Fuzz_Test is UniswapV3Compound
         generateFees(2, 2);
 
         // When : Calling isCompoundable()
-        (bool isCompoundable_, address compounder_, uint160 sqrtPriceX96_) =
+        (bool isCompoundable_, address compounder_, uint160 sqrtPrice_) =
             compounderHelper.isCompoundable(tokenId, address(nonfungiblePositionManager), address(account));
         assertEq(isCompoundable_, true);
         assertEq(compounder_, address(uniswapV3Compounder));
-        (sqrtPriceX96,,,,,,) = usdStablePool.slot0();
-        assertEq(sqrtPriceX96, sqrtPriceX96_);
+        (sqrtPrice,,,,,,) = usdStablePool.slot0();
+        assertEq(sqrtPrice, sqrtPrice_);
 
         vm.prank(initiator);
-        uniswapV3Compounder.compoundFees(address(account), tokenId, uint256(sqrtPriceX96_));
+        uniswapV3Compounder.compoundFees(address(account), tokenId, uint256(sqrtPrice_));
     }
 }

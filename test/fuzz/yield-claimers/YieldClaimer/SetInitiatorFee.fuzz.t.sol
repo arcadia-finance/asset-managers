@@ -44,7 +44,7 @@ contract SetInitiatorFee_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
     }
 
     function testFuzz_Revert_setInitiatorFee_InvalidValue_MaxInitiatorFee(uint256 initiatorFee) public {
-        // Given: initiatorFee is higher than maxInitiatorFee.
+        // Given: initiatorFee is higher than maxFee.
         initiatorFee = bound(initiatorFee, MAX_INITIATOR_FEE_YIELD_CLAIMER + 1, type(uint256).max);
 
         // When: Calling setInitatorFee().
@@ -54,7 +54,7 @@ contract SetInitiatorFee_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
     }
 
     function testFuzz_Revert_setInitiatorFee_InvalidValue_DecreaseOnly(uint256 initialFee, uint256 newFee) public {
-        // Given: initiatorFee is higher than maxInitiatorFee.
+        // Given: initiatorFee is higher than maxFee.
         initialFee = bound(initialFee, 0, MAX_INITIATOR_FEE_YIELD_CLAIMER - 1);
         newFee = bound(newFee, initialFee + 1, MAX_INITIATOR_FEE_YIELD_CLAIMER);
 
@@ -68,7 +68,7 @@ contract SetInitiatorFee_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
     }
 
     function testFuzz_Success_setInitiatorFee_First(uint256 initiatorFee, address initiator_) public {
-        // Given: initiatorFee is below or equal to maxInitiatorFee.
+        // Given: initiatorFee is below or equal to maxFee.
         initiatorFee = bound(initiatorFee, 0, MAX_INITIATOR_FEE_YIELD_CLAIMER);
 
         // And: Initiator is not equal to initiator that is already set.
@@ -90,7 +90,7 @@ contract SetInitiatorFee_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
     function testFuzz_Success_setInitiatorFee_UpdateFee(uint256 initialFee, uint256 newFee, address initiator_)
         public
     {
-        // Given: initialFee is below or equal to maxInitiatorFee.
+        // Given: initialFee is below or equal to maxFee.
         initialFee = bound(initialFee, 1, MAX_INITIATOR_FEE_YIELD_CLAIMER - 1);
         // And: updated fee is lower thab initialFee.
         newFee = bound(newFee, 0, initialFee);

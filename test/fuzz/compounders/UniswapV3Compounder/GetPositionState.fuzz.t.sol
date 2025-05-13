@@ -33,11 +33,11 @@ contract GetPositionState_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_F
 
         // And : State is persisted
         uint256 tokenId = setState(testVars, usdStablePool);
-        (uint160 sqrtPriceX96,,,,,,) = usdStablePool.slot0();
+        (uint160 sqrtPrice,,,,,,) = usdStablePool.slot0();
 
         // When : Calling getPositionState()
         UniswapV3Compounder.PositionState memory position =
-            compounder.getPositionState(tokenId, uint256(sqrtPriceX96), initiator);
+            compounder.getPositionState(tokenId, uint256(sqrtPrice), initiator);
 
         // Then : It should return the correct values
         assertEq(position.token0, address(token0));
@@ -48,13 +48,13 @@ contract GetPositionState_UniswapV3Compounder_Fuzz_Test is UniswapV3Compounder_F
 
         assertEq(position.pool, address(usdStablePool));
 
-        assertEq(position.sqrtPriceX96, sqrtPriceX96);
+        assertEq(position.sqrtPrice, sqrtPrice);
 
         (uint64 upperSqrtPriceDeviation, uint64 lowerSqrtPriceDeviation,) = compounder.initiatorInfo(initiator);
-        uint256 lowerBoundSqrtPriceX96 = uint256(sqrtPriceX96).mulDivDown(uint256(lowerSqrtPriceDeviation), 1e18);
-        uint256 upperBoundSqrtPriceX96 = uint256(sqrtPriceX96).mulDivDown(uint256(upperSqrtPriceDeviation), 1e18);
+        uint256 lowerBoundSqrtPrice = uint256(sqrtPrice).mulDivDown(uint256(lowerSqrtPriceDeviation), 1e18);
+        uint256 upperBoundSqrtPrice = uint256(sqrtPrice).mulDivDown(uint256(upperSqrtPriceDeviation), 1e18);
 
-        assertEq(position.lowerBoundSqrtPriceX96, lowerBoundSqrtPriceX96);
-        assertEq(position.upperBoundSqrtPriceX96, upperBoundSqrtPriceX96);
+        assertEq(position.lowerBoundSqrtPrice, lowerBoundSqrtPrice);
+        assertEq(position.upperBoundSqrtPrice, upperBoundSqrtPrice);
     }
 }

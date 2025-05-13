@@ -33,7 +33,7 @@ contract CompoundFees_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_
                               TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function testFuzz_Revert_compoundFees_Reentered(address random, uint256 tokenId, uint160 sqrtPriceX96) public {
+    function testFuzz_Revert_compoundFees_Reentered(address random, uint256 tokenId, uint160 sqrtPrice) public {
         // Given: A rebalance is ongoing.
         vm.assume(random != address(0));
         compounder.setAccount(random);
@@ -41,10 +41,10 @@ contract CompoundFees_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_
         // When: Calling compoundFees().
         // Then: It should revert.
         vm.expectRevert(UniswapV4Compounder.Reentered.selector);
-        compounder.compoundFees(address(account), tokenId, sqrtPriceX96);
+        compounder.compoundFees(address(account), tokenId, sqrtPrice);
     }
 
-    function testFuzz_Revert_compoundFees_InitiatorNotValid(address notInitiator, uint256 tokenId, uint160 sqrtPriceX96)
+    function testFuzz_Revert_compoundFees_InitiatorNotValid(address notInitiator, uint256 tokenId, uint160 sqrtPrice)
         public
     {
         // Given: The caller is not the initiator.
@@ -54,7 +54,7 @@ contract CompoundFees_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_
         // Then: It should revert.
         vm.prank(notInitiator);
         vm.expectRevert(UniswapV4Compounder.InitiatorNotValid.selector);
-        compounder.compoundFees(address(account), tokenId, sqrtPriceX96);
+        compounder.compoundFees(address(account), tokenId, sqrtPrice);
     }
 
     function testFuzz_Success_compoundFees(TestVariables memory testVars, FeeGrowth memory feeData) public {
@@ -90,7 +90,7 @@ contract CompoundFees_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_
             vm.stopPrank();
         }
 
-        (uint160 sqrtPriceX96,,,) = stateView.getSlot0(stablePoolKey.toId());
+        (uint160 sqrtPrice,,,) = stateView.getSlot0(stablePoolKey.toId());
 
         bytes32 positionId = keccak256(
             abi.encodePacked(address(positionManagerV4), testVars.tickLower, testVars.tickUpper, bytes32(tokenId))
@@ -106,7 +106,7 @@ contract CompoundFees_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_
 
         // When : Calling compoundFees()
         vm.prank(initiator);
-        compounder.compoundFees(address(account), tokenId, sqrtPriceX96);
+        compounder.compoundFees(address(account), tokenId, sqrtPrice);
 
         // Then : Liquidity of position should have increased
         {
@@ -160,16 +160,16 @@ contract CompoundFees_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_
 
         // And : Move tick right.
         {
-            (uint160 trustedSqrtPriceX96, int24 currentTick,,) = stateView.getSlot0(stablePoolKey.toId());
+            (uint160 trustedSqrtPrice, int24 currentTick,,) = stateView.getSlot0(stablePoolKey.toId());
             (UniswapV4Compounder.PositionState memory position,) =
-                compounder.getPositionState(tokenId, trustedSqrtPriceX96, initiator);
-            int24 upperBoundTick = TickMath.getTickAtSqrtPrice(uint160(position.upperBoundSqrtPriceX96));
+                compounder.getPositionState(tokenId, trustedSqrtPrice, initiator);
+            int24 upperBoundTick = TickMath.getTickAtSqrtPrice(uint160(position.upperBoundSqrtPrice));
             int256 tickDelta = (int256(upperBoundTick - currentTick) * 9500) / 10_000;
             int24 newTick = currentTick + int24(tickDelta);
             poolManager.setCurrentPrice(stablePoolKey.toId(), newTick, TickMath.getSqrtPriceAtTick(newTick));
         }
 
-        (uint160 sqrtPriceX96,,,) = stateView.getSlot0(stablePoolKey.toId());
+        (uint160 sqrtPrice,,,) = stateView.getSlot0(stablePoolKey.toId());
 
         bytes32 positionId = keccak256(
             abi.encodePacked(address(positionManagerV4), testVars.tickLower, testVars.tickUpper, bytes32(tokenId))
@@ -185,7 +185,7 @@ contract CompoundFees_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_
 
         // When : Calling compoundFees()
         vm.prank(initiator);
-        compounder.compoundFees(address(account), tokenId, sqrtPriceX96);
+        compounder.compoundFees(address(account), tokenId, sqrtPrice);
 
         // Then : Liquidity of position should have increased
         uint256 newLiquidity = stateView.getPositionLiquidity(stablePoolKey.toId(), positionId);
@@ -252,16 +252,16 @@ contract CompoundFees_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_
 
         // And : Move tick left.
         {
-            (uint160 trustedSqrtPriceX96, int24 currentTick,,) = stateView.getSlot0(stablePoolKey.toId());
+            (uint160 trustedSqrtPrice, int24 currentTick,,) = stateView.getSlot0(stablePoolKey.toId());
             (UniswapV4Compounder.PositionState memory position,) =
-                compounder.getPositionState(tokenId, trustedSqrtPriceX96, initiator);
-            int24 upperBoundTick = TickMath.getTickAtSqrtPrice(uint160(position.upperBoundSqrtPriceX96));
+                compounder.getPositionState(tokenId, trustedSqrtPrice, initiator);
+            int24 upperBoundTick = TickMath.getTickAtSqrtPrice(uint160(position.upperBoundSqrtPrice));
             int256 tickDelta = (int256(upperBoundTick - currentTick) * 9500) / 10_000;
             int24 newTick = currentTick - int24(tickDelta);
             poolManager.setCurrentPrice(stablePoolKey.toId(), newTick, TickMath.getSqrtPriceAtTick(newTick));
         }
 
-        (uint160 sqrtPriceX96,,,) = stateView.getSlot0(stablePoolKey.toId());
+        (uint160 sqrtPrice,,,) = stateView.getSlot0(stablePoolKey.toId());
         bytes32 positionId = keccak256(
             abi.encodePacked(address(positionManagerV4), testVars.tickLower, testVars.tickUpper, bytes32(tokenId))
         );
@@ -276,7 +276,7 @@ contract CompoundFees_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_
 
         // When : Calling compoundFees()
         vm.prank(initiator);
-        compounder.compoundFees(address(account), tokenId, sqrtPriceX96);
+        compounder.compoundFees(address(account), tokenId, sqrtPrice);
 
         // Then : Liquidity of position should have increased
         uint256 newLiquidity = stateView.getPositionLiquidity(stablePoolKey.toId(), positionId);
@@ -341,7 +341,7 @@ contract CompoundFees_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_
             vm.stopPrank();
         }
 
-        (uint160 sqrtPriceX96,,,) = stateView.getSlot0(nativeEthPoolKey.toId());
+        (uint160 sqrtPrice,,,) = stateView.getSlot0(nativeEthPoolKey.toId());
         bytes32 positionId = keccak256(
             abi.encodePacked(address(positionManagerV4), testVars.tickLower, testVars.tickUpper, bytes32(tokenId))
         );
@@ -358,7 +358,7 @@ contract CompoundFees_UniswapV4Compounder_Fuzz_Test is UniswapV4Compounder_Fuzz_
 
         // When : Calling compoundFees()
         vm.prank(initiator);
-        compounder.compoundFees(address(account), tokenId, sqrtPriceX96);
+        compounder.compoundFees(address(account), tokenId, sqrtPrice);
 
         // Then : Liquidity of position should have increased
         uint256 newLiquidity = stateView.getPositionLiquidity(nativeEthPoolKey.toId(), positionId);

@@ -9,11 +9,11 @@ struct PositionState {
     address token0;
     address token1;
     int24 tickSpacing;
-    uint256 sqrtPriceX96;
+    uint256 sqrtPrice;
     uint256 sqrtRatioLower;
     uint256 sqrtRatioUpper;
-    uint256 lowerBoundSqrtPriceX96;
-    uint256 upperBoundSqrtPriceX96;
+    uint256 lowerBoundSqrtPrice;
+    uint256 upperBoundSqrtPrice;
 }
 
 struct Fees {
@@ -27,7 +27,7 @@ interface ISlipstreamCompounder {
         view
         returns (bool zeroToOne, uint256 amountOut);
 
-    function getPositionState(uint256 id, uint256 trustedSqrtPriceX96, address initiator)
+    function getPositionState(uint256 id, uint256 trustedSqrtPrice, address initiator)
         external
         view
         returns (PositionState memory position);

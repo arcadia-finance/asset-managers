@@ -55,6 +55,12 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         // Given: Account is not an Arcadia Account.
         vm.assume(!factory.isAccount(account_));
 
+        // And: account_ has no owner() function.
+        vm.assume(account_.code.length == 0);
+
+        // And: Account is not a precompile.
+        vm.assume(account_ > address(20));
+
         // When : calling rebalance
         // Then : it should revert
         vm.prank(caller);
@@ -89,6 +95,9 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         vm.assume(newOwner != account.owner());
         vm.assume(newOwner != address(0));
 
+        // And : initiator is not address(0).
+        vm.assume(initiator != address(0));
+
         // And: Rebalancer is allowed as Asset Manager.
         vm.prank(users.accountOwner);
         account.setAssetManager(address(rebalancer), true);
@@ -99,9 +108,9 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
 
         // And: The initiator is set.
         tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
-        fee = bound(fee, 0.001 * 1e18, MAX_INITIATOR_FEE);
+        fee = bound(fee, 0.001 * 1e18, MAX_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(tolerance, fee, MIN_LIQUIDITY_RATIO);
+        rebalancer.setInitiatorInfo(0, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
