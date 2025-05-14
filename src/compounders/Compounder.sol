@@ -67,6 +67,20 @@ abstract contract Compounder is IActionBase, AbstractBase {
     // A mapping that sets the approved initiator per owner per ccount.
     mapping(address owner => mapping(address account => address initiator)) public accountToInitiator;
 
+    // A struct with the account specific parameters.
+    struct AccountInfo {
+        // The fee charged on the claimed fees of the liquidity position, with 18 decimals precision.
+        uint64 claimFee;
+        // The fee charged on the ideal (without slippage) amountIn by the initiator, with 18 decimals precision.
+        uint64 swapFee;
+        // The maximum relative deviation the pool can have from the trustedSqrtPrice, with 18 decimals precision.
+        uint64 upperSqrtPriceDeviation;
+        // The miminumù relative deviation the pool can have from the trustedSqrtPrice, with 18 decimals precision.
+        uint64 lowerSqrtPriceDeviation;
+        // The ratio that limits the amount of slippage of the swap, with 18 decimals precision.
+        uint64 minLiquidityRatio;
+    }
+
     // A struct with the initiator parameters.
     struct InitiatorParams {
         // The contract address of the position manager.

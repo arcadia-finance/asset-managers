@@ -98,20 +98,21 @@ abstract contract YieldClaimer is IActionBase, AbstractBase {
      * @notice Sets the required information for an Account.
      * @param account_ The contract address of the Arcadia Account to set the information for.
      * @param initiator The address of the initiator.
-     * @param accountInfo_ A struct with the account specific parameters.
+     * @param feeRecipient The address of the recipient of the claimed fees.
+     * @param maxClaimFee The maximum fee charged on the claimed fees of the liquidity position, with 18 decimals precision.
      * @dev An initiator will be permissioned to claim fees for any
      * Liquidity Position held in the specified Arcadia Account.
      */
-    function setAccountInfo(address account_, address initiator, AccountInfo calldata accountInfo_) external {
+    function setAccountInfo(address account_, address initiator, address feeRecipient, uint256 maxClaimFee) external {
         if (account != address(0)) revert Reentered();
         if (!ARCADIA_FACTORY.isAccount(account_)) revert NotAnAccount();
         address owner = IAccount(account_).owner();
         if (msg.sender != owner) revert OnlyAccountOwner();
-        if (accountInfo_.feeRecipient == address(0)) revert InvalidRecipient();
-        if (accountInfo_.maxClaimFee > 1e18) revert InvalidValue();
+        if (feeRecipient == address(0)) revert InvalidRecipient();
+        if (maxClaimFee > 1e18) revert InvalidValue();
 
         accountToInitiator[owner][account_] = initiator;
-        accountInfo[account_] = accountInfo_;
+        accountInfo[account_] = AccountInfo({ feeRecipient: feeRecipient, maxClaimFee: uint64(maxClaimFee) });
 
         emit AccountInfoSet(account_, initiator);
     }

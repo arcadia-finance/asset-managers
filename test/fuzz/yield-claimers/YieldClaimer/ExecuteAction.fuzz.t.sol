@@ -41,22 +41,22 @@ contract ExecuteAction_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
 
     function testFuzz_Revert_executeAction_InvalidFee(
         address initiator,
-        YieldClaimer.AccountInfo memory accountInfo,
-        YieldClaimer.InitiatorParams memory initiatorParams
+        YieldClaimer.InitiatorParams memory initiatorParams,
+        address recipient,
+        uint256 maxClaimFee
     ) public {
         // Given: Recipient is not address(0).
-        vm.assume(accountInfo.feeRecipient != address(0));
+        vm.assume(recipient != address(0));
 
         // And: maxClaimFee is smaller or equal to 1e18.
-        accountInfo.maxClaimFee = uint64(bound(accountInfo.maxClaimFee, 0, 1e18));
+        maxClaimFee = uint64(bound(maxClaimFee, 0, 1e18));
 
         // When: Owner calls setAccountInfo on the yieldClaimer
         vm.prank(account.owner());
-        yieldClaimer.setAccountInfo(address(account), initiator, accountInfo);
+        yieldClaimer.setAccountInfo(address(account), initiator, recipient, maxClaimFee);
 
         // And: claimfee is bigger than maxClaimFee.
-        initiatorParams.claimFee =
-            uint64(bound(initiatorParams.claimFee, accountInfo.maxClaimFee + 1, type(uint64).max));
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, maxClaimFee + 1, type(uint64).max));
 
         // And: account is set.
         yieldClaimer.setAccount(address(account));
