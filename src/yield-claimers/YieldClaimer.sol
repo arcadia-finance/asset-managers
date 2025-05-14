@@ -36,7 +36,7 @@ abstract contract YieldClaimer is IActionBase, AbstractBase {
     address internal account;
 
     // A mapping from account to account specific information.
-    mapping(address initiator => AccountInfo) public accountInfo;
+    mapping(address account => AccountInfo) public accountInfo;
 
     // A mapping that sets the approved initiator per owner per account.
     mapping(address owner => mapping(address account => address initiator)) public accountToInitiator;
