@@ -18,12 +18,11 @@ contract YieldClaimerUniswapV3 is YieldClaimer, UniswapV3 {
 
     /**
      * @param arcadiaFactory The contract address of the Arcadia Factory.
-     * @param maxClaimFee The maximum fee an initiator can set.
      * @param positionManager The contract address of the Uniswap v3 Position Manager.
      * @param uniswapV3Factory The contract address of the Uniswap v3 Factory.
      */
-    constructor(address arcadiaFactory, uint256 maxClaimFee, address positionManager, address uniswapV3Factory)
-        YieldClaimer(arcadiaFactory, maxClaimFee)
+    constructor(address arcadiaFactory, address positionManager, address uniswapV3Factory)
+        YieldClaimer(arcadiaFactory)
         UniswapV3(positionManager, uniswapV3Factory)
     { }
 }

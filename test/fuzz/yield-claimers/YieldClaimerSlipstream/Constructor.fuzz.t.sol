@@ -20,11 +20,10 @@ contract Constructor_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstream_
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_Constructor(address arcadiaFactory, uint256 maxFee) public {
+    function testFuzz_Success_Constructor(address arcadiaFactory) public {
         vm.prank(users.owner);
         YieldClaimerSlipstreamExtension yieldClaimer_ = new YieldClaimerSlipstreamExtension(
             arcadiaFactory,
-            maxFee,
             address(slipstreamPositionManager),
             address(cLFactory),
             address(poolImplementation),
@@ -34,6 +33,5 @@ contract Constructor_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstream_
         );
 
         assertEq(address(yieldClaimer_.ARCADIA_FACTORY()), arcadiaFactory);
-        assertEq(yieldClaimer_.MAX_FEE(), maxFee);
     }
 }

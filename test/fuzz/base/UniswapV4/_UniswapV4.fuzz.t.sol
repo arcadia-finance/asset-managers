@@ -39,7 +39,7 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
     int24 internal constant TICK_SPACING = 1;
 
     uint256 internal constant MAX_TOLERANCE = 0.02 * 1e18;
-    uint256 internal constant MAX_FEE = 0.01 * 1e18;
+    uint64 internal constant MAX_FEE = 0.01 * 1e18;
     uint256 internal constant MIN_LIQUIDITY_RATIO = 0.99 * 1e18;
 
     /*////////////////////////////////////////////////////////////////

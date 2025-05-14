@@ -21,7 +21,7 @@ abstract contract YieldClaimer_Fuzz_Test is Fuzz_Test, UniswapV3Fixture {
 
     uint24 internal constant POOL_FEE = 100;
 
-    uint256 internal constant MAX_FEE = 0.01 * 1e18;
+    uint64 internal constant MAX_FEE = 0.01 * 1e18;
 
     /*////////////////////////////////////////////////////////////////
                             VARIABLES
@@ -57,7 +57,7 @@ abstract contract YieldClaimer_Fuzz_Test is Fuzz_Test, UniswapV3Fixture {
         (token0, token1) = (token0 < token1) ? (token0, token1) : (token1, token0);
 
         // Deploy test contract.
-        yieldClaimer = new YieldClaimerExtension(address(factory), MAX_FEE);
+        yieldClaimer = new YieldClaimerExtension(address(factory));
     }
 
     /*////////////////////////////////////////////////////////////////

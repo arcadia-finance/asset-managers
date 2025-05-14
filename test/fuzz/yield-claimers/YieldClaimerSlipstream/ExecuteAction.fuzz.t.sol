@@ -56,8 +56,7 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         PositionState memory position,
         uint256 feeSeed,
         YieldClaimer.InitiatorParams memory initiatorParams,
-        address initiator,
-        uint256 fee
+        address initiator
     ) public {
         // Given: A valid position in range (has both tokens).
         givenValidPoolState(liquidityPool, position);
@@ -72,12 +71,16 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         initiatorParams.positionManager = address(slipstreamPositionManager);
         initiatorParams.id = uint96(position.id);
 
-        // And: The initiator is set.
-        fee = bound(fee, 0, MAX_FEE);
-        vm.prank(initiator);
-        yieldClaimer.setInitiatorInfo(fee);
+        // And: Account info is set.
         vm.prank(account.owner());
-        yieldClaimer.setAccountInfo(address(account), initiator, address(account));
+        yieldClaimer.setAccountInfo(
+            address(account),
+            initiator,
+            YieldClaimer.AccountInfo({ feeRecipient: address(account), maxClaimFee: MAX_FEE })
+        );
+
+        // And: Fee is valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
 
         // And: The YieldClaimer owns the position.
         vm.prank(users.liquidityProvider);
@@ -110,25 +113,29 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         if (fee0 > 0) {
             assertEq(depositData.assets[1], address(token0));
             assertEq(depositData.assetIds[1], 0);
-            assertEq(depositData.assetAmounts[1], fee0 - fee0 * fee / 1e18);
+            assertEq(depositData.assetAmounts[1], fee0 - fee0 * initiatorParams.claimFee / 1e18);
             assertEq(depositData.assetTypes[1], 1);
             index++;
         }
         if (fee1 > 0) {
             assertEq(depositData.assets[index], address(token1));
             assertEq(depositData.assetIds[index], 0);
-            assertEq(depositData.assetAmounts[index], fee1 - fee1 * fee / 1e18);
+            assertEq(depositData.assetAmounts[index], fee1 - fee1 * initiatorParams.claimFee / 1e18);
             assertEq(depositData.assetTypes[index], 1);
         }
 
         // And: Approvals are given.
         assertEq(ERC721(address(slipstreamPositionManager)).getApproved(position.id), address(account));
-        assertEq(token0.allowance(address(yieldClaimer), address(account)), fee0 - fee0 * fee / 1e18);
-        assertEq(token1.allowance(address(yieldClaimer), address(account)), fee1 - fee1 * fee / 1e18);
+        assertEq(
+            token0.allowance(address(yieldClaimer), address(account)), fee0 - fee0 * initiatorParams.claimFee / 1e18
+        );
+        assertEq(
+            token1.allowance(address(yieldClaimer), address(account)), fee1 - fee1 * initiatorParams.claimFee / 1e18
+        );
 
         // And: Initiator fees are given.
-        assertEq(token0.balanceOf(initiator), fee0 * fee / 1e18);
-        assertEq(token1.balanceOf(initiator), fee1 * fee / 1e18);
+        assertEq(token0.balanceOf(initiator), fee0 * initiatorParams.claimFee / 1e18);
+        assertEq(token1.balanceOf(initiator), fee1 * initiatorParams.claimFee / 1e18);
     }
 
     function testFuzz_Success_executeAction_Slipstream_AccountIsNotRecipient(
@@ -137,7 +144,6 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         uint256 feeSeed,
         YieldClaimer.InitiatorParams memory initiatorParams,
         address initiator,
-        uint256 fee,
         address recipient
     ) public {
         // And: recipient is not the account or address(0).
@@ -159,12 +165,14 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         initiatorParams.positionManager = address(slipstreamPositionManager);
         initiatorParams.id = uint96(position.id);
 
-        // And: The initiator is set.
-        fee = bound(fee, 0, MAX_FEE);
-        vm.prank(initiator);
-        yieldClaimer.setInitiatorInfo(fee);
+        // And: Account info is set.
         vm.prank(account.owner());
-        yieldClaimer.setAccountInfo(address(account), initiator, recipient);
+        yieldClaimer.setAccountInfo(
+            address(account), initiator, YieldClaimer.AccountInfo({ feeRecipient: recipient, maxClaimFee: MAX_FEE })
+        );
+
+        // And: Fee is valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
 
         // And: The YieldClaimer owns the position.
         vm.prank(users.liquidityProvider);
@@ -198,12 +206,12 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         assertEq(ERC721(address(slipstreamPositionManager)).getApproved(position.id), address(account));
 
         // And: recipient received the fees.
-        assertEq(token0.balanceOf(recipient), fee0 - fee0 * fee / 1e18);
-        assertEq(token1.balanceOf(recipient), fee1 - fee1 * fee / 1e18);
+        assertEq(token0.balanceOf(recipient), fee0 - fee0 * initiatorParams.claimFee / 1e18);
+        assertEq(token1.balanceOf(recipient), fee1 - fee1 * initiatorParams.claimFee / 1e18);
 
         // And: Initiator fees are given.
-        assertEq(token0.balanceOf(initiator), fee0 * fee / 1e18);
-        assertEq(token1.balanceOf(initiator), fee1 * fee / 1e18);
+        assertEq(token0.balanceOf(initiator), fee0 * initiatorParams.claimFee / 1e18);
+        assertEq(token1.balanceOf(initiator), fee1 * initiatorParams.claimFee / 1e18);
     }
 
     function testFuzz_Success_executeAction_StakedSlipstream_AccountIsRecipient(
@@ -211,8 +219,7 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         PositionState memory position,
         uint256 rewards,
         YieldClaimer.InitiatorParams memory initiatorParams,
-        address initiator,
-        uint256 fee
+        address initiator
     ) public {
         // Given: A valid position in range (has both tokens).
         givenValidPoolState(liquidityPool, position);
@@ -233,12 +240,16 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         stakedSlipstreamAM.mint(position.id);
         vm.stopPrank();
 
-        // And: The initiator is set.
-        fee = bound(fee, 0, MAX_FEE);
-        vm.prank(initiator);
-        yieldClaimer.setInitiatorInfo(fee);
+        // And: Account info is set.
         vm.prank(account.owner());
-        yieldClaimer.setAccountInfo(address(account), initiator, address(account));
+        yieldClaimer.setAccountInfo(
+            address(account),
+            initiator,
+            YieldClaimer.AccountInfo({ feeRecipient: address(account), maxClaimFee: MAX_FEE })
+        );
+
+        // And: Fee is valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
 
         // And: The YieldClaimer owns the position.
         vm.prank(users.liquidityProvider);
@@ -276,16 +287,19 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         if (rewards > 0) {
             assertEq(depositData.assets[1], AERO);
             assertEq(depositData.assetIds[1], 0);
-            assertEq(depositData.assetAmounts[1], rewards - rewards * fee / 1e18);
+            assertEq(depositData.assetAmounts[1], rewards - rewards * initiatorParams.claimFee / 1e18);
             assertEq(depositData.assetTypes[1], 1);
         }
 
         // And: Approvals are given.
         assertEq(ERC721(address(stakedSlipstreamAM)).getApproved(position.id), address(account));
-        assertEq(ERC20(AERO).allowance(address(yieldClaimer), address(account)), rewards - rewards * fee / 1e18);
+        assertEq(
+            ERC20(AERO).allowance(address(yieldClaimer), address(account)),
+            rewards - rewards * initiatorParams.claimFee / 1e18
+        );
 
         // And: Initiator fees are given.
-        assertEq(ERC20(AERO).balanceOf(initiator), rewards * fee / 1e18);
+        assertEq(ERC20(AERO).balanceOf(initiator), rewards * initiatorParams.claimFee / 1e18);
     }
 
     function testFuzz_Success_executeAction_StakedSlipstream_AccountIsNotRecipient(
@@ -294,7 +308,6 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         uint256 rewards,
         YieldClaimer.InitiatorParams memory initiatorParams,
         address initiator,
-        uint256 fee,
         address recipient
     ) public {
         // Given: recipient is not the account or address(0).
@@ -322,12 +335,14 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         stakedSlipstreamAM.mint(position.id);
         vm.stopPrank();
 
-        // And: The initiator is set.
-        fee = bound(fee, 0, MAX_FEE);
-        vm.prank(initiator);
-        yieldClaimer.setInitiatorInfo(fee);
+        // And: Account info is set.
         vm.prank(account.owner());
-        yieldClaimer.setAccountInfo(address(account), initiator, recipient);
+        yieldClaimer.setAccountInfo(
+            address(account), initiator, YieldClaimer.AccountInfo({ feeRecipient: recipient, maxClaimFee: MAX_FEE })
+        );
+
+        // And: Fee is valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
 
         // And: The YieldClaimer owns the position.
         vm.prank(users.liquidityProvider);
@@ -367,10 +382,10 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         assertEq(ERC721(address(stakedSlipstreamAM)).getApproved(position.id), address(account));
 
         // And: recipient received the rewards.
-        assertEq(ERC20(AERO).balanceOf(recipient), rewards - rewards * fee / 1e18);
+        assertEq(ERC20(AERO).balanceOf(recipient), rewards - rewards * initiatorParams.claimFee / 1e18);
 
         // And: Initiator fees are given.
-        assertEq(ERC20(AERO).balanceOf(initiator), rewards * fee / 1e18);
+        assertEq(ERC20(AERO).balanceOf(initiator), rewards * initiatorParams.claimFee / 1e18);
     }
 
     function testFuzz_Success_executeAction_WrappedStakedSlipstream_AccountIsRecipient(
@@ -378,8 +393,7 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         PositionState memory position,
         uint256 rewards,
         YieldClaimer.InitiatorParams memory initiatorParams,
-        address initiator,
-        uint256 fee
+        address initiator
     ) public {
         // Given: A valid position in range (has both tokens).
         givenValidPoolState(liquidityPool, position);
@@ -400,12 +414,16 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         wrappedStakedSlipstream.mint(position.id);
         vm.stopPrank();
 
-        // And: The initiator is set.
-        fee = bound(fee, 0, MAX_FEE);
-        vm.prank(initiator);
-        yieldClaimer.setInitiatorInfo(fee);
+        // And: Account info is set.
         vm.prank(account.owner());
-        yieldClaimer.setAccountInfo(address(account), initiator, address(account));
+        yieldClaimer.setAccountInfo(
+            address(account),
+            initiator,
+            YieldClaimer.AccountInfo({ feeRecipient: address(account), maxClaimFee: MAX_FEE })
+        );
+
+        // And: Fee is valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
 
         // And: The YieldClaimer owns the position.
         vm.prank(users.liquidityProvider);
@@ -445,16 +463,19 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         if (rewards > 0) {
             assertEq(depositData.assets[1], AERO);
             assertEq(depositData.assetIds[1], 0);
-            assertEq(depositData.assetAmounts[1], rewards - rewards * fee / 1e18);
+            assertEq(depositData.assetAmounts[1], rewards - rewards * initiatorParams.claimFee / 1e18);
             assertEq(depositData.assetTypes[1], 1);
         }
 
         // And: Approvals are given.
         assertEq(ERC721(address(wrappedStakedSlipstream)).getApproved(position.id), address(account));
-        assertEq(ERC20(AERO).allowance(address(yieldClaimer), address(account)), rewards - rewards * fee / 1e18);
+        assertEq(
+            ERC20(AERO).allowance(address(yieldClaimer), address(account)),
+            rewards - rewards * initiatorParams.claimFee / 1e18
+        );
 
         // And: Initiator fees are given.
-        assertEq(ERC20(AERO).balanceOf(initiator), rewards * fee / 1e18);
+        assertEq(ERC20(AERO).balanceOf(initiator), rewards * initiatorParams.claimFee / 1e18);
     }
 
     function testFuzz_Success_executeAction_WrappedStakedSlipstream_AccountIsNotRecipient(
@@ -463,7 +484,6 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         uint256 rewards,
         YieldClaimer.InitiatorParams memory initiatorParams,
         address initiator,
-        uint256 fee,
         address recipient
     ) public {
         // And: recipient is not the account or address(0).
@@ -491,12 +511,14 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         wrappedStakedSlipstream.mint(position.id);
         vm.stopPrank();
 
-        // And: The initiator is set.
-        fee = bound(fee, 0, MAX_FEE);
-        vm.prank(initiator);
-        yieldClaimer.setInitiatorInfo(fee);
+        // And: Account info is set.
         vm.prank(account.owner());
-        yieldClaimer.setAccountInfo(address(account), initiator, recipient);
+        yieldClaimer.setAccountInfo(
+            address(account), initiator, YieldClaimer.AccountInfo({ feeRecipient: recipient, maxClaimFee: MAX_FEE })
+        );
+
+        // And: Fee is valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
 
         // And: The YieldClaimer owns the position.
         vm.prank(users.liquidityProvider);
@@ -538,9 +560,9 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         assertEq(ERC721(address(wrappedStakedSlipstream)).getApproved(position.id), address(account));
 
         // And: recipient received the rewards.
-        assertEq(ERC20(AERO).balanceOf(recipient), rewards - rewards * fee / 1e18);
+        assertEq(ERC20(AERO).balanceOf(recipient), rewards - rewards * initiatorParams.claimFee / 1e18);
 
         // And: Initiator fees are given.
-        assertEq(ERC20(AERO).balanceOf(initiator), rewards * fee / 1e18);
+        assertEq(ERC20(AERO).balanceOf(initiator), rewards * initiatorParams.claimFee / 1e18);
     }
 }

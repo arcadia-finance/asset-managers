@@ -20,13 +20,12 @@ contract Constructor_YieldClaimerUniswapV3_Fuzz_Test is YieldClaimerUniswapV3_Fu
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_Constructor(address arcadiaFactory, uint256 maxFee) public {
+    function testFuzz_Success_Constructor(address arcadiaFactory) public {
         vm.prank(users.owner);
         YieldClaimerUniswapV3Extension yieldClaimer_ = new YieldClaimerUniswapV3Extension(
-            arcadiaFactory, maxFee, address(nonfungiblePositionManager), address(uniswapV3Factory)
+            arcadiaFactory, address(nonfungiblePositionManager), address(uniswapV3Factory)
         );
 
         assertEq(address(yieldClaimer_.ARCADIA_FACTORY()), arcadiaFactory);
-        assertEq(yieldClaimer_.MAX_FEE(), maxFee);
     }
 }

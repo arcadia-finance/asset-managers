@@ -224,7 +224,7 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
 
         // And: The pool is balanced.
         {
-            (uint160 sqrtPrice, int24 tickCurrent,,,,) = poolCl.slot0();
+            (uint160 sqrtPrice,,,,,) = poolCl.slot0();
             initiatorParams.trustedSqrtPrice = sqrtPrice;
         }
 
@@ -334,7 +334,7 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
 
         // And: The pool is balanced.
         {
-            (uint160 sqrtPrice, int24 tickCurrent,,,,) = poolCl.slot0();
+            (uint160 sqrtPrice,,,,,) = poolCl.slot0();
             initiatorParams.trustedSqrtPrice = sqrtPrice;
         }
 
@@ -428,7 +428,7 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
 
         // And: The pool is balanced.
         {
-            (uint160 sqrtPrice, int24 tickCurrent,,,,) = poolCl.slot0();
+            (uint160 sqrtPrice,,,,,) = poolCl.slot0();
             initiatorParams.trustedSqrtPrice = sqrtPrice;
         }
 

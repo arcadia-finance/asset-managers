@@ -28,7 +28,6 @@ abstract contract YieldClaimerSlipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         // Deploy test contract.
         yieldClaimer = new YieldClaimerSlipstreamExtension(
             address(factory),
-            MAX_FEE,
             address(slipstreamPositionManager),
             address(cLFactory),
             address(poolImplementation),

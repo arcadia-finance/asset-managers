@@ -38,4 +38,34 @@ contract ExecuteAction_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         yieldClaimer.executeAction(rebalanceData);
         vm.stopPrank();
     }
+
+    function testFuzz_Revert_executeAction_InvalidFee(
+        address initiator,
+        YieldClaimer.AccountInfo memory accountInfo,
+        YieldClaimer.InitiatorParams memory initiatorParams
+    ) public {
+        // Given: Recipient is not address(0).
+        vm.assume(accountInfo.feeRecipient != address(0));
+
+        // And: maxClaimFee is smaller or equal to 1e18.
+        accountInfo.maxClaimFee = uint64(bound(accountInfo.maxClaimFee, 0, 1e18));
+
+        // When: Owner calls setAccountInfo on the yieldClaimer
+        vm.prank(account.owner());
+        yieldClaimer.setAccountInfo(address(account), initiator, accountInfo);
+
+        // And: claimfee is bigger than maxClaimFee.
+        initiatorParams.claimFee =
+            uint64(bound(initiatorParams.claimFee, accountInfo.maxClaimFee + 1, type(uint64).max));
+
+        // And: account is set.
+        yieldClaimer.setAccount(address(account));
+
+        // When: Calling executeAction().
+        // Then: it should revert.
+        bytes memory actionTargetData = abi.encode(initiator, initiatorParams);
+        vm.prank(address(account));
+        vm.expectRevert(YieldClaimer.InvalidValue.selector);
+        yieldClaimer.executeAction(actionTargetData);
+    }
 }
