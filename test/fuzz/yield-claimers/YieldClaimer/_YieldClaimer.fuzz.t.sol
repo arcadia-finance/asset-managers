@@ -2,36 +2,35 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.26;
 
-import { AccountV1 } from "../../../../lib/accounts-v2/src/accounts/AccountV1.sol";
-import { AccountSpot } from "../../../../lib/accounts-v2/src/accounts/AccountSpot.sol";
+import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { Fuzz_Test } from "../../Fuzz.t.sol";
-import { StdStorage, stdStorage } from "../../../../lib/accounts-v2/lib/forge-std/src/Test.sol";
-import { YieldClaimer } from "../../../../src/yield-claimers/YieldClaimer.sol";
-import { YieldClaimerExtension } from "../../../../test/utils/extensions/YieldClaimerExtension.sol";
-import { Utils } from "../../../../lib/accounts-v2/test/utils/Utils.sol";
+import { IUniswapV3PoolExtension } from
+    "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/IUniswapV3PoolExtension.sol";
+import { UniswapV3Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";
+import { YieldClaimerExtension } from "../../../utils/extensions/YieldClaimerExtension.sol";
 
 /**
  * @notice Common logic needed by all "YieldClaimer" fuzz tests.
  */
-abstract contract YieldClaimer_Fuzz_Test is Fuzz_Test {
-    using stdStorage for StdStorage;
+abstract contract YieldClaimer_Fuzz_Test is Fuzz_Test, UniswapV3Fixture {
     /*////////////////////////////////////////////////////////////////
                             CONSTANTS
     /////////////////////////////////////////////////////////////// */
 
-    // 0,5% to 11% fee on swaps.
-    uint256 MIN_INITIATOR_FEE_YIELD_CLAIMER = 0.005 * 1e18;
-    uint256 MAX_INITIATOR_FEE_YIELD_CLAIMER = 0.11 * 1e18;
-    // 10 % initiator fee
-    uint256 INITIATOR_FEE_YIELD_CLAIMER = 0.1 * 1e18;
+    uint24 internal constant POOL_FEE = 100;
+
+    uint256 internal constant MAX_FEE = 0.01 * 1e18;
 
     /*////////////////////////////////////////////////////////////////
-                            STORAGE
+                            VARIABLES
     /////////////////////////////////////////////////////////////// */
 
-    address internal initiatorYieldClaimer;
+    ERC20Mock internal token0;
+    ERC20Mock internal token1;
+
+    IUniswapV3PoolExtension internal poolUniswap;
 
     /*////////////////////////////////////////////////////////////////
                             TEST CONTRACTS
@@ -43,7 +42,7 @@ abstract contract YieldClaimer_Fuzz_Test is Fuzz_Test {
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
-    function setUp() public virtual override {
+    function setUp() public virtual override(Fuzz_Test, UniswapV3Fixture) {
         Fuzz_Test.setUp();
 
         // Warp to have a timestamp of at least two days old.
@@ -52,58 +51,29 @@ abstract contract YieldClaimer_Fuzz_Test is Fuzz_Test {
         // Deploy Arcadia  Accounts Contracts.
         deployArcadiaAccounts();
 
-        // Create initiator.
-        initiatorYieldClaimer = createUser("initiatorYieldClaimer");
+        // Create tokens.
+        token0 = new ERC20Mock("TokenA", "TOKA", 0);
+        token1 = new ERC20Mock("TokenB", "TOKB", 0);
+        (token0, token1) = (token0 < token1) ? (token0, token1) : (token1, token0);
 
-        // Deploy Yield Claimer.
-        deployYieldClaimer(MAX_INITIATOR_FEE_YIELD_CLAIMER);
+        // Deploy test contract.
+        yieldClaimer = new YieldClaimerExtension(address(factory), MAX_FEE);
     }
 
     /*////////////////////////////////////////////////////////////////
                         HELPER FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
-    function deploySpotAccount() internal {
-        vm.prank(users.accountOwner);
-        account = AccountV1(address(new AccountSpot(address(factory))));
-        stdstore.target(address(factory)).sig(factory.accountIndex.selector).with_key(address(account)).checked_write(2);
-        vm.prank(address(factory));
-        account.initialize(users.accountOwner, address(registry), address(0));
-    }
+    function deployAndInitUniswapV3(uint160 sqrtPrice, uint128 liquidityPool) internal {
+        // Deploy fixture for Uniswap V3.
+        UniswapV3Fixture.setUp();
 
-    function deployYieldClaimer(uint256 maxFee) internal {
-        deployYieldClaimer(address(0), address(0), address(0), address(0), address(0), address(0), address(0), maxFee);
-    }
+        // Create pool.
+        poolUniswap = createPoolUniV3(address(token0), address(token1), POOL_FEE, sqrtPrice, 300);
 
-    function deployYieldClaimer(
-        address rewardToken_,
-        address slipstreamPositionManager_,
-        address stakedSlipstreamAM_,
-        address stakedSlipstreamWrapper_,
-        address uniswapV3PositionManager_,
-        address uniswapV4PositionManager_,
-        address weth_,
-        uint256 maxFee
-    ) internal {
-        vm.prank(users.owner);
-        yieldClaimer = new YieldClaimerExtension(
-            address(factory),
-            rewardToken_,
-            slipstreamPositionManager_,
-            stakedSlipstreamAM_,
-            stakedSlipstreamWrapper_,
-            uniswapV3PositionManager_,
-            uniswapV4PositionManager_,
-            weth_,
-            maxFee
+        // Create initial position.
+        addLiquidityUniV3(
+            poolUniswap, liquidityPool, users.liquidityProvider, BOUND_TICK_LOWER, BOUND_TICK_UPPER, false
         );
-
-        // And : YieldClaimer is allowed as Asset Manager
-        vm.prank(users.accountOwner);
-        account.setAssetManager(address(yieldClaimer), true);
-
-        // And : Create and set initiator details.
-        vm.prank(initiatorYieldClaimer);
-        yieldClaimer.setInitiatorFee(INITIATOR_FEE_YIELD_CLAIMER);
     }
 }

@@ -7,7 +7,7 @@ pragma solidity ^0.8.26;
 import { AbstractBase } from "../base/AbstractBase.sol";
 import { PositionState } from "../state/PositionState.sol";
 import { Slipstream } from "../base/Slipstream.sol";
-import { YieldClaimer } from "./YieldClaimer2.sol";
+import { YieldClaimer } from "./YieldClaimer.sol";
 
 /**
  * @title Yield Claimer for Slipstream Liquidity Positions.

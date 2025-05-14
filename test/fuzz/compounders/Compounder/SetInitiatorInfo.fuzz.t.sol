@@ -5,7 +5,7 @@
 pragma solidity ^0.8.26;
 
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { Compounder } from "../../../../src/compounders/Compounder2.sol";
+import { Compounder } from "../../../../src/compounders/Compounder.sol";
 import { Compounder_Fuzz_Test } from "./_Compounder.fuzz.t.sol";
 
 /**

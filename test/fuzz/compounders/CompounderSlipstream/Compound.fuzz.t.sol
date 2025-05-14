@@ -6,7 +6,7 @@ pragma solidity ^0.8.26;
 
 import { AccountV1 } from "../../../../lib/accounts-v2/src/accounts/AccountV1.sol";
 import { AccountSpot } from "../../../../lib/accounts-v2/src/accounts/AccountSpot.sol";
-import { Compounder } from "../../../../src/compounders/Compounder2.sol";
+import { Compounder } from "../../../../src/compounders/Compounder.sol";
 import { CompounderSlipstream_Fuzz_Test } from "./_CompounderSlipstream.fuzz.t.sol";
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { FixedPoint128 } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";

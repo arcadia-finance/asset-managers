@@ -5,7 +5,7 @@
 pragma solidity ^0.8.26;
 
 import { FixedPointMathLib } from "../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { YieldClaimer } from "../../../../src/yield-claimers/YieldClaimer2.sol";
+import { YieldClaimer } from "../../../../src/yield-claimers/YieldClaimer.sol";
 import { YieldClaimer_Fuzz_Test } from "./_YieldClaimer.fuzz.t.sol";
 
 /**

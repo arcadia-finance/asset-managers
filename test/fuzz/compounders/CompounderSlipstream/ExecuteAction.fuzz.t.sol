@@ -5,7 +5,7 @@
 pragma solidity ^0.8.26;
 
 import { ActionData } from "../../../../lib/accounts-v2/src/interfaces/IActionBase.sol";
-import { Compounder } from "../../../../src/compounders/Compounder2.sol";
+import { Compounder } from "../../../../src/compounders/Compounder.sol";
 import { CompounderSlipstream_Fuzz_Test } from "./_CompounderSlipstream.fuzz.t.sol";
 import { DefaultHook } from "../../../utils/mocks/DefaultHook.sol";
 import { ERC20, ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";

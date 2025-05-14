@@ -4,7 +4,7 @@
  */
 pragma solidity ^0.8.26;
 
-import { Compounder } from "../../../../src/compounders/Compounder2.sol";
+import { Compounder } from "../../../../src/compounders/Compounder.sol";
 import { CompounderUniswapV3_Fuzz_Test } from "./_CompounderUniswapV3.fuzz.t.sol";
 import { ActionData } from "../../../../lib/accounts-v2/src/interfaces/IActionBase.sol";
 import { DefaultHook } from "../../../utils/mocks/DefaultHook.sol";

@@ -4,7 +4,7 @@
  */
 pragma solidity ^0.8.26;
 
-import { Compounder } from "../../../../src/compounders/Compounder2.sol";
+import { Compounder } from "../../../../src/compounders/Compounder.sol";
 import { CompounderUniswapV3_Fuzz_Test } from "./_CompounderUniswapV3.fuzz.t.sol";
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { PositionState } from "../../../../src/state/PositionState.sol";

@@ -15,7 +15,7 @@ import { RouterMock } from "../../../utils/mocks/RouterMock.sol";
 import { RouterSetPoolPriceMock } from "../../../utils/mocks/RouterSetPoolPriceMock.sol";
 import { StdStorage, stdStorage } from "../../../../lib/accounts-v2/lib/forge-std/src/Test.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
-import { YieldClaimer } from "../../../../src/yield-claimers/YieldClaimer2.sol";
+import { YieldClaimer } from "../../../../src/yield-claimers/YieldClaimer.sol";
 import { YieldClaimerSlipstream_Fuzz_Test } from "./_YieldClaimerSlipstream.fuzz.t.sol";
 
 /**

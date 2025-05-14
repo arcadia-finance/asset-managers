@@ -4,7 +4,7 @@
  */
 pragma solidity ^0.8.22;
 
-import { Compounder } from "../../../../src/compounders/Compounder2.sol";
+import { Compounder } from "../../../../src/compounders/Compounder.sol";
 import { CompounderUniswapV4_Fuzz_Test } from "./_CompounderUniswapV4.fuzz.t.sol";
 import { HookMock } from "../../../utils/mocks/HookMock.sol";
 import { IWETH } from "../../../../src/interfaces/IWETH.sol";

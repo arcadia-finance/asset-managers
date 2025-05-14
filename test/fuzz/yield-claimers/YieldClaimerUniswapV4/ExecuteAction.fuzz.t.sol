@@ -12,7 +12,7 @@ import { RebalanceLogic, RebalanceParams } from "../../../../src/libraries/Rebal
 import { RouterMock } from "../../../utils/mocks/RouterMock.sol";
 import { RouterSetPoolPriceMock } from "../../../utils/mocks/RouterSetPoolPriceMock.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
-import { YieldClaimer } from "../../../../src/yield-claimers/YieldClaimer2.sol";
+import { YieldClaimer } from "../../../../src/yield-claimers/YieldClaimer.sol";
 import { YieldClaimerUniswapV4_Fuzz_Test } from "./_YieldClaimerUniswapV4.fuzz.t.sol";
 
 /**

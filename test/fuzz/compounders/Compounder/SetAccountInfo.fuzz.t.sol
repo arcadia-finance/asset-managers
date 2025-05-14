@@ -4,7 +4,7 @@
  */
 pragma solidity ^0.8.26;
 
-import { Compounder } from "../../../../src/compounders/Compounder2.sol";
+import { Compounder } from "../../../../src/compounders/Compounder.sol";
 import { Compounder_Fuzz_Test } from "./_Compounder.fuzz.t.sol";
 
 /**

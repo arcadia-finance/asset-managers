@@ -5,7 +5,7 @@
 pragma solidity ^0.8.26;
 
 import { PositionState } from "../../../../src/state/PositionState.sol";
-import { Compounder } from "../../../../src/compounders/Compounder2.sol";
+import { Compounder } from "../../../../src/compounders/Compounder.sol";
 import { Compounder_Fuzz_Test } from "./_Compounder.fuzz.t.sol";
 import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 

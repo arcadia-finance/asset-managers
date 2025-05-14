@@ -5,7 +5,7 @@
 pragma solidity ^0.8.26;
 
 import { UniswapV3 } from "../base/UniswapV3.sol";
-import { YieldClaimer } from "./YieldClaimer2.sol";
+import { YieldClaimer } from "./YieldClaimer.sol";
 
 /**
  * @title Yield Claimer for Uniswap V3 Liquidity Positions.

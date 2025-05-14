@@ -4,7 +4,7 @@
  */
 pragma solidity ^0.8.22;
 
-import { Compounder } from "../../../src/compounders/Compounder2.sol";
+import { Compounder } from "../../../src/compounders/Compounder.sol";
 import { PositionState } from "../../../src/state/PositionState.sol";
 
 contract CompounderExtension is Compounder {

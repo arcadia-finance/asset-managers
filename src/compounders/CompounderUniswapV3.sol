@@ -4,7 +4,7 @@
  */
 pragma solidity ^0.8.26;
 
-import { Compounder } from "./Compounder2.sol";
+import { Compounder } from "./Compounder.sol";
 import { UniswapV3 } from "../base/UniswapV3.sol";
 
 /**

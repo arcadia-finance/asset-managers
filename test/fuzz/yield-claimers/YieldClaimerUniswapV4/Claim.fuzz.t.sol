@@ -4,7 +4,7 @@
  */
 pragma solidity ^0.8.26;
 
-import { YieldClaimer } from "../../../../src/yield-claimers/YieldClaimer2.sol";
+import { YieldClaimer } from "../../../../src/yield-claimers/YieldClaimer.sol";
 import { YieldClaimerUniswapV4_Fuzz_Test } from "./_YieldClaimerUniswapV4.fuzz.t.sol";
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { PositionState } from "../../../../src/state/PositionState.sol";

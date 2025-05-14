@@ -4,7 +4,7 @@
  */
 pragma solidity ^0.8.26;
 
-import { Compounder } from "./Compounder2.sol";
+import { Compounder } from "./Compounder.sol";
 import { Slipstream } from "../base/Slipstream.sol";
 
 /**

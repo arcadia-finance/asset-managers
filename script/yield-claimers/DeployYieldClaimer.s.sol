@@ -18,17 +18,7 @@ contract DeployYieldClaimer is Base_AssetManagers_Script {
         require(vm.addr(deployer) == 0x0f518becFC14125F23b8422849f6393D59627ddB, "Wrong Deployer.");
 
         vm.startBroadcast(deployer);
-        yieldClaimer = new YieldClaimer(
-            Arcadia.FACTORY,
-            Assets.AERO,
-            PositionManagers.SLIPSTREAM,
-            PositionManagers.STAKED_SLIPSTREAM,
-            PositionManagers.WRAPPED_STAKED_SLIPSTREAM,
-            PositionManagers.UNISWAP_V3,
-            PositionManagers.UNISWAP_V4,
-            Assets.WETH,
-            YieldClaimerParameters.MAX_FEE
-        );
+
         vm.stopBroadcast();
     }
 
