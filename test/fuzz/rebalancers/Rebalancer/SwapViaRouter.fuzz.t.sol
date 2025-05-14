@@ -69,7 +69,17 @@ contract SwapViaRouter_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         // And: Hook is set.
         strategyHook = new HookMock();
         vm.prank(account.owner());
-        rebalancer.setAccountInfo(address(account), initiator, address(strategyHook), strategyData);
+        rebalancer.setAccountInfo(
+            address(account),
+            initiator,
+            MAX_FEE,
+            MAX_FEE,
+            MAX_TOLERANCE,
+            MIN_LIQUIDITY_RATIO,
+            address(strategyHook),
+            strategyData,
+            ""
+        );
 
         // And: Contract has balances..
         deal(address(token0), address(rebalancer), balance0, true);

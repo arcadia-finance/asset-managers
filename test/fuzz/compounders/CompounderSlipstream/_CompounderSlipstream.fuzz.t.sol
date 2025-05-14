@@ -28,9 +28,6 @@ abstract contract CompounderSlipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         // Deploy test contract.
         compounder = new CompounderSlipstreamExtension(
             address(factory),
-            MAX_FEE,
-            MAX_TOLERANCE,
-            MIN_LIQUIDITY_RATIO,
             address(slipstreamPositionManager),
             address(cLFactory),
             address(poolImplementation),

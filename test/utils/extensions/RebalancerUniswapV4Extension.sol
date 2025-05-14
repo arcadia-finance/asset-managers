@@ -8,26 +8,8 @@ import { PositionState } from "../../../src/state/PositionState.sol";
 import { RebalancerUniswapV4 } from "../../../src/rebalancers/RebalancerUniswapV4.sol";
 
 contract RebalancerUniswapV4Extension is RebalancerUniswapV4 {
-    constructor(
-        address arcadiaFactory,
-        uint256 maxFee,
-        uint256 maxTolerance,
-        uint256 minLiquidityRatio,
-        address positionManager,
-        address permit2,
-        address poolManager,
-        address weth
-    )
-        RebalancerUniswapV4(
-            arcadiaFactory,
-            maxFee,
-            maxTolerance,
-            minLiquidityRatio,
-            positionManager,
-            permit2,
-            poolManager,
-            weth
-        )
+    constructor(address arcadiaFactory, address positionManager, address permit2, address poolManager, address weth)
+        RebalancerUniswapV4(arcadiaFactory, positionManager, permit2, poolManager, weth)
     { }
 
     function getUnderlyingTokens(address positionManager, uint256 id) external view returns (address, address) {
@@ -128,7 +110,7 @@ contract RebalancerUniswapV4Extension is RebalancerUniswapV4 {
     }
 
     function setHook(address account_, address hook) public {
-        strategyHook[account_] = hook;
+        accountInfo[account_].strategyHook = hook;
     }
 
     function setAccount(address account_) public {

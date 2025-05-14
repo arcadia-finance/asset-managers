@@ -83,8 +83,7 @@ contract Compound_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz_Test
         Compounder.InitiatorParams memory initiatorParams,
         address newOwner,
         address initiator,
-        uint256 tolerance,
-        uint256 fee
+        uint256 tolerance
     ) public canReceiveERC721(newOwner) {
         // Given : newOwner is not the old owner.
         vm.assume(newOwner != account.owner());
@@ -102,12 +101,14 @@ contract Compound_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz_Test
         account.setAssetManager(address(compounder), true);
 
         // And: The initiator is set.
+        // And: Account info is set.
         tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
-        fee = bound(fee, 0.001 * 1e18, MAX_FEE);
-        vm.prank(initiator);
-        compounder.setInitiatorInfo(0, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
-        compounder.setAccountInfo(address(account), initiator);
+        compounder.setAccountInfo(address(account), initiator, MAX_FEE, MAX_FEE, tolerance, MIN_LIQUIDITY_RATIO, "");
+
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0.001 * 1e18, MAX_FEE));
+        initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: Account is transferred to newOwner.
         vm.startPrank(account.owner());
@@ -126,8 +127,7 @@ contract Compound_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz_Test
         PositionState memory position,
         uint256 feeSeed,
         Compounder.InitiatorParams memory initiatorParams,
-        address initiator,
-        uint256 fee
+        address initiator
     ) public {
         // Given: A valid position in range (has both tokens).
         givenValidPoolState(liquidityPool, position);
@@ -149,12 +149,13 @@ contract Compound_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz_Test
         vm.prank(users.accountOwner);
         account.setAssetManager(address(compounder), true);
 
-        // And: The initiator is set.
-        fee = bound(fee, 0, MAX_FEE);
-        vm.prank(initiator);
-        compounder.setInitiatorInfo(fee, fee, MAX_TOLERANCE, MIN_LIQUIDITY_RATIO);
+        // And: Account info is set.
         vm.prank(account.owner());
-        compounder.setAccountInfo(address(account), initiator);
+        compounder.setAccountInfo(address(account), initiator, MAX_FEE, MAX_FEE, MAX_TOLERANCE, MIN_LIQUIDITY_RATIO, "");
+
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
+        initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: position has fees.
         feeSeed = uint256(bound(feeSeed, type(uint8).max, type(uint48).max));
@@ -205,14 +206,14 @@ contract Compound_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz_Test
         {
             // Calculate balances available on compounder to rebalance (without fees).
             (uint256 balance0, uint256 balance1) = getFeeAmounts(position.id);
-            balance0 = initiatorParams.amount0 + balance0 - balance0 * fee / 1e18;
-            balance1 = initiatorParams.amount1 + balance1 - balance1 * fee / 1e18;
+            balance0 = initiatorParams.amount0 + balance0 - balance0 * initiatorParams.claimFee / 1e18;
+            balance1 = initiatorParams.amount1 + balance1 - balance1 * initiatorParams.claimFee / 1e18;
             vm.assume(balance0 + balance1 > 1e6);
 
             RebalanceParams memory rebalanceParams = RebalanceLogic._getRebalanceParams(
                 1e18,
                 poolUniswap.fee(),
-                fee,
+                initiatorParams.swapFee,
                 initiatorParams.trustedSqrtPrice,
                 TickMath.getSqrtPriceAtTick(position.tickLower),
                 TickMath.getSqrtPriceAtTick(position.tickUpper),

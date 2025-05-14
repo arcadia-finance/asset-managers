@@ -20,19 +20,10 @@ contract Constructor_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_Constructor(
-        address arcadiaFactory,
-        uint256 maxFee,
-        uint256 maxTolerance,
-        uint256 maxSlippageRatio
-    ) public {
+    function testFuzz_Success_Constructor(address arcadiaFactory) public {
         vm.prank(users.owner);
-        RebalancerExtension rebalancer_ =
-            new RebalancerExtension(arcadiaFactory, maxFee, maxTolerance, maxSlippageRatio);
+        RebalancerExtension rebalancer_ = new RebalancerExtension(arcadiaFactory);
 
         assertEq(address(rebalancer_.ARCADIA_FACTORY()), arcadiaFactory);
-        assertEq(rebalancer_.MAX_TOLERANCE(), maxTolerance);
-        assertEq(rebalancer_.MAX_FEE(), maxFee);
-        assertEq(rebalancer_.MIN_LIQUIDITY_RATIO(), maxSlippageRatio);
     }
 }

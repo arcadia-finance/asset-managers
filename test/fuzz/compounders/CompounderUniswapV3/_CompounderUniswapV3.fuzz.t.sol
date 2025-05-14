@@ -27,12 +27,7 @@ abstract contract CompounderUniswapV3_Fuzz_Test is UniswapV3_Fuzz_Test {
 
         // Deploy test contract.
         compounder = new CompounderUniswapV3Extension(
-            address(factory),
-            MAX_FEE,
-            MAX_TOLERANCE,
-            MIN_LIQUIDITY_RATIO,
-            address(nonfungiblePositionManager),
-            address(uniswapV3Factory)
+            address(factory), address(nonfungiblePositionManager), address(uniswapV3Factory)
         );
 
         // Overwrite code hash of the UniswapV3Pool.

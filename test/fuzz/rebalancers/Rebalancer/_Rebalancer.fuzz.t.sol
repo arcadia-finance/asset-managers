@@ -59,7 +59,7 @@ abstract contract Rebalancer_Fuzz_Test is Fuzz_Test, UniswapV3Fixture {
         (token0, token1) = (token0 < token1) ? (token0, token1) : (token1, token0);
 
         // Deploy test contract.
-        rebalancer = new RebalancerExtension(address(factory), MAX_FEE, MAX_TOLERANCE, MIN_LIQUIDITY_RATIO);
+        rebalancer = new RebalancerExtension(address(factory));
     }
 
     /*////////////////////////////////////////////////////////////////

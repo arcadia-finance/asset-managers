@@ -69,7 +69,7 @@ contract ExecuteAction_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_
 
         // And: Account info is set.
         vm.prank(account.owner());
-        yieldClaimer.setAccountInfo(address(account), initiator, address(account), MAX_FEE);
+        yieldClaimer.setAccountInfo(address(account), initiator, address(account), MAX_FEE, "");
 
         // And: Fee is valid.
         initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
@@ -157,7 +157,7 @@ contract ExecuteAction_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_
 
         // And: Account info is set.
         vm.prank(account.owner());
-        yieldClaimer.setAccountInfo(address(account), initiator, recipient, MAX_FEE);
+        yieldClaimer.setAccountInfo(address(account), initiator, recipient, MAX_FEE, "");
 
         // And: Fee is valid.
         initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
@@ -222,7 +222,7 @@ contract ExecuteAction_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_
 
         // And: Account info is set.
         vm.prank(account.owner());
-        yieldClaimer.setAccountInfo(address(account), initiator, address(account), MAX_FEE);
+        yieldClaimer.setAccountInfo(address(account), initiator, address(account), MAX_FEE, "");
 
         // And: Fee is valid.
         initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
@@ -311,7 +311,7 @@ contract ExecuteAction_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_
 
         // And: Account info is set.
         vm.prank(account.owner());
-        yieldClaimer.setAccountInfo(address(account), initiator, recipient, MAX_FEE);
+        yieldClaimer.setAccountInfo(address(account), initiator, recipient, MAX_FEE, "");
 
         // And: Fee is valid.
         initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));

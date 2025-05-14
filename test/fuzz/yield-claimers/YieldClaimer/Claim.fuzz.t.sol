@@ -96,7 +96,7 @@ contract Claim_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
 
         // And: Account is set.
         vm.prank(account.owner());
-        yieldClaimer.setAccountInfo(address(account), initiator, address(account), MAX_FEE);
+        yieldClaimer.setAccountInfo(address(account), initiator, address(account), MAX_FEE, "");
 
         // And: Account is transferred to newOwner.
         vm.startPrank(account.owner());

@@ -36,7 +36,7 @@ contract SetAccountInfo_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         // Then: it should revert
         vm.prank(caller);
         vm.expectRevert(YieldClaimer.Reentered.selector);
-        yieldClaimer.setAccountInfo(account_, initiator, accountInfo.feeRecipient, accountInfo.maxClaimFee);
+        yieldClaimer.setAccountInfo(account_, initiator, accountInfo.feeRecipient, accountInfo.maxClaimFee, "");
     }
 
     function testFuzz_Revert_setAccountInfo_NotAnAccount(
@@ -52,7 +52,7 @@ contract SetAccountInfo_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         // Then: it should revert
         vm.prank(caller);
         vm.expectRevert(YieldClaimer.NotAnAccount.selector);
-        yieldClaimer.setAccountInfo(account_, initiator, accountInfo.feeRecipient, accountInfo.maxClaimFee);
+        yieldClaimer.setAccountInfo(account_, initiator, accountInfo.feeRecipient, accountInfo.maxClaimFee, "");
     }
 
     function testFuzz_Revert_setAccountInfo_OnlyAccountOwner(
@@ -67,7 +67,7 @@ contract SetAccountInfo_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         // Then: it should revert
         vm.prank(caller);
         vm.expectRevert(YieldClaimer.OnlyAccountOwner.selector);
-        yieldClaimer.setAccountInfo(address(account), initiator, accountInfo.feeRecipient, accountInfo.maxClaimFee);
+        yieldClaimer.setAccountInfo(address(account), initiator, accountInfo.feeRecipient, accountInfo.maxClaimFee, "");
     }
 
     function testFuzz_Revert_setAccountInfo_InvalidRecipient(
@@ -81,7 +81,7 @@ contract SetAccountInfo_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         // Then: it should revert
         vm.prank(account.owner());
         vm.expectRevert(YieldClaimer.InvalidRecipient.selector);
-        yieldClaimer.setAccountInfo(address(account), initiator, accountInfo.feeRecipient, accountInfo.maxClaimFee);
+        yieldClaimer.setAccountInfo(address(account), initiator, accountInfo.feeRecipient, accountInfo.maxClaimFee, "");
     }
 
     function testFuzz_Revert_setAccountInfo_InvalidValue(address initiator, YieldClaimer.AccountInfo memory accountInfo)
@@ -97,7 +97,7 @@ contract SetAccountInfo_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         // Then: it should revert
         vm.prank(account.owner());
         vm.expectRevert(YieldClaimer.InvalidValue.selector);
-        yieldClaimer.setAccountInfo(address(account), initiator, accountInfo.feeRecipient, accountInfo.maxClaimFee);
+        yieldClaimer.setAccountInfo(address(account), initiator, accountInfo.feeRecipient, accountInfo.maxClaimFee, "");
     }
 
     function testFuzz_Success_setAccountInfo(address initiator, YieldClaimer.AccountInfo memory accountInfo) public {
@@ -109,7 +109,7 @@ contract SetAccountInfo_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
 
         // When: Owner calls setAccountInfo on the yieldClaimer
         vm.prank(account.owner());
-        yieldClaimer.setAccountInfo(address(account), initiator, accountInfo.feeRecipient, accountInfo.maxClaimFee);
+        yieldClaimer.setAccountInfo(address(account), initiator, accountInfo.feeRecipient, accountInfo.maxClaimFee, "");
 
         // Then: Initiator should be set for that Account
         assertEq(yieldClaimer.accountToInitiator(account.owner(), address(account)), initiator);

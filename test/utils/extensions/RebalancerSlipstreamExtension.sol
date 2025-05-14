@@ -10,9 +10,6 @@ import { RebalancerSlipstream } from "../../../src/rebalancers/RebalancerSlipstr
 contract RebalancerSlipstreamExtension is RebalancerSlipstream {
     constructor(
         address arcadiaFactory,
-        uint256 maxFee,
-        uint256 maxTolerance,
-        uint256 minLiquidityRatio,
         address positionManager,
         address cLFactory,
         address poolImplementation,
@@ -22,9 +19,6 @@ contract RebalancerSlipstreamExtension is RebalancerSlipstream {
     )
         RebalancerSlipstream(
             arcadiaFactory,
-            maxFee,
-            maxTolerance,
-            minLiquidityRatio,
             positionManager,
             cLFactory,
             poolImplementation,
@@ -120,7 +114,7 @@ contract RebalancerSlipstreamExtension is RebalancerSlipstream {
     }
 
     function setHook(address account_, address hook) public {
-        strategyHook[account_] = hook;
+        accountInfo[account_].strategyHook = hook;
     }
 
     function setAccount(address account_) public {

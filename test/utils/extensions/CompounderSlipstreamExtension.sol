@@ -10,9 +10,6 @@ import { PositionState } from "../../../src/state/PositionState.sol";
 contract CompounderSlipstreamExtension is CompounderSlipstream {
     constructor(
         address arcadiaFactory,
-        uint256 maxFee,
-        uint256 maxTolerance,
-        uint256 minLiquidityRatio,
         address positionManager,
         address cLFactory,
         address poolImplementation,
@@ -22,9 +19,6 @@ contract CompounderSlipstreamExtension is CompounderSlipstream {
     )
         CompounderSlipstream(
             arcadiaFactory,
-            maxFee,
-            maxTolerance,
-            minLiquidityRatio,
             positionManager,
             cLFactory,
             poolImplementation,

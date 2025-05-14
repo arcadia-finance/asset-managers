@@ -51,9 +51,9 @@ contract ExecuteAction_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         // And: maxClaimFee is smaller or equal to 1e18.
         maxClaimFee = uint64(bound(maxClaimFee, 0, 1e18));
 
-        // When: Owner calls setAccountInfo on the yieldClaimer
+        // And: Owner calls setAccountInfo on the yieldClaimer
         vm.prank(account.owner());
-        yieldClaimer.setAccountInfo(address(account), initiator, recipient, maxClaimFee);
+        yieldClaimer.setAccountInfo(address(account), initiator, recipient, maxClaimFee, "");
 
         // And: claimfee is bigger than maxClaimFee.
         initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, maxClaimFee + 1, type(uint64).max));

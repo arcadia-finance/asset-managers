@@ -59,7 +59,7 @@ abstract contract Compounder_Fuzz_Test is Fuzz_Test, UniswapV3Fixture {
         (token0, token1) = (token0 < token1) ? (token0, token1) : (token1, token0);
 
         // Deploy test contract.
-        compounder = new CompounderExtension(address(factory), MAX_FEE, MAX_TOLERANCE, MIN_LIQUIDITY_RATIO);
+        compounder = new CompounderExtension(address(factory));
     }
 
     /*////////////////////////////////////////////////////////////////

@@ -38,6 +38,9 @@ abstract contract YieldClaimer is IActionBase, AbstractBase {
     // A mapping from account to account specific information.
     mapping(address account => AccountInfo) public accountInfo;
 
+    // A mapping from account to custom metadata.
+    mapping(address account => bytes data) public metaData;
+
     // A mapping that sets the approved initiator per owner per account.
     mapping(address owner => mapping(address account => address initiator)) public accountToInitiator;
 
@@ -100,19 +103,26 @@ abstract contract YieldClaimer is IActionBase, AbstractBase {
      * @param initiator The address of the initiator.
      * @param feeRecipient The address of the recipient of the claimed fees.
      * @param maxClaimFee The maximum fee charged on the claimed fees of the liquidity position, with 18 decimals precision.
-     * @dev An initiator will be permissioned to claim fees for any
-     * Liquidity Position held in the specified Arcadia Account.
+     * @param metaData_ Custom metadata to be stored with the account.
      */
-    function setAccountInfo(address account_, address initiator, address feeRecipient, uint256 maxClaimFee) external {
+    function setAccountInfo(
+        address account_,
+        address initiator,
+        address feeRecipient,
+        uint256 maxClaimFee,
+        bytes calldata metaData_
+    ) external {
         if (account != address(0)) revert Reentered();
         if (!ARCADIA_FACTORY.isAccount(account_)) revert NotAnAccount();
         address owner = IAccount(account_).owner();
         if (msg.sender != owner) revert OnlyAccountOwner();
         if (feeRecipient == address(0)) revert InvalidRecipient();
+
         if (maxClaimFee > 1e18) revert InvalidValue();
 
         accountToInitiator[owner][account_] = initiator;
         accountInfo[account_] = AccountInfo({ feeRecipient: feeRecipient, maxClaimFee: uint64(maxClaimFee) });
+        metaData[account_] = metaData_;
 
         emit AccountInfoSet(account_, initiator);
     }
