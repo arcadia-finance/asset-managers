@@ -4,10 +4,10 @@
  */
 pragma solidity ^0.8.22;
 
+import { CompounderSlipstream } from "../../../src/compounders/CompounderSlipstream.sol";
 import { PositionState } from "../../../src/state/PositionState.sol";
-import { RebalancerSlipstream } from "../../../src/rebalancers/RebalancerSlipstream.sol";
 
-contract RebalancerSlipstreamExtension is RebalancerSlipstream {
+contract CompounderSlipstreamExtension is CompounderSlipstream {
     constructor(
         address arcadiaFactory,
         uint256 maxFee,
@@ -20,7 +20,7 @@ contract RebalancerSlipstreamExtension is RebalancerSlipstream {
         address stakedSlipstreamAm,
         address stakedSlipstreamWrapper
     )
-        RebalancerSlipstream(
+        CompounderSlipstream(
             arcadiaFactory,
             maxFee,
             maxTolerance,
@@ -117,10 +117,6 @@ contract RebalancerSlipstreamExtension is RebalancerSlipstream {
     {
         _stake(balances, positionManager, position);
         balances_ = balances;
-    }
-
-    function setHook(address account_, address hook) public {
-        strategyHook[account_] = hook;
     }
 
     function setAccount(address account_) public {

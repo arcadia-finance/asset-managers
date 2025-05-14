@@ -4,35 +4,18 @@
  */
 pragma solidity ^0.8.22;
 
+import { CompounderUniswapV3 } from "../../../src/compounders/CompounderUniswapV3.sol";
 import { PositionState } from "../../../src/state/PositionState.sol";
-import { RebalancerSlipstream } from "../../../src/rebalancers/RebalancerSlipstream.sol";
 
-contract RebalancerSlipstreamExtension is RebalancerSlipstream {
+contract CompounderUniswapV3Extension is CompounderUniswapV3 {
     constructor(
         address arcadiaFactory,
         uint256 maxFee,
         uint256 maxTolerance,
         uint256 minLiquidityRatio,
         address positionManager,
-        address cLFactory,
-        address poolImplementation,
-        address rewardToken,
-        address stakedSlipstreamAm,
-        address stakedSlipstreamWrapper
-    )
-        RebalancerSlipstream(
-            arcadiaFactory,
-            maxFee,
-            maxTolerance,
-            minLiquidityRatio,
-            positionManager,
-            cLFactory,
-            poolImplementation,
-            rewardToken,
-            stakedSlipstreamAm,
-            stakedSlipstreamWrapper
-        )
-    { }
+        address uniswapV3Factory
+    ) CompounderUniswapV3(arcadiaFactory, maxFee, maxTolerance, minLiquidityRatio, positionManager, uniswapV3Factory) { }
 
     function getUnderlyingTokens(address positionManager, uint256 id) external view returns (address, address) {
         return _getUnderlyingTokens(positionManager, id);
@@ -117,10 +100,6 @@ contract RebalancerSlipstreamExtension is RebalancerSlipstream {
     {
         _stake(balances, positionManager, position);
         balances_ = balances;
-    }
-
-    function setHook(address account_, address hook) public {
-        strategyHook[account_] = hook;
     }
 
     function setAccount(address account_) public {

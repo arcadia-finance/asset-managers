@@ -4,12 +4,12 @@
  */
 pragma solidity ^0.8.22;
 
+import { Compounder } from "../../../src/compounders/Compounder2.sol";
 import { PositionState } from "../../../src/state/PositionState.sol";
-import { Rebalancer } from "../../../src/rebalancers/Rebalancer.sol";
 
-contract RebalancerExtension is Rebalancer {
+contract CompounderExtension is Compounder {
     constructor(address arcadiaFactory, uint256 maxFee, uint256 maxTolerance, uint256 minLiquidityRatio)
-        Rebalancer(arcadiaFactory, maxFee, maxTolerance, minLiquidityRatio)
+        Compounder(arcadiaFactory, maxFee, maxTolerance, minLiquidityRatio)
     { }
 
     function isPositionManager(address positionManager) public view override returns (bool) { }
@@ -95,10 +95,6 @@ contract RebalancerExtension is Rebalancer {
     ) external returns (uint256[] memory balances_, uint256 count) {
         count = _approveAndTransfer(initiator, balances, fees, positionManager, position);
         balances_ = balances;
-    }
-
-    function setHook(address account_, address hook) public {
-        strategyHook[account_] = hook;
     }
 
     function setAccount(address account_) public {

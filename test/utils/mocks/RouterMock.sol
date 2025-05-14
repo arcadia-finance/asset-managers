@@ -27,4 +27,17 @@ contract RouterMock {
 
         emit ArbitrarySwap(true);
     }
+
+    function swap2(address token0, address token1, uint256 amount0, uint256 amount1) public {
+        if (token0 == address(0)) {
+            (bool success,) = payable(msg.sender).call{ value: amount0 }("");
+            if (!success) revert EthTransferFailed();
+        } else {
+            ERC20(token0).transfer(msg.sender, amount0);
+        }
+
+        ERC20(token1).transfer(msg.sender, amount1);
+
+        emit ArbitrarySwap(true);
+    }
 }

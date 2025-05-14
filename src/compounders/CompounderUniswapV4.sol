@@ -25,7 +25,7 @@ import { UniswapV4 } from "../base/UniswapV4.sol";
  * This input serves as a reference point for calculating the maximum allowed deviation during the compounding process,
  * ensuring that the execution remains within a controlled price range.
  */
-contract CompounderUniswapV3 is Compounder, UniswapV4 {
+contract CompounderUniswapV4 is Compounder, UniswapV4 {
     using SafeApprove for ERC20;
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR

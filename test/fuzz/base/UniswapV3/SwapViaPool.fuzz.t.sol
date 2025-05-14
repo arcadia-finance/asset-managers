@@ -5,20 +5,19 @@
 pragma solidity ^0.8.26;
 
 import { PositionState } from "../../../../src/state/PositionState.sol";
-import { Rebalancer, RebalanceParams } from "../../../../src/rebalancers/Rebalancer.sol";
-import { RebalancerUniswapV3_Fuzz_Test } from "./_RebalancerUniswapV3.fuzz.t.sol";
+import { UniswapV3_Fuzz_Test } from "./_UniswapV3.fuzz.t.sol";
 import { SqrtPriceMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/SqrtPriceMath.sol";
 
 /**
- * @notice Fuzz tests for the function "_swapViaPool" of contract "RebalancerUniswapV3".
+ * @notice Fuzz tests for the function "_swapViaPool" of contract "UniswapV3".
  */
-contract SwapViaPool_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Test {
+contract SwapViaPool_UniswapV3_Fuzz_Test is UniswapV3_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public override {
-        RebalancerUniswapV3_Fuzz_Test.setUp();
+        UniswapV3_Fuzz_Test.setUp();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -27,7 +26,6 @@ contract SwapViaPool_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_T
     function testFuzz_Success_swapViaPool_ZeroToOne(
         uint128 liquidityPool,
         PositionState memory position,
-        RebalanceParams memory rebalanceParams,
         uint128 balance0,
         uint128 balance1,
         uint64 amountOut
@@ -51,32 +49,28 @@ contract SwapViaPool_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_T
         uint256 amountIn = amountInLessFee * 1e6 / (1e6 - POOL_FEE);
         vm.assume(amountIn > 10);
 
-        // And: Swap is zeroToOne.
-        rebalanceParams.zeroToOne = true;
-
         // And: Contract has sufficient balances.
         balance0 = uint128(bound(balance0, amountIn * 11 / 10 + 1, type(uint128).max));
         uint256[] memory balances = new uint256[](2);
         balances[0] = balance0;
         balances[1] = balance1;
-        deal(address(token0), address(rebalancer), balance0, true);
-        deal(address(token1), address(rebalancer), balance1, true);
+        deal(address(token0), address(base), balance0, true);
+        deal(address(token1), address(base), balance1, true);
 
         // When: Calling swapViaPool.
         PositionState memory position_;
-        (balances, position_) = rebalancer.swapViaPool(balances, position, rebalanceParams.zeroToOne, amountOut);
+        (balances, position_) = base.swapViaPool(balances, position, true, amountOut);
 
         // Then: The correct balances are returned.
         assertEq(amountOut, balances[1] - balance1);
         if (amountIn > 1e5) assertApproxEqRel(amountIn, balance0 - balances[0], 0.01 * 1e18);
-        assertEq(balances[0], token0.balanceOf(address(rebalancer)));
-        assertEq(balances[1], token1.balanceOf(address(rebalancer)));
+        assertEq(balances[0], token0.balanceOf(address(base)));
+        assertEq(balances[1], token1.balanceOf(address(base)));
     }
 
     function testFuzz_Success_swapViaPool_OneToZero(
         uint128 liquidityPool,
         PositionState memory position,
-        RebalanceParams memory rebalanceParams,
         uint128 balance0,
         uint128 balance1,
         uint64 amountOut
@@ -100,27 +94,24 @@ contract SwapViaPool_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_T
         uint256 amountIn = amountInLessFee * 1e6 / (1e6 - POOL_FEE);
         vm.assume(amountIn > 10);
 
-        // And: Swap is zeroToOne.
-        rebalanceParams.zeroToOne = false;
-
         // And: Contract has sufficient balances.
         balance1 = uint128(bound(balance1, amountIn * 11 / 10 + 1, type(uint128).max));
         uint256[] memory balances = new uint256[](2);
         balances[0] = balance0;
         balances[1] = balance1;
-        deal(address(token0), address(rebalancer), balance0, true);
-        deal(address(token1), address(rebalancer), balance1, true);
+        deal(address(token0), address(base), balance0, true);
+        deal(address(token1), address(base), balance1, true);
 
         // When: Calling swapViaPool.
         PositionState memory position_;
-        (balances, position_) = rebalancer.swapViaPool(balances, position, rebalanceParams.zeroToOne, amountOut);
+        (balances, position_) = base.swapViaPool(balances, position, false, amountOut);
 
         // Then: The correct balances are returned.
         assertEq(amountOut, balances[0] - balance0);
         if (amountIn > 1e5) assertApproxEqRel(amountIn, balance1 - balances[1], 0.01 * 1e18);
-        assertEq(balances[0], token0.balanceOf(address(rebalancer)));
-        assertEq(balances[1], token1.balanceOf(address(rebalancer)));
-        assertEq(balances[0], token0.balanceOf(address(rebalancer)));
-        assertEq(balances[1], token1.balanceOf(address(rebalancer)));
+        assertEq(balances[0], token0.balanceOf(address(base)));
+        assertEq(balances[1], token1.balanceOf(address(base)));
+        assertEq(balances[0], token0.balanceOf(address(base)));
+        assertEq(balances[1], token1.balanceOf(address(base)));
     }
 }

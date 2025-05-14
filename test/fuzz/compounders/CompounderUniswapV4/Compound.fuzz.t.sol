@@ -4,18 +4,20 @@
  */
 pragma solidity ^0.8.26;
 
+import { Compounder } from "../../../../src/compounders/Compounder2.sol";
+import { CompounderUniswapV4_Fuzz_Test } from "./_CompounderUniswapV4.fuzz.t.sol";
 import { DefaultHook } from "../../../utils/mocks/DefaultHook.sol";
 import { ERC20 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC20.sol";
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { IWETH } from "../../../../src/interfaces/IWETH.sol";
 import { PositionState } from "../../../../src/state/PositionState.sol";
-import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
-import { RebalancerUniswapV4_Fuzz_Test } from "./_RebalancerUniswapV4.fuzz.t.sol";
+import { RebalanceLogic, RebalanceParams } from "../../../../src/libraries/RebalanceLogic.sol";
+import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
 /**
- * @notice Fuzz tests for the function "rebalance" of contract "RebalancerUniswapV4".
+ * @notice Fuzz tests for the function "compound" of contract "CompounderUniswapV4".
  */
-contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
+contract Rebalance_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz_Test {
     /*////////////////////////////////////////////////////////////////
                             VARIABLES
     /////////////////////////////////////////////////////////////// */
@@ -27,7 +29,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public override {
-        RebalancerUniswapV4_Fuzz_Test.setUp();
+        CompounderUniswapV4_Fuzz_Test.setUp();
 
         strategyHook = new DefaultHook();
     }
@@ -35,25 +37,25 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Revert_rebalance_Reentered(
+    function testFuzz_Revert_compound_Reentered(
         address account_,
-        Rebalancer.InitiatorParams memory initiatorParams,
+        Compounder.InitiatorParams memory initiatorParams,
         address caller
     ) public {
         // Given : account is not address(0)
         vm.assume(account_ != address(0));
-        rebalancer.setAccount(account_);
+        compounder.setAccount(account_);
 
-        // When : calling rebalance
+        // When : calling compound
         // Then : it should revert
         vm.prank(caller);
-        vm.expectRevert(Rebalancer.Reentered.selector);
-        rebalancer.rebalance(account_, initiatorParams);
+        vm.expectRevert(Compounder.Reentered.selector);
+        compounder.compound(account_, initiatorParams);
     }
 
-    function testFuzz_Revert_rebalance_InvalidAccount(
+    function testFuzz_Revert_compound_InvalidAccount(
         address account_,
-        Rebalancer.InitiatorParams memory initiatorParams,
+        Compounder.InitiatorParams memory initiatorParams,
         address caller
     ) public {
         // Given: Account is not an Arcadia Account.
@@ -65,15 +67,15 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         // And: Account is not a precompile.
         vm.assume(account_ > address(20));
 
-        // When : calling rebalance
+        // When : calling compound
         // Then : it should revert
         vm.prank(caller);
         vm.expectRevert(bytes(""));
-        rebalancer.rebalance(account_, initiatorParams);
+        compounder.compound(account_, initiatorParams);
     }
 
-    function testFuzz_Revert_rebalance_InvalidInitiator(
-        Rebalancer.InitiatorParams memory initiatorParams,
+    function testFuzz_Revert_compound_InvalidInitiator(
+        Compounder.InitiatorParams memory initiatorParams,
         address caller
     ) public {
         // Given : Caller is not address(0).
@@ -81,15 +83,15 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
 
         // And : Owner of the account has not set an initiator yet
 
-        // When : calling rebalance
+        // When : calling compound
         // Then : it should revert
         vm.prank(caller);
-        vm.expectRevert(Rebalancer.InvalidInitiator.selector);
-        rebalancer.rebalance(address(account), initiatorParams);
+        vm.expectRevert(Compounder.InvalidInitiator.selector);
+        compounder.compound(address(account), initiatorParams);
     }
 
-    function testFuzz_Revert_rebalance_ChangeAccountOwnership(
-        Rebalancer.InitiatorParams memory initiatorParams,
+    function testFuzz_Revert_compound_ChangeAccountOwnership(
+        Compounder.InitiatorParams memory initiatorParams,
         address newOwner,
         address initiator,
         uint256 tolerance,
@@ -102,90 +104,76 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         // And : initiator is not address(0).
         vm.assume(initiator != address(0));
 
-        // And: Rebalancer is allowed as Asset Manager.
+        // And: Compounder is allowed as Asset Manager.
         vm.prank(users.accountOwner);
-        account.setAssetManager(address(rebalancer), true);
+        account.setAssetManager(address(compounder), true);
 
-        // And: Rebalancer is allowed as Asset Manager by New Owner.
+        // And: Compounder is allowed as Asset Manager by New Owner.
         vm.prank(newOwner);
-        account.setAssetManager(address(rebalancer), true);
+        account.setAssetManager(address(compounder), true);
 
         // And: The initiator is set.
         tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
         fee = bound(fee, 0.001 * 1e18, MAX_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(fee, fee, tolerance, MIN_LIQUIDITY_RATIO);
+        compounder.setInitiatorInfo(fee, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
-        rebalancer.setAccountInfo(
-            address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
-        );
+        compounder.setAccountInfo(address(account), initiator);
 
         // And: Account is transferred to newOwner.
         vm.startPrank(account.owner());
         factory.safeTransferFrom(account.owner(), newOwner, address(account));
         vm.stopPrank();
 
-        // When : calling rebalance
+        // When : calling compound
         // Then : it should revert
         vm.prank(initiator);
-        vm.expectRevert(Rebalancer.InvalidInitiator.selector);
-        rebalancer.rebalance(address(account), initiatorParams);
+        vm.expectRevert(Compounder.InvalidInitiator.selector);
+        compounder.compound(address(account), initiatorParams);
     }
 
-    function testFuzz_Success_rebalance_NotNative(
+    function testFuzz_Success_compound_NotNative(
         uint128 liquidityPool,
-        Rebalancer.InitiatorParams memory initiatorParams,
         PositionState memory position,
-        uint80 fee0,
-        uint80 fee1,
-        int24 tickLower,
-        int24 tickUpper,
+        uint256 feeSeed,
+        Compounder.InitiatorParams memory initiatorParams,
         address initiator,
-        uint256 tolerance,
         uint256 fee
     ) public {
         // Given: A valid position in range (has both tokens).
-        liquidityPool = givenValidPoolState(liquidityPool, position);
+        givenValidPoolState(liquidityPool, position);
+        liquidityPool = uint128(bound(liquidityPool, 1e25, 1e30));
         setPoolState(liquidityPool, position, false);
         position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
         position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
         position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
         position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
-        position.liquidity = uint128(bound(position.liquidity, 1e10, 1e20));
+        position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
         setPositionState(position);
         initiatorParams.positionManager = address(positionManagerV4);
-        initiatorParams.oldId = uint96(position.id);
+        initiatorParams.id = uint96(position.id);
 
         // And: uniV4 is allowed.
         deployUniswapV4AM();
 
-        // And: Rebalancer is allowed as Asset Manager
+        // And: Compounder is allowed as Asset Manager
         vm.prank(users.accountOwner);
-        account.setAssetManager(address(rebalancer), true);
+        account.setAssetManager(address(compounder), true);
 
         // And: The initiator is set.
-        tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
         fee = bound(fee, 0.001 * 1e18, MAX_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(fee, fee, tolerance, MIN_LIQUIDITY_RATIO);
+        compounder.setInitiatorInfo(fee, fee, MAX_TOLERANCE, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
-        rebalancer.setAccountInfo(
-            address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
-        );
-
-        // And: A valid new position.
-        tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, BOUND_TICK_UPPER - 10_000));
-        tickLower = tickLower / position.tickSpacing * position.tickSpacing;
-        tickUpper = int24(bound(tickUpper, tickLower + 10_000, BOUND_TICK_UPPER));
-        tickUpper = tickUpper / position.tickSpacing * position.tickSpacing;
-        initiatorParams.strategyData = abi.encode(tickLower, tickUpper);
+        compounder.setAccountInfo(address(account), initiator);
 
         // And: Position has fees.
-        generateFees(fee0, fee1);
+        feeSeed = uint256(bound(feeSeed, type(uint8).max, type(uint48).max));
+        generateFees(feeSeed, feeSeed);
 
         // And: Limited leftovers.
-        initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, type(uint8).max));
-        initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, 0, type(uint8).max));
+        initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, type(uint8).max, 1e10));
+        initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, type(uint8).max, 1e10));
 
         // And: Account owns the position.
         vm.prank(users.liquidityProvider);
@@ -217,71 +205,85 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         }
 
         // And: The pool is balanced.
-        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
+        {
+            (uint160 sqrtPrice,,,) = stateView.getSlot0(poolKey.toId());
+            initiatorParams.trustedSqrtPrice = sqrtPrice;
+        }
 
-        // When: Calling rebalance().
+        // And: liqudity is not 0.
+        {
+            // Calculate balances available on compounder to rebalance (without fees).
+            (uint256 balance0, uint256 balance1) = getFeeAmounts(position.id);
+            balance0 = initiatorParams.amount0 + balance0 - balance0 * fee / 1e18;
+            balance1 = initiatorParams.amount1 + balance1 - balance1 * fee / 1e18;
+
+            RebalanceParams memory rebalanceParams = RebalanceLogic._getRebalanceParams(
+                1e18,
+                poolKey.fee,
+                fee,
+                initiatorParams.trustedSqrtPrice,
+                TickMath.getSqrtPriceAtTick(position.tickLower),
+                TickMath.getSqrtPriceAtTick(position.tickUpper),
+                balance0,
+                balance1
+            );
+
+            // Amounts should be big enough or rounding errors become too big.
+            vm.assume(rebalanceParams.amountIn > 1e6);
+            vm.assume(rebalanceParams.minLiquidity > 1e6);
+        }
+
+        // When: Calling compound().
         initiatorParams.swapData = "";
         vm.prank(initiator);
-        rebalancer.rebalance(address(account), initiatorParams);
+        compounder.compound(address(account), initiatorParams);
 
         // Then: New position should be deposited back into the account.
-        assertEq(ERC721(address(positionManagerV4)).ownerOf(position.id + 1), address(account));
+        assertEq(ERC721(address(positionManagerV4)).ownerOf(position.id), address(account));
     }
 
-    function testFuzz_Success_rebalance_IsNative(
+    function testFuzz_Success_compound_IsNative(
         uint128 liquidityPool,
-        Rebalancer.InitiatorParams memory initiatorParams,
         PositionState memory position,
-        uint80 fee0,
-        uint80 fee1,
-        int24 tickLower,
-        int24 tickUpper,
+        uint256 feeSeed,
+        Compounder.InitiatorParams memory initiatorParams,
         address initiator,
-        uint256 tolerance,
         uint256 fee
     ) public {
         // Given: A valid position in range (has both tokens).
-        liquidityPool = givenValidPoolState(liquidityPool, position);
+        givenValidPoolState(liquidityPool, position);
+        liquidityPool = uint128(bound(liquidityPool, 1e25, 1e30));
         setPoolState(liquidityPool, position, true);
         position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
         position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
         position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
         position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
-        position.liquidity = uint128(bound(position.liquidity, 1e10, 1e20));
+        position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
         setPositionState(position);
         initiatorParams.positionManager = address(positionManagerV4);
-        initiatorParams.oldId = uint96(position.id);
+        initiatorParams.id = uint96(position.id);
 
         // And: uniV4 is allowed.
         deployUniswapV4AM();
 
-        // And: Rebalancer is allowed as Asset Manager
+        // And: Compounder is allowed as Asset Manager
         vm.prank(users.accountOwner);
-        account.setAssetManager(address(rebalancer), true);
+        account.setAssetManager(address(compounder), true);
 
         // And: The initiator is set.
-        tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
         fee = bound(fee, 0.001 * 1e18, MAX_FEE);
         vm.prank(initiator);
-        rebalancer.setInitiatorInfo(fee, fee, tolerance, MIN_LIQUIDITY_RATIO);
+        compounder.setInitiatorInfo(fee, fee, MAX_TOLERANCE, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
-        rebalancer.setAccountInfo(
-            address(account), initiator, address(strategyHook), abi.encode(address(0), address(token1), "")
-        );
-
-        // And: A valid new position.
-        tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, BOUND_TICK_UPPER - 10_000));
-        tickLower = tickLower / position.tickSpacing * position.tickSpacing;
-        tickUpper = int24(bound(tickUpper, tickLower + 10_000, BOUND_TICK_UPPER));
-        tickUpper = tickUpper / position.tickSpacing * position.tickSpacing;
-        initiatorParams.strategyData = abi.encode(tickLower, tickUpper);
+        compounder.setAccountInfo(address(account), initiator);
 
         // And: Position has fees.
-        generateFees(fee0, fee1);
+        feeSeed = uint256(bound(feeSeed, type(uint8).max, type(uint48).max));
+        generateFees(feeSeed, feeSeed);
 
         // And: Limited leftovers.
-        initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, type(uint8).max));
-        initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, 0, type(uint8).max));
+        initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, type(uint8).max, 1e10));
+        initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, type(uint8).max, 1e10));
 
         // And: Account owns the position.
         vm.prank(users.liquidityProvider);
@@ -315,14 +317,40 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         }
 
         // And: The pool is balanced.
-        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
+        {
+            (uint160 sqrtPrice,,,) = stateView.getSlot0(poolKey.toId());
+            initiatorParams.trustedSqrtPrice = sqrtPrice;
+        }
 
-        // When: Calling rebalance().
+        // And: liqudity is not 0.
+        {
+            // Calculate balances available on compounder to rebalance (without fees).
+            (uint256 balance0, uint256 balance1) = getFeeAmounts(position.id);
+            balance0 = initiatorParams.amount0 + balance0 - balance0 * fee / 1e18;
+            balance1 = initiatorParams.amount1 + balance1 - balance1 * fee / 1e18;
+
+            RebalanceParams memory rebalanceParams = RebalanceLogic._getRebalanceParams(
+                1e18,
+                poolKey.fee,
+                fee,
+                initiatorParams.trustedSqrtPrice,
+                TickMath.getSqrtPriceAtTick(position.tickLower),
+                TickMath.getSqrtPriceAtTick(position.tickUpper),
+                balance0,
+                balance1
+            );
+
+            // Amounts should be big enough or rounding errors become too big.
+            vm.assume(rebalanceParams.amountIn > 1e6);
+            vm.assume(rebalanceParams.minLiquidity > 1e6);
+        }
+
+        // When: Calling compound().
         initiatorParams.swapData = "";
         vm.prank(initiator);
-        rebalancer.rebalance(address(account), initiatorParams);
+        compounder.compound(address(account), initiatorParams);
 
         // Then: New position should be deposited back into the account.
-        assertEq(ERC721(address(positionManagerV4)).ownerOf(position.id + 1), address(account));
+        assertEq(ERC721(address(positionManagerV4)).ownerOf(position.id), address(account));
     }
 }

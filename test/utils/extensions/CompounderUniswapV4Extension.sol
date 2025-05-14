@@ -4,33 +4,29 @@
  */
 pragma solidity ^0.8.22;
 
+import { CompounderUniswapV4 } from "../../../src/compounders/CompounderUniswapV4.sol";
 import { PositionState } from "../../../src/state/PositionState.sol";
-import { RebalancerSlipstream } from "../../../src/rebalancers/RebalancerSlipstream.sol";
 
-contract RebalancerSlipstreamExtension is RebalancerSlipstream {
+contract CompounderUniswapV4Extension is CompounderUniswapV4 {
     constructor(
         address arcadiaFactory,
         uint256 maxFee,
         uint256 maxTolerance,
         uint256 minLiquidityRatio,
         address positionManager,
-        address cLFactory,
-        address poolImplementation,
-        address rewardToken,
-        address stakedSlipstreamAm,
-        address stakedSlipstreamWrapper
+        address permit2,
+        address poolManager,
+        address weth
     )
-        RebalancerSlipstream(
+        CompounderUniswapV4(
             arcadiaFactory,
             maxFee,
             maxTolerance,
             minLiquidityRatio,
             positionManager,
-            cLFactory,
-            poolImplementation,
-            rewardToken,
-            stakedSlipstreamAm,
-            stakedSlipstreamWrapper
+            permit2,
+            poolManager,
+            weth
         )
     { }
 
@@ -87,6 +83,17 @@ contract RebalancerSlipstreamExtension is RebalancerSlipstream {
         position_ = position;
     }
 
+    function swapViaRouter(
+        uint256[] memory balances,
+        PositionState memory position,
+        bool zeroToOne,
+        bytes memory swapData
+    ) external returns (uint256[] memory balances_, PositionState memory position_) {
+        _swapViaRouter(balances, position, zeroToOne, swapData);
+        balances_ = balances;
+        position_ = position;
+    }
+
     function mint(
         uint256[] memory balances,
         address positionManager,
@@ -113,14 +120,11 @@ contract RebalancerSlipstreamExtension is RebalancerSlipstream {
 
     function stake(uint256[] memory balances, address positionManager, PositionState memory position)
         external
-        returns (uint256[] memory balances_)
+        returns (uint256[] memory balances_, PositionState memory position_)
     {
         _stake(balances, positionManager, position);
         balances_ = balances;
-    }
-
-    function setHook(address account_, address hook) public {
-        strategyHook[account_] = hook;
+        position_ = position;
     }
 
     function setAccount(address account_) public {
