@@ -8,7 +8,6 @@ import { AccountV1 } from "../../../../lib/accounts-v2/src/accounts/AccountV1.so
 import { AccountSpot } from "../../../../lib/accounts-v2/src/accounts/AccountSpot.sol";
 import { Compounder } from "../../../../src/compounders/Compounder2.sol";
 import { CompounderSlipstream_Fuzz_Test } from "./_CompounderSlipstream.fuzz.t.sol";
-import { DefaultHook } from "../../../utils/mocks/DefaultHook.sol";
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { FixedPoint128 } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
 import { FullMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
@@ -22,20 +21,12 @@ import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-co
  */
 contract Rebalance_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fuzz_Test {
     using stdStorage for StdStorage;
-    /*////////////////////////////////////////////////////////////////
-                            VARIABLES
-    /////////////////////////////////////////////////////////////// */
-
-    DefaultHook internal strategyHook;
-
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public override {
         CompounderSlipstream_Fuzz_Test.setUp();
-
-        strategyHook = new DefaultHook();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -222,6 +213,7 @@ contract Rebalance_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fuzz_T
             (uint256 balance0, uint256 balance1) = getFeeAmounts(position.id);
             balance0 = initiatorParams.amount0 + balance0 - balance0 * fee / 1e18;
             balance1 = initiatorParams.amount1 + balance1 - balance1 * fee / 1e18;
+            vm.assume(balance0 + balance1 > 1e6);
 
             RebalanceParams memory rebalanceParams = RebalanceLogic._getRebalanceParams(
                 1e18,
@@ -289,7 +281,6 @@ contract Rebalance_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fuzz_T
         // And: Limited leftovers.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, type(uint8).max, 1e10));
         initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, type(uint8).max, 1e10));
-        vm.assume(initiatorParams.amount0 + initiatorParams.amount1 > type(uint8).max);
 
         // And: Position earned rewards.
         rewards = bound(rewards, 1e3, type(uint48).max);
@@ -343,6 +334,7 @@ contract Rebalance_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fuzz_T
             // Calculate balances available on compounder to rebalance (without fees).
             uint256 balance0 = initiatorParams.amount0;
             uint256 balance1 = initiatorParams.amount1;
+            vm.assume(balance0 + balance1 > 1e6);
 
             RebalanceParams memory rebalanceParams = RebalanceLogic._getRebalanceParams(
                 1e18,
@@ -417,7 +409,6 @@ contract Rebalance_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fuzz_T
         // And: Limited leftovers.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, type(uint8).max, 1e10));
         initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, type(uint8).max, 1e10));
-        vm.assume(initiatorParams.amount0 + initiatorParams.amount1 > type(uint8).max);
 
         // And: Position earned rewards.
         rewards = bound(rewards, 1e3, type(uint48).max);
@@ -448,6 +439,7 @@ contract Rebalance_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fuzz_T
             // Calculate balances available on compounder to rebalance (without fees).
             uint256 balance0 = initiatorParams.amount0;
             uint256 balance1 = initiatorParams.amount1;
+            vm.assume(balance0 + balance1 > 1e6);
 
             RebalanceParams memory rebalanceParams = RebalanceLogic._getRebalanceParams(
                 1e18,

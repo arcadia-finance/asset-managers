@@ -4,6 +4,8 @@
  */
 pragma solidity ^0.8.26;
 
+import { AbstractBase } from "../base/AbstractBase.sol";
+import { PositionState } from "../state/PositionState.sol";
 import { Slipstream } from "../base/Slipstream.sol";
 import { YieldClaimer } from "./YieldClaimer2.sol";
 
@@ -39,4 +41,16 @@ contract YieldClaimerSlipstream is YieldClaimer, Slipstream {
         YieldClaimer(arcadiaFactory, maxClaimFee)
         Slipstream(positionManager, cLFactory, poolImplementation, rewardToken, stakedSlipstreamAm, stakedSlipstreamWrapper)
     { }
+
+    /* ///////////////////////////////////////////////////////////////
+                          STAKING LOGIC
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Stakes a Liquidity Position.
+     * param balances The balances of the underlying tokens held by the Rebalancer.
+     * param positionManager The contract address of the Position Manager.
+     * param position A struct with position and pool related variables.
+     */
+    function _stake(uint256[] memory, address, PositionState memory) internal override(AbstractBase, Slipstream) { }
 }

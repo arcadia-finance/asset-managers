@@ -267,7 +267,6 @@ abstract contract Compounder is IActionBase, AbstractBase {
         account = address(0);
     }
 
-    event Log(uint256 log);
     /**
      * @notice Callback function called by the Arcadia Account during the flashAction.
      * @param actionTargetData A bytes object containing the initiator and initiatorParams.
@@ -275,7 +274,6 @@ abstract contract Compounder is IActionBase, AbstractBase {
      * @dev The Liquidity Position is already transferred to this contract before executeAction() is called.
      * @dev When rebalancing we will burn the current Liquidity Position and mint a new one with a new tokenId.
      */
-
     function executeAction(bytes calldata actionTargetData) external override returns (ActionData memory depositData) {
         // Caller should be the Account, provided as input in rebalance().
         if (msg.sender != account) revert OnlyAccount();
@@ -300,13 +298,13 @@ abstract contract Compounder is IActionBase, AbstractBase {
         // Check that pool is initially balanced.
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
         if (!isPoolBalanced(position.sqrtPrice, cache)) revert UnbalancedPool();
-        emit Log(initiatorInfo[initiator].claimFee);
+
         // Claim pending fees/rewards and update balances.
         _claim(balances, fees, positionManager, position, initiatorInfo[initiator].claimFee);
 
         // If the position is staked, unstake it.
         _unstake(balances, positionManager, position);
-        emit Log(initiatorInfo[initiator].swapFee);
+
         // Get the rebalance parameters, based on a hypothetical swap through the pool itself without slippage.
         RebalanceParams memory rebalanceParams = RebalanceLogic._getRebalanceParams(
             initiatorInfo[initiator].minLiquidityRatio,
@@ -320,9 +318,6 @@ abstract contract Compounder is IActionBase, AbstractBase {
         );
         if (rebalanceParams.zeroToOne) fees[0] += rebalanceParams.amountInitiatorFee;
         else fees[1] += rebalanceParams.amountInitiatorFee;
-        emit Log(rebalanceParams.amountIn);
-        emit Log(rebalanceParams.amountOut);
-        emit Log(rebalanceParams.minLiquidity);
 
         // Do the swap to rebalance the position.
         // This can be done either directly through the pool, or via a router with custom swap data.
@@ -351,8 +346,6 @@ abstract contract Compounder is IActionBase, AbstractBase {
         // Check that the actual liquidity of the position is above the minimum threshold.
         // This prevents loss of principal of the liquidity position due to slippage,
         // or malicious initiators who remove liquidity during a custom swap.
-        emit Log(position.liquidity);
-        emit Log(rebalanceParams.minLiquidity);
         if (position.liquidity < rebalanceParams.minLiquidity) revert InsufficientLiquidity();
 
         // If the position is staked, stake it.

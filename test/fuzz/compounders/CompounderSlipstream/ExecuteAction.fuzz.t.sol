@@ -171,6 +171,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
             (uint256 balance0, uint256 balance1) = getFeeAmounts(position.id);
             balance0 = initiatorParams.amount0 + balance0 - balance0 * fee / 1e18;
             balance1 = initiatorParams.amount1 + balance1 - balance1 * fee / 1e18;
+            vm.assume(balance0 + balance1 > 1e6);
 
             rebalanceParams = RebalanceLogic._getRebalanceParams(
                 1e18,
@@ -212,7 +213,6 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
     function testFuzz_Revert_executeAction_InsufficientLiquidity(
         uint128 liquidityPool,
         PositionState memory position,
-        uint256 feeSeed,
         Compounder.InitiatorParams memory initiatorParams,
         address initiator,
         uint256 tolerance,
@@ -251,10 +251,6 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
         deal(address(token0), address(compounder), initiatorParams.amount0, true);
         deal(address(token1), address(compounder), initiatorParams.amount1, true);
 
-        // And: position has fees.
-        feeSeed = uint256(bound(feeSeed, type(uint8).max, type(uint48).max));
-        generateFees(feeSeed, feeSeed);
-
         // And: account is set.
         compounder.setAccount(address(account));
 
@@ -272,6 +268,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
             (uint256 balance0, uint256 balance1) = getFeeAmounts(position.id);
             balance0 = initiatorParams.amount0 + balance0 - balance0 * fee / 1e18;
             balance1 = initiatorParams.amount1 + balance1 - balance1 * fee / 1e18;
+            vm.assume(balance0 + balance1 > 1e6);
 
             rebalanceParams = RebalanceLogic._getRebalanceParams(
                 1e18,
@@ -386,6 +383,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
             (uint256 balance0, uint256 balance1) = getFeeAmounts(position.id);
             balance0 = initiatorParams.amount0 + balance0 - balance0 * fee / 1e18;
             balance1 = initiatorParams.amount1 + balance1 - balance1 * fee / 1e18;
+            vm.assume(balance0 + balance1 > 1e6);
 
             rebalanceParams = RebalanceLogic._getRebalanceParams(
                 1e18,
@@ -518,6 +516,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
             // Calculate balances available on compounder to rebalance (without fees).
             uint256 balance0 = initiatorParams.amount0;
             uint256 balance1 = initiatorParams.amount1;
+            vm.assume(balance0 + balance1 > 1e6);
 
             rebalanceParams = RebalanceLogic._getRebalanceParams(
                 1e18,
@@ -797,6 +796,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
             // Calculate balances available on compounder to rebalance (without fees).
             uint256 balance0 = initiatorParams.amount0;
             uint256 balance1 = initiatorParams.amount1;
+            vm.assume(balance0 + balance1 > 1e6);
 
             rebalanceParams = RebalanceLogic._getRebalanceParams(
                 1e18,

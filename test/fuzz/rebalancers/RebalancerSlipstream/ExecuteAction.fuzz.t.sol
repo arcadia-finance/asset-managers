@@ -177,8 +177,11 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
         // And: account is set.
         rebalancer.setAccount(address(account));
 
-        // And: The pool is initially balanced.
-        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
+        // And: The pool is balanced.
+        {
+            (uint160 sqrtPrice, int24 tickCurrent,,,,) = poolCl.slot0();
+            initiatorParams.trustedSqrtPrice = sqrtPrice;
+        }
 
         // And: The pool is unbalanced after the swap.
         {
@@ -258,7 +261,10 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
         rebalancer.setAccount(address(account));
 
         // And: The pool is balanced.
-        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
+        {
+            (uint160 sqrtPrice, int24 tickCurrent,,,,) = poolCl.slot0();
+            initiatorParams.trustedSqrtPrice = sqrtPrice;
+        }
 
         // And: Swap is not optimal resulting in little liquidity.
         {
@@ -339,7 +345,10 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
         rebalancer.setAccount(address(account));
 
         // And: The pool is balanced.
-        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
+        {
+            (uint160 sqrtPrice, int24 tickCurrent,,,,) = poolCl.slot0();
+            initiatorParams.trustedSqrtPrice = sqrtPrice;
+        }
 
         // And: Swap is successful.
         {
@@ -447,7 +456,10 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
         rebalancer.setAccount(address(account));
 
         // And: The pool is balanced.
-        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
+        {
+            (uint160 sqrtPrice, int24 tickCurrent,,,,) = poolCl.slot0();
+            initiatorParams.trustedSqrtPrice = sqrtPrice;
+        }
 
         // And: Swap is successful.
         {
@@ -574,7 +586,10 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
         rebalancer.setAccount(address(account));
 
         // And: The pool is balanced.
-        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
+        {
+            (uint160 sqrtPrice, int24 tickCurrent,,,,) = poolCl.slot0();
+            initiatorParams.trustedSqrtPrice = sqrtPrice;
+        }
 
         // And: Swap is successful.
         {
@@ -705,7 +720,10 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
         rebalancer.setAccount(address(account));
 
         // And: The pool is balanced.
-        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
+        {
+            (uint160 sqrtPrice, int24 tickCurrent,,,,) = poolCl.slot0();
+            initiatorParams.trustedSqrtPrice = sqrtPrice;
+        }
 
         // And: Swap is successful.
         {
@@ -826,7 +844,10 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
         rebalancer.setAccount(address(account));
 
         // And: The pool is balanced.
-        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
+        {
+            (uint160 sqrtPrice, int24 tickCurrent,,,,) = poolCl.slot0();
+            initiatorParams.trustedSqrtPrice = sqrtPrice;
+        }
 
         // And: Swap is successful.
         {
@@ -957,7 +978,10 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
         rebalancer.setAccount(address(account));
 
         // And: The pool is balanced.
-        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
+        {
+            (uint160 sqrtPrice, int24 tickCurrent,,,,) = poolCl.slot0();
+            initiatorParams.trustedSqrtPrice = sqrtPrice;
+        }
 
         // And: Swap is successful.
         {

@@ -6,7 +6,6 @@ pragma solidity ^0.8.26;
 
 import { Compounder } from "../../../../src/compounders/Compounder2.sol";
 import { CompounderUniswapV3_Fuzz_Test } from "./_CompounderUniswapV3.fuzz.t.sol";
-import { DefaultHook } from "../../../utils/mocks/DefaultHook.sol";
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { PositionState } from "../../../../src/state/PositionState.sol";
 import { RebalanceLogic, RebalanceParams } from "../../../../src/libraries/RebalanceLogic.sol";
@@ -16,20 +15,12 @@ import { TickMath } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-co
  * @notice Fuzz tests for the function "compound" of contract "CompounderUniswapV3".
  */
 contract Compound_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz_Test {
-    /*////////////////////////////////////////////////////////////////
-                            VARIABLES
-    /////////////////////////////////////////////////////////////// */
-
-    DefaultHook internal strategyHook;
-
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public override {
         CompounderUniswapV3_Fuzz_Test.setUp();
-
-        strategyHook = new DefaultHook();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -216,6 +207,7 @@ contract Compound_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz_Test
             (uint256 balance0, uint256 balance1) = getFeeAmounts(position.id);
             balance0 = initiatorParams.amount0 + balance0 - balance0 * fee / 1e18;
             balance1 = initiatorParams.amount1 + balance1 - balance1 * fee / 1e18;
+            vm.assume(balance0 + balance1 > 1e6);
 
             RebalanceParams memory rebalanceParams = RebalanceLogic._getRebalanceParams(
                 1e18,

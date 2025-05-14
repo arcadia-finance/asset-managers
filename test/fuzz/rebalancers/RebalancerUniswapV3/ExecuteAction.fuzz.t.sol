@@ -335,7 +335,10 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
         rebalancer.setAccount(address(account));
 
         // And: The pool is balanced.
-        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
+        {
+            (uint160 sqrtPrice,,,,,,) = poolUniswap.slot0();
+            initiatorParams.trustedSqrtPrice = sqrtPrice;
+        }
 
         // And: Swap is successful.
         {
@@ -443,7 +446,10 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
         rebalancer.setAccount(address(account));
 
         // And: The pool is balanced.
-        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
+        {
+            (uint160 sqrtPrice,,,,,,) = poolUniswap.slot0();
+            initiatorParams.trustedSqrtPrice = sqrtPrice;
+        }
 
         // And: Swap is successful.
         {

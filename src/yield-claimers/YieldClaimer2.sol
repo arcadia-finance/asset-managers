@@ -156,7 +156,7 @@ abstract contract YieldClaimer is IActionBase, AbstractBase {
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Rebalances a UniswapV3 or Slipstream Liquidity Position, owned by an Arcadia Account.
+     * @notice Claims accrued fees/rewards from a Liquidity Position, owned by an Arcadia Account.
      * @param account_ The contract address of the account.
      * @param initiatorParams A struct with the initiator parameters.
      */
@@ -211,6 +211,9 @@ abstract contract YieldClaimer is IActionBase, AbstractBase {
         // Claim pending fees/rewards and update balances.
         _claim(balances, fees, positionManager, position, initiatorInfo[initiator].claimFee);
 
+        // If native eth was claimed, wrap it.
+        _stake(balances, positionManager, position);
+
         // Approve the liquidity position and leftovers to be deposited back into the Account.
         // And transfer the initiator fees to the initiator.
         uint256 count =
@@ -227,8 +230,7 @@ abstract contract YieldClaimer is IActionBase, AbstractBase {
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Approves the liquidity position and leftovers to be deposited back into the Account
-     * and transfers the initiator fees to the initiator.
+     * @notice Approves the liquidity position and handles the claimed fees/rewards.
      * @param initiator The address of the initiator.
      * @param balances The balances of the underlying tokens held by the Rebalancer.
      * @param fees The fees of the underlying tokens to be paid to the initiator.
@@ -248,13 +250,11 @@ abstract contract YieldClaimer is IActionBase, AbstractBase {
         // Approve the Liquidity Position.
         ERC721(positionManager).approve(msg.sender, position.id);
 
-        // Transfer Initiator fees and approve the leftovers.
         count = 1;
         for (uint256 i; i < balances.length; i++) {
             // Skip assets with no balance.
             if (balances[i] == 0) continue;
 
-            // If there are leftovers, deposit them back into the Account.
             if (balances[i] > fees[i]) {
                 if (recipient == msg.sender) {
                     // If feeRecipient is the Account itself, deposit fees back into the Account
@@ -263,7 +263,8 @@ abstract contract YieldClaimer is IActionBase, AbstractBase {
                     count++;
                 } else {
                     // Else, send the fees to the fee recipient.
-                    ERC20(position.tokens[i]).safeTransfer(recipient, balances[i]);
+                    ERC20(position.tokens[i]).safeTransfer(recipient, balances[i] - fees[i]);
+                    balances[i] = 0;
                 }
             } else {
                 fees[i] = balances[i];

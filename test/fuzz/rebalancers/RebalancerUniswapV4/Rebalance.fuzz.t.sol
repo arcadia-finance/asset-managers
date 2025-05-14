@@ -217,7 +217,10 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         }
 
         // And: The pool is balanced.
-        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
+        {
+            (uint160 sqrtPrice,,,) = stateView.getSlot0(poolKey.toId());
+            initiatorParams.trustedSqrtPrice = sqrtPrice;
+        }
 
         // When: Calling rebalance().
         initiatorParams.swapData = "";
@@ -315,7 +318,10 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         }
 
         // And: The pool is balanced.
-        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
+        {
+            (uint160 sqrtPrice,,,) = stateView.getSlot0(poolKey.toId());
+            initiatorParams.trustedSqrtPrice = sqrtPrice;
+        }
 
         // When: Calling rebalance().
         initiatorParams.swapData = "";
