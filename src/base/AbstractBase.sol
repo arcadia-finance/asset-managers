@@ -14,8 +14,8 @@ abstract contract AbstractBase {
                                 EVENTS
     ////////////////////////////////////////////////////////////// */
 
-    event YieldClaimed(address indexed account, address indexed asset, uint256 amount);
     event FeePaid(address indexed account, address indexed receiver, address indexed asset, uint256 amount);
+    event YieldClaimed(address indexed account, address indexed asset, uint256 amount);
 
     /* ///////////////////////////////////////////////////////////////
                             POSITION VALIDATION
