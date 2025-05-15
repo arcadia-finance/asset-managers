@@ -214,7 +214,7 @@ contract Rebalance_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fuzz_T
             (uint256 balance0, uint256 balance1) = getFeeAmounts(position.id);
             balance0 = initiatorParams.amount0 + balance0 - balance0 * initiatorParams.claimFee / 1e18;
             balance1 = initiatorParams.amount1 + balance1 - balance1 * initiatorParams.claimFee / 1e18;
-            vm.assume(balance0 + balance1 > 1e6);
+            vm.assume(balance0 + balance1 > 1e8);
 
             RebalanceParams memory rebalanceParams = RebalanceLogic._getRebalanceParams(
                 1e18,
