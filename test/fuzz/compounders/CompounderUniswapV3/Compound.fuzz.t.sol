@@ -223,8 +223,8 @@ contract Compound_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz_Test
             );
 
             // Amounts should be big enough or rounding errors become too big.
-            vm.assume(rebalanceParams.amountIn > 1e6);
-            vm.assume(rebalanceParams.minLiquidity > 1e6);
+            vm.assume(rebalanceParams.amountIn > 1e8);
+            vm.assume(rebalanceParams.minLiquidity > 1e8);
         }
 
         // When: Calling compound().

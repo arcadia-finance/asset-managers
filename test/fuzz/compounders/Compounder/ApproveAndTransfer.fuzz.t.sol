@@ -38,7 +38,10 @@ contract ApproveAndTransfer_Compounder_Fuzz_Test is Compounder_Fuzz_Test {
         uint256 fee1,
         address initiator
     ) public {
-        // Given: The initiator is not the contract.
+        // Given: The account is not the contract.
+        vm.assume(account_ != address(compounder));
+
+        // And: The initiator is not the contract.
         vm.assume(initiator != address(compounder));
 
         // And: Fees are bigger or equal than balances.
@@ -98,7 +101,10 @@ contract ApproveAndTransfer_Compounder_Fuzz_Test is Compounder_Fuzz_Test {
         uint256 fee1,
         address initiator
     ) public {
-        // Given: The initiator is not the contract.
+        // Given: The account is not the contract.
+        vm.assume(account_ != address(compounder));
+
+        // And: The initiator is not the contract.
         vm.assume(initiator != address(compounder));
 
         // And: balance0 is bigger than fee0.
@@ -160,7 +166,10 @@ contract ApproveAndTransfer_Compounder_Fuzz_Test is Compounder_Fuzz_Test {
         uint256 fee1,
         address initiator
     ) public {
-        // Given: The initiator is not the contract.
+        // Given: The account is not the contract.
+        vm.assume(account_ != address(compounder));
+
+        // And: The initiator is not the contract.
         vm.assume(initiator != address(compounder));
 
         // And: Fee0 is bigger or equal than balance0.
@@ -222,7 +231,10 @@ contract ApproveAndTransfer_Compounder_Fuzz_Test is Compounder_Fuzz_Test {
         uint256 fee1,
         address initiator
     ) public {
-        // Given: The initiator is not the contract.
+        // Given: The account is not the contract.
+        vm.assume(account_ != address(compounder));
+
+        // And: The initiator is not the contract.
         vm.assume(initiator != address(compounder));
 
         // And: Balances are bigger than fees.

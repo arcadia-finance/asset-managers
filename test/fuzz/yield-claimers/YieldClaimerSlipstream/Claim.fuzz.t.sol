@@ -90,7 +90,12 @@ contract Compound_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstream_Fuz
         address newOwner,
         address initiator
     ) public canReceiveERC721(newOwner) {
-        // Given : newOwner is not the old owner.
+        // Given: initiator is not holdig balances.
+        vm.assume(initiator != address(yieldClaimer));
+        vm.assume(initiator != users.liquidityProvider);
+        vm.assume(initiator != address(account));
+
+        // And : newOwner is not the old owner.
         vm.assume(newOwner != account.owner());
         vm.assume(newOwner != address(0));
         vm.assume(newOwner != address(account));
@@ -132,7 +137,12 @@ contract Compound_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstream_Fuz
         YieldClaimer.InitiatorParams memory initiatorParams,
         address initiator
     ) public {
-        // Given: A valid position in range (has both tokens).
+        // Given: initiator is not holdig balances.
+        vm.assume(initiator != address(yieldClaimer));
+        vm.assume(initiator != users.liquidityProvider);
+        vm.assume(initiator != address(account));
+
+        // And: A valid position in range (has both tokens).
         givenValidPoolState(liquidityPool, position);
         liquidityPool = uint128(bound(liquidityPool, 1e25, 1e30));
         setPoolState(liquidityPool, position, false);
@@ -209,10 +219,16 @@ contract Compound_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstream_Fuz
         address initiator,
         address recipient
     ) public {
-        // And: recipient is not the account or address(0).
+        // Given: initiator is not holdig balances.
+        vm.assume(initiator != address(yieldClaimer));
+        vm.assume(initiator != users.liquidityProvider);
+        vm.assume(initiator != address(account));
+
+        // Given: recipient is not holdig balances.
         vm.assume(recipient != address(yieldClaimer));
-        vm.assume(recipient != initiator);
+        vm.assume(recipient != users.liquidityProvider);
         vm.assume(recipient != address(account));
+        vm.assume(recipient != initiator);
         vm.assume(recipient != address(0));
 
         // And: A valid position in range (has both tokens).
@@ -291,7 +307,12 @@ contract Compound_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstream_Fuz
         YieldClaimer.InitiatorParams memory initiatorParams,
         address initiator
     ) public {
-        // Given: A valid position in range (has both tokens).
+        // Given: initiator is not holdig balances.
+        vm.assume(initiator != address(yieldClaimer));
+        vm.assume(initiator != users.liquidityProvider);
+        vm.assume(initiator != address(account));
+
+        // And: A valid position in range (has both tokens).
         givenValidPoolState(liquidityPool, position);
         liquidityPool = uint128(bound(liquidityPool, 1e25, 1e30));
         setPoolState(liquidityPool, position, true);
@@ -378,10 +399,17 @@ contract Compound_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstream_Fuz
         address initiator,
         address recipient
     ) public {
-        // Given: recipient is not the account or address(0).
+        // Given: initiator is not holdig balances.
+        vm.assume(initiator != address(yieldClaimer));
+        vm.assume(initiator != users.liquidityProvider);
+        vm.assume(initiator != address(account));
+
+        // And: recipient is not the account or address(0).
+        // Given: recipient is not holdig balances.
         vm.assume(recipient != address(yieldClaimer));
-        vm.assume(recipient != initiator);
+        vm.assume(recipient != users.liquidityProvider);
         vm.assume(recipient != address(account));
+        vm.assume(recipient != initiator);
         vm.assume(recipient != address(0));
 
         // And: A valid position in range (has both tokens).
@@ -470,7 +498,12 @@ contract Compound_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstream_Fuz
         YieldClaimer.InitiatorParams memory initiatorParams,
         address initiator
     ) public {
-        // Given: A valid position in range (has both tokens).
+        // Given: initiator is not holdig balances.
+        vm.assume(initiator != address(yieldClaimer));
+        vm.assume(initiator != users.liquidityProvider);
+        vm.assume(initiator != address(account));
+
+        // And: A valid position in range (has both tokens).
         givenValidPoolState(liquidityPool, position);
         liquidityPool = uint128(bound(liquidityPool, 1e25, 1e30));
         setPoolState(liquidityPool, position, true);
@@ -549,10 +582,17 @@ contract Compound_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstream_Fuz
         address initiator,
         address recipient
     ) public {
-        // Given: recipient is not the account or address(0).
+        // Given: initiator is not holdig balances.
+        vm.assume(initiator != address(yieldClaimer));
+        vm.assume(initiator != users.liquidityProvider);
+        vm.assume(initiator != address(account));
+
+        // And: recipient is not the account or address(0).
+        // Given: recipient is not holdig balances.
         vm.assume(recipient != address(yieldClaimer));
-        vm.assume(recipient != initiator);
+        vm.assume(recipient != users.liquidityProvider);
         vm.assume(recipient != address(account));
+        vm.assume(recipient != initiator);
         vm.assume(recipient != address(0));
 
         // And: A valid position in range (has both tokens).

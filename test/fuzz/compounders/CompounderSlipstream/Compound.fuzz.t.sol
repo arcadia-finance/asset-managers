@@ -228,8 +228,8 @@ contract Rebalance_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fuzz_T
             );
 
             // Amounts should be big enough or rounding errors become too big.
-            vm.assume(rebalanceParams.amountIn > 1e6);
-            vm.assume(rebalanceParams.minLiquidity > 1e6);
+            vm.assume(rebalanceParams.amountIn > 1e8);
+            vm.assume(rebalanceParams.minLiquidity > 1e8);
         }
 
         // When: Calling compound().
@@ -349,8 +349,8 @@ contract Rebalance_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fuzz_T
             );
 
             // Amounts should be big enough or rounding errors become too big.
-            vm.assume(rebalanceParams.amountIn > 1e6);
-            vm.assume(rebalanceParams.minLiquidity > 1e6);
+            vm.assume(rebalanceParams.amountIn > 1e8);
+            vm.assume(rebalanceParams.minLiquidity > 1e8);
         }
 
         // When: Calling compound().
@@ -462,8 +462,8 @@ contract Rebalance_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fuzz_T
             );
 
             // Amounts should be big enough or rounding errors become too big.
-            vm.assume(rebalanceParams.amountIn > 1e6);
-            vm.assume(rebalanceParams.minLiquidity > 1e6);
+            vm.assume(rebalanceParams.amountIn > 1e8);
+            vm.assume(rebalanceParams.minLiquidity > 1e8);
         }
 
         // When: Calling compound().

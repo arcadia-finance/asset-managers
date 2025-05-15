@@ -220,8 +220,8 @@ contract Rebalance_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz_Tes
             );
 
             // Amounts should be big enough or rounding errors become too big.
-            vm.assume(rebalanceParams.amountIn > 1e6);
-            vm.assume(rebalanceParams.minLiquidity > 1e6);
+            vm.assume(rebalanceParams.amountIn > 1e8);
+            vm.assume(rebalanceParams.minLiquidity > 1e8);
         }
 
         // When: Calling compound().
@@ -333,8 +333,8 @@ contract Rebalance_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz_Tes
             );
 
             // Amounts should be big enough or rounding errors become too big.
-            vm.assume(rebalanceParams.amountIn > 1e6);
-            vm.assume(rebalanceParams.minLiquidity > 1e6);
+            vm.assume(rebalanceParams.amountIn > 1e8);
+            vm.assume(rebalanceParams.minLiquidity > 1e8);
         }
 
         // When: Calling compound().

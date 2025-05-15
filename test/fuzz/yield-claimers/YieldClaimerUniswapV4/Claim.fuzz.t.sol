@@ -125,7 +125,11 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         YieldClaimer.InitiatorParams memory initiatorParams,
         address initiator
     ) public {
-        // Given: A valid position in range (has both tokens).
+        // Given: initiator is not the YieldClaimer.
+        vm.assume(initiator != address(yieldClaimer));
+        vm.assume(initiator != address(poolManager));
+
+        // And A valid position in range (has both tokens).
         givenValidPoolState(liquidityPool, position);
         liquidityPool = uint128(bound(liquidityPool, 1e25, 1e30));
         setPoolState(liquidityPool, position, false);
@@ -200,11 +204,16 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         address initiator,
         address recipient
     ) public {
+        // Given: initiator is not the YieldClaimer.
+        vm.assume(initiator != address(yieldClaimer));
+        vm.assume(initiator != address(poolManager));
+
         // And: recipient is not the account or address(0).
         vm.assume(recipient != address(yieldClaimer));
         vm.assume(recipient != initiator);
         vm.assume(recipient != address(account));
         vm.assume(recipient != address(0));
+        vm.assume(recipient != address(poolManager));
 
         // And: A valid position in range (has both tokens).
         givenValidPoolState(liquidityPool, position);
@@ -280,7 +289,11 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         YieldClaimer.InitiatorParams memory initiatorParams,
         address initiator
     ) public {
-        // Given: A valid position in range (has both tokens).
+        // Given: initiator is not the YieldClaimer.
+        vm.assume(initiator != address(yieldClaimer));
+        vm.assume(initiator != address(poolManager));
+
+        // And: A valid position in range (has both tokens).
         givenValidPoolState(liquidityPool, position);
         liquidityPool = uint128(bound(liquidityPool, 1e25, 1e30));
         setPoolState(liquidityPool, position, true);
@@ -355,11 +368,16 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         address initiator,
         address recipient
     ) public {
+        // Given: initiator is not the YieldClaimer.
+        vm.assume(initiator != address(yieldClaimer));
+        vm.assume(initiator != address(poolManager));
+
         // And: recipient is not the account or address(0).
         vm.assume(recipient != address(yieldClaimer));
         vm.assume(recipient != initiator);
         vm.assume(recipient != address(account));
         vm.assume(recipient != address(0));
+        vm.assume(recipient != address(poolManager));
 
         // And: A valid position in range (has both tokens).
         givenValidPoolState(liquidityPool, position);
