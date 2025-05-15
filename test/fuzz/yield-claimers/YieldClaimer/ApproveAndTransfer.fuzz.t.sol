@@ -41,6 +41,9 @@ contract ApproveAndTransfer_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         // Given: The initiator is not the contract.
         vm.assume(initiator != address(yieldClaimer));
 
+        // And: account is not the Yield claimer.
+        vm.assume(account_ != address(yieldClaimer));
+
         // And: Fees are bigger or equal than balances.
         fee0 = bound(fee0, 0, type(uint256).max);
         fee1 = bound(fee1, 0, type(uint256).max);
@@ -103,6 +106,9 @@ contract ApproveAndTransfer_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
     ) public {
         // Given: The initiator is not the contract.
         vm.assume(initiator != address(yieldClaimer));
+
+        // And: account is not the Yield claimer.
+        vm.assume(account_ != address(yieldClaimer));
 
         // And: balance0 is bigger than fee0.
         balance0 = bound(balance0, 1, type(uint256).max);
@@ -169,6 +175,9 @@ contract ApproveAndTransfer_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         // Given: The initiator is not the contract.
         vm.assume(initiator != address(yieldClaimer));
 
+        // And: account is not the Yield claimer.
+        vm.assume(account_ != address(yieldClaimer));
+
         // And: Fee0 is bigger or equal than balance0.
         fee0 = bound(fee0, 0, type(uint256).max);
         balance0 = bound(balance0, 0, fee0);
@@ -234,6 +243,9 @@ contract ApproveAndTransfer_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         // Given: The initiator is not the contract.
         vm.assume(initiator != address(yieldClaimer));
 
+        // And: account is not the Yield claimer.
+        vm.assume(account_ != address(yieldClaimer));
+
         // And: Balances are bigger than fees.
         balance0 = bound(balance0, 1, type(uint256).max);
         balance1 = bound(balance1, 1, type(uint256).max);
@@ -297,6 +309,9 @@ contract ApproveAndTransfer_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
     ) public {
         // Given: The initiator is not the contract.
         vm.assume(initiator != address(yieldClaimer));
+
+        // And: account is not the Yield claimer.
+        vm.assume(account_ != address(yieldClaimer));
 
         // And: recipient is not the account or address(0).
         vm.assume(recipient != address(yieldClaimer));
@@ -371,6 +386,9 @@ contract ApproveAndTransfer_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
     ) public {
         // Given: The initiator is not the contract.
         vm.assume(initiator != address(yieldClaimer));
+
+        // And: account is not the Yield claimer.
+        vm.assume(account_ != address(yieldClaimer));
 
         // And: recipient is not the account or address(0).
         vm.assume(recipient != address(yieldClaimer));
@@ -448,6 +466,9 @@ contract ApproveAndTransfer_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         // Given: The initiator is not the contract.
         vm.assume(initiator != address(yieldClaimer));
 
+        // And: account is not the Yield claimer.
+        vm.assume(account_ != address(yieldClaimer));
+
         // And: recipient is not the account or address(0).
         vm.assume(recipient != address(yieldClaimer));
         vm.assume(recipient != initiator);
@@ -523,6 +544,9 @@ contract ApproveAndTransfer_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
     ) public {
         // Given: The initiator is not the contract.
         vm.assume(initiator != address(yieldClaimer));
+
+        // And: account is not the Yield claimer.
+        vm.assume(account_ != address(yieldClaimer));
 
         // And: recipient is not the account or address(0).
         vm.assume(recipient != address(yieldClaimer));
