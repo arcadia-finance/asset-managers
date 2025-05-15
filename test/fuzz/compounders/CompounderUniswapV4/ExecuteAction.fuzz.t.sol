@@ -303,7 +303,7 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
         // And: Account info is set.
         tolerance = bound(tolerance, 0.001 * 1e18, MAX_TOLERANCE);
         vm.prank(account.owner());
-        compounder.setAccountInfo(address(account), initiator, MAX_FEE, MAX_FEE, tolerance, MIN_LIQUIDITY_RATIO, "");
+        compounder.setAccountInfo(address(account), initiator, MAX_FEE, MAX_FEE, tolerance, 1e18, "");
 
         // And: Fees are valid.
         initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));

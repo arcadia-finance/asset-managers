@@ -337,7 +337,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
             MAX_FEE,
             MAX_FEE,
             tolerance,
-            MIN_LIQUIDITY_RATIO,
+            1e18,
             address(strategyHook),
             abi.encode(address(token0), address(token1), ""),
             ""
