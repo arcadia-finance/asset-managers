@@ -20,11 +20,10 @@ contract Constructor_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_Constructor(address arcadiaFactory, uint256 maxFee) public {
+    function testFuzz_Success_Constructor(address arcadiaFactory) public {
         vm.prank(users.owner);
-        YieldClaimerExtension yieldClaimer_ = new YieldClaimerExtension(arcadiaFactory, maxFee);
+        YieldClaimerExtension yieldClaimer_ = new YieldClaimerExtension(arcadiaFactory);
 
         assertEq(address(yieldClaimer_.ARCADIA_FACTORY()), arcadiaFactory);
-        assertEq(yieldClaimer_.MAX_FEE(), maxFee);
     }
 }

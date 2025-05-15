@@ -28,9 +28,6 @@ abstract contract YieldClaimer is IActionBase, AbstractBase {
     // The contract address of the Arcadia Factory.
     IArcadiaFactory public immutable ARCADIA_FACTORY;
 
-    // The maximum fee an initiator can set, with 18 decimals precision.
-    uint256 public immutable MAX_FEE;
-
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
     ////////////////////////////////////////////////////////////// */
@@ -38,14 +35,22 @@ abstract contract YieldClaimer is IActionBase, AbstractBase {
     // The Account to rebalance the fees for, used as transient storage.
     address internal account;
 
-    // A mapping from initiator to rebalancing fee.
-    mapping(address initiator => InitiatorInfo) public initiatorInfo;
+    // A mapping from account to account specific information.
+    mapping(address account => AccountInfo) public accountInfo;
 
-    // A mapping that sets the approved initiator per owner per ccount.
+    // A mapping from account to custom metadata.
+    mapping(address account => bytes data) public metaData;
+
+    // A mapping that sets the approved initiator per owner per account.
     mapping(address owner => mapping(address account => address initiator)) public accountToInitiator;
 
-    // A mapping that sets a user-defined address as recipient of the fees.
-    mapping(address account => address feeRecipient) public accountToRecipient;
+    // A struct with the account specific parameters.
+    struct AccountInfo {
+        // The address of the recipient of the claimed fees.
+        address feeRecipient;
+        // The maximum fee charged on the claimed fees of the liquidity position, with 18 decimals precision.
+        uint64 maxClaimFee;
+    }
 
     // A struct with the initiator parameters.
     struct InitiatorParams {
@@ -53,12 +58,6 @@ abstract contract YieldClaimer is IActionBase, AbstractBase {
         address positionManager;
         // The id of the position.
         uint96 id;
-    }
-
-    // A struct with information for each specific initiator.
-    struct InitiatorInfo {
-        // A boolean indicating if the initiator has been set.
-        bool set;
         // The fee charged on the claimed fees of the liquidity position, with 18 decimals precision.
         uint64 claimFee;
     }
@@ -80,8 +79,9 @@ abstract contract YieldClaimer is IActionBase, AbstractBase {
                                 EVENTS
     ////////////////////////////////////////////////////////////// */
 
-    event AccountInfoSet(address indexed account, address indexed initiator, address feeRecipient);
+    event AccountInfoSet(address indexed account, address indexed initiator);
     event Claimed(address indexed account, address indexed positionManager, uint256 id);
+    event YieldTransferred(address indexed account, address indexed receiver, address indexed asset, uint256 amount);
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -89,11 +89,9 @@ abstract contract YieldClaimer is IActionBase, AbstractBase {
 
     /**
      * @param arcadiaFactory The contract address of the Arcadia Factory.
-     * @param maxFee The maximum fee an initiator can set, with 18 decimals precision.
      */
-    constructor(address arcadiaFactory, uint256 maxFee) {
+    constructor(address arcadiaFactory) {
         ARCADIA_FACTORY = IArcadiaFactory(arcadiaFactory);
-        MAX_FEE = maxFee;
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -104,55 +102,34 @@ abstract contract YieldClaimer is IActionBase, AbstractBase {
      * @notice Sets the required information for an Account.
      * @param account_ The contract address of the Arcadia Account to set the information for.
      * @param initiator The address of the initiator.
-     * @param feeRecipient The address to which the collected fees will be sent.
-     * @dev An initiator will be permissioned to claim fees for any
-     * Liquidity Position held in the specified Arcadia Account.
+     * @param feeRecipient The address of the recipient of the claimed fees.
+     * @param maxClaimFee The maximum fee charged on the claimed fees of the liquidity position, with 18 decimals precision.
+     * @param metaData_ Custom metadata to be stored with the account.
      */
-    function setAccountInfo(address account_, address initiator, address feeRecipient) external {
+    function setAccountInfo(
+        address account_,
+        address initiator,
+        address feeRecipient,
+        uint256 maxClaimFee,
+        bytes calldata metaData_
+    ) external {
         if (account != address(0)) revert Reentered();
         if (!ARCADIA_FACTORY.isAccount(account_)) revert NotAnAccount();
         address owner = IAccount(account_).owner();
         if (msg.sender != owner) revert OnlyAccountOwner();
         if (feeRecipient == address(0)) revert InvalidRecipient();
 
+        if (maxClaimFee > 1e18) revert InvalidValue();
+
         accountToInitiator[owner][account_] = initiator;
-        accountToRecipient[account_] = feeRecipient;
+        accountInfo[account_] = AccountInfo({ feeRecipient: feeRecipient, maxClaimFee: uint64(maxClaimFee) });
+        metaData[account_] = metaData_;
 
-        emit AccountInfoSet(account_, initiator, feeRecipient);
+        emit AccountInfoSet(account_, initiator);
     }
 
     /* ///////////////////////////////////////////////////////////////
-                            INITIATORS LOGIC
-    /////////////////////////////////////////////////////////////// */
-
-    /**
-     * @notice Sets the fee requested by an initiator on the amount of yield claimed.
-     * @param claimFee The fee charged on claimed fees/rewards by the initiator, with 18 decimals precision.
-     * @dev An initiator can update its fee but can only decrease it.
-     */
-    function setInitiatorInfo(uint256 claimFee) external {
-        if (account != address(0)) revert Reentered();
-
-        // Cache struct
-        InitiatorInfo memory initiatorInfo_ = initiatorInfo[msg.sender];
-
-        // Check if initiator is already set.
-        if (initiatorInfo_.set) {
-            // If so, the initiator can only decrease the fee.
-            if (claimFee > initiatorInfo_.claimFee) revert InvalidValue();
-        } else {
-            // If not, the fee can not exceed a certain threshold.
-            if (claimFee > MAX_FEE) revert InvalidValue();
-            initiatorInfo_.set = true;
-        }
-
-        initiatorInfo_.claimFee = uint64(claimFee);
-
-        initiatorInfo[msg.sender] = initiatorInfo_;
-    }
-
-    /* ///////////////////////////////////////////////////////////////
-                             REBALANCING LOGIC
+                             CLAIMING LOGIC
     /////////////////////////////////////////////////////////////// */
 
     /**
@@ -198,26 +175,31 @@ abstract contract YieldClaimer is IActionBase, AbstractBase {
         // Caller should be the Account, provided as input in rebalance().
         if (msg.sender != account) revert OnlyAccount();
 
+        // Cache accountInfo.
+        AccountInfo memory accountInfo_ = accountInfo[msg.sender];
+
         // Decode actionTargetData.
         (address initiator, InitiatorParams memory initiatorParams) =
             abi.decode(actionTargetData, (address, InitiatorParams));
         address positionManager = initiatorParams.positionManager;
+
+        // Validate initiatorParams.
+        if (initiatorParams.claimFee > accountInfo_.maxClaimFee) revert InvalidValue();
 
         // Get all pool and position related state.
         PositionState memory position = _getPositionState(positionManager, initiatorParams.id);
         uint256[] memory balances = new uint256[](position.tokens.length);
         uint256[] memory fees = new uint256[](balances.length);
 
-        // Claim pending fees/rewards and update balances.
-        _claim(balances, fees, positionManager, position, initiatorInfo[initiator].claimFee);
+        // Claim pending yields and update balances.
+        _claim(balances, fees, positionManager, position, initiatorParams.claimFee);
 
         // If native eth was claimed, wrap it.
         _stake(balances, positionManager, position);
 
-        // Approve the liquidity position and leftovers to be deposited back into the Account.
-        // And transfer the initiator fees to the initiator.
+        // Approve the liquidity position handle the claimed yields and transfer the initiator fees to the initiator.
         uint256 count =
-            _approveAndTransfer(initiator, balances, fees, positionManager, position, accountToRecipient[msg.sender]);
+            _approveAndTransfer(initiator, balances, fees, positionManager, position, accountInfo_.feeRecipient);
 
         // Encode deposit data for the flash-action.
         depositData = ArcadiaLogic._encodeDeposit(positionManager, position.id, position.tokens, balances, count);
@@ -230,9 +212,9 @@ abstract contract YieldClaimer is IActionBase, AbstractBase {
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Approves the liquidity position and handles the claimed fees/rewards.
+     * @notice Approves the liquidity position and handles the claimed yields.
      * @param initiator The address of the initiator.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens held by the YieldClaimer.
      * @param fees The fees of the underlying tokens to be paid to the initiator.
      * @param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
@@ -250,29 +232,37 @@ abstract contract YieldClaimer is IActionBase, AbstractBase {
         // Approve the Liquidity Position.
         ERC721(positionManager).approve(msg.sender, position.id);
 
+        // Transfer Initiator fees and handle the claimed yields.
         count = 1;
+        address token;
+        uint256 amount;
         for (uint256 i; i < balances.length; i++) {
-            // Skip assets with no balance.
-            if (balances[i] == 0) continue;
+            token = position.tokens[i];
 
+            // Handle the claimed yields.
             if (balances[i] > fees[i]) {
+                amount = balances[i] - fees[i];
                 if (recipient == msg.sender) {
-                    // If feeRecipient is the Account itself, deposit fees back into the Account
-                    balances[i] = balances[i] - fees[i];
-                    ERC20(position.tokens[i]).safeApproveWithRetry(msg.sender, balances[i]);
+                    // If feeRecipient is the Account itself, deposit yield back into the Account.
+                    balances[i] = amount;
+                    ERC20(token).safeApproveWithRetry(msg.sender, amount);
                     count++;
                 } else {
-                    // Else, send the fees to the fee recipient.
-                    ERC20(position.tokens[i]).safeTransfer(recipient, balances[i] - fees[i]);
+                    // Else, send the yield to the fee recipient.
+                    ERC20(token).safeTransfer(recipient, amount);
                     balances[i] = 0;
                 }
             } else {
+                amount = 0;
                 fees[i] = balances[i];
                 balances[i] = 0;
             }
 
             // Transfer Initiator fees to the initiator.
-            if (fees[i] > 0) ERC20(position.tokens[i]).safeTransfer(initiator, fees[i]);
+            if (fees[i] > 0) ERC20(token).safeTransfer(initiator, fees[i]);
+            emit FeePaid(msg.sender, initiator, token, fees[i]);
+
+            if (recipient != msg.sender) emit YieldTransferred(msg.sender, recipient, token, amount);
         }
     }
 }

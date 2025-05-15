@@ -81,12 +81,12 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
     function testFuzz_Revert_claim_ChangeAccountOwnership(
         YieldClaimer.InitiatorParams memory initiatorParams,
         address newOwner,
-        address initiator,
-        uint256 fee
+        address initiator
     ) public canReceiveERC721(newOwner) {
         // Given : newOwner is not the old owner.
         vm.assume(newOwner != account.owner());
         vm.assume(newOwner != address(0));
+        vm.assume(newOwner != address(account));
 
         // And : initiator is not address(0).
         vm.assume(initiator != address(0));
@@ -99,12 +99,12 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         vm.prank(newOwner);
         account.setAssetManager(address(yieldClaimer), true);
 
-        // And: The initiator is set.
-        fee = bound(fee, 0.001 * 1e18, MAX_FEE);
-        vm.prank(initiator);
-        yieldClaimer.setInitiatorInfo(fee);
+        // And: Account info is set.
         vm.prank(account.owner());
-        yieldClaimer.setAccountInfo(address(account), initiator, address(account));
+        yieldClaimer.setAccountInfo(address(account), initiator, address(account), MAX_FEE, "");
+
+        // And: Fee is valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
 
         // And: Account is transferred to newOwner.
         vm.startPrank(account.owner());
@@ -123,8 +123,7 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         PositionState memory position,
         uint256 feeSeed,
         YieldClaimer.InitiatorParams memory initiatorParams,
-        address initiator,
-        uint256 fee
+        address initiator
     ) public {
         // Given: A valid position in range (has both tokens).
         givenValidPoolState(liquidityPool, position);
@@ -146,12 +145,12 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         vm.prank(users.accountOwner);
         account.setAssetManager(address(yieldClaimer), true);
 
-        // And: The initiator is set.
-        fee = bound(fee, 0, MAX_FEE);
-        vm.prank(initiator);
-        yieldClaimer.setInitiatorInfo(fee);
+        // And: Account info is set.
         vm.prank(account.owner());
-        yieldClaimer.setAccountInfo(address(account), initiator, address(account));
+        yieldClaimer.setAccountInfo(address(account), initiator, address(account), MAX_FEE, "");
+
+        // And: Fee is valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
 
         // And: position has fees.
         feeSeed = uint256(bound(feeSeed, 0, type(uint48).max));
@@ -185,12 +184,12 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         assertEq(ERC721(address(positionManagerV4)).ownerOf(position.id), address(account));
 
         // And: tokens are deposited back into the account.
-        assertEq(token0.balanceOf(address(account)), fee0 - fee0 * fee / 1e18);
-        assertEq(token1.balanceOf(address(account)), fee1 - fee1 * fee / 1e18);
+        assertEq(token0.balanceOf(address(account)), fee0 - fee0 * initiatorParams.claimFee / 1e18);
+        assertEq(token1.balanceOf(address(account)), fee1 - fee1 * initiatorParams.claimFee / 1e18);
 
         // And: Initiator fees are given.
-        assertEq(token0.balanceOf(initiator), fee0 * fee / 1e18);
-        assertEq(token1.balanceOf(initiator), fee1 * fee / 1e18);
+        assertEq(token0.balanceOf(initiator), fee0 * initiatorParams.claimFee / 1e18);
+        assertEq(token1.balanceOf(initiator), fee1 * initiatorParams.claimFee / 1e18);
     }
 
     function testFuzz_Success_claim_NotNative_AccountIsNotRecipient(
@@ -199,7 +198,6 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         uint256 feeSeed,
         YieldClaimer.InitiatorParams memory initiatorParams,
         address initiator,
-        uint256 fee,
         address recipient
     ) public {
         // And: recipient is not the account or address(0).
@@ -228,12 +226,12 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         vm.prank(users.accountOwner);
         account.setAssetManager(address(yieldClaimer), true);
 
-        // And: The initiator is set.
-        fee = bound(fee, 0, MAX_FEE);
-        vm.prank(initiator);
-        yieldClaimer.setInitiatorInfo(fee);
+        // And: Account info is set.
         vm.prank(account.owner());
-        yieldClaimer.setAccountInfo(address(account), initiator, recipient);
+        yieldClaimer.setAccountInfo(address(account), initiator, recipient, MAX_FEE, "");
+
+        // And: Fee is valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
 
         // And: position has fees.
         feeSeed = uint256(bound(feeSeed, 0, type(uint48).max));
@@ -267,12 +265,12 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         assertEq(ERC721(address(positionManagerV4)).ownerOf(position.id), address(account));
 
         // And: recipient received the fees.
-        assertEq(token0.balanceOf(recipient), fee0 - fee0 * fee / 1e18);
-        assertEq(token1.balanceOf(recipient), fee1 - fee1 * fee / 1e18);
+        assertEq(token0.balanceOf(recipient), fee0 - fee0 * initiatorParams.claimFee / 1e18);
+        assertEq(token1.balanceOf(recipient), fee1 - fee1 * initiatorParams.claimFee / 1e18);
 
         // And: Initiator fees are given.
-        assertEq(token0.balanceOf(initiator), fee0 * fee / 1e18);
-        assertEq(token1.balanceOf(initiator), fee1 * fee / 1e18);
+        assertEq(token0.balanceOf(initiator), fee0 * initiatorParams.claimFee / 1e18);
+        assertEq(token1.balanceOf(initiator), fee1 * initiatorParams.claimFee / 1e18);
     }
 
     function testFuzz_Success_claim_IsNative_AccountIsRecipient(
@@ -280,8 +278,7 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         PositionState memory position,
         uint256 feeSeed,
         YieldClaimer.InitiatorParams memory initiatorParams,
-        address initiator,
-        uint256 fee
+        address initiator
     ) public {
         // Given: A valid position in range (has both tokens).
         givenValidPoolState(liquidityPool, position);
@@ -303,12 +300,12 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         vm.prank(users.accountOwner);
         account.setAssetManager(address(yieldClaimer), true);
 
-        // And: The initiator is set.
-        fee = bound(fee, 0, MAX_FEE);
-        vm.prank(initiator);
-        yieldClaimer.setInitiatorInfo(fee);
+        // And: Account info is set.
         vm.prank(account.owner());
-        yieldClaimer.setAccountInfo(address(account), initiator, address(account));
+        yieldClaimer.setAccountInfo(address(account), initiator, address(account), MAX_FEE, "");
+
+        // And: Fee is valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
 
         // And: position has fees.
         feeSeed = uint256(bound(feeSeed, 0, type(uint48).max));
@@ -342,12 +339,12 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         assertEq(ERC721(address(positionManagerV4)).ownerOf(position.id), address(account));
 
         // And: tokens are deposited back into the account.
-        assertEq(weth9.balanceOf(address(account)), fee0 - fee0 * fee / 1e18);
-        assertEq(token1.balanceOf(address(account)), fee1 - fee1 * fee / 1e18);
+        assertEq(weth9.balanceOf(address(account)), fee0 - fee0 * initiatorParams.claimFee / 1e18);
+        assertEq(token1.balanceOf(address(account)), fee1 - fee1 * initiatorParams.claimFee / 1e18);
 
         // And: Initiator fees are given.
-        assertEq(weth9.balanceOf(initiator), fee0 * fee / 1e18);
-        assertEq(token1.balanceOf(initiator), fee1 * fee / 1e18);
+        assertEq(weth9.balanceOf(initiator), fee0 * initiatorParams.claimFee / 1e18);
+        assertEq(token1.balanceOf(initiator), fee1 * initiatorParams.claimFee / 1e18);
     }
 
     function testFuzz_Success_claim_IsNative_AccountIsNotRecipient(
@@ -356,7 +353,6 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         uint256 feeSeed,
         YieldClaimer.InitiatorParams memory initiatorParams,
         address initiator,
-        uint256 fee,
         address recipient
     ) public {
         // And: recipient is not the account or address(0).
@@ -385,12 +381,12 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         vm.prank(users.accountOwner);
         account.setAssetManager(address(yieldClaimer), true);
 
-        // And: The initiator is set.
-        fee = bound(fee, 0, MAX_FEE);
-        vm.prank(initiator);
-        yieldClaimer.setInitiatorInfo(fee);
+        // And: Account info is set.
         vm.prank(account.owner());
-        yieldClaimer.setAccountInfo(address(account), initiator, recipient);
+        yieldClaimer.setAccountInfo(address(account), initiator, recipient, MAX_FEE, "");
+
+        // And: Fee is valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
 
         // And: position has fees.
         feeSeed = uint256(bound(feeSeed, 0, type(uint48).max));
@@ -424,11 +420,11 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         assertEq(ERC721(address(positionManagerV4)).ownerOf(position.id), address(account));
 
         // And: recipient received the fees.
-        assertEq(weth9.balanceOf(recipient), fee0 - fee0 * fee / 1e18);
-        assertEq(token1.balanceOf(recipient), fee1 - fee1 * fee / 1e18);
+        assertEq(weth9.balanceOf(recipient), fee0 - fee0 * initiatorParams.claimFee / 1e18);
+        assertEq(token1.balanceOf(recipient), fee1 - fee1 * initiatorParams.claimFee / 1e18);
 
         // And: Initiator fees are given.
-        assertEq(weth9.balanceOf(initiator), fee0 * fee / 1e18);
-        assertEq(token1.balanceOf(initiator), fee1 * fee / 1e18);
+        assertEq(weth9.balanceOf(initiator), fee0 * initiatorParams.claimFee / 1e18);
+        assertEq(token1.balanceOf(initiator), fee1 * initiatorParams.claimFee / 1e18);
     }
 }

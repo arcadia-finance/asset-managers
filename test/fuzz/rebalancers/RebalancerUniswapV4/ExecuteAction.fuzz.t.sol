@@ -57,6 +57,89 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         vm.stopPrank();
     }
 
+    function testFuzz_Revert_executeAction_InvalidClaimFee(
+        address initiator,
+        Rebalancer.InitiatorParams memory initiatorParams,
+        uint256 maxClaimFee,
+        uint256 maxSwapFee
+    ) public {
+        // Given: maxClaimFee is smaller or equal to 1e18.
+        maxClaimFee = uint64(bound(maxClaimFee, 0, 1e18));
+
+        // And: maxSwapFee is smaller or equal to 1e18.
+        maxSwapFee = uint64(bound(maxSwapFee, 0, 1e18));
+
+        // And info is set.
+        vm.prank(account.owner());
+        rebalancer.setAccountInfo(
+            address(account),
+            initiator,
+            maxClaimFee,
+            maxSwapFee,
+            MAX_TOLERANCE,
+            MIN_LIQUIDITY_RATIO,
+            address(strategyHook),
+            abi.encode(address(token0), address(token1), ""),
+            ""
+        );
+
+        // And: claimfee is bigger than maxClaimFee.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, maxClaimFee + 1, type(uint64).max));
+
+        // And: account is set.
+        rebalancer.setAccount(address(account));
+
+        // When: Calling executeAction().
+        // Then: it should revert.
+        bytes memory actionTargetData = abi.encode(initiator, initiatorParams);
+        vm.prank(address(account));
+        vm.expectRevert(Rebalancer.InvalidValue.selector);
+        rebalancer.executeAction(actionTargetData);
+    }
+
+    function testFuzz_Revert_executeAction_InvalidSwapFee(
+        address initiator,
+        Rebalancer.InitiatorParams memory initiatorParams,
+        uint256 maxClaimFee,
+        uint256 maxSwapFee
+    ) public {
+        // Given: maxClaimFee is smaller or equal to 1e18.
+        maxClaimFee = uint64(bound(maxClaimFee, 0, 1e18));
+
+        // And: maxSwapFee is smaller or equal to 1e18.
+        maxSwapFee = uint64(bound(maxSwapFee, 0, 1e18));
+
+        // And info is set.
+        vm.prank(account.owner());
+        rebalancer.setAccountInfo(
+            address(account),
+            initiator,
+            maxClaimFee,
+            maxSwapFee,
+            MAX_TOLERANCE,
+            MIN_LIQUIDITY_RATIO,
+            address(strategyHook),
+            abi.encode(address(token0), address(token1), ""),
+            ""
+        );
+
+        // And: claimfee is smaller than maxClaimFee.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, maxClaimFee));
+
+        // And: swapFee is bigger than maxSwapFee.
+        initiatorParams.swapFee = uint64(bound(initiatorParams.swapFee, maxSwapFee + 1, type(uint64).max));
+
+        // And: account is set.
+        rebalancer.setAccount(address(account));
+
+        // When: Calling executeAction().
+        // Then: it should revert.
+        bytes memory actionTargetData = abi.encode(initiator, initiatorParams);
+        vm.prank(address(account));
+        vm.expectRevert(Rebalancer.InvalidValue.selector);
+        rebalancer.executeAction(actionTargetData);
+    }
+
     function testFuzz_Revert_executeAction_UnbalancedPoolBeforeSwap(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
@@ -74,14 +157,24 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         initiatorParams.positionManager = address(positionManagerV4);
         initiatorParams.oldId = uint96(position.id);
 
-        // And: The initiator is set.
+        // And: Account info is set.
         tolerance = bound(tolerance, 0, MAX_TOLERANCE);
-        vm.prank(initiator);
-        rebalancer.setInitiatorInfo(0, MAX_FEE, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
-            address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
+            address(account),
+            initiator,
+            MAX_FEE,
+            MAX_FEE,
+            tolerance,
+            MIN_LIQUIDITY_RATIO,
+            address(strategyHook),
+            abi.encode(address(token0), address(token1), ""),
+            ""
         );
+
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
+        initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: A new position with a valid tick range above current tick.
         tickLower = int24(bound(tickLower, position.tickCurrent, BOUND_TICK_UPPER - 1));
@@ -104,7 +197,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
         // And: The pool is unbalanced.
         {
-            (, uint256 lowerSqrtPriceDeviation,,,) = rebalancer.initiatorInfo(initiator);
+            (, uint256 lowerSqrtPriceDeviation,,,,) = rebalancer.accountInfo(address(account));
             initiatorParams.trustedSqrtPrice = bound(
                 initiatorParams.trustedSqrtPrice,
                 position.sqrtPrice * 1e18 / lowerSqrtPriceDeviation + lowerSqrtPriceDeviation,
@@ -141,14 +234,24 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         initiatorParams.positionManager = address(positionManagerV4);
         initiatorParams.oldId = uint96(position.id);
 
-        // And: The initiator is set.
+        // And: Account info is set.
         tolerance = bound(tolerance, 0, MAX_TOLERANCE);
-        vm.prank(initiator);
-        rebalancer.setInitiatorInfo(0, MAX_FEE, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
-            address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
+            address(account),
+            initiator,
+            MAX_FEE,
+            MAX_FEE,
+            tolerance,
+            MIN_LIQUIDITY_RATIO,
+            address(strategyHook),
+            abi.encode(address(token0), address(token1), ""),
+            ""
         );
+
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
+        initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: A new position with a valid tick range above current tick.
         tickLower = int24(bound(tickLower, position.tickCurrent, BOUND_TICK_UPPER - 1));
@@ -181,7 +284,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
         // And: The pool is unbalanced after the swap.
         {
-            (, uint256 lowerSqrtPriceDeviation,,,) = rebalancer.initiatorInfo(initiator);
+            (, uint256 lowerSqrtPriceDeviation,,,,) = rebalancer.accountInfo(address(account));
             uint256 lowerBoundSqrtPrice = initiatorParams.trustedSqrtPrice * lowerSqrtPriceDeviation / 1e18;
             uint256 newSqrtPrice = bound(position.sqrtPrice, TickMath.MIN_SQRT_PRICE, lowerBoundSqrtPrice);
 
@@ -211,8 +314,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         int24 tickLower,
         int24 tickUpper,
         address initiator,
-        uint256 tolerance,
-        uint256 fee
+        uint256 tolerance
     ) public {
         // Given: A valid position in range (has both tokens).
         liquidityPool = givenValidPoolState(liquidityPool, position);
@@ -226,15 +328,24 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         initiatorParams.positionManager = address(positionManagerV4);
         initiatorParams.oldId = uint96(position.id);
 
-        // And: The initiator is set.
+        // And: Account info is set.
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
-        fee = bound(fee, 0, MAX_FEE);
-        vm.prank(initiator);
-        rebalancer.setInitiatorInfo(fee, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
-            address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
+            address(account),
+            initiator,
+            MAX_FEE,
+            MAX_FEE,
+            tolerance,
+            1e18,
+            address(strategyHook),
+            abi.encode(address(token0), address(token1), ""),
+            ""
         );
+
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
+        initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: A new position with a valid tick range above current tick.
         tickLower = int24(bound(tickLower, position.tickCurrent, BOUND_TICK_UPPER - 10));
@@ -290,8 +401,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         int24 tickLower,
         int24 tickUpper,
         address initiator,
-        uint256 tolerance,
-        uint256 fee
+        uint256 tolerance
     ) public {
         // Given: A valid position in range (has both tokens).
         liquidityPool = givenValidPoolState(liquidityPool, position);
@@ -305,15 +415,24 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         initiatorParams.positionManager = address(positionManagerV4);
         initiatorParams.oldId = uint96(position.id);
 
-        // And: The initiator is set.
+        // And: Account info is set.
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
-        fee = bound(fee, 0, MAX_FEE);
-        vm.prank(initiator);
-        rebalancer.setInitiatorInfo(fee, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
-            address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
+            address(account),
+            initiator,
+            MAX_FEE,
+            MAX_FEE,
+            tolerance,
+            MIN_LIQUIDITY_RATIO,
+            address(strategyHook),
+            abi.encode(address(token0), address(token1), ""),
+            ""
         );
+
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
+        initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: A new position with a valid tick range below current tick.
         tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, position.tickCurrent - 11));
@@ -387,7 +506,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         }
 
         // And: Initiator fees are given.
-        if (fee > 1e16) assertGt(token0.balanceOf(initiator), 0);
+        if (initiatorParams.claimFee > 1e16) assertGt(token0.balanceOf(initiator), 0);
     }
 
     function testFuzz_Success_executeAction_NotNative_OneToZero(
@@ -399,8 +518,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         int24 tickLower,
         int24 tickUpper,
         address initiator,
-        uint256 tolerance,
-        uint256 fee
+        uint256 tolerance
     ) public {
         // Given: A valid position in range (has both tokens).
         liquidityPool = givenValidPoolState(liquidityPool, position);
@@ -414,15 +532,24 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         initiatorParams.positionManager = address(positionManagerV4);
         initiatorParams.oldId = uint96(position.id);
 
-        // And: The initiator is set.
+        // And: Account info is set.
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
-        fee = bound(fee, 0, MAX_FEE);
-        vm.prank(initiator);
-        rebalancer.setInitiatorInfo(fee, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
-            address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
+            address(account),
+            initiator,
+            MAX_FEE,
+            MAX_FEE,
+            tolerance,
+            MIN_LIQUIDITY_RATIO,
+            address(strategyHook),
+            abi.encode(address(token0), address(token1), ""),
+            ""
         );
+
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
+        initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: A new position with a valid tick range above current tick.
         tickLower = int24(bound(tickLower, position.tickCurrent + 1, BOUND_TICK_UPPER - 10));
@@ -503,7 +630,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         }
 
         // And: Initiator fees are given.
-        if (fee > 1e16) assertGt(token1.balanceOf(initiator), 0);
+        if (initiatorParams.claimFee > 1e16) assertGt(token1.balanceOf(initiator), 0);
     }
 
     function testFuzz_Success_executeAction_IsNative_ZeroToOne(
@@ -515,8 +642,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         int24 tickLower,
         int24 tickUpper,
         address initiator,
-        uint256 tolerance,
-        uint256 fee
+        uint256 tolerance
     ) public {
         // Given: A valid position in range (has both tokens).
         liquidityPool = givenValidPoolState(liquidityPool, position);
@@ -530,15 +656,24 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         initiatorParams.positionManager = address(positionManagerV4);
         initiatorParams.oldId = uint96(position.id);
 
-        // And: The initiator is set.
+        // And: Account info is set.
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
-        fee = bound(fee, 0, MAX_FEE);
-        vm.prank(initiator);
-        rebalancer.setInitiatorInfo(fee, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
-            address(account), initiator, address(strategyHook), abi.encode(address(0), address(token1), "")
+            address(account),
+            initiator,
+            MAX_FEE,
+            MAX_FEE,
+            tolerance,
+            MIN_LIQUIDITY_RATIO,
+            address(strategyHook),
+            abi.encode(address(0), address(token1), ""),
+            ""
         );
+
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
+        initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: A new position with a valid tick range below current tick.
         tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, position.tickCurrent - 11));
@@ -614,7 +749,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         }
 
         // And: Initiator fees are given.
-        if (fee > 1e16) assertGt(token0.balanceOf(initiator), 0);
+        if (initiatorParams.claimFee > 1e16) assertGt(token0.balanceOf(initiator), 0);
     }
 
     function testFuzz_Success_executeAction_IsNative_OneToZero(
@@ -626,8 +761,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         int24 tickLower,
         int24 tickUpper,
         address initiator,
-        uint256 tolerance,
-        uint256 fee
+        uint256 tolerance
     ) public {
         // Given: A valid position in range (has both tokens).
         liquidityPool = givenValidPoolState(liquidityPool, position);
@@ -641,15 +775,24 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         initiatorParams.positionManager = address(positionManagerV4);
         initiatorParams.oldId = uint96(position.id);
 
-        // And: The initiator is set.
+        // And: Account info is set.
         tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
-        fee = bound(fee, 0, MAX_FEE);
-        vm.prank(initiator);
-        rebalancer.setInitiatorInfo(fee, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
-            address(account), initiator, address(strategyHook), abi.encode(address(0), address(token1), "")
+            address(account),
+            initiator,
+            MAX_FEE,
+            MAX_FEE,
+            tolerance,
+            MIN_LIQUIDITY_RATIO,
+            address(strategyHook),
+            abi.encode(address(0), address(token1), ""),
+            ""
         );
+
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
+        initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: A new position with a valid tick range above current tick.
         tickLower = int24(bound(tickLower, position.tickCurrent + 1, BOUND_TICK_UPPER - 10));
@@ -736,6 +879,6 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         }
 
         // And: Initiator fees are given.
-        if (fee > 1e16) assertGt(token1.balanceOf(initiator), 0);
+        if (initiatorParams.claimFee > 1e16) assertGt(token1.balanceOf(initiator), 0);
     }
 }

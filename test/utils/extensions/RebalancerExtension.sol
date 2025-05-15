@@ -8,9 +8,7 @@ import { PositionState } from "../../../src/state/PositionState.sol";
 import { Rebalancer } from "../../../src/rebalancers/Rebalancer.sol";
 
 contract RebalancerExtension is Rebalancer {
-    constructor(address arcadiaFactory, uint256 maxFee, uint256 maxTolerance, uint256 minLiquidityRatio)
-        Rebalancer(arcadiaFactory, maxFee, maxTolerance, minLiquidityRatio)
-    { }
+    constructor(address arcadiaFactory) Rebalancer(arcadiaFactory) { }
 
     function isPositionManager(address positionManager) public view override returns (bool) { }
 
@@ -98,7 +96,7 @@ contract RebalancerExtension is Rebalancer {
     }
 
     function setHook(address account_, address hook) public {
-        strategyHook[account_] = hook;
+        accountInfo[account_].strategyHook = hook;
     }
 
     function setAccount(address account_) public {

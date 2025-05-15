@@ -27,14 +27,7 @@ abstract contract CompounderUniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
 
         // Deploy test contract.
         compounder = new CompounderUniswapV4Extension(
-            address(factory),
-            MAX_FEE,
-            MAX_TOLERANCE,
-            MIN_LIQUIDITY_RATIO,
-            address(positionManagerV4),
-            address(permit2),
-            address(poolManager),
-            address(weth9)
+            address(factory), address(positionManagerV4), address(permit2), address(poolManager), address(weth9)
         );
     }
 }

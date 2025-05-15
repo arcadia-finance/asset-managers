@@ -20,7 +20,6 @@ contract YieldClaimerSlipstream is YieldClaimer, Slipstream {
 
     /**
      * @param arcadiaFactory The contract address of the Arcadia Factory.
-     * @param maxClaimFee The maximum fee an initiator can set.
      * @param positionManager The contract address of the Slipstream Position Manager.
      * @param cLFactory The contract address of the Slipstream Factory.
      * @param poolImplementation The contract address of the Slipstream Pool Implementation.
@@ -30,7 +29,6 @@ contract YieldClaimerSlipstream is YieldClaimer, Slipstream {
      */
     constructor(
         address arcadiaFactory,
-        uint256 maxClaimFee,
         address positionManager,
         address cLFactory,
         address poolImplementation,
@@ -38,7 +36,7 @@ contract YieldClaimerSlipstream is YieldClaimer, Slipstream {
         address stakedSlipstreamAm,
         address stakedSlipstreamWrapper
     )
-        YieldClaimer(arcadiaFactory, maxClaimFee)
+        YieldClaimer(arcadiaFactory)
         Slipstream(positionManager, cLFactory, poolImplementation, rewardToken, stakedSlipstreamAm, stakedSlipstreamWrapper)
     { }
 
@@ -48,7 +46,7 @@ contract YieldClaimerSlipstream is YieldClaimer, Slipstream {
 
     /**
      * @notice Stakes a Liquidity Position.
-     * param balances The balances of the underlying tokens held by the Rebalancer.
+     * param balances The balances of the underlying tokens.
      * param positionManager The contract address of the Position Manager.
      * param position A struct with position and pool related variables.
      */

@@ -8,26 +8,8 @@ import { CompounderUniswapV4 } from "../../../src/compounders/CompounderUniswapV
 import { PositionState } from "../../../src/state/PositionState.sol";
 
 contract CompounderUniswapV4Extension is CompounderUniswapV4 {
-    constructor(
-        address arcadiaFactory,
-        uint256 maxFee,
-        uint256 maxTolerance,
-        uint256 minLiquidityRatio,
-        address positionManager,
-        address permit2,
-        address poolManager,
-        address weth
-    )
-        CompounderUniswapV4(
-            arcadiaFactory,
-            maxFee,
-            maxTolerance,
-            minLiquidityRatio,
-            positionManager,
-            permit2,
-            poolManager,
-            weth
-        )
+    constructor(address arcadiaFactory, address positionManager, address permit2, address poolManager, address weth)
+        CompounderUniswapV4(arcadiaFactory, positionManager, permit2, poolManager, weth)
     { }
 
     function getUnderlyingTokens(address positionManager, uint256 id) external view returns (address, address) {

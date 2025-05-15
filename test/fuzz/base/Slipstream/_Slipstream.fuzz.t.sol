@@ -40,7 +40,7 @@ abstract contract Slipstream_Fuzz_Test is
     int24 internal constant TICK_SPACING = 1;
 
     uint256 internal constant MAX_TOLERANCE = 0.02 * 1e18;
-    uint256 internal constant MAX_FEE = 0.01 * 1e18;
+    uint64 internal constant MAX_FEE = 0.01 * 1e18;
     uint256 internal constant MIN_LIQUIDITY_RATIO = 0.99 * 1e18;
 
     /*////////////////////////////////////////////////////////////////
@@ -163,11 +163,10 @@ abstract contract Slipstream_Fuzz_Test is
         initSlipstream(uint160(position.sqrtPrice), liquidityPool, position.tickSpacing);
         position.pool = address(poolCl);
         position.fee = poolCl.fee();
-        position.tokens = new address[](2);
-        position.tokens[0] = address(token0);
-        position.tokens[1] = address(token1);
 
         if (staked) {
+            position.tokens = new address[](3);
+            position.tokens[2] = AERO;
             // Create gauge.
             vm.prank(address(voter));
             gauge = ICLGauge(cLGaugeFactory.createGauge(address(0), address(poolCl), address(0), AERO, true));
@@ -175,7 +174,12 @@ abstract contract Slipstream_Fuzz_Test is
             voter.setAlive(address(gauge), true);
             vm.prank(users.owner);
             stakedSlipstreamAM.addGauge(address(gauge));
+        } else {
+            position.tokens = new address[](2);
         }
+
+        position.tokens[0] = address(token0);
+        position.tokens[1] = address(token1);
     }
 
     function givenValidPositionState(PositionState memory position) internal {

@@ -96,12 +96,12 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         Rebalancer.InitiatorParams memory initiatorParams,
         address newOwner,
         address initiator,
-        uint256 tolerance,
-        uint256 fee
+        uint256 tolerance
     ) public canReceiveERC721(newOwner) {
         // Given : newOwner is not the old owner.
         vm.assume(newOwner != account.owner());
         vm.assume(newOwner != address(0));
+        vm.assume(newOwner != address(account));
 
         // And : initiator is not address(0).
         vm.assume(initiator != address(0));
@@ -114,15 +114,24 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         vm.prank(newOwner);
         account.setAssetManager(address(rebalancer), true);
 
-        // And: The initiator is set.
+        // And: Account info is set.
         tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
-        fee = bound(fee, 0.001 * 1e18, MAX_FEE);
-        vm.prank(initiator);
-        rebalancer.setInitiatorInfo(0, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
-            address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
+            address(account),
+            initiator,
+            MAX_FEE,
+            MAX_FEE,
+            tolerance,
+            MIN_LIQUIDITY_RATIO,
+            address(strategyHook),
+            abi.encode(address(token0), address(token1), ""),
+            ""
         );
+
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0.001 * 1e18, MAX_FEE));
+        initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: Account is transferred to newOwner.
         vm.startPrank(account.owner());
@@ -144,8 +153,7 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         int24 tickLower,
         int24 tickUpper,
         address initiator,
-        uint256 tolerance,
-        uint256 fee
+        uint256 tolerance
     ) public {
         // Given: A valid position in range (has both tokens).
         liquidityPool = givenValidPoolState(liquidityPool, position);
@@ -166,15 +174,24 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         vm.prank(users.accountOwner);
         account.setAssetManager(address(rebalancer), true);
 
-        // And: The initiator is set.
+        // And: Account info is set.
         tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
-        fee = bound(fee, 0.001 * 1e18, MAX_FEE);
-        vm.prank(initiator);
-        rebalancer.setInitiatorInfo(fee, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
-            address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
+            address(account),
+            initiator,
+            MAX_FEE,
+            MAX_FEE,
+            tolerance,
+            MIN_LIQUIDITY_RATIO,
+            address(strategyHook),
+            abi.encode(address(token0), address(token1), ""),
+            ""
         );
+
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0.001 * 1e18, MAX_FEE));
+        initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: A valid new position.
         tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, BOUND_TICK_UPPER - 10_000));
@@ -224,7 +241,7 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
 
         // And: The pool is balanced.
         {
-            (uint160 sqrtPrice, int24 tickCurrent,,,,) = poolCl.slot0();
+            (uint160 sqrtPrice,,,,,) = poolCl.slot0();
             initiatorParams.trustedSqrtPrice = sqrtPrice;
         }
 
@@ -245,7 +262,6 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         int24 tickUpper,
         address initiator,
         uint256 tolerance,
-        uint256 fee,
         uint256 rewards
     ) public {
         // Given: A valid position in range (has both tokens).
@@ -282,15 +298,24 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         vm.prank(users.accountOwner);
         account.setAssetManager(address(rebalancer), true);
 
-        // And: The initiator is set.
+        // And: Account info is set.
         tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
-        fee = bound(fee, 0.001 * 1e18, MAX_FEE);
-        vm.prank(initiator);
-        rebalancer.setInitiatorInfo(fee, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
-            address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
+            address(account),
+            initiator,
+            MAX_FEE,
+            MAX_FEE,
+            tolerance,
+            MIN_LIQUIDITY_RATIO,
+            address(strategyHook),
+            abi.encode(address(token0), address(token1), ""),
+            ""
         );
+
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0.001 * 1e18, MAX_FEE));
+        initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: A valid new position.
         tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, BOUND_TICK_UPPER - 10_000));
@@ -334,7 +359,7 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
 
         // And: The pool is balanced.
         {
-            (uint160 sqrtPrice, int24 tickCurrent,,,,) = poolCl.slot0();
+            (uint160 sqrtPrice,,,,,) = poolCl.slot0();
             initiatorParams.trustedSqrtPrice = sqrtPrice;
         }
 
@@ -355,7 +380,6 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         int24 tickUpper,
         address initiator,
         uint256 tolerance,
-        uint256 fee,
         uint256 rewards
     ) public {
         // Given: A valid position in range (has both tokens).
@@ -399,15 +423,24 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         vm.prank(users.accountOwner);
         account.setAssetManager(address(rebalancer), true);
 
-        // And: The initiator is set.
+        // And: Account info is set.
         tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
-        fee = bound(fee, 0.001 * 1e18, MAX_FEE);
-        vm.prank(initiator);
-        rebalancer.setInitiatorInfo(fee, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
-            address(account), initiator, address(strategyHook), abi.encode(address(token0), address(token1), "")
+            address(account),
+            initiator,
+            MAX_FEE,
+            MAX_FEE,
+            tolerance,
+            MIN_LIQUIDITY_RATIO,
+            address(strategyHook),
+            abi.encode(address(token0), address(token1), ""),
+            ""
         );
+
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0.001 * 1e18, MAX_FEE));
+        initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: A valid new position.
         tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, BOUND_TICK_UPPER - 10_000));
@@ -428,7 +461,7 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
 
         // And: The pool is balanced.
         {
-            (uint160 sqrtPrice, int24 tickCurrent,,,,) = poolCl.slot0();
+            (uint160 sqrtPrice,,,,,) = poolCl.slot0();
             initiatorParams.trustedSqrtPrice = sqrtPrice;
         }
 

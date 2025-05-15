@@ -27,23 +27,11 @@ contract CompounderUniswapV3 is Compounder, UniswapV3 {
 
     /**
      * @param arcadiaFactory The contract address of the Arcadia Factory.
-     * @param maxFee The maximum fee an initiator can set, with 18 decimals precision.
-     * @param maxTolerance The maximum allowed deviation of the actual pool price for any initiator,
-     * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
-     * @param minLiquidityRatio The ratio of the minimum amount of liquidity that must be minted,
-     * relative to the hypothetical amount of liquidity when we rebalance without slippage, with 18 decimals precision.
      * @param positionManager The contract address of the Uniswap v3 Position Manager.
      * @param uniswapV3Factory The contract address of the Uniswap v3 Factory.
      */
-    constructor(
-        address arcadiaFactory,
-        uint256 maxFee,
-        uint256 maxTolerance,
-        uint256 minLiquidityRatio,
-        address positionManager,
-        address uniswapV3Factory
-    )
-        Compounder(arcadiaFactory, maxFee, maxTolerance, minLiquidityRatio)
+    constructor(address arcadiaFactory, address positionManager, address uniswapV3Factory)
+        Compounder(arcadiaFactory)
         UniswapV3(positionManager, uniswapV3Factory)
     { }
 }

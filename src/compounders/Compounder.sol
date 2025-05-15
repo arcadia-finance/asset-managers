@@ -42,18 +42,6 @@ abstract contract Compounder is IActionBase, AbstractBase {
     // The contract address of the Arcadia Factory.
     IArcadiaFactory public immutable ARCADIA_FACTORY;
 
-    // The maximum fee an initiator can set, with 18 decimals precision.
-    uint256 public immutable MAX_FEE;
-
-    // The maximum deviation of the actual pool price, in % with 18 decimals precision.
-    uint256 public immutable MAX_TOLERANCE;
-
-    // The ratio that limits the amount of slippage of the swap, with 18 decimals precision.
-    // It is defined as the quotient between the minimal amount of liquidity that must be added,
-    // and the amount of liquidity that would be added if the swap was executed through the pool without slippage.
-    // MIN_LIQUIDITY_RATIO = minLiquidity / liquidityWithoutSlippage
-    uint256 public immutable MIN_LIQUIDITY_RATIO;
-
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
     ////////////////////////////////////////////////////////////// */
@@ -61,11 +49,28 @@ abstract contract Compounder is IActionBase, AbstractBase {
     // The Account to rebalance the fees for, used as transient storage.
     address internal account;
 
-    // A mapping from initiator to rebalancing fee.
-    mapping(address initiator => InitiatorInfo) public initiatorInfo;
+    // A mapping from account to account specific information.
+    mapping(address account => AccountInfo) public accountInfo;
+
+    // A mapping from account to custom metadata.
+    mapping(address account => bytes data) public metaData;
 
     // A mapping that sets the approved initiator per owner per ccount.
     mapping(address owner => mapping(address account => address initiator)) public accountToInitiator;
+
+    // A struct with the account specific parameters.
+    struct AccountInfo {
+        // The maximum fee charged on the claimed fees of the liquidity position, with 18 decimals precision.
+        uint64 maxClaimFee;
+        // The maximum fee charged on the ideal (without slippage) amountIn by the initiator, with 18 decimals precision.
+        uint64 maxSwapFee;
+        // The maximum relative deviation the pool can have from the trustedSqrtPrice, with 18 decimals precision.
+        uint64 upperSqrtPriceDeviation;
+        // The miminumù relative deviation the pool can have from the trustedSqrtPrice, with 18 decimals precision.
+        uint64 lowerSqrtPriceDeviation;
+        // The ratio that limits the amount of slippage of the swap, with 18 decimals precision.
+        uint64 minLiquidityRatio;
+    }
 
     // A struct with the initiator parameters.
     struct InitiatorParams {
@@ -79,6 +84,10 @@ abstract contract Compounder is IActionBase, AbstractBase {
         uint128 amount1;
         // The sqrtPrice the pool should have, given by the initiator.
         uint256 trustedSqrtPrice;
+        // The fee charged on the claimed fees of the liquidity position, with 18 decimals precision.
+        uint64 claimFee;
+        // The fee charged on the ideal (without slippage) amountIn by the initiator, with 18 decimals precision.
+        uint64 swapFee;
         // Calldata provided by the initiator to execute the swap.
         bytes swapData;
     }
@@ -93,20 +102,6 @@ abstract contract Compounder is IActionBase, AbstractBase {
         uint160 sqrtRatioLower;
         // The sqrtRatio of the upper tick.
         uint160 sqrtRatioUpper;
-    }
-
-    // A struct with information for each specific initiator.
-    struct InitiatorInfo {
-        // The fee charged on the claimed fees of the liquidity position, with 18 decimals precision.
-        uint64 claimFee;
-        // The fee charged on the ideal (without slippage) amountIn by the initiator, with 18 decimals precision.
-        uint64 swapFee;
-        // The maximum relative deviation the pool can have from the trustedSqrtPrice, with 18 decimals precision.
-        uint64 upperSqrtPriceDeviation;
-        // The miminumù relative deviation the pool can have from the trustedSqrtPrice, with 18 decimals precision.
-        uint64 lowerSqrtPriceDeviation;
-        // The ratio that limits the amount of slippage of the swap, with 18 decimals precision.
-        uint64 minLiquidityRatio;
     }
 
     /* //////////////////////////////////////////////////////////////
@@ -137,17 +132,9 @@ abstract contract Compounder is IActionBase, AbstractBase {
 
     /**
      * @param arcadiaFactory The contract address of the Arcadia Factory.
-     * @param maxFee The maximum fee an initiator can set, with 18 decimals precision.
-     * @param maxTolerance The maximum allowed deviation of the actual pool price for any initiator,
-     * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
-     * @param minLiquidityRatio The ratio of the minimum amount of liquidity that must be minted,
-     * relative to the hypothetical amount of liquidity when we rebalance without slippage, with 18 decimals precision.
      */
-    constructor(address arcadiaFactory, uint256 maxFee, uint256 maxTolerance, uint256 minLiquidityRatio) {
+    constructor(address arcadiaFactory) {
         ARCADIA_FACTORY = IArcadiaFactory(arcadiaFactory);
-        MAX_FEE = maxFee;
-        MAX_TOLERANCE = maxTolerance;
-        MIN_LIQUIDITY_RATIO = minLiquidityRatio;
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -158,78 +145,51 @@ abstract contract Compounder is IActionBase, AbstractBase {
      * @notice Sets the required information for an Account.
      * @param account_ The contract address of the Arcadia Account to set the information for.
      * @param initiator The address of the initiator.
+     * @param maxClaimFee The maximum fee charged on claimed fees/rewards by the initiator, with 18 decimals precision.
+     * @param maxSwapFee The maximum fee charged on the ideal (without slippage) amountIn by the initiator, with 18 decimals precision.
+     * @param maxTolerance The maximum allowed deviation of the actual pool price for any initiator,
+     * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
+     * @param minLiquidityRatio The ratio of the minimum amount of liquidity that must be minted,
+     * relative to the hypothetical amount of liquidity when we rebalance without slippage, with 18 decimals precision.
+     * @param metaData_ Custom metadata to be stored with the account.
      */
-    function setAccountInfo(address account_, address initiator) external {
+    function setAccountInfo(
+        address account_,
+        address initiator,
+        uint256 maxClaimFee,
+        uint256 maxSwapFee,
+        uint256 maxTolerance,
+        uint256 minLiquidityRatio,
+        bytes calldata metaData_
+    ) external {
         if (account != address(0)) revert Reentered();
         if (!ARCADIA_FACTORY.isAccount(account_)) revert NotAnAccount();
         address owner = IAccount(account_).owner();
         if (msg.sender != owner) revert OnlyAccountOwner();
 
+        if (maxClaimFee > 1e18 || maxSwapFee > 1e18 || maxTolerance > 1e18 || minLiquidityRatio > 1e18) {
+            revert InvalidValue();
+        }
+
         accountToInitiator[owner][account_] = initiator;
+        accountInfo[account_] = AccountInfo({
+            maxClaimFee: uint64(maxClaimFee),
+            maxSwapFee: uint64(maxSwapFee),
+            upperSqrtPriceDeviation: uint64(FixedPointMathLib.sqrt((1e18 + maxTolerance) * 1e18)),
+            lowerSqrtPriceDeviation: uint64(FixedPointMathLib.sqrt((1e18 - maxTolerance) * 1e18)),
+            minLiquidityRatio: uint64(minLiquidityRatio)
+        });
+        metaData[account_] = metaData_;
 
         emit AccountInfoSet(account_, initiator);
     }
 
     /* ///////////////////////////////////////////////////////////////
-                            INITIATORS LOGIC
+                             COMPOUND LOGIC
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Sets the information requested for an initiator.
-     * @param claimFee The fee charged on claimed fees/rewards by the initiator, with 18 decimals precision.
-     * @param swapFee The fee charged on the ideal (without slippage) amountIn by the initiator, with 18 decimals precision.
-     * @param tolerance The maximum deviation of the actual pool price,
-     * @param minLiquidityRatio The ratio of the minimum amount of liquidity that must be minted,
-     * relative to the hypothetical amount of liquidity when we rebalance without slippage, with 18 decimals precision.
-     * @dev The tolerance for the pool price will be converted to an upper and lower max sqrtPrice deviation,
-     * using the square root of the basis (one with 18 decimals precision) +- tolerance (18 decimals precision).
-     * The tolerance boundaries are symmetric around the price, but taking the square root will result in a different
-     * allowed deviation of the sqrtPrice for the lower and upper boundaries.
-     */
-    function setInitiatorInfo(uint256 claimFee, uint256 swapFee, uint256 tolerance, uint256 minLiquidityRatio)
-        external
-    {
-        if (account != address(0)) revert Reentered();
-
-        // Cache struct
-        InitiatorInfo memory initiatorInfo_ = initiatorInfo[msg.sender];
-
-        // Calculation required for checks.
-        uint64 upperSqrtPriceDeviation = uint64(FixedPointMathLib.sqrt((1e18 + tolerance) * 1e18));
-
-        // Check if initiator is already set.
-        if (initiatorInfo_.minLiquidityRatio > 0) {
-            // If so, the initiator can only change parameters to more favourable values for users.
-            if (
-                claimFee > initiatorInfo_.claimFee || swapFee > initiatorInfo_.swapFee
-                    || upperSqrtPriceDeviation > initiatorInfo_.upperSqrtPriceDeviation
-                    || minLiquidityRatio < initiatorInfo_.minLiquidityRatio || minLiquidityRatio > 1e18
-            ) revert InvalidValue();
-        } else {
-            // If not, the parameters can not exceed certain thresholds.
-            if (
-                claimFee > MAX_FEE || swapFee > MAX_FEE || tolerance > MAX_TOLERANCE
-                    || minLiquidityRatio < MIN_LIQUIDITY_RATIO || minLiquidityRatio > 1e18
-            ) {
-                revert InvalidValue();
-            }
-        }
-
-        initiatorInfo_.claimFee = uint64(claimFee);
-        initiatorInfo_.swapFee = uint64(swapFee);
-        initiatorInfo_.minLiquidityRatio = uint64(minLiquidityRatio);
-        initiatorInfo_.lowerSqrtPriceDeviation = uint64(FixedPointMathLib.sqrt((1e18 - tolerance) * 1e18));
-        initiatorInfo_.upperSqrtPriceDeviation = upperSqrtPriceDeviation;
-
-        initiatorInfo[msg.sender] = initiatorInfo_;
-    }
-
-    /* ///////////////////////////////////////////////////////////////
-                             REBALANCING LOGIC
-    /////////////////////////////////////////////////////////////// */
-
-    /**
-     * @notice Rebalances a UniswapV3 or Slipstream Liquidity Position, owned by an Arcadia Account.
+     * @notice Compounds a Concentrated Liquidity Positions, owned by an Arcadia Account.
      * @param account_ The contract address of the account.
      * @param initiatorParams A struct with the initiator parameters.
      */
@@ -278,38 +238,46 @@ abstract contract Compounder is IActionBase, AbstractBase {
         // Caller should be the Account, provided as input in rebalance().
         if (msg.sender != account) revert OnlyAccount();
 
+        // Cache accountInfo.
+        AccountInfo memory accountInfo_ = accountInfo[msg.sender];
+
         // Decode actionTargetData.
         (address initiator, InitiatorParams memory initiatorParams) =
             abi.decode(actionTargetData, (address, InitiatorParams));
         address positionManager = initiatorParams.positionManager;
 
+        // Validate initiatorParams.
+        if (initiatorParams.claimFee > accountInfo_.maxClaimFee || initiatorParams.swapFee > accountInfo_.maxSwapFee) {
+            revert InvalidValue();
+        }
+
         // Get all pool and position related state.
         PositionState memory position = _getPositionState(positionManager, initiatorParams.id);
 
-        // Rebalancer has withdrawn the underlying tokens from the Account.
+        // Compounder has withdrawn the underlying tokens from the Account.
         uint256[] memory balances = new uint256[](position.tokens.length);
         balances[0] = initiatorParams.amount0;
         balances[1] = initiatorParams.amount1;
         uint256[] memory fees = new uint256[](balances.length);
 
         // Cache variables that are gas expensive to calcultate and used multiple times.
-        Cache memory cache = _getCache(initiator, position, initiatorParams.trustedSqrtPrice);
+        Cache memory cache = _getCache(accountInfo_, position, initiatorParams.trustedSqrtPrice);
 
         // Check that pool is initially balanced.
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
         if (!isPoolBalanced(position.sqrtPrice, cache)) revert UnbalancedPool();
 
-        // Claim pending fees/rewards and update balances.
-        _claim(balances, fees, positionManager, position, initiatorInfo[initiator].claimFee);
+        // Claim pending yields and update balances.
+        _claim(balances, fees, positionManager, position, initiatorParams.claimFee);
 
         // If the position is staked, unstake it.
         _unstake(balances, positionManager, position);
 
         // Get the rebalance parameters, based on a hypothetical swap through the pool itself without slippage.
         RebalanceParams memory rebalanceParams = RebalanceLogic._getRebalanceParams(
-            initiatorInfo[initiator].minLiquidityRatio,
+            accountInfo_.minLiquidityRatio,
             position.fee,
-            initiatorInfo[initiator].swapFee,
+            initiatorParams.swapFee,
             position.sqrtPrice,
             cache.sqrtRatioLower,
             cache.sqrtRatioUpper,
@@ -336,19 +304,17 @@ abstract contract Compounder is IActionBase, AbstractBase {
         // As explained before _swap(), tokenOut should be the limiting factor when increasing liquidity
         // therefore we only subtract the initiator fee from the amountOut, not from the amountIn.
         // Increase liquidity, update balances and delta liquidity.
-        {
-            (uint256 amount0Desired, uint256 amount1Desired) =
-                rebalanceParams.zeroToOne ? (balances[0], balances[1] - fees[1]) : (balances[0] - fees[0], balances[1]);
-            // Increase liquidity, update balances and liquidity
-            _increaseLiquidity(balances, positionManager, position, amount0Desired, amount1Desired);
-        }
+        (uint256 amount0Desired, uint256 amount1Desired) =
+            rebalanceParams.zeroToOne ? (balances[0], balances[1] - fees[1]) : (balances[0] - fees[0], balances[1]);
+        // Increase liquidity, update balances and liquidity
+        _increaseLiquidity(balances, positionManager, position, amount0Desired, amount1Desired);
 
         // Check that the actual liquidity of the position is above the minimum threshold.
         // This prevents loss of principal of the liquidity position due to slippage,
         // or malicious initiators who remove liquidity during a custom swap.
         if (position.liquidity < rebalanceParams.minLiquidity) revert InsufficientLiquidity();
 
-        // If the position is staked, stake it.
+        // If the position was staked, stake it.
         _stake(balances, positionManager, position);
 
         // Approve the liquidity position and leftovers to be deposited back into the Account.
@@ -382,22 +348,22 @@ abstract contract Compounder is IActionBase, AbstractBase {
 
     /**
      * @notice Returns the cached variables.
-     * @param initiator The address of the initiator.
+     * @param accountInfo_ A struct with the account specific parameters.
      * @param position A struct with position and pool related variables.
      * @param trustedSqrtPrice The sqrtPrice the pool should have, given by the initiator.
      * @return cache A struct with cached variables.
      */
-    function _getCache(address initiator, PositionState memory position, uint256 trustedSqrtPrice)
+    function _getCache(AccountInfo memory accountInfo_, PositionState memory position, uint256 trustedSqrtPrice)
         internal
         view
         virtual
         returns (Cache memory cache)
     {
         // We do not handle the edge cases where the bounds of the sqrtPrice exceed MIN_SQRT_RATIO or MAX_SQRT_RATIO.
-        // This will result in a revert during swapViaPool, if ever needed a different rebalancer has to be deployed.
+        // This will result in a revert during swapViaPool, if ever needed a different Compounder has to be deployed.
         cache = Cache({
-            lowerBoundSqrtPrice: trustedSqrtPrice.mulDivDown(initiatorInfo[initiator].lowerSqrtPriceDeviation, 1e18),
-            upperBoundSqrtPrice: trustedSqrtPrice.mulDivDown(initiatorInfo[initiator].upperSqrtPriceDeviation, 1e18),
+            lowerBoundSqrtPrice: trustedSqrtPrice.mulDivDown(accountInfo_.lowerSqrtPriceDeviation, 1e18),
+            upperBoundSqrtPrice: trustedSqrtPrice.mulDivDown(accountInfo_.upperSqrtPriceDeviation, 1e18),
             sqrtRatioLower: TickMath.getSqrtPriceAtTick(position.tickLower),
             sqrtRatioUpper: TickMath.getSqrtPriceAtTick(position.tickUpper)
         });
@@ -409,7 +375,7 @@ abstract contract Compounder is IActionBase, AbstractBase {
 
     /**
      * @notice Swaps one token for another to rebalance the Liquidity Position.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens held by the Compounder.
      * @param fees The fees of the underlying tokens to be paid to the initiator.
      * @param initiatorParams A struct with the initiator parameters.
      * @param position A struct with position and pool related variables.
@@ -454,7 +420,7 @@ abstract contract Compounder is IActionBase, AbstractBase {
 
     /**
      * @notice Swaps one token for another, via a router with custom swap data.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens held by the Compounder.
      * @param position A struct with position and pool related variables.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param swapData Arbitrary calldata provided by an initiator for the swap.
@@ -491,7 +457,7 @@ abstract contract Compounder is IActionBase, AbstractBase {
      * @notice Approves the liquidity position and leftovers to be deposited back into the Account
      * and transfers the initiator fees to the initiator.
      * @param initiator The address of the initiator.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens held by the Compounder.
      * @param fees The fees of the underlying tokens to be paid to the initiator.
      * @param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
@@ -508,15 +474,14 @@ abstract contract Compounder is IActionBase, AbstractBase {
         ERC721(positionManager).approve(msg.sender, position.id);
 
         // Transfer Initiator fees and approve the leftovers.
+        address token;
         count = 1;
         for (uint256 i; i < balances.length; i++) {
-            // Skip assets with no balance.
-            if (balances[i] == 0) continue;
-
+            token = position.tokens[i];
             // If there are leftovers, deposit them back into the Account.
             if (balances[i] > fees[i]) {
                 balances[i] = balances[i] - fees[i];
-                ERC20(position.tokens[i]).safeApproveWithRetry(msg.sender, balances[i]);
+                ERC20(token).safeApproveWithRetry(msg.sender, balances[i]);
                 count++;
             } else {
                 fees[i] = balances[i];
@@ -524,7 +489,8 @@ abstract contract Compounder is IActionBase, AbstractBase {
             }
 
             // Transfer Initiator fees to the initiator.
-            if (fees[i] > 0) ERC20(position.tokens[i]).safeTransfer(initiator, fees[i]);
+            if (fees[i] > 0) ERC20(token).safeTransfer(initiator, fees[i]);
+            emit FeePaid(msg.sender, initiator, token, fees[i]);
         }
     }
 }

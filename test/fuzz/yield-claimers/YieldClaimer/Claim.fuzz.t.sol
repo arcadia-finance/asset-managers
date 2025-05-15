@@ -77,12 +77,12 @@ contract Claim_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
     function testFuzz_Revert_claim_ChangeAccountOwnership(
         YieldClaimer.InitiatorParams memory initiatorParams,
         address newOwner,
-        address initiator,
-        uint256 fee
+        address initiator
     ) public canReceiveERC721(newOwner) {
         // Given : newOwner is not the old owner.
         vm.assume(newOwner != account.owner());
         vm.assume(newOwner != address(0));
+        vm.assume(newOwner != address(account));
 
         // And : initiator is not address(0).
         vm.assume(initiator != address(0));
@@ -95,12 +95,9 @@ contract Claim_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         vm.prank(newOwner);
         account.setAssetManager(address(yieldClaimer), true);
 
-        // And: The initiator is set.
-        fee = bound(fee, 0.001 * 1e18, MAX_FEE);
-        vm.prank(initiator);
-        yieldClaimer.setInitiatorInfo(fee);
+        // And: Account is set.
         vm.prank(account.owner());
-        yieldClaimer.setAccountInfo(address(account), initiator, address(account));
+        yieldClaimer.setAccountInfo(address(account), initiator, address(account), MAX_FEE, "");
 
         // And: Account is transferred to newOwner.
         vm.startPrank(account.owner());

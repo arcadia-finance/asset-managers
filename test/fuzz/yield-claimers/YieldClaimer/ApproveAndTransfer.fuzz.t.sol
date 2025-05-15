@@ -4,6 +4,7 @@
  */
 pragma solidity ^0.8.22;
 
+import { AbstractBase } from "../../../../src/base/AbstractBase.sol";
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { PositionState } from "../../../../src/state/PositionState.sol";
 import { YieldClaimer } from "../../../../src/yield-claimers/YieldClaimer.sol";
@@ -40,6 +41,9 @@ contract ApproveAndTransfer_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         // Given: The initiator is not the contract.
         vm.assume(initiator != address(yieldClaimer));
 
+        // And: account is not the Yield claimer.
+        vm.assume(account_ != address(yieldClaimer));
+
         // And: Fees are bigger or equal than balances.
         fee0 = bound(fee0, 0, type(uint256).max);
         fee1 = bound(fee1, 0, type(uint256).max);
@@ -63,6 +67,10 @@ contract ApproveAndTransfer_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
 
         // When: Calling _approveAndTransfer().
         {
+            vm.expectEmit();
+            emit AbstractBase.FeePaid(account_, initiator, address(token0), balance0);
+            vm.expectEmit();
+            emit AbstractBase.FeePaid(account_, initiator, address(token1), balance1);
             vm.prank(account_);
             uint256 count;
             (balances, count) = yieldClaimer.approveAndTransfer(
@@ -99,6 +107,9 @@ contract ApproveAndTransfer_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         // Given: The initiator is not the contract.
         vm.assume(initiator != address(yieldClaimer));
 
+        // And: account is not the Yield claimer.
+        vm.assume(account_ != address(yieldClaimer));
+
         // And: balance0 is bigger than fee0.
         balance0 = bound(balance0, 1, type(uint256).max);
         fee0 = bound(fee0, 0, balance0 - 1);
@@ -123,6 +134,10 @@ contract ApproveAndTransfer_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         nonfungiblePositionManager.mint(address(yieldClaimer), position.id);
 
         // When: Calling _approveAndTransfer().
+        vm.expectEmit();
+        emit AbstractBase.FeePaid(account_, initiator, address(token0), fee0);
+        vm.expectEmit();
+        emit AbstractBase.FeePaid(account_, initiator, address(token1), balance1);
         vm.prank(account_);
         {
             uint256 count;
@@ -160,6 +175,9 @@ contract ApproveAndTransfer_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         // Given: The initiator is not the contract.
         vm.assume(initiator != address(yieldClaimer));
 
+        // And: account is not the Yield claimer.
+        vm.assume(account_ != address(yieldClaimer));
+
         // And: Fee0 is bigger or equal than balance0.
         fee0 = bound(fee0, 0, type(uint256).max);
         balance0 = bound(balance0, 0, fee0);
@@ -185,6 +203,10 @@ contract ApproveAndTransfer_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
 
         // When: Calling _approveAndTransfer().
         {
+            vm.expectEmit();
+            emit AbstractBase.FeePaid(account_, initiator, address(token0), balance0);
+            vm.expectEmit();
+            emit AbstractBase.FeePaid(account_, initiator, address(token1), fee1);
             vm.prank(account_);
             uint256 count;
             (balances, count) = yieldClaimer.approveAndTransfer(
@@ -221,6 +243,9 @@ contract ApproveAndTransfer_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         // Given: The initiator is not the contract.
         vm.assume(initiator != address(yieldClaimer));
 
+        // And: account is not the Yield claimer.
+        vm.assume(account_ != address(yieldClaimer));
+
         // And: Balances are bigger than fees.
         balance0 = bound(balance0, 1, type(uint256).max);
         balance1 = bound(balance1, 1, type(uint256).max);
@@ -244,6 +269,10 @@ contract ApproveAndTransfer_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
 
         // When: Calling _approveAndTransfer().
         {
+            vm.expectEmit();
+            emit AbstractBase.FeePaid(account_, initiator, address(token0), fee0);
+            vm.expectEmit();
+            emit AbstractBase.FeePaid(account_, initiator, address(token1), fee1);
             vm.prank(account_);
             uint256 count;
             (balances, count) = yieldClaimer.approveAndTransfer(
@@ -281,6 +310,9 @@ contract ApproveAndTransfer_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         // Given: The initiator is not the contract.
         vm.assume(initiator != address(yieldClaimer));
 
+        // And: account is not the Yield claimer.
+        vm.assume(account_ != address(yieldClaimer));
+
         // And: recipient is not the account or address(0).
         vm.assume(recipient != address(yieldClaimer));
         vm.assume(recipient != initiator);
@@ -310,6 +342,14 @@ contract ApproveAndTransfer_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
 
         // When: Calling _approveAndTransfer().
         {
+            vm.expectEmit();
+            emit AbstractBase.FeePaid(account_, initiator, address(token0), balance0);
+            vm.expectEmit();
+            emit YieldClaimer.YieldTransferred(account_, recipient, address(token0), 0);
+            vm.expectEmit();
+            emit AbstractBase.FeePaid(account_, initiator, address(token1), balance1);
+            vm.expectEmit();
+            emit YieldClaimer.YieldTransferred(account_, recipient, address(token1), 0);
             vm.prank(account_);
             uint256 count;
             (balances, count) = yieldClaimer.approveAndTransfer(
@@ -347,6 +387,9 @@ contract ApproveAndTransfer_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         // Given: The initiator is not the contract.
         vm.assume(initiator != address(yieldClaimer));
 
+        // And: account is not the Yield claimer.
+        vm.assume(account_ != address(yieldClaimer));
+
         // And: recipient is not the account or address(0).
         vm.assume(recipient != address(yieldClaimer));
         vm.assume(recipient != initiator);
@@ -377,6 +420,14 @@ contract ApproveAndTransfer_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         nonfungiblePositionManager.mint(address(yieldClaimer), position.id);
 
         // When: Calling _approveAndTransfer().
+        vm.expectEmit();
+        emit AbstractBase.FeePaid(account_, initiator, address(token0), fee0);
+        vm.expectEmit();
+        emit YieldClaimer.YieldTransferred(account_, recipient, address(token0), balance0 - fee0);
+        vm.expectEmit();
+        emit AbstractBase.FeePaid(account_, initiator, address(token1), balance1);
+        vm.expectEmit();
+        emit YieldClaimer.YieldTransferred(account_, recipient, address(token1), 0);
         vm.prank(account_);
         {
             uint256 count;
@@ -415,6 +466,9 @@ contract ApproveAndTransfer_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         // Given: The initiator is not the contract.
         vm.assume(initiator != address(yieldClaimer));
 
+        // And: account is not the Yield claimer.
+        vm.assume(account_ != address(yieldClaimer));
+
         // And: recipient is not the account or address(0).
         vm.assume(recipient != address(yieldClaimer));
         vm.assume(recipient != initiator);
@@ -446,6 +500,14 @@ contract ApproveAndTransfer_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
 
         // When: Calling _approveAndTransfer().
         {
+            vm.expectEmit();
+            emit AbstractBase.FeePaid(account_, initiator, address(token0), balance0);
+            vm.expectEmit();
+            emit YieldClaimer.YieldTransferred(account_, recipient, address(token0), 0);
+            vm.expectEmit();
+            emit AbstractBase.FeePaid(account_, initiator, address(token1), fee1);
+            vm.expectEmit();
+            emit YieldClaimer.YieldTransferred(account_, recipient, address(token1), balance1 - fee1);
             vm.prank(account_);
             uint256 count;
             (balances, count) = yieldClaimer.approveAndTransfer(
@@ -483,6 +545,9 @@ contract ApproveAndTransfer_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         // Given: The initiator is not the contract.
         vm.assume(initiator != address(yieldClaimer));
 
+        // And: account is not the Yield claimer.
+        vm.assume(account_ != address(yieldClaimer));
+
         // And: recipient is not the account or address(0).
         vm.assume(recipient != address(yieldClaimer));
         vm.assume(recipient != initiator);
@@ -512,6 +577,14 @@ contract ApproveAndTransfer_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
 
         // When: Calling _approveAndTransfer().
         {
+            vm.expectEmit();
+            emit AbstractBase.FeePaid(account_, initiator, address(token0), fee0);
+            vm.expectEmit();
+            emit YieldClaimer.YieldTransferred(account_, recipient, address(token0), balance0 - fee0);
+            vm.expectEmit();
+            emit AbstractBase.FeePaid(account_, initiator, address(token1), fee1);
+            vm.expectEmit();
+            emit YieldClaimer.YieldTransferred(account_, recipient, address(token1), balance1 - fee1);
             vm.prank(account_);
             uint256 count;
             (balances, count) = yieldClaimer.approveAndTransfer(

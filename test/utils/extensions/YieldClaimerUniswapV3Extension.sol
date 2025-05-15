@@ -8,8 +8,8 @@ import { PositionState } from "../../../src/state/PositionState.sol";
 import { YieldClaimerUniswapV3 } from "../../../src/yield-claimers/YieldClaimerUniswapV3.sol";
 
 contract YieldClaimerUniswapV3Extension is YieldClaimerUniswapV3 {
-    constructor(address arcadiaFactory, uint256 maxFee, address positionManager, address uniswapV3Factory)
-        YieldClaimerUniswapV3(arcadiaFactory, maxFee, positionManager, uniswapV3Factory)
+    constructor(address arcadiaFactory, address positionManager, address uniswapV3Factory)
+        YieldClaimerUniswapV3(arcadiaFactory, positionManager, uniswapV3Factory)
     { }
 
     function getUnderlyingTokens(address positionManager, uint256 id) external view returns (address, address) {

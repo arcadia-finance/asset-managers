@@ -26,7 +26,7 @@ contract SetAccountInfo_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         address caller,
         address account_,
         address initiator,
-        address recipient
+        YieldClaimer.AccountInfo memory accountInfo
     ) public {
         // Given: Account is set.
         vm.assume(account_ != address(0));
@@ -36,14 +36,14 @@ contract SetAccountInfo_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         // Then: it should revert
         vm.prank(caller);
         vm.expectRevert(YieldClaimer.Reentered.selector);
-        yieldClaimer.setAccountInfo(account_, initiator, recipient);
+        yieldClaimer.setAccountInfo(account_, initiator, accountInfo.feeRecipient, accountInfo.maxClaimFee, "");
     }
 
     function testFuzz_Revert_setAccountInfo_NotAnAccount(
         address caller,
         address account_,
         address initiator,
-        address recipient
+        YieldClaimer.AccountInfo memory accountInfo
     ) public {
         // Given: account is not an Arcadia Account
         vm.assume(account_ != address(account));
@@ -52,12 +52,14 @@ contract SetAccountInfo_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         // Then: it should revert
         vm.prank(caller);
         vm.expectRevert(YieldClaimer.NotAnAccount.selector);
-        yieldClaimer.setAccountInfo(account_, initiator, recipient);
+        yieldClaimer.setAccountInfo(account_, initiator, accountInfo.feeRecipient, accountInfo.maxClaimFee, "");
     }
 
-    function testFuzz_Revert_setAccountInfo_OnlyAccountOwner(address caller, address initiator, address recipient)
-        public
-    {
+    function testFuzz_Revert_setAccountInfo_OnlyAccountOwner(
+        address caller,
+        address initiator,
+        YieldClaimer.AccountInfo memory accountInfo
+    ) public {
         // Given: caller is not the Arcadia Account owner.
         vm.assume(caller != account.owner());
 
@@ -65,28 +67,54 @@ contract SetAccountInfo_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         // Then: it should revert
         vm.prank(caller);
         vm.expectRevert(YieldClaimer.OnlyAccountOwner.selector);
-        yieldClaimer.setAccountInfo(address(account), initiator, recipient);
+        yieldClaimer.setAccountInfo(address(account), initiator, accountInfo.feeRecipient, accountInfo.maxClaimFee, "");
     }
 
-    function testFuzz_Revert_setAccountInfo_InvalidRecipient(address initiator) public {
-        // Given: caller is the Arcadia Account owner.
-        // When: Owner calls setAccountInfo with zero address as recipient.
+    function testFuzz_Revert_setAccountInfo_InvalidRecipient(
+        address initiator,
+        YieldClaimer.AccountInfo memory accountInfo
+    ) public {
+        // Given: recipient is the zero address.
+        accountInfo.feeRecipient = address(0);
+
+        // When: Owner calls setAccountInfo.
         // Then: it should revert
         vm.prank(account.owner());
         vm.expectRevert(YieldClaimer.InvalidRecipient.selector);
-        yieldClaimer.setAccountInfo(address(account), initiator, address(0));
+        yieldClaimer.setAccountInfo(address(account), initiator, accountInfo.feeRecipient, accountInfo.maxClaimFee, "");
     }
 
-    function testFuzz_Success_setAccountInfo(address initiator, address recipient) public {
+    function testFuzz_Revert_setAccountInfo_InvalidValue(address initiator, YieldClaimer.AccountInfo memory accountInfo)
+        public
+    {
+        // Given: recipient is not the zero address.
+        vm.assume(accountInfo.feeRecipient != address(0));
+
+        // And: maxClaimFee is bigger than 1e18.
+        accountInfo.maxClaimFee = uint64(bound(accountInfo.maxClaimFee, 1e18 + 1, type(uint64).max));
+
+        // When: Owner calls setAccountInfo.
+        // Then: it should revert
+        vm.prank(account.owner());
+        vm.expectRevert(YieldClaimer.InvalidValue.selector);
+        yieldClaimer.setAccountInfo(address(account), initiator, accountInfo.feeRecipient, accountInfo.maxClaimFee, "");
+    }
+
+    function testFuzz_Success_setAccountInfo(address initiator, YieldClaimer.AccountInfo memory accountInfo) public {
         // Given: Recipient is not address(0).
-        vm.assume(recipient != address(0));
+        vm.assume(accountInfo.feeRecipient != address(0));
+
+        // And: maxClaimFee is smaller or equal to 1e18.
+        accountInfo.maxClaimFee = uint64(bound(accountInfo.maxClaimFee, 0, 1e18));
 
         // When: Owner calls setAccountInfo on the yieldClaimer
         vm.prank(account.owner());
-        yieldClaimer.setAccountInfo(address(account), initiator, recipient);
+        yieldClaimer.setAccountInfo(address(account), initiator, accountInfo.feeRecipient, accountInfo.maxClaimFee, "");
 
         // Then: Initiator should be set for that Account
         assertEq(yieldClaimer.accountToInitiator(account.owner(), address(account)), initiator);
-        assertEq(yieldClaimer.accountToRecipient(address(account)), recipient);
+        (address feeRecipient, uint64 maxClaimFee) = yieldClaimer.accountInfo(address(account));
+        assertEq(feeRecipient, accountInfo.feeRecipient);
+        assertEq(maxClaimFee, accountInfo.maxClaimFee);
     }
 }

@@ -58,6 +58,73 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
         vm.stopPrank();
     }
 
+    function testFuzz_Revert_executeAction_InvalidClaimFee(
+        address initiator,
+        Compounder.InitiatorParams memory initiatorParams,
+        uint256 maxClaimFee,
+        uint256 maxSwapFee
+    ) public {
+        // Given: maxClaimFee is smaller or equal to 1e18.
+        maxClaimFee = uint64(bound(maxClaimFee, 0, 1e18));
+
+        // And: maxSwapFee is smaller or equal to 1e18.
+        maxSwapFee = uint64(bound(maxSwapFee, 0, 1e18));
+
+        // And info is set.
+        vm.prank(account.owner());
+        compounder.setAccountInfo(
+            address(account), initiator, maxClaimFee, maxSwapFee, MAX_TOLERANCE, MIN_LIQUIDITY_RATIO, ""
+        );
+
+        // And: claimfee is bigger than maxClaimFee.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, maxClaimFee + 1, type(uint64).max));
+
+        // And: account is set.
+        compounder.setAccount(address(account));
+
+        // When: Calling executeAction().
+        // Then: it should revert.
+        bytes memory actionTargetData = abi.encode(initiator, initiatorParams);
+        vm.prank(address(account));
+        vm.expectRevert(Compounder.InvalidValue.selector);
+        compounder.executeAction(actionTargetData);
+    }
+
+    function testFuzz_Revert_executeAction_InvalidSwapFee(
+        address initiator,
+        Compounder.InitiatorParams memory initiatorParams,
+        uint256 maxClaimFee,
+        uint256 maxSwapFee
+    ) public {
+        // Given: maxClaimFee is smaller or equal to 1e18.
+        maxClaimFee = uint64(bound(maxClaimFee, 0, 1e18));
+
+        // And: maxSwapFee is smaller or equal to 1e18.
+        maxSwapFee = uint64(bound(maxSwapFee, 0, 1e18));
+
+        // And info is set.
+        vm.prank(account.owner());
+        compounder.setAccountInfo(
+            address(account), initiator, maxClaimFee, maxSwapFee, MAX_TOLERANCE, MIN_LIQUIDITY_RATIO, ""
+        );
+
+        // And: claimfee is smaller than maxClaimFee.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, maxClaimFee));
+
+        // And: swapFee is bigger than maxSwapFee.
+        initiatorParams.swapFee = uint64(bound(initiatorParams.swapFee, maxSwapFee + 1, type(uint64).max));
+
+        // And: account is set.
+        compounder.setAccount(address(account));
+
+        // When: Calling executeAction().
+        // Then: it should revert.
+        bytes memory actionTargetData = abi.encode(initiator, initiatorParams);
+        vm.prank(address(account));
+        vm.expectRevert(Compounder.InvalidValue.selector);
+        compounder.executeAction(actionTargetData);
+    }
+
     function testFuzz_Revert_executeAction_UnbalancedPoolBeforeSwap(
         uint128 liquidityPool,
         Compounder.InitiatorParams memory initiatorParams,
@@ -73,12 +140,14 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
         initiatorParams.positionManager = address(positionManagerV4);
         initiatorParams.id = uint96(position.id);
 
-        // And: The initiator is set.
+        // And: Account info is set.
         tolerance = bound(tolerance, 0, MAX_TOLERANCE);
-        vm.prank(initiator);
-        compounder.setInitiatorInfo(0, MAX_FEE, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
-        compounder.setAccountInfo(address(account), initiator);
+        compounder.setAccountInfo(address(account), initiator, MAX_FEE, MAX_FEE, tolerance, MIN_LIQUIDITY_RATIO, "");
+
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
+        initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: Compounder has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, type(uint16).max));
@@ -91,7 +160,7 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
 
         // And: The pool is unbalanced.
         {
-            (, uint256 lowerSqrtPriceDeviation,,,) = compounder.initiatorInfo(initiator);
+            (, uint256 lowerSqrtPriceDeviation,,,) = compounder.accountInfo(address(account));
             initiatorParams.trustedSqrtPrice = bound(
                 initiatorParams.trustedSqrtPrice,
                 position.sqrtPrice * 1e18 / lowerSqrtPriceDeviation + lowerSqrtPriceDeviation,
@@ -113,8 +182,7 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
         uint256 feeSeed,
         Compounder.InitiatorParams memory initiatorParams,
         address initiator,
-        uint256 tolerance,
-        uint256 fee
+        uint256 tolerance
     ) public {
         // Given: A valid position in range (has both tokens).
         givenValidPoolState(liquidityPool, position);
@@ -129,13 +197,14 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
         initiatorParams.positionManager = address(positionManagerV4);
         initiatorParams.id = uint96(position.id);
 
-        // And: The initiator is set.
+        // And: Account info is set.
         tolerance = bound(tolerance, 0.001 * 1e18, MAX_TOLERANCE);
-        fee = bound(fee, 0, MAX_FEE);
-        vm.prank(initiator);
-        compounder.setInitiatorInfo(fee, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
-        compounder.setAccountInfo(address(account), initiator);
+        compounder.setAccountInfo(address(account), initiator, MAX_FEE, MAX_FEE, tolerance, MIN_LIQUIDITY_RATIO, "");
+
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
+        initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
@@ -165,14 +234,14 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
         {
             // Calculate balances available on compounder to rebalance (without fees).
             (uint256 balance0, uint256 balance1) = getFeeAmounts(position.id);
-            balance0 = initiatorParams.amount0 + balance0 - balance0 * fee / 1e18;
-            balance1 = initiatorParams.amount1 + balance1 - balance1 * fee / 1e18;
+            balance0 = initiatorParams.amount0 + balance0 - balance0 * initiatorParams.claimFee / 1e18;
+            balance1 = initiatorParams.amount1 + balance1 - balance1 * initiatorParams.claimFee / 1e18;
             vm.assume(balance0 + balance1 > 1e6);
 
             rebalanceParams = RebalanceLogic._getRebalanceParams(
                 1e18,
                 poolKey.fee,
-                fee,
+                initiatorParams.swapFee,
                 initiatorParams.trustedSqrtPrice,
                 TickMath.getSqrtPriceAtTick(position.tickLower),
                 TickMath.getSqrtPriceAtTick(position.tickUpper),
@@ -187,7 +256,7 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
 
         // And: The pool is unbalanced after the swap.
         {
-            (, uint256 lowerSqrtPriceDeviation,,,) = compounder.initiatorInfo(initiator);
+            (, uint256 lowerSqrtPriceDeviation,,,) = compounder.accountInfo(address(account));
             uint256 lowerBoundSqrtPrice = initiatorParams.trustedSqrtPrice * lowerSqrtPriceDeviation / 1e18;
             vm.assume(TickMath.MIN_SQRT_PRICE < lowerBoundSqrtPrice);
             uint256 newSqrtPrice = bound(position.sqrtPrice, TickMath.MIN_SQRT_PRICE, lowerBoundSqrtPrice);
@@ -216,8 +285,7 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
         PositionState memory position,
         Compounder.InitiatorParams memory initiatorParams,
         address initiator,
-        uint256 tolerance,
-        uint256 fee
+        uint256 tolerance
     ) public {
         // Given: A valid position in range (has both tokens).
         givenValidPoolState(liquidityPool, position);
@@ -232,13 +300,14 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
         initiatorParams.positionManager = address(positionManagerV4);
         initiatorParams.id = uint96(position.id);
 
-        // And: The initiator is set.
+        // And: Account info is set.
         tolerance = bound(tolerance, 0.001 * 1e18, MAX_TOLERANCE);
-        fee = bound(fee, 0, MAX_FEE);
-        vm.prank(initiator);
-        compounder.setInitiatorInfo(fee, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
-        compounder.setAccountInfo(address(account), initiator);
+        compounder.setAccountInfo(address(account), initiator, MAX_FEE, MAX_FEE, tolerance, 1e18, "");
+
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
+        initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
@@ -264,14 +333,14 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
         {
             // Calculate balances available on compounder to rebalance (without fees).
             (uint256 balance0, uint256 balance1) = getFeeAmounts(position.id);
-            balance0 = initiatorParams.amount0 + balance0 - balance0 * fee / 1e18;
-            balance1 = initiatorParams.amount1 + balance1 - balance1 * fee / 1e18;
-            vm.assume(balance0 + balance1 > 1e6);
+            balance0 = initiatorParams.amount0 + balance0 - balance0 * initiatorParams.claimFee / 1e18;
+            balance1 = initiatorParams.amount1 + balance1 - balance1 * initiatorParams.claimFee / 1e18;
+            vm.assume(balance0 + balance1 > 1e10);
 
             rebalanceParams = RebalanceLogic._getRebalanceParams(
                 1e18,
                 poolKey.fee,
-                fee,
+                initiatorParams.swapFee,
                 initiatorParams.trustedSqrtPrice,
                 TickMath.getSqrtPriceAtTick(position.tickLower),
                 TickMath.getSqrtPriceAtTick(position.tickUpper),
@@ -325,8 +394,7 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
         uint256 feeSeed,
         Compounder.InitiatorParams memory initiatorParams,
         address initiator,
-        uint256 tolerance,
-        uint256 fee
+        uint256 tolerance
     ) public {
         // Given: A valid position in range (has both tokens).
         givenValidPoolState(liquidityPool, position);
@@ -341,13 +409,14 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
         initiatorParams.positionManager = address(positionManagerV4);
         initiatorParams.id = uint96(position.id);
 
-        // And: The initiator is set.
+        // And: Account info is set.
         tolerance = bound(tolerance, 0.001 * 1e18, MAX_TOLERANCE);
-        fee = bound(fee, 0, MAX_FEE);
-        vm.prank(initiator);
-        compounder.setInitiatorInfo(fee, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
-        compounder.setAccountInfo(address(account), initiator);
+        compounder.setAccountInfo(address(account), initiator, MAX_FEE, MAX_FEE, tolerance, MIN_LIQUIDITY_RATIO, "");
+
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
+        initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
@@ -377,14 +446,14 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
         {
             // Calculate balances available on compounder to rebalance (without fees).
             (uint256 balance0, uint256 balance1) = getFeeAmounts(position.id);
-            balance0 = initiatorParams.amount0 + balance0 - balance0 * fee / 1e18;
-            balance1 = initiatorParams.amount1 + balance1 - balance1 * fee / 1e18;
+            balance0 = initiatorParams.amount0 + balance0 - balance0 * initiatorParams.claimFee / 1e18;
+            balance1 = initiatorParams.amount1 + balance1 - balance1 * initiatorParams.claimFee / 1e18;
             vm.assume(balance0 + balance1 > 1e6);
 
             rebalanceParams = RebalanceLogic._getRebalanceParams(
                 1e18,
                 poolKey.fee,
-                fee,
+                initiatorParams.swapFee,
                 initiatorParams.trustedSqrtPrice,
                 TickMath.getSqrtPriceAtTick(position.tickLower),
                 TickMath.getSqrtPriceAtTick(position.tickUpper),
@@ -444,8 +513,7 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
         uint256 feeSeed,
         Compounder.InitiatorParams memory initiatorParams,
         address initiator,
-        uint256 tolerance,
-        uint256 fee
+        uint256 tolerance
     ) public {
         // Given: A valid position in range (has both tokens).
         givenValidPoolState(liquidityPool, position);
@@ -460,13 +528,14 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
         initiatorParams.positionManager = address(positionManagerV4);
         initiatorParams.id = uint96(position.id);
 
-        // And: The initiator is set.
+        // And: Account info is set.
         tolerance = bound(tolerance, 0.001 * 1e18, MAX_TOLERANCE);
-        fee = bound(fee, 0, MAX_FEE);
-        vm.prank(initiator);
-        compounder.setInitiatorInfo(fee, fee, tolerance, MIN_LIQUIDITY_RATIO);
         vm.prank(account.owner());
-        compounder.setAccountInfo(address(account), initiator);
+        compounder.setAccountInfo(address(account), initiator, MAX_FEE, MAX_FEE, tolerance, MIN_LIQUIDITY_RATIO, "");
+
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
+        initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
@@ -498,14 +567,14 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
         {
             // Calculate balances available on compounder to rebalance (without fees).
             (uint256 balance0, uint256 balance1) = getFeeAmounts(position.id);
-            balance0 = initiatorParams.amount0 + balance0 - balance0 * fee / 1e18;
-            balance1 = initiatorParams.amount1 + balance1 - balance1 * fee / 1e18;
+            balance0 = initiatorParams.amount0 + balance0 - balance0 * initiatorParams.claimFee / 1e18;
+            balance1 = initiatorParams.amount1 + balance1 - balance1 * initiatorParams.claimFee / 1e18;
             vm.assume(balance0 + balance1 > 1e6);
 
             rebalanceParams = RebalanceLogic._getRebalanceParams(
                 1e18,
                 poolKey.fee,
-                fee,
+                initiatorParams.swapFee,
                 initiatorParams.trustedSqrtPrice,
                 TickMath.getSqrtPriceAtTick(position.tickLower),
                 TickMath.getSqrtPriceAtTick(position.tickUpper),

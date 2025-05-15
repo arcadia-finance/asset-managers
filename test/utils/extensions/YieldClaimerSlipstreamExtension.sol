@@ -10,7 +10,6 @@ import { PositionState } from "../../../src/state/PositionState.sol";
 contract YieldClaimerSlipstreamExtension is YieldClaimerSlipstream {
     constructor(
         address arcadiaFactory,
-        uint256 maxFee,
         address positionManager,
         address cLFactory,
         address poolImplementation,
@@ -20,7 +19,6 @@ contract YieldClaimerSlipstreamExtension is YieldClaimerSlipstream {
     )
         YieldClaimerSlipstream(
             arcadiaFactory,
-            maxFee,
             positionManager,
             cLFactory,
             poolImplementation,
