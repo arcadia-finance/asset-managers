@@ -129,7 +129,7 @@ abstract contract YieldClaimer is IActionBase, AbstractBase {
     }
 
     /* ///////////////////////////////////////////////////////////////
-                             REBALANCING LOGIC
+                             CLAIMING LOGIC
     /////////////////////////////////////////////////////////////// */
 
     /**
@@ -191,14 +191,13 @@ abstract contract YieldClaimer is IActionBase, AbstractBase {
         uint256[] memory balances = new uint256[](position.tokens.length);
         uint256[] memory fees = new uint256[](balances.length);
 
-        // Claim pending fees/rewards and update balances.
+        // Claim pending yields and update balances.
         _claim(balances, fees, positionManager, position, initiatorParams.claimFee);
 
         // If native eth was claimed, wrap it.
         _stake(balances, positionManager, position);
 
-        // Approve the liquidity position and leftovers to be deposited back into the Account.
-        // And transfer the initiator fees to the initiator.
+        // Approve the liquidity position handle the claimed yields and transfer the initiator fees to the initiator.
         uint256 count =
             _approveAndTransfer(initiator, balances, fees, positionManager, position, accountInfo_.feeRecipient);
 
@@ -213,9 +212,9 @@ abstract contract YieldClaimer is IActionBase, AbstractBase {
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Approves the liquidity position and handles the claimed fees/rewards.
+     * @notice Approves the liquidity position and handles the claimed yields.
      * @param initiator The address of the initiator.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens held by the YieldClaimer.
      * @param fees The fees of the underlying tokens to be paid to the initiator.
      * @param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
@@ -233,20 +232,23 @@ abstract contract YieldClaimer is IActionBase, AbstractBase {
         // Approve the Liquidity Position.
         ERC721(positionManager).approve(msg.sender, position.id);
 
+        // Transfer Initiator fees and handle the claimed yields.
         count = 1;
         address token;
         uint256 amount;
         for (uint256 i; i < balances.length; i++) {
             token = position.tokens[i];
+
+            // Handle the claimed yields.
             if (balances[i] > fees[i]) {
                 amount = balances[i] - fees[i];
                 if (recipient == msg.sender) {
-                    // If feeRecipient is the Account itself, deposit fees back into the Account
+                    // If feeRecipient is the Account itself, deposit yield back into the Account.
                     balances[i] = amount;
                     ERC20(token).safeApproveWithRetry(msg.sender, amount);
                     count++;
                 } else {
-                    // Else, send the fees to the fee recipient.
+                    // Else, send the yield to the fee recipient.
                     ERC20(token).safeTransfer(recipient, amount);
                     balances[i] = 0;
                 }

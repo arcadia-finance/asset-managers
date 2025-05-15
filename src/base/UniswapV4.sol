@@ -66,7 +66,7 @@ abstract contract UniswapV4 is AbstractBase {
     ////////////////////////////////////////////////////////////// */
 
     /**
-     * @param positionManager The contract address of the Uniswap v3 Position Manager.
+     * @param positionManager The contract address of the Uniswap v4 Position Manager.
      * @param permit2 The contract address of Permit2.
      * @param poolManager The contract address of the Uniswap v4 Pool Manager.
      * @param weth The contract address of WETH.
@@ -83,7 +83,7 @@ abstract contract UniswapV4 is AbstractBase {
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Returns if a position manager matches the position manager(s) of the rebalancer.
+     * @notice Returns if a position manager matches the position manager(s) of Uniswap v4.
      * @param positionManager the contract address of the position manager to check.
      */
     function isPositionManager(address positionManager) public view virtual override returns (bool) {
@@ -194,7 +194,7 @@ abstract contract UniswapV4 is AbstractBase {
 
     /**
      * @notice Claims fees/rewards from a Liquidity Position.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens.
      * @param fees The fees of the underlying tokens to be paid to the initiator.
      * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
@@ -210,7 +210,7 @@ abstract contract UniswapV4 is AbstractBase {
         Currency currency0 = Currency.wrap(position.tokens[0]);
         Currency currency1 = Currency.wrap(position.tokens[1]);
 
-        // If token0 is native ETH, we need to set the Rebalancer balance to 0,
+        // If token0 is native ETH, we need to set the balance to 0,
         // since the assets withdrawn from trhe account are in wet and not in native ETH.
         if (position.tokens[0] == address(0)) balances[0] = 0;
 
@@ -247,7 +247,7 @@ abstract contract UniswapV4 is AbstractBase {
 
     /**
      * @notice Unstakes a Liquidity Position.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens.
      * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      */
@@ -268,7 +268,7 @@ abstract contract UniswapV4 is AbstractBase {
 
     /**
      * @notice Burns the Liquidity Position.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens.
      * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      * @dev Does not emit YieldClaimed event, if necessary first call _claim() to emit the event before unstaking.
@@ -300,7 +300,7 @@ abstract contract UniswapV4 is AbstractBase {
 
     /**
      * @notice Swaps one token for another, directly through the pool itself.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens.
      * @param position A struct with position and pool related variables.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param amountOut The amount of tokenOut that must be swapped to.
@@ -397,7 +397,7 @@ abstract contract UniswapV4 is AbstractBase {
 
     /**
      * @notice Mints a new Liquidity Position.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens.
      * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      * @param amount0Desired The desired amount of token0 to mint as liquidity.
@@ -473,7 +473,7 @@ abstract contract UniswapV4 is AbstractBase {
 
     /**
      * @notice Swaps one token for another to rebalance the Liquidity Position.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens.
      * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      * @param amount0Desired The desired amount of token0 to add as liquidity.
@@ -532,7 +532,7 @@ abstract contract UniswapV4 is AbstractBase {
 
     /**
      * @notice Stakes a Liquidity Position.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens.
      * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      */

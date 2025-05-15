@@ -185,11 +185,11 @@ abstract contract Compounder is IActionBase, AbstractBase {
     }
 
     /* ///////////////////////////////////////////////////////////////
-                             REBALANCING LOGIC
+                             COMPOUND LOGIC
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Rebalances a UniswapV3 or Slipstream Liquidity Position, owned by an Arcadia Account.
+     * @notice Compounds a Concentrated Liquidity Positions, owned by an Arcadia Account.
      * @param account_ The contract address of the account.
      * @param initiatorParams A struct with the initiator parameters.
      */
@@ -254,7 +254,7 @@ abstract contract Compounder is IActionBase, AbstractBase {
         // Get all pool and position related state.
         PositionState memory position = _getPositionState(positionManager, initiatorParams.id);
 
-        // Rebalancer has withdrawn the underlying tokens from the Account.
+        // Compounder has withdrawn the underlying tokens from the Account.
         uint256[] memory balances = new uint256[](position.tokens.length);
         balances[0] = initiatorParams.amount0;
         balances[1] = initiatorParams.amount1;
@@ -267,7 +267,7 @@ abstract contract Compounder is IActionBase, AbstractBase {
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
         if (!isPoolBalanced(position.sqrtPrice, cache)) revert UnbalancedPool();
 
-        // Claim pending fees/rewards and update balances.
+        // Claim pending yields and update balances.
         _claim(balances, fees, positionManager, position, initiatorParams.claimFee);
 
         // If the position is staked, unstake it.
@@ -304,19 +304,17 @@ abstract contract Compounder is IActionBase, AbstractBase {
         // As explained before _swap(), tokenOut should be the limiting factor when increasing liquidity
         // therefore we only subtract the initiator fee from the amountOut, not from the amountIn.
         // Increase liquidity, update balances and delta liquidity.
-        {
-            (uint256 amount0Desired, uint256 amount1Desired) =
-                rebalanceParams.zeroToOne ? (balances[0], balances[1] - fees[1]) : (balances[0] - fees[0], balances[1]);
-            // Increase liquidity, update balances and liquidity
-            _increaseLiquidity(balances, positionManager, position, amount0Desired, amount1Desired);
-        }
+        (uint256 amount0Desired, uint256 amount1Desired) =
+            rebalanceParams.zeroToOne ? (balances[0], balances[1] - fees[1]) : (balances[0] - fees[0], balances[1]);
+        // Increase liquidity, update balances and liquidity
+        _increaseLiquidity(balances, positionManager, position, amount0Desired, amount1Desired);
 
         // Check that the actual liquidity of the position is above the minimum threshold.
         // This prevents loss of principal of the liquidity position due to slippage,
         // or malicious initiators who remove liquidity during a custom swap.
         if (position.liquidity < rebalanceParams.minLiquidity) revert InsufficientLiquidity();
 
-        // If the position is staked, stake it.
+        // If the position was staked, stake it.
         _stake(balances, positionManager, position);
 
         // Approve the liquidity position and leftovers to be deposited back into the Account.
@@ -362,7 +360,7 @@ abstract contract Compounder is IActionBase, AbstractBase {
         returns (Cache memory cache)
     {
         // We do not handle the edge cases where the bounds of the sqrtPrice exceed MIN_SQRT_RATIO or MAX_SQRT_RATIO.
-        // This will result in a revert during swapViaPool, if ever needed a different rebalancer has to be deployed.
+        // This will result in a revert during swapViaPool, if ever needed a different Compounder has to be deployed.
         cache = Cache({
             lowerBoundSqrtPrice: trustedSqrtPrice.mulDivDown(accountInfo_.lowerSqrtPriceDeviation, 1e18),
             upperBoundSqrtPrice: trustedSqrtPrice.mulDivDown(accountInfo_.upperSqrtPriceDeviation, 1e18),
@@ -377,7 +375,7 @@ abstract contract Compounder is IActionBase, AbstractBase {
 
     /**
      * @notice Swaps one token for another to rebalance the Liquidity Position.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens held by the Compounder.
      * @param fees The fees of the underlying tokens to be paid to the initiator.
      * @param initiatorParams A struct with the initiator parameters.
      * @param position A struct with position and pool related variables.
@@ -422,7 +420,7 @@ abstract contract Compounder is IActionBase, AbstractBase {
 
     /**
      * @notice Swaps one token for another, via a router with custom swap data.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens held by the Compounder.
      * @param position A struct with position and pool related variables.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param swapData Arbitrary calldata provided by an initiator for the swap.
@@ -459,7 +457,7 @@ abstract contract Compounder is IActionBase, AbstractBase {
      * @notice Approves the liquidity position and leftovers to be deposited back into the Account
      * and transfers the initiator fees to the initiator.
      * @param initiator The address of the initiator.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens held by the Compounder.
      * @param fees The fees of the underlying tokens to be paid to the initiator.
      * @param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.

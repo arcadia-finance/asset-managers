@@ -5,7 +5,6 @@
 pragma solidity ^0.8.26;
 
 import { PositionState } from "../../state/PositionState.sol";
-import { Rebalancer } from "../Rebalancer.sol";
 
 /**
  * @title Abstract Strategy Hook.

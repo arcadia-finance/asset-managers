@@ -201,7 +201,7 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Rebalances a UniswapV3 or Slipstream Liquidity Position, owned by an Arcadia Account.
+     * @notice Rebalances a Concentrated Liquidity Positions, owned by an Arcadia Account.
      * @param account_ The contract address of the account.
      * @param initiatorParams A struct with the initiator parameters.
      */
@@ -291,13 +291,13 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
         if (!isPoolBalanced(position.sqrtPrice, cache)) revert UnbalancedPool();
 
-        // Claim pending fees/rewards and update balances.
+        // Claim pending yields and update balances.
         _claim(balances, fees, positionManager, position, initiatorParams.claimFee);
 
         // If the position is staked, unstake it.
         _unstake(balances, positionManager, position);
 
-        // Remove liquidity of the position, claim outstanding fees/rewards and update balances.
+        // Remove liquidity of the position and update balances.
         _burn(balances, positionManager, position);
 
         // Get the rebalance parameters, based on a hypothetical swap through the pool itself without slippage.

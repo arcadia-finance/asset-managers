@@ -61,7 +61,7 @@ abstract contract UniswapV3 is AbstractBase {
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Returns if a position manager matches the position manager(s) of the rebalancer.
+     * @notice Returns if a position manager matches the position manager(s) of Uniswap v3.
      * @param positionManager the contract address of the position manager to check.
      */
     function isPositionManager(address positionManager) public view virtual override returns (bool) {
@@ -158,7 +158,7 @@ abstract contract UniswapV3 is AbstractBase {
 
     /**
      * @notice Claims fees/rewards from a Liquidity Position.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens.
      * @param fees The fees of the underlying tokens to be paid to the initiator.
      * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
@@ -197,7 +197,7 @@ abstract contract UniswapV3 is AbstractBase {
 
     /**
      * @notice Unstakes a Liquidity Position.
-     * param balances The balances of the underlying tokens held by the Rebalancer.
+     * param balances The balances of the underlying tokens.
      * param positionManager The contract address of the Position Manager.
      * param position A struct with position and pool related variables.
      */
@@ -209,7 +209,7 @@ abstract contract UniswapV3 is AbstractBase {
 
     /**
      * @notice Burns the Liquidity Position.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens.
      * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      * @dev Does not emit YieldClaimed event, if necessary first call _claim() to emit the event before unstaking.
@@ -238,7 +238,7 @@ abstract contract UniswapV3 is AbstractBase {
         balances[0] += amount0;
         balances[1] += amount1;
 
-        // Burn the position
+        // Burn the position.
         POSITION_MANAGER.burn(position.id);
     }
 
@@ -248,7 +248,7 @@ abstract contract UniswapV3 is AbstractBase {
 
     /**
      * @notice Swaps one token for another, directly through the pool itself.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens.
      * @param position A struct with position and pool related variables.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param amountOut The amount of tokenOut that must be swapped to.
@@ -299,7 +299,7 @@ abstract contract UniswapV3 is AbstractBase {
 
     /**
      * @notice Mints a new Liquidity Position.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens.
      * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      * @param amount0Desired The desired amount of token0 to mint as liquidity.
@@ -343,7 +343,7 @@ abstract contract UniswapV3 is AbstractBase {
 
     /**
      * @notice Swaps one token for another to rebalance the Liquidity Position.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens.
      * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      * @param amount0Desired The desired amount of token0 to add as liquidity.
@@ -382,7 +382,7 @@ abstract contract UniswapV3 is AbstractBase {
 
     /**
      * @notice Stakes a Liquidity Position.
-     * param balances The balances of the underlying tokens held by the Rebalancer.
+     * param balances The balances of the underlying tokens.
      * param positionManager The contract address of the Position Manager.
      * param position A struct with position and pool related variables.
      */

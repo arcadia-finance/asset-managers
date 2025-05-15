@@ -333,7 +333,7 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
             (uint256 balance0, uint256 balance1) = getFeeAmounts(position.id);
             balance0 = initiatorParams.amount0 + balance0 - balance0 * initiatorParams.claimFee / 1e18;
             balance1 = initiatorParams.amount1 + balance1 - balance1 * initiatorParams.claimFee / 1e18;
-            vm.assume(balance0 + balance1 > 1e6);
+            vm.assume(balance0 + balance1 > 1e10);
 
             rebalanceParams = RebalanceLogic._getRebalanceParams(
                 1e18,

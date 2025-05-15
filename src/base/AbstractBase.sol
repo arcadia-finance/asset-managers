@@ -22,7 +22,7 @@ abstract contract AbstractBase {
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Returns if a position manager matches the position manager(s) of the rebalancer.
+     * @notice Returns if a position manager matches the position manager(s) of the protocol.
      * @param positionManager The contract address of the position manager to check.
      * @return isPositionManager_ Bool indicating if the position manager matches.
      */
@@ -77,7 +77,7 @@ abstract contract AbstractBase {
 
     /**
      * @notice Claims fees/rewards from a Liquidity Position.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens.
      * @param fees The fees of the underlying tokens to be paid to the initiator.
      * @param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
@@ -97,7 +97,7 @@ abstract contract AbstractBase {
 
     /**
      * @notice Unstakes a Liquidity Position.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens.
      * @param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      */
@@ -111,7 +111,7 @@ abstract contract AbstractBase {
 
     /**
      * @notice Burns the Liquidity Position.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens.
      * @param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      * @dev Must update the balances after the burn.
@@ -126,7 +126,7 @@ abstract contract AbstractBase {
 
     /**
      * @notice Swaps one token for another, directly through the pool itself.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens.
      * @param position A struct with position and pool related variables.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param amountOut The amount of tokenOut that must be swapped to.
@@ -142,7 +142,7 @@ abstract contract AbstractBase {
 
     /**
      * @notice Mints a new Liquidity Position.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens.
      * @param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      * @param amount0Desired The desired amount of token0 to mint as liquidity.
@@ -163,7 +163,7 @@ abstract contract AbstractBase {
 
     /**
      * @notice Swaps one token for another to rebalance the Liquidity Position.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens.
      * @param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      * @param amount0Desired The desired amount of token0 to add as liquidity.
@@ -184,7 +184,7 @@ abstract contract AbstractBase {
 
     /**
      * @notice Unstakes a Liquidity Position.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens.
      * @param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      */

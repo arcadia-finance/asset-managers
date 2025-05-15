@@ -89,7 +89,7 @@ abstract contract Slipstream is AbstractBase {
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Returns if a position manager matches the position manager(s) of the rebalancer.
+     * @notice Returns if a position manager matches the position manager(s) of Slipstream.
      * @param positionManager the contract address of the position manager to check.
      */
     function isPositionManager(address positionManager) public view virtual override returns (bool) {
@@ -190,7 +190,7 @@ abstract contract Slipstream is AbstractBase {
 
     /**
      * @notice Claims fees/rewards from a Liquidity Position.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens.
      * @param fees The fees of the underlying tokens to be paid to the initiator.
      * @param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
@@ -212,7 +212,7 @@ abstract contract Slipstream is AbstractBase {
                 (balances[2], fees[2]) = (balances[2] + rewards, fees[2] + fee);
                 emit YieldClaimed(msg.sender, position.tokens[2], rewards);
             }
-            // If rewardToken is an underlying token of the position, add it to the balances
+            // If rewardToken is an underlying token of the position, add it to the balances.
             else if (position.tokens[0] == REWARD_TOKEN) {
                 (balances[0], fees[0]) = (balances[0] + rewards, fees[0] + fee);
                 emit YieldClaimed(msg.sender, position.tokens[0], rewards);
@@ -248,7 +248,7 @@ abstract contract Slipstream is AbstractBase {
 
     /**
      * @notice Unstakes a Liquidity Position.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens.
      * @param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      * @dev Does not emit YieldClaimed event, if necessary first call _claim() to emit the event before unstaking.
@@ -263,7 +263,7 @@ abstract contract Slipstream is AbstractBase {
             uint256 rewards = IStakedSlipstream(positionManager).burn(position.id);
             if (rewards > 0) {
                 if (balances.length == 3) balances[2] = rewards;
-                // If rewardToken is an underlying token of the position, add it to the balances
+                // If rewardToken is an underlying token of the position, add it to the balances.
                 else if (position.tokens[0] == REWARD_TOKEN) balances[0] += rewards;
                 else balances[1] += rewards;
             }
@@ -276,7 +276,7 @@ abstract contract Slipstream is AbstractBase {
 
     /**
      * @notice Burns the Liquidity Position.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens.
      * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      * @dev Does not emit YieldClaimed event, if necessary first call _claim() to emit the event before unstaking.
@@ -305,7 +305,7 @@ abstract contract Slipstream is AbstractBase {
         balances[0] += amount0;
         balances[1] += amount1;
 
-        // Burn the position
+        // Burn the position.
         POSITION_MANAGER.burn(position.id);
     }
 
@@ -315,7 +315,7 @@ abstract contract Slipstream is AbstractBase {
 
     /**
      * @notice Swaps one token for another, directly through the pool itself.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens.
      * @param position A struct with position and pool related variables.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param amountOut The amount of tokenOut that must be swapped to.
@@ -369,7 +369,7 @@ abstract contract Slipstream is AbstractBase {
 
     /**
      * @notice Mints a new Liquidity Position.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens.
      * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      * @param amount0Desired The desired amount of token0 to mint as liquidity.
@@ -414,7 +414,7 @@ abstract contract Slipstream is AbstractBase {
 
     /**
      * @notice Swaps one token for another to rebalance the Liquidity Position.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens.
      * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      * @param amount0Desired The desired amount of token0 to add as liquidity.
@@ -453,7 +453,7 @@ abstract contract Slipstream is AbstractBase {
 
     /**
      * @notice Stakes a Liquidity Position.
-     * param balances The balances of the underlying tokens held by the Rebalancer.
+     * param balances The balances of the underlying tokens.
      * @param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      */
