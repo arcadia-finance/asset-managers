@@ -46,7 +46,7 @@ contract YieldClaimerSlipstream is YieldClaimer, Slipstream {
 
     /**
      * @notice Stakes a Liquidity Position.
-     * param balances The balances of the underlying tokens held by the Rebalancer.
+     * param balances The balances of the underlying tokens.
      * param positionManager The contract address of the Position Manager.
      * param position A struct with position and pool related variables.
      */

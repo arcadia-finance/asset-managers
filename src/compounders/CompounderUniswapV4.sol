@@ -49,7 +49,7 @@ contract CompounderUniswapV4 is Compounder, UniswapV4 {
 
     /**
      * @notice Swaps one token for another, via a router with custom swap data.
-     * @param balances The balances of the underlying tokens held by the Rebalancer.
+     * @param balances The balances of the underlying tokens.
      * @param position A struct with position and pool related variables.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param swapData Arbitrary calldata provided by an initiator for the swap.

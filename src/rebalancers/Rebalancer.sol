@@ -201,7 +201,7 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Rebalances a UniswapV3 or Slipstream Liquidity Position, owned by an Arcadia Account.
+     * @notice Rebalances a Concentrated Liquidity Positions, owned by an Arcadia Account.
      * @param account_ The contract address of the account.
      * @param initiatorParams A struct with the initiator parameters.
      */
@@ -291,14 +291,13 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
         // Prevents sandwiching attacks when swapping and/or adding liquidity.
         if (!isPoolBalanced(position.sqrtPrice, cache)) revert UnbalancedPool();
 
-        // Claim pending fees/rewards and update balances.
-        // If the claim fee is 0, no need to separately claim fees, as they will be claimed in the burn function.
-        if (initiatorParams.claimFee > 0) _claim(balances, fees, positionManager, position, initiatorParams.claimFee);
+        // Claim pending yields and update balances.
+        _claim(balances, fees, positionManager, position, initiatorParams.claimFee);
 
         // If the position is staked, unstake it.
         _unstake(balances, positionManager, position);
 
-        // Remove liquidity of the position, claim outstanding fees/rewards and update balances.
+        // Remove liquidity of the position and update balances.
         _burn(balances, positionManager, position);
 
         // Get the rebalance parameters, based on a hypothetical swap through the pool itself without slippage.
@@ -508,15 +507,14 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
         ERC721(positionManager).approve(msg.sender, position.id);
 
         // Transfer Initiator fees and approve the leftovers.
+        address token;
         count = 1;
         for (uint256 i; i < balances.length; i++) {
-            // Skip assets with no balance.
-            if (balances[i] == 0) continue;
-
+            token = position.tokens[i];
             // If there are leftovers, deposit them back into the Account.
             if (balances[i] > fees[i]) {
                 balances[i] = balances[i] - fees[i];
-                ERC20(position.tokens[i]).safeApproveWithRetry(msg.sender, balances[i]);
+                ERC20(token).safeApproveWithRetry(msg.sender, balances[i]);
                 count++;
             } else {
                 fees[i] = balances[i];
@@ -524,7 +522,8 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
             }
 
             // Transfer Initiator fees to the initiator.
-            if (fees[i] > 0) ERC20(position.tokens[i]).safeTransfer(initiator, fees[i]);
+            if (fees[i] > 0) ERC20(token).safeTransfer(initiator, fees[i]);
+            emit FeePaid(msg.sender, initiator, token, fees[i]);
         }
     }
 }

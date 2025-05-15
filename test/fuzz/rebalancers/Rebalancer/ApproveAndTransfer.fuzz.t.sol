@@ -4,6 +4,7 @@
  */
 pragma solidity ^0.8.22;
 
+import { AbstractBase } from "../../../../src/base/AbstractBase.sol";
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { PositionState } from "../../../../src/state/PositionState.sol";
 import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
@@ -62,6 +63,10 @@ contract ApproveAndTransfer_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         nonfungiblePositionManager.mint(address(rebalancer), position.id);
 
         // When: Calling _approveAndTransfer().
+        vm.expectEmit();
+        emit AbstractBase.FeePaid(account_, initiator, address(token0), balance0);
+        vm.expectEmit();
+        emit AbstractBase.FeePaid(account_, initiator, address(token1), balance1);
         vm.prank(account_);
         uint256 count;
         (balances, count) =
@@ -120,6 +125,10 @@ contract ApproveAndTransfer_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         nonfungiblePositionManager.mint(address(rebalancer), position.id);
 
         // When: Calling _approveAndTransfer().
+        vm.expectEmit();
+        emit AbstractBase.FeePaid(account_, initiator, address(token0), fee0);
+        vm.expectEmit();
+        emit AbstractBase.FeePaid(account_, initiator, address(token1), balance1);
         vm.prank(account_);
         uint256 count;
         (balances, count) =
@@ -178,6 +187,10 @@ contract ApproveAndTransfer_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         nonfungiblePositionManager.mint(address(rebalancer), position.id);
 
         // When: Calling _approveAndTransfer().
+        vm.expectEmit();
+        emit AbstractBase.FeePaid(account_, initiator, address(token0), balance0);
+        vm.expectEmit();
+        emit AbstractBase.FeePaid(account_, initiator, address(token1), fee1);
         vm.prank(account_);
         uint256 count;
         (balances, count) =
@@ -234,6 +247,10 @@ contract ApproveAndTransfer_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         nonfungiblePositionManager.mint(address(rebalancer), position.id);
 
         // When: Calling _approveAndTransfer().
+        vm.expectEmit();
+        emit AbstractBase.FeePaid(account_, initiator, address(token0), fee0);
+        vm.expectEmit();
+        emit AbstractBase.FeePaid(account_, initiator, address(token1), fee1);
         vm.prank(account_);
         uint256 count;
         (balances, count) =

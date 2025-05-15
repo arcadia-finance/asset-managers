@@ -137,7 +137,7 @@ library CLMath {
      * @return amountOut The amount of tokenOut.
      * @dev Function will revert for all pools where the sqrtPrice is bigger than type(uint128).max.
      * type(uint128).max is currently more than enough for all supported pools.
-     * If ever the sqrtPrice of a pool exceeds type(uint128).max, a different rebalancer has to be deployed,
+     * If ever the sqrtPrice of a pool exceeds type(uint128).max, a different contract has to be deployed,
      * which does two consecutive mulDivs.
      */
     function _getSpotValue(uint256 sqrtPrice, bool zeroToOne, uint256 amountIn)
@@ -160,7 +160,7 @@ library CLMath {
      * @return amountOut The amount of tokenOut.
      * @dev Function will revert for all pools where the sqrtPrice is bigger than type(uint128).max.
      * type(uint128).max is currently more than enough for all supported pools.
-     * If ever the sqrtPrice of a pool exceeds type(uint128).max, a different rebalancer has to be deployed,
+     * If ever the sqrtPrice of a pool exceeds type(uint128).max, a different contract has to be deployed,
      * which does two consecutive mulDivs.
      */
     function _getAmountOut(uint256 sqrtPrice, bool zeroToOne, uint256 amountIn, uint256 fee)
@@ -187,7 +187,7 @@ library CLMath {
      * @return amountIn The amount of tokenIn.
      * @dev Function will revert for all pools where the sqrtPrice is bigger than type(uint128).max.
      * type(uint128).max is currently more than enough for all supported pools.
-     * If ever the sqrtPrice of a pool exceeds type(uint128).max, a different rebalancer has to be deployed,
+     * If ever the sqrtPrice of a pool exceeds type(uint128).max, a different contract has to be deployed,
      * which does two consecutive mulDivs.
      */
     function _getAmountIn(uint256 sqrtPrice, bool zeroToOne, uint256 amountOut, uint256 fee)
@@ -212,7 +212,7 @@ library CLMath {
      * @return targetRatio The ratio of the value of token1 compared to the total value of the position, with 18 decimals precision.
      * @dev Function will revert for all pools where the sqrtPrice is bigger than type(uint128).max.
      * type(uint128).max is currently more than enough for all supported pools.
-     * If ever the sqrtPrice of a pool exceeds type(uint128).max, a different rebalancer has to be deployed,
+     * If ever the sqrtPrice of a pool exceeds type(uint128).max, a different contract has to be deployed,
      * which does two consecutive mulDivs.
      * @dev Derivation of the formula:
      * 1) The ratio is defined as:

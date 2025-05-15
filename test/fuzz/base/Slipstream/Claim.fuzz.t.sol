@@ -4,6 +4,7 @@
  */
 pragma solidity ^0.8.26;
 
+import { AbstractBase } from "../../../../src/base/AbstractBase.sol";
 import { ERC20, ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { FixedPoint128 } from "../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
@@ -63,6 +64,11 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         ERC721(address(slipstreamPositionManager)).transferFrom(users.liquidityProvider, address(base), position.id);
 
         // When: Calling claim.
+        vm.prank(address(account));
+        vm.expectEmit();
+        emit AbstractBase.YieldClaimed(address(account), address(token0), fee0);
+        vm.expectEmit();
+        emit AbstractBase.YieldClaimed(address(account), address(token1), fee1);
         uint256[] memory fees = new uint256[](2);
         (balances, fees) = base.claim(balances, fees, address(slipstreamPositionManager), position, claimFee);
 
@@ -137,6 +143,9 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         }
 
         // When: Calling claim.
+        vm.prank(address(account));
+        vm.expectEmit();
+        emit AbstractBase.YieldClaimed(address(account), AERO, rewards);
         uint256[] memory fees = new uint256[](balances.length);
         (balances, fees) = base.claim(balances, fees, address(stakedSlipstreamAM), position, claimFee);
 
@@ -174,6 +183,10 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         setPoolState(liquidityPool, position, true);
         givenValidPositionState(position);
         setPositionState(position);
+
+        position.tokens = new address[](2);
+        position.tokens[0] = address(token0);
+        position.tokens[1] = address(token1);
 
         // And: claimFee is below 100%.
         claimFee = uint64(bound(claimFee, 0, 1e18));
@@ -228,6 +241,9 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         );
 
         // When: Calling claim.
+        vm.prank(address(account));
+        vm.expectEmit();
+        emit AbstractBase.YieldClaimed(address(account), AERO, rewards);
         uint256[] memory fees = new uint256[](balances.length);
         (balances, fees) = base.claim(balances, fees, address(stakedSlipstreamAM), position, claimFee);
 
@@ -302,6 +318,9 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         }
 
         // When: Calling claim.
+        vm.prank(address(account));
+        vm.expectEmit();
+        emit AbstractBase.YieldClaimed(address(account), AERO, rewards);
         uint256[] memory fees = new uint256[](balances.length);
         (balances, fees) = base.claim(balances, fees, address(wrappedStakedSlipstream), position, claimFee);
 
@@ -339,6 +358,10 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         setPoolState(liquidityPool, position, true);
         givenValidPositionState(position);
         setPositionState(position);
+
+        position.tokens = new address[](2);
+        position.tokens[0] = address(token0);
+        position.tokens[1] = address(token1);
 
         // And: claimFee is below 100%.
         claimFee = uint64(bound(claimFee, 0, 1e18));
@@ -393,6 +416,9 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         );
 
         // When: Calling claim.
+        vm.prank(address(account));
+        vm.expectEmit();
+        emit AbstractBase.YieldClaimed(address(account), AERO, rewards);
         uint256[] memory fees = new uint256[](balances.length);
         (balances, fees) = base.claim(balances, fees, address(wrappedStakedSlipstream), position, claimFee);
 

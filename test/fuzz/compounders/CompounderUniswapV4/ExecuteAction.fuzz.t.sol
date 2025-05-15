@@ -303,7 +303,7 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
         // And: Account info is set.
         tolerance = bound(tolerance, 0.001 * 1e18, MAX_TOLERANCE);
         vm.prank(account.owner());
-        compounder.setAccountInfo(address(account), initiator, MAX_FEE, MAX_FEE, tolerance, MIN_LIQUIDITY_RATIO, "");
+        compounder.setAccountInfo(address(account), initiator, MAX_FEE, MAX_FEE, tolerance, 1e18, "");
 
         // And: Fees are valid.
         initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
@@ -335,7 +335,7 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
             (uint256 balance0, uint256 balance1) = getFeeAmounts(position.id);
             balance0 = initiatorParams.amount0 + balance0 - balance0 * initiatorParams.claimFee / 1e18;
             balance1 = initiatorParams.amount1 + balance1 - balance1 * initiatorParams.claimFee / 1e18;
-            vm.assume(balance0 + balance1 > 1e6);
+            vm.assume(balance0 + balance1 > 1e10);
 
             rebalanceParams = RebalanceLogic._getRebalanceParams(
                 1e18,

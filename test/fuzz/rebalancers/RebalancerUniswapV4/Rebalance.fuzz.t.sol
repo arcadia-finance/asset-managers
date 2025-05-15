@@ -97,6 +97,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         // Given : newOwner is not the old owner.
         vm.assume(newOwner != account.owner());
         vm.assume(newOwner != address(0));
+        vm.assume(newOwner != address(account));
 
         // And : initiator is not address(0).
         vm.assume(initiator != address(0));
