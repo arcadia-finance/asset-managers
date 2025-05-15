@@ -10,6 +10,13 @@ import { PositionState } from "../state/PositionState.sol";
  * @title Abstract base implementation for managing Liquidity Positions.
  */
 abstract contract AbstractBase {
+    /* //////////////////////////////////////////////////////////////
+                                EVENTS
+    ////////////////////////////////////////////////////////////// */
+
+    event YieldClaimed(address indexed account, address indexed asset, uint256 amount);
+    event FeePaid(address indexed account, address indexed receiver, address indexed asset, uint256 amount);
+
     /* ///////////////////////////////////////////////////////////////
                             POSITION VALIDATION
     /////////////////////////////////////////////////////////////// */
@@ -161,7 +168,7 @@ abstract contract AbstractBase {
      * @param position A struct with position and pool related variables.
      * @param amount0Desired The desired amount of token0 to add as liquidity.
      * @param amount1Desired The desired amount of token1 to add as liquidity.
-     * @dev Must update the balances and delta liquidity.
+     * @dev Must update the balances and delta liquidity after the increase.
      */
     function _increaseLiquidity(
         uint256[] memory balances,

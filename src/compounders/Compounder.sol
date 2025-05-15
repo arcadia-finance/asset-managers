@@ -476,15 +476,14 @@ abstract contract Compounder is IActionBase, AbstractBase {
         ERC721(positionManager).approve(msg.sender, position.id);
 
         // Transfer Initiator fees and approve the leftovers.
+        address token;
         count = 1;
         for (uint256 i; i < balances.length; i++) {
-            // Skip assets with no balance.
-            if (balances[i] == 0) continue;
-
+            token = position.tokens[i];
             // If there are leftovers, deposit them back into the Account.
             if (balances[i] > fees[i]) {
                 balances[i] = balances[i] - fees[i];
-                ERC20(position.tokens[i]).safeApproveWithRetry(msg.sender, balances[i]);
+                ERC20(token).safeApproveWithRetry(msg.sender, balances[i]);
                 count++;
             } else {
                 fees[i] = balances[i];
@@ -492,7 +491,8 @@ abstract contract Compounder is IActionBase, AbstractBase {
             }
 
             // Transfer Initiator fees to the initiator.
-            if (fees[i] > 0) ERC20(position.tokens[i]).safeTransfer(initiator, fees[i]);
+            if (fees[i] > 0) ERC20(token).safeTransfer(initiator, fees[i]);
+            emit FeePaid(msg.sender, initiator, token, fees[i]);
         }
     }
 }

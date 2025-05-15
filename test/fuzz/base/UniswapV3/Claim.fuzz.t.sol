@@ -4,6 +4,7 @@
  */
 pragma solidity ^0.8.26;
 
+import { AbstractBase } from "../../../../src/base/AbstractBase.sol";
 import { ERC721 } from "../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { PositionState } from "../../../../src/state/PositionState.sol";
 import { UniswapV3_Fuzz_Test } from "./_UniswapV3.fuzz.t.sol";
@@ -23,7 +24,7 @@ contract Claim_UniswapV3_Fuzz_Test is UniswapV3_Fuzz_Test {
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_claim(
+    function testFuzz_Success_claim_a(
         uint128 liquidityPool,
         PositionState memory position,
         uint64 balance0,
@@ -57,6 +58,11 @@ contract Claim_UniswapV3_Fuzz_Test is UniswapV3_Fuzz_Test {
         ERC721(address(nonfungiblePositionManager)).transferFrom(users.liquidityProvider, address(base), position.id);
 
         // When: Calling claim.
+        vm.prank(address(account));
+        vm.expectEmit();
+        emit AbstractBase.YieldClaimed(address(account), address(token0), fee0);
+        vm.expectEmit();
+        emit AbstractBase.YieldClaimed(address(account), address(token1), fee1);
         uint256[] memory fees = new uint256[](2);
         (balances, fees) = base.claim(balances, fees, address(nonfungiblePositionManager), position, claimFee);
 

@@ -81,6 +81,7 @@ abstract contract YieldClaimer is IActionBase, AbstractBase {
 
     event AccountInfoSet(address indexed account, address indexed initiator);
     event Claimed(address indexed account, address indexed positionManager, uint256 id);
+    event YieldTransferred(address indexed account, address indexed receiver, address indexed asset, uint256 amount);
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -233,28 +234,33 @@ abstract contract YieldClaimer is IActionBase, AbstractBase {
         ERC721(positionManager).approve(msg.sender, position.id);
 
         count = 1;
+        address token;
+        uint256 amount;
         for (uint256 i; i < balances.length; i++) {
-            // Skip assets with no balance.
-            if (balances[i] == 0) continue;
-
+            token = position.tokens[i];
             if (balances[i] > fees[i]) {
+                amount = balances[i] - fees[i];
                 if (recipient == msg.sender) {
                     // If feeRecipient is the Account itself, deposit fees back into the Account
-                    balances[i] = balances[i] - fees[i];
-                    ERC20(position.tokens[i]).safeApproveWithRetry(msg.sender, balances[i]);
+                    balances[i] = amount;
+                    ERC20(token).safeApproveWithRetry(msg.sender, amount);
                     count++;
                 } else {
                     // Else, send the fees to the fee recipient.
-                    ERC20(position.tokens[i]).safeTransfer(recipient, balances[i] - fees[i]);
+                    ERC20(token).safeTransfer(recipient, amount);
                     balances[i] = 0;
                 }
             } else {
+                amount = 0;
                 fees[i] = balances[i];
                 balances[i] = 0;
             }
 
             // Transfer Initiator fees to the initiator.
-            if (fees[i] > 0) ERC20(position.tokens[i]).safeTransfer(initiator, fees[i]);
+            if (fees[i] > 0) ERC20(token).safeTransfer(initiator, fees[i]);
+            emit FeePaid(msg.sender, initiator, token, fees[i]);
+
+            if (recipient != msg.sender) emit YieldTransferred(msg.sender, recipient, token, amount);
         }
     }
 }

@@ -186,6 +186,9 @@ abstract contract UniswapV3 is AbstractBase {
         // Calculate claim fees.
         fees[0] += amount0.mulDivDown(claimFee, 1e18);
         fees[1] += amount1.mulDivDown(claimFee, 1e18);
+
+        emit YieldClaimed(msg.sender, position.tokens[0], amount0);
+        emit YieldClaimed(msg.sender, position.tokens[1], amount1);
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -209,10 +212,10 @@ abstract contract UniswapV3 is AbstractBase {
      * @param balances The balances of the underlying tokens held by the Rebalancer.
      * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
+     * @dev Does not emit YieldClaimed event, if necessary first call _claim() to emit the event before unstaking.
      */
     function _burn(uint256[] memory balances, address, PositionState memory position) internal virtual override {
-        // Remove liquidity of the position and claim outstanding fees to get full amounts of token0 and token1
-        // for rebalance.
+        // Remove liquidity of the position and claim outstanding fees.
         POSITION_MANAGER.decreaseLiquidity(
             DecreaseLiquidityParams({
                 tokenId: position.id,

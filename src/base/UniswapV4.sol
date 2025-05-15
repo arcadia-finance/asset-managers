@@ -198,7 +198,6 @@ abstract contract UniswapV4 is AbstractBase {
      * @param fees The fees of the underlying tokens to be paid to the initiator.
      * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
-     * @dev Must update the balances after the claim.
      */
     function _claim(
         uint256[] memory balances,
@@ -233,6 +232,9 @@ abstract contract UniswapV4 is AbstractBase {
         // Calculate claim fees.
         fees[0] += (balance0 - balances[0]).mulDivDown(claimFee, 1e18);
         fees[1] += (balance1 - balances[1]).mulDivDown(claimFee, 1e18);
+
+        emit YieldClaimed(msg.sender, position.tokens[0], balance0 - balances[0]);
+        emit YieldClaimed(msg.sender, position.tokens[1], balance1 - balances[1]);
 
         // Update the balances.
         balances[0] = balance0;
@@ -269,6 +271,7 @@ abstract contract UniswapV4 is AbstractBase {
      * @param balances The balances of the underlying tokens held by the Rebalancer.
      * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
+     * @dev Does not emit YieldClaimed event, if necessary first call _claim() to emit the event before unstaking.
      */
     function _burn(uint256[] memory balances, address, PositionState memory position) internal virtual override {
         // Cache the currencies.
@@ -475,7 +478,6 @@ abstract contract UniswapV4 is AbstractBase {
      * @param position A struct with position and pool related variables.
      * @param amount0Desired The desired amount of token0 to add as liquidity.
      * @param amount1Desired The desired amount of token1 to add as liquidity.
-     * @dev Must update the balances and sqrtPrice after the swap.
      */
     function _increaseLiquidity(
         uint256[] memory balances,
