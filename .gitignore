@@ -4,4 +4,4 @@ out/
 build/*
 node_modules
 broadcast/
-.vscode/
+.vscode/*
