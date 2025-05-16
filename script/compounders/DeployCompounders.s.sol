@@ -6,7 +6,7 @@ pragma solidity ^0.8.22;
 
 /* import { Base_AssetManagers_Script } from "../Base.s.sol";
 
-import { CompounderParameters } from "../utils/Constants.sol";
+import { CompounderParameters } from "../utils/ConstantsBase.sol";
 import { SlipstreamCompounder } from "../../src/compounders/slipstream/SlipstreamCompounder.sol";
 import { SlipstreamCompounderHelper } from
     "../../src/compounders/periphery/libraries/slipstream/SlipstreamCompounderHelper.sol";

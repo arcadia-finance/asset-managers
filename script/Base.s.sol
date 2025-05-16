@@ -8,6 +8,6 @@ import { Base_Script } from "../lib/accounts-v2/script/Base.s.sol";
 
 abstract contract Base_AssetManagers_Script is Base_Script {
     constructor() {
-        deployer = vm.envUint("PRIVATE_KEY_DEPLOYER_BASE");
+        deployer = vm.envUint("PRIVATE_KEY_DEPLOYER");
     }
 }

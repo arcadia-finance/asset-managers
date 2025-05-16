@@ -5,7 +5,7 @@
 pragma solidity ^0.8.26;
 
 import { Base_AssetManagers_Script } from "../Base.s.sol";
-import { Arcadia, Assets, PositionManagers, YieldClaimerParameters } from "../utils/Constants.sol";
+import { Arcadia, Assets, PositionManagers, YieldClaimerParameters } from "../utils/ConstantsBase.sol";
 import { YieldClaimer } from "../../src/yield-claimers/YieldClaimer.sol";
 
 contract DeployYieldClaimer is Base_AssetManagers_Script {

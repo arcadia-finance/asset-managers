@@ -13,7 +13,7 @@ contract DeployAlienBaseStep1 is Test {
     constructor() Test() { }
 
     function run() public {
-        uint256 deployer = vm.envUint("PRIVATE_KEY_DEPLOYER_BASE");
+        uint256 deployer = vm.envUint("PRIVATE_KEY_DEPLOYER");
         vm.startBroadcast(deployer);
         new QuoterV2(0x3E84D913803b02A4a7f027165E8cA42C14C0FdE7, 0x4200000000000000000000000000000000000006);
         vm.stopBroadcast();
