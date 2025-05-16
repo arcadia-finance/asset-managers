@@ -7,7 +7,7 @@ pragma solidity 0.8.22;
 import { Base_AssetManagers_Script } from "../Base.s.sol";
 
 import { Rebalancer } from "../../src/rebalancers/Rebalancer.sol";
-import { RebalancerParameters } from "../utils/Constants.sol";
+import { RebalancerParameters } from "../utils/ConstantsBase.sol";
 
 contract DeployRebalancer is Base_AssetManagers_Script {
     Rebalancer internal rebalancer;

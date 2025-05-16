@@ -7,7 +7,7 @@ pragma solidity 0.8.22;
 import { Base_AssetManagers_Script } from "../Base.s.sol";
 
 import { AlienBaseCompounderSpot } from "../../src/compounders/alien-base/AlienBaseCompounderSpot.sol";
-import { CompounderParameters } from "../utils/Constants.sol";
+import { CompounderParameters } from "../utils/ConstantsBase.sol";
 import { SlipstreamCompounderSpot } from "../../src/compounders/slipstream/SlipstreamCompounderSpot.sol";
 import { UniswapV3CompounderSpot } from "../../src/compounders/uniswap-v3/UniswapV3CompounderSpot.sol";
 
