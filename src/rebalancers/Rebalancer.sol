@@ -23,7 +23,7 @@ import { TickMath } from "../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src
  * @title Abstract Rebalancer for Concentrated Liquidity Positions.
  * @notice The Rebalancer is an Asset Manager for Arcadia Accounts.
  * It will allow third parties to trigger the rebalancing functionality for a Liquidity Position in the Account.
- * The owner of an Arcadia Account should set an initiator via setAccountInfo() that will be permisionned to rebalance
+ * The owner of an Arcadia Account should set an initiator via setAccountInfo() that will be permissioned to rebalance
  * all Liquidity Positions held in that Account.
  * @dev The initiator will provide a trusted sqrtPrice input at the time of rebalance to mitigate frontrunning risks.
  * This input serves as a reference point for calculating the maximum allowed deviation during the rebalancing process,
