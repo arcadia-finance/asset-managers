@@ -2,7 +2,7 @@
  * https://github.com/Vectorized/solady/blob/main/src/utils/SafeTransferLib.sol
  * SPDX-License-Identifier: MIT
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.26;
 
 import { ERC20 } from "../../lib/accounts-v2/lib/solmate/src/tokens/ERC20.sol";
 

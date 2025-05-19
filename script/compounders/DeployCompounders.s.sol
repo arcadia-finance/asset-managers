@@ -2,37 +2,39 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.26;
 
-/* import { Base_AssetManagers_Script } from "../Base.s.sol";
-
-import { CompounderParameters } from "../utils/ConstantsBase.sol";
-import { SlipstreamCompounder } from "../../src/compounders/slipstream/SlipstreamCompounder.sol";
-import { SlipstreamCompounderHelper } from
-    "../../src/compounders/periphery/libraries/slipstream/SlipstreamCompounderHelper.sol";
-import { UniswapV3Compounder } from "../../src/compounders/uniswap-v3/UniswapV3Compounder.sol";
-import { UniswapV3CompounderHelper } from
-    "../../src/compounders/periphery/libraries/uniswap-v3/UniswapV3CompounderHelper.sol";
+import { Arcadia, Deployers, Slipstream, UniswapV3, UniswapV4 } from "../utils/ConstantsBase.sol";
+import { Base_AssetManagers_Script } from "../Base.s.sol";
+import { CompounderSlipstream } from "../../src/compounders/CompounderSlipstream.sol";
+import { CompounderUniswapV3 } from "../../src/compounders/CompounderUniswapV3.sol";
+import { CompounderUniswapV4 } from "../../src/compounders/CompounderUniswapV4.sol";
 
 contract DeployCompounders is Base_AssetManagers_Script {
-    SlipstreamCompounderHelper internal slipstreamCompounderHelper;
-    UniswapV3CompounderHelper internal uniswapV3CompounderHelper;
-
     constructor() Base_AssetManagers_Script() { }
 
     function run() public {
-        vm.startBroadcast(deployer);
-        slipstreamCompounder = new SlipstreamCompounder(
-            CompounderParameters.TOLERANCE,
-            CompounderParameters.INITIATOR_SHARE
-        );
-        slipstreamCompounderHelper = new SlipstreamCompounderHelper(address(slipstreamCompounder));
+        // Sanity check that we use the correct priv key.
+        require(vm.addr(deployer) == Deployers.ARCADIA, "Wrong Deployer.");
 
-        uniswapV3Compounder = new UniswapV3Compounder(
-            CompounderParameters.TOLERANCE,
-            CompounderParameters.INITIATOR_SHARE
+        vm.startBroadcast(deployer);
+        new CompounderSlipstream(
+            Arcadia.FACTORY,
+            Slipstream.POSITION_MANAGER,
+            Slipstream.FACTORY,
+            Slipstream.POOL_IMPLEMENTATION,
+            Slipstream.AERO,
+            Arcadia.STAKED_SLIPSTREAM_AM,
+            Arcadia.WRAPPED_STAKED_SLIPSTREAM
         );
-        uniswapV3CompounderHelper = new UniswapV3CompounderHelper(address(uniswapV3Compounder));
+        new CompounderUniswapV3(Arcadia.FACTORY, UniswapV3.POSITION_MANAGER, UniswapV3.FACTORY);
+        new CompounderUniswapV4(
+            Arcadia.FACTORY, UniswapV4.POSITION_MANAGER, UniswapV4.PERMIT_2, UniswapV4.POOL_MANAGER, UniswapV4.WETH
+        );
         vm.stopBroadcast();
     }
-} */
+
+    function test_deploy() public {
+        vm.skip(true);
+    }
+}

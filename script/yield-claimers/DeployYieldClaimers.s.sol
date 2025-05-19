@@ -6,11 +6,11 @@ pragma solidity ^0.8.26;
 
 import { Arcadia, Deployers, Slipstream, UniswapV3, UniswapV4 } from "../utils/ConstantsBase.sol";
 import { Base_AssetManagers_Script } from "../Base.s.sol";
-import { RebalancerSlipstream } from "../../src/rebalancers/RebalancerSlipstream.sol";
-import { RebalancerUniswapV3 } from "../../src/rebalancers/RebalancerUniswapV3.sol";
-import { RebalancerUniswapV4 } from "../../src/rebalancers/RebalancerUniswapV4.sol";
+import { YieldClaimerSlipstream } from "../../src/yield-claimers/YieldClaimerSlipstream.sol";
+import { YieldClaimerUniswapV3 } from "../../src/yield-claimers/YieldClaimerUniswapV3.sol";
+import { YieldClaimerUniswapV4 } from "../../src/yield-claimers/YieldClaimerUniswapV4.sol";
 
-contract DeployRebalancers is Base_AssetManagers_Script {
+contract DeployYieldClaimers is Base_AssetManagers_Script {
     constructor() Base_AssetManagers_Script() { }
 
     function run() public {
@@ -18,7 +18,7 @@ contract DeployRebalancers is Base_AssetManagers_Script {
         require(vm.addr(deployer) == Deployers.ARCADIA, "Wrong Deployer.");
 
         vm.startBroadcast(deployer);
-        new RebalancerSlipstream(
+        new YieldClaimerSlipstream(
             Arcadia.FACTORY,
             Slipstream.POSITION_MANAGER,
             Slipstream.FACTORY,
@@ -27,8 +27,8 @@ contract DeployRebalancers is Base_AssetManagers_Script {
             Arcadia.STAKED_SLIPSTREAM_AM,
             Arcadia.WRAPPED_STAKED_SLIPSTREAM
         );
-        new RebalancerUniswapV3(Arcadia.FACTORY, UniswapV3.POSITION_MANAGER, UniswapV3.FACTORY);
-        new RebalancerUniswapV4(
+        new YieldClaimerUniswapV3(Arcadia.FACTORY, UniswapV3.POSITION_MANAGER, UniswapV3.FACTORY);
+        new YieldClaimerUniswapV4(
             Arcadia.FACTORY, UniswapV4.POSITION_MANAGER, UniswapV4.PERMIT_2, UniswapV4.POOL_MANAGER, UniswapV4.WETH
         );
         vm.stopBroadcast();
