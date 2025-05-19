@@ -4,7 +4,7 @@
  */
 pragma solidity ^0.8.22;
 
-import { RebalanceOptimizationMath } from "../../../src/rebalancers/libraries/RebalanceOptimizationMath.sol";
+import { RebalanceOptimizationMath } from "../../../src/libraries/RebalanceOptimizationMath.sol";
 
 contract RebalanceOptimizationMathExtension {
     function getAmountOutWithSlippage(

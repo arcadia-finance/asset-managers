@@ -4,14 +4,23 @@
  */
 pragma solidity ^0.8.22;
 
-contract HookMock {
+import { PositionState } from "../../../src/state/PositionState.sol";
+import { Rebalancer } from "../../../src/rebalancers/Rebalancer.sol";
+import { StrategyHook } from "../../../src/rebalancers/periphery/StrategyHook.sol";
+
+contract HookMock is StrategyHook {
+    function setStrategy(address account, bytes calldata strategyData) external override { }
     function beforeRebalance(
         address account,
         address positionManager,
+        PositionState memory position,
+        bytes memory strategyData
+    ) external view override returns (int24 tickLower, int24 tickUpper) { }
+    function afterRebalance(
+        address account,
+        address positionManager,
         uint256 oldId,
-        int24 newTickLower,
-        int24 newTickUpper
-    ) external view { }
-
-    function afterRebalance(address account, address positionManager, uint256 oldId, uint256 newId) external { }
+        PositionState memory newPosition,
+        bytes memory strategyData
+    ) external override { }
 }

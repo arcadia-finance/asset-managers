@@ -2,10 +2,10 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.26;
 
-import { Rebalancer } from "../../../../src/rebalancers/Rebalancer.sol";
 import { Rebalancer_Fuzz_Test } from "./_Rebalancer.fuzz.t.sol";
+import { RebalancerExtension } from "../../../utils/extensions/RebalancerExtension.sol";
 
 /**
  * @notice Fuzz tests for the function "Constructor" of contract "Rebalancer".
@@ -20,14 +20,10 @@ contract Constructor_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_Constructor(uint256 maxTolerance, uint256 maxInitiatorFee, uint256 maxSlippageRatio)
-        public
-    {
+    function testFuzz_Success_Constructor(address arcadiaFactory) public {
         vm.prank(users.owner);
-        Rebalancer rebalancer_ = new Rebalancer(maxTolerance, maxInitiatorFee, maxSlippageRatio);
+        RebalancerExtension rebalancer_ = new RebalancerExtension(arcadiaFactory);
 
-        assertEq(rebalancer_.MAX_TOLERANCE(), maxTolerance);
-        assertEq(rebalancer_.MAX_INITIATOR_FEE(), maxInitiatorFee);
-        assertEq(rebalancer_.MIN_LIQUIDITY_RATIO(), maxSlippageRatio);
+        assertEq(address(rebalancer_.ARCADIA_FACTORY()), arcadiaFactory);
     }
 }
