@@ -67,7 +67,7 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
         uint64 maxSwapFee;
         // The maximum relative deviation the pool can have from the trustedSqrtPrice, with 18 decimals precision.
         uint64 upperSqrtPriceDeviation;
-        // The miminum relative deviation the pool can have from the trustedSqrtPrice, with 18 decimals precision.
+        // The minimum relative deviation the pool can have from the trustedSqrtPrice, with 18 decimals precision.
         uint64 lowerSqrtPriceDeviation;
         // The ratio that limits the amount of slippage of the swap, with 18 decimals precision.
         uint64 minLiquidityRatio;
