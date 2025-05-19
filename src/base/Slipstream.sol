@@ -243,8 +243,26 @@ abstract contract Slipstream is AbstractBase {
     }
 
     /* ///////////////////////////////////////////////////////////////
-                          UNSTAKING LOGIC
+                          STAKING LOGIC
     /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Stakes a Liquidity Position.
+     * param balances The balances of the underlying tokens.
+     * @param positionManager The contract address of the Position Manager.
+     * @param position A struct with position and pool related variables.
+     */
+    function _stake(uint256[] memory, address positionManager, PositionState memory position)
+        internal
+        virtual
+        override
+    {
+        // If position is a staked slipstream position, stake the position.
+        if (positionManager != address(POSITION_MANAGER)) {
+            POSITION_MANAGER.approve(positionManager, position.id);
+            IStakedSlipstream(positionManager).mint(position.id);
+        }
+    }
 
     /**
      * @notice Unstakes a Liquidity Position.
@@ -445,28 +463,6 @@ abstract contract Slipstream is AbstractBase {
 
         balances[0] -= amount0;
         balances[1] -= amount1;
-    }
-
-    /* ///////////////////////////////////////////////////////////////
-                          STAKING LOGIC
-    /////////////////////////////////////////////////////////////// */
-
-    /**
-     * @notice Stakes a Liquidity Position.
-     * param balances The balances of the underlying tokens.
-     * @param positionManager The contract address of the Position Manager.
-     * @param position A struct with position and pool related variables.
-     */
-    function _stake(uint256[] memory, address positionManager, PositionState memory position)
-        internal
-        virtual
-        override
-    {
-        // If position is a staked slipstream position, stake the position.
-        if (positionManager != address(POSITION_MANAGER)) {
-            POSITION_MANAGER.approve(positionManager, position.id);
-            IStakedSlipstream(positionManager).mint(position.id);
-        }
     }
 
     /* ///////////////////////////////////////////////////////////////

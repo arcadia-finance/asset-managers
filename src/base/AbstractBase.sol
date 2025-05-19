@@ -92,8 +92,18 @@ abstract contract AbstractBase {
     ) internal virtual;
 
     /* ///////////////////////////////////////////////////////////////
-                          UNSTAKING LOGIC
+                          STAKING LOGIC
     /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Stakes a Liquidity Position.
+     * @param balances The balances of the underlying tokens.
+     * @param positionManager The contract address of the Position Manager.
+     * @param position A struct with position and pool related variables.
+     */
+    function _stake(uint256[] memory balances, address positionManager, PositionState memory position)
+        internal
+        virtual;
 
     /**
      * @notice Unstakes a Liquidity Position.
@@ -177,20 +187,6 @@ abstract contract AbstractBase {
         uint256 amount0Desired,
         uint256 amount1Desired
     ) internal virtual;
-
-    /* ///////////////////////////////////////////////////////////////
-                          STAKING LOGIC
-    /////////////////////////////////////////////////////////////// */
-
-    /**
-     * @notice Unstakes a Liquidity Position.
-     * @param balances The balances of the underlying tokens.
-     * @param positionManager The contract address of the Position Manager.
-     * @param position A struct with position and pool related variables.
-     */
-    function _stake(uint256[] memory balances, address positionManager, PositionState memory position)
-        internal
-        virtual;
 
     /* ///////////////////////////////////////////////////////////////
                       ERC721 HANDLER FUNCTION

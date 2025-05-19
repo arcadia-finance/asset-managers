@@ -242,8 +242,22 @@ abstract contract UniswapV4 is AbstractBase {
     }
 
     /* ///////////////////////////////////////////////////////////////
-                          UNSTAKING LOGIC
+                          STAKING LOGIC
     /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Stakes a Liquidity Position.
+     * @param balances The balances of the underlying tokens.
+     * param positionManager The contract address of the Position Manager.
+     * @param position A struct with position and pool related variables.
+     */
+    function _stake(uint256[] memory balances, address, PositionState memory position) internal virtual override {
+        // If token0 is in native ETH, wrap it.
+        if (position.tokens[0] == address(0)) {
+            position.tokens[0] = WETH;
+            IWETH(payable(WETH)).deposit{ value: balances[0] }();
+        }
+    }
 
     /**
      * @notice Unstakes a Liquidity Position.
@@ -524,24 +538,6 @@ abstract contract UniswapV4 is AbstractBase {
         // Update the balances, token0 might be native ETH.
         balances[0] = currency0.balanceOfSelf();
         balances[1] = ERC20(position.tokens[1]).balanceOf(address(this));
-    }
-
-    /* ///////////////////////////////////////////////////////////////
-                          STAKING LOGIC
-    /////////////////////////////////////////////////////////////// */
-
-    /**
-     * @notice Stakes a Liquidity Position.
-     * @param balances The balances of the underlying tokens.
-     * param positionManager The contract address of the Position Manager.
-     * @param position A struct with position and pool related variables.
-     */
-    function _stake(uint256[] memory balances, address, PositionState memory position) internal virtual override {
-        // If token0 is in native ETH, wrap it.
-        if (position.tokens[0] == address(0)) {
-            position.tokens[0] = WETH;
-            IWETH(payable(WETH)).deposit{ value: balances[0] }();
-        }
     }
 
     /* ///////////////////////////////////////////////////////////////
