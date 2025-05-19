@@ -59,6 +59,7 @@ abstract contract UniswapV4 is AbstractBase {
                                 ERRORS
     ////////////////////////////////////////////////////////////// */
 
+    error InvalidPool();
     error OnlyPoolManager();
 
     /* //////////////////////////////////////////////////////////////
@@ -113,7 +114,11 @@ abstract contract UniswapV4 is AbstractBase {
         token1 = Currency.unwrap(poolKey.currency1);
 
         // If token0 is in native ETH, we need to withdraw wrapped eth from the Account.
-        if (token0 == address(0)) token0 = WETH;
+        if (token0 == address(0)) {
+            // Implementation cannot be used for pools of native eth and weth.
+            if (token1 == WETH) revert InvalidPool();
+            token0 = WETH;
+        }
     }
 
     /**
