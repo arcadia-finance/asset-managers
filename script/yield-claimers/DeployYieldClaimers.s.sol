@@ -4,8 +4,11 @@
  */
 pragma solidity ^0.8.26;
 
-import { Arcadia, Deployers, Slipstream, UniswapV3, UniswapV4 } from "../utils/ConstantsBase.sol";
+import { ArcadiaAssetManagers } from "../utils/constants/Shared.sol";
+import { Assets } from "../../lib/accounts-v2/script/utils/constants/Base.sol";
 import { Base_AssetManagers_Script } from "../Base.s.sol";
+import { Deployers } from "../../lib/accounts-v2/script/utils/constants/Shared.sol";
+import { Slipstream, UniswapV3, UniswapV4 } from "../utils/constants/Base.sol";
 import { YieldClaimerSlipstream } from "../../src/yield-claimers/YieldClaimerSlipstream.sol";
 import { YieldClaimerUniswapV3 } from "../../src/yield-claimers/YieldClaimerUniswapV3.sol";
 import { YieldClaimerUniswapV4 } from "../../src/yield-claimers/YieldClaimerUniswapV4.sol";
@@ -19,17 +22,21 @@ contract DeployYieldClaimers is Base_AssetManagers_Script {
 
         vm.startBroadcast(deployer);
         new YieldClaimerSlipstream(
-            Arcadia.FACTORY,
+            ArcadiaAssetManagers.FACTORY,
             Slipstream.POSITION_MANAGER,
             Slipstream.FACTORY,
             Slipstream.POOL_IMPLEMENTATION,
-            Slipstream.AERO,
-            Arcadia.STAKED_SLIPSTREAM_AM,
-            Arcadia.WRAPPED_STAKED_SLIPSTREAM
+            Assets.AERO().asset,
+            ArcadiaAssetManagers.STAKED_SLIPSTREAM_AM,
+            ArcadiaAssetManagers.WRAPPED_STAKED_SLIPSTREAM
         );
-        new YieldClaimerUniswapV3(Arcadia.FACTORY, UniswapV3.POSITION_MANAGER, UniswapV3.FACTORY);
+        new YieldClaimerUniswapV3(ArcadiaAssetManagers.FACTORY, UniswapV3.POSITION_MANAGER, UniswapV3.FACTORY);
         new YieldClaimerUniswapV4(
-            Arcadia.FACTORY, UniswapV4.POSITION_MANAGER, UniswapV4.PERMIT_2, UniswapV4.POOL_MANAGER, UniswapV4.WETH
+            ArcadiaAssetManagers.FACTORY,
+            UniswapV4.POSITION_MANAGER,
+            UniswapV4.PERMIT_2,
+            UniswapV4.POOL_MANAGER,
+            Assets.WETH().asset
         );
         vm.stopBroadcast();
     }
