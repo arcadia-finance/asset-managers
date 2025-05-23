@@ -4,9 +4,11 @@
  */
 pragma solidity ^0.8.22;
 
-library Arcadia {
-    address constant FACTORY = 0xDa14Fdd72345c4d2511357214c5B89A919768e59;
-    address constant STAKED_SLIPSTREAM_AM = 0x1Dc7A0f5336F52724B650E39174cfcbbEdD67bF1;
+import { ArcadiaAccounts, AssetModules } from "../../../lib/accounts-v2/script/utils/constants/Shared.sol";
+
+library ArcadiaAssetManagers {
+    address constant FACTORY = ArcadiaAccounts.FACTORY;
+    address constant STAKED_SLIPSTREAM_AM = AssetModules.STAKED_SLIPSTREAM;
     address constant WRAPPED_STAKED_SLIPSTREAM = 0xD74339e0F10fcE96894916B93E5Cc7dE89C98272;
 }
 
@@ -14,10 +16,6 @@ library Compounders {
     address constant SLIPSTREAM = 0x57FAA0BC4C045818d46055001702ad88a704A893;
     address constant UNISWAP_V3 = 0xaaC2DdDA7B72d76dc1EdDd869Fa5933f9AAb501e;
     address constant UNISWAP_V4 = 0xc89aaAD8Fc7Be29C461Aef085b2f72269dE69c16;
-}
-
-library Deployers {
-    address constant ARCADIA = 0x0f518becFC14125F23b8422849f6393D59627ddB;
 }
 
 library Rebalancers {
