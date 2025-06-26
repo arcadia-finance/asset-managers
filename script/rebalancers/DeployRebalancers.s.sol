@@ -8,9 +8,9 @@ import { ArcadiaAssetManagers } from "../utils/constants/Shared.sol";
 import { Assets } from "../../lib/accounts-v2/script/utils/constants/Base.sol";
 import { Base_AssetManagers_Script } from "../Base.s.sol";
 import { Deployers } from "../../lib/accounts-v2/script/utils/constants/Shared.sol";
-import { RebalancerSlipstream } from "../../src/rebalancers/RebalancerSlipstream.sol";
-import { RebalancerUniswapV3 } from "../../src/rebalancers/RebalancerUniswapV3.sol";
-import { RebalancerUniswapV4 } from "../../src/rebalancers/RebalancerUniswapV4.sol";
+import { RebalancerSlipstream } from "../../src/cl-managers/rebalancers/RebalancerSlipstream.sol";
+import { RebalancerUniswapV3 } from "../../src/cl-managers/rebalancers/RebalancerUniswapV3.sol";
+import { RebalancerUniswapV4 } from "../../src/cl-managers/rebalancers/RebalancerUniswapV4.sol";
 import { Slipstream, UniswapV3, UniswapV4 } from "../utils/constants/Base.sol";
 
 contract DeployRebalancers is Base_AssetManagers_Script {

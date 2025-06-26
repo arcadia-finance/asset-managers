@@ -4,8 +4,8 @@
  */
 pragma solidity ^0.8.22;
 
-import { PositionState } from "../../../src/state/PositionState.sol";
-import { UniswapV4 } from "../../../src/base/UniswapV4.sol";
+import { PositionState } from "../../../src/cl-managers/state/PositionState.sol";
+import { UniswapV4 } from "../../../src/cl-managers/base/UniswapV4.sol";
 
 contract UniswapV4Extension is UniswapV4 {
     constructor(address positionManager, address permit2, address poolManager, address weth)

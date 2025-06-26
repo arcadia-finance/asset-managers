@@ -9,9 +9,9 @@ import { Assets } from "../../lib/accounts-v2/script/utils/constants/Base.sol";
 import { Base_AssetManagers_Script } from "../Base.s.sol";
 import { Deployers } from "../../lib/accounts-v2/script/utils/constants/Shared.sol";
 import { Slipstream, UniswapV3, UniswapV4 } from "../utils/constants/Base.sol";
-import { YieldClaimerSlipstream } from "../../src/yield-claimers/YieldClaimerSlipstream.sol";
-import { YieldClaimerUniswapV3 } from "../../src/yield-claimers/YieldClaimerUniswapV3.sol";
-import { YieldClaimerUniswapV4 } from "../../src/yield-claimers/YieldClaimerUniswapV4.sol";
+import { YieldClaimerSlipstream } from "../../src/cl-managers/yield-claimers/YieldClaimerSlipstream.sol";
+import { YieldClaimerUniswapV3 } from "../../src/cl-managers/yield-claimers/YieldClaimerUniswapV3.sol";
+import { YieldClaimerUniswapV4 } from "../../src/cl-managers/yield-claimers/YieldClaimerUniswapV4.sol";
 
 contract DeployYieldClaimers is Base_AssetManagers_Script {
     constructor() Base_AssetManagers_Script() { }

@@ -4,8 +4,8 @@
  */
 pragma solidity ^0.8.22;
 
-import { YieldClaimerSlipstream } from "../../../src/yield-claimers/YieldClaimerSlipstream.sol";
-import { PositionState } from "../../../src/state/PositionState.sol";
+import { YieldClaimerSlipstream } from "../../../src/cl-managers/yield-claimers/YieldClaimerSlipstream.sol";
+import { PositionState } from "../../../src/cl-managers/state/PositionState.sol";
 
 contract YieldClaimerSlipstreamExtension is YieldClaimerSlipstream {
     constructor(

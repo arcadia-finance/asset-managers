@@ -4,8 +4,8 @@
  */
 pragma solidity ^0.8.22;
 
-import { CompounderSlipstream } from "../../../src/compounders/CompounderSlipstream.sol";
-import { PositionState } from "../../../src/state/PositionState.sol";
+import { CompounderSlipstream } from "../../../src/cl-managers/compounders/CompounderSlipstream.sol";
+import { PositionState } from "../../../src/cl-managers/state/PositionState.sol";
 
 contract CompounderSlipstreamExtension is CompounderSlipstream {
     constructor(

@@ -4,7 +4,7 @@
  */
 pragma solidity ^0.8.22;
 
-import { CLMath } from "../../../src/libraries/CLMath.sol";
+import { CLMath } from "../../../src/cl-managers/libraries/CLMath.sol";
 
 contract CLMathExtension {
     function getSwapParams(
