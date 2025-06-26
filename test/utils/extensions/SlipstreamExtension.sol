@@ -4,8 +4,8 @@
  */
 pragma solidity ^0.8.22;
 
-import { PositionState } from "../../../src/state/PositionState.sol";
-import { Slipstream } from "../../../src/base/Slipstream.sol";
+import { PositionState } from "../../../src/cl-managers/state/PositionState.sol";
+import { Slipstream } from "../../../src/cl-managers/base/Slipstream.sol";
 
 contract SlipstreamExtension is Slipstream {
     constructor(

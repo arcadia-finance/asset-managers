@@ -4,8 +4,8 @@
  */
 pragma solidity ^0.8.22;
 
-import { PositionState } from "../../../src/state/PositionState.sol";
-import { YieldClaimer } from "../../../src/yield-claimers/YieldClaimer.sol";
+import { PositionState } from "../../../src/cl-managers/state/PositionState.sol";
+import { YieldClaimer } from "../../../src/cl-managers/yield-claimers/YieldClaimer.sol";
 
 contract YieldClaimerExtension is YieldClaimer {
     constructor(address arcadiaFactory) YieldClaimer(arcadiaFactory) { }

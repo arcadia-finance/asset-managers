@@ -4,8 +4,8 @@
  */
 pragma solidity ^0.8.22;
 
-import { CompounderUniswapV3 } from "../../../src/compounders/CompounderUniswapV3.sol";
-import { PositionState } from "../../../src/state/PositionState.sol";
+import { CompounderUniswapV3 } from "../../../src/cl-managers/compounders/CompounderUniswapV3.sol";
+import { PositionState } from "../../../src/cl-managers/state/PositionState.sol";
 
 contract CompounderUniswapV3Extension is CompounderUniswapV3 {
     constructor(address arcadiaFactory, address positionManager, address uniswapV3Factory)

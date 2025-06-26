@@ -4,9 +4,9 @@
  */
 pragma solidity ^0.8.22;
 
-import { PositionState } from "../../../src/state/PositionState.sol";
-import { Rebalancer } from "../../../src/rebalancers/Rebalancer.sol";
-import { StrategyHook } from "../../../src/rebalancers/periphery/StrategyHook.sol";
+import { PositionState } from "../../../src/cl-managers/state/PositionState.sol";
+import { Rebalancer } from "../../../src/cl-managers/rebalancers/Rebalancer.sol";
+import { StrategyHook } from "../../../src/cl-managers/rebalancers/periphery/StrategyHook.sol";
 
 contract HookMock is StrategyHook {
     function setStrategy(address account, bytes calldata strategyData) external override { }

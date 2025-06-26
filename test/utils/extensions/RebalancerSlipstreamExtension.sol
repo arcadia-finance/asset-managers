@@ -4,8 +4,8 @@
  */
 pragma solidity ^0.8.22;
 
-import { PositionState } from "../../../src/state/PositionState.sol";
-import { RebalancerSlipstream } from "../../../src/rebalancers/RebalancerSlipstream.sol";
+import { PositionState } from "../../../src/cl-managers/state/PositionState.sol";
+import { RebalancerSlipstream } from "../../../src/cl-managers/rebalancers/RebalancerSlipstream.sol";
 
 contract RebalancerSlipstreamExtension is RebalancerSlipstream {
     constructor(

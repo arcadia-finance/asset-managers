@@ -4,8 +4,8 @@
  */
 pragma solidity ^0.8.22;
 
-import { PositionState } from "../../../src/state/PositionState.sol";
-import { RebalancerUniswapV3 } from "../../../src/rebalancers/RebalancerUniswapV3.sol";
+import { PositionState } from "../../../src/cl-managers/state/PositionState.sol";
+import { RebalancerUniswapV3 } from "../../../src/cl-managers/rebalancers/RebalancerUniswapV3.sol";
 
 contract RebalancerUniswapV3Extension is RebalancerUniswapV3 {
     constructor(address arcadiaFactory, address positionManager, address uniswapV3Factory)

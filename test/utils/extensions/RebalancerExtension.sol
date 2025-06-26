@@ -4,8 +4,8 @@
  */
 pragma solidity ^0.8.22;
 
-import { PositionState } from "../../../src/state/PositionState.sol";
-import { Rebalancer } from "../../../src/rebalancers/Rebalancer.sol";
+import { PositionState } from "../../../src/cl-managers/state/PositionState.sol";
+import { Rebalancer } from "../../../src/cl-managers/rebalancers/Rebalancer.sol";
 
 contract RebalancerExtension is Rebalancer {
     constructor(address arcadiaFactory) Rebalancer(arcadiaFactory) { }

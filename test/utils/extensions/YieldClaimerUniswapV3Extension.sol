@@ -4,8 +4,8 @@
  */
 pragma solidity ^0.8.22;
 
-import { PositionState } from "../../../src/state/PositionState.sol";
-import { YieldClaimerUniswapV3 } from "../../../src/yield-claimers/YieldClaimerUniswapV3.sol";
+import { PositionState } from "../../../src/cl-managers/state/PositionState.sol";
+import { YieldClaimerUniswapV3 } from "../../../src/cl-managers/yield-claimers/YieldClaimerUniswapV3.sol";
 
 contract YieldClaimerUniswapV3Extension is YieldClaimerUniswapV3 {
     constructor(address arcadiaFactory, address positionManager, address uniswapV3Factory)
