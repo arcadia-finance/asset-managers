@@ -138,13 +138,13 @@ abstract contract YieldClaimer is IActionBase, AbstractBase {
      * @param initiatorParams A struct with the initiator parameters.
      */
     function claim(address account_, InitiatorParams calldata initiatorParams) external {
-        // If the initiator is set, account_ is an actual Arcadia Account.
+        // Store Account address, used to validate the caller of the executeAction() callback and serves as a reentrancy guard.
         if (account != address(0)) revert Reentered();
+        account = account_;
+
+        // If the initiator is set, account_ is an actual Arcadia Account.
         if (accountToInitiator[IAccount(account_).owner()][account_] != msg.sender) revert InvalidInitiator();
         if (!isPositionManager(initiatorParams.positionManager)) revert InvalidPositionManager();
-
-        // Store Account address, used to validate the caller of the executeAction() callback and serves as a reentrancy guard.
-        account = account_;
 
         // Encode data for the flash-action.
         bytes memory actionData = ArcadiaLogic._encodeAction(
