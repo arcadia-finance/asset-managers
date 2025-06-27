@@ -32,7 +32,7 @@ abstract contract YieldClaimer is IActionBase, AbstractBase {
                                 STORAGE
     ////////////////////////////////////////////////////////////// */
 
-    // The Account to rebalance the fees for, used as transient storage.
+    // The Account to claim the yield for, used as transient storage.
     address internal account;
 
     // A mapping from account to account specific information.
