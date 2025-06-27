@@ -50,7 +50,7 @@ contract CowSwapper is IActionBase, Borrower {
     // Mapping from account to custom metadata.
     mapping(address account => bytes data) public metaData;
 
-    // A mapping that sets the approved initiator per owner per account.
+    // Mapping that sets the approved initiator per owner per account.
     mapping(address owner => mapping(address account => address initiator)) public ownerToAccountToInitiator;
 
     // A struct with the account specific parameters.

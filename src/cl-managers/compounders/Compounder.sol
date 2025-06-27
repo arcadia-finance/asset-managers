@@ -46,7 +46,7 @@ abstract contract Compounder is IActionBase, AbstractBase {
                                 STORAGE
     ////////////////////////////////////////////////////////////// */
 
-    // The Account to comound the fees for, used as transient storage.
+    // The Account to compound the fees for, used as transient storage.
     address internal account;
 
     // A mapping from account to account specific information.
