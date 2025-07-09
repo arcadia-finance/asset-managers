@@ -4,3 +4,6 @@
 [submodule "lib/flash-loan-router"]
 	path = lib/flash-loan-router
 	url = https://github.com/cowprotocol/flash-loan-router
+[submodule "lib/cowprotocol"]
+	path = lib/cowprotocol
+	url = https://github.com/cowprotocol/contracts
