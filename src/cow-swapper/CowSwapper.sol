@@ -32,7 +32,7 @@ contract CowSwapper is IActionBase, Borrower {
     IArcadiaFactory public immutable ARCADIA_FACTORY;
 
     // The EIP-1271 magic value.
-    bytes4 internal MAGIC_VALUE = 0x1626ba7e;
+    bytes4 internal constant MAGIC_VALUE = 0x1626ba7e;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
@@ -211,8 +211,10 @@ contract CowSwapper is IActionBase, Borrower {
         uint256 amountOut = balance - fee;
 
         // Send the fee to the initiator.
-        ERC20(accountInfo_.tokenOut).safeTransfer(accountInfo_.initiator, fee);
-        emit FeePaid(msg.sender, accountInfo_.initiator, accountInfo_.tokenOut, fee);
+        if (fee > 0) {
+            ERC20(accountInfo_.tokenOut).safeTransfer(accountInfo_.initiator, fee);
+            emit FeePaid(msg.sender, accountInfo_.initiator, accountInfo_.tokenOut, fee);
+        }
 
         // Approve tokenOut to be deposited into the account.
         ERC20(accountInfo_.tokenOut).safeApproveWithRetry(msg.sender, amountOut);
