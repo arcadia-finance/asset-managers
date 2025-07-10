@@ -47,7 +47,7 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
                                 STORAGE
     ////////////////////////////////////////////////////////////// */
 
-    // The Account to rebalance the fees for, used as transient storage.
+    // The Account to rebalance, used as transient storage.
     address internal account;
 
     // A mapping from account to account specific information.
