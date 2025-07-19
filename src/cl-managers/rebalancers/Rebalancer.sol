@@ -466,7 +466,7 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
      * @param swapData Arbitrary calldata provided by an initiator for the swap.
      * @dev Initiator has to route swap in such a way that at least minLiquidity of liquidity is added to the position after the swap.
      * And leftovers must be in tokenIn, otherwise the total tokenIn balance will be added as liquidity,
-     * and the initiator fee will be 0 (but the transaction will not revert)
+     * and the initiator fee will be 0 (but the transaction will not revert).
      */
     function _swapViaRouter(
         uint256[] memory balances,

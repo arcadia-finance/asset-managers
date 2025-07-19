@@ -32,6 +32,7 @@ contract DeployCLManagers is Base_AssetManagers_Script {
         // Compounders.
         new CompounderSlipstream(
             ArcadiaAssetManagers.FACTORY,
+            address(routerTrampoline),
             Slipstream.POSITION_MANAGER,
             Slipstream.FACTORY,
             Slipstream.POOL_IMPLEMENTATION,
@@ -39,9 +40,12 @@ contract DeployCLManagers is Base_AssetManagers_Script {
             ArcadiaAssetManagers.STAKED_SLIPSTREAM_AM,
             ArcadiaAssetManagers.WRAPPED_STAKED_SLIPSTREAM
         );
-        new CompounderUniswapV3(ArcadiaAssetManagers.FACTORY, UniswapV3.POSITION_MANAGER, UniswapV3.FACTORY);
+        new CompounderUniswapV3(
+            ArcadiaAssetManagers.FACTORY, address(routerTrampoline), UniswapV3.POSITION_MANAGER, UniswapV3.FACTORY
+        );
         new CompounderUniswapV4(
             ArcadiaAssetManagers.FACTORY,
+            address(routerTrampoline),
             UniswapV4.POSITION_MANAGER,
             UniswapV4.PERMIT_2,
             UniswapV4.POOL_MANAGER,

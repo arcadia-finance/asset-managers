@@ -20,10 +20,11 @@ contract Constructor_Compounder_Fuzz_Test is Compounder_Fuzz_Test {
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_Constructor(address arcadiaFactory) public {
+    function testFuzz_Success_Constructor(address arcadiaFactory, address routerTrampoline_) public {
         vm.prank(users.owner);
-        CompounderExtension compounder_ = new CompounderExtension(arcadiaFactory);
+        CompounderExtension compounder_ = new CompounderExtension(arcadiaFactory, routerTrampoline_);
 
         assertEq(address(compounder_.ARCADIA_FACTORY()), arcadiaFactory);
+        assertEq(address(compounder_.ROUTER_TRAMPOLINE()), routerTrampoline_);
     }
 }

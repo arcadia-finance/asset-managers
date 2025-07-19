@@ -11,6 +11,7 @@ import { CompounderSlipstream } from "../../src/cl-managers/compounders/Compound
 import { CompounderUniswapV3 } from "../../src/cl-managers/compounders/CompounderUniswapV3.sol";
 import { CompounderUniswapV4 } from "../../src/cl-managers/compounders/CompounderUniswapV4.sol";
 import { Deployers } from "../../lib/accounts-v2/script/utils/constants/Shared.sol";
+import { Helpers } from "../utils/constants/Shared.sol";
 import { Slipstream, UniswapV3, UniswapV4 } from "../utils/constants/Base.sol";
 
 contract DeployCompounders is Base_AssetManagers_Script {
@@ -23,6 +24,7 @@ contract DeployCompounders is Base_AssetManagers_Script {
         vm.startBroadcast(deployer);
         new CompounderSlipstream(
             ArcadiaAssetManagers.FACTORY,
+            Helpers.ROUTER_TRAMPOLINE,
             Slipstream.POSITION_MANAGER,
             Slipstream.FACTORY,
             Slipstream.POOL_IMPLEMENTATION,
@@ -30,9 +32,12 @@ contract DeployCompounders is Base_AssetManagers_Script {
             ArcadiaAssetManagers.STAKED_SLIPSTREAM_AM,
             ArcadiaAssetManagers.WRAPPED_STAKED_SLIPSTREAM
         );
-        new CompounderUniswapV3(ArcadiaAssetManagers.FACTORY, UniswapV3.POSITION_MANAGER, UniswapV3.FACTORY);
+        new CompounderUniswapV3(
+            ArcadiaAssetManagers.FACTORY, Helpers.ROUTER_TRAMPOLINE, UniswapV3.POSITION_MANAGER, UniswapV3.FACTORY
+        );
         new CompounderUniswapV4(
             ArcadiaAssetManagers.FACTORY,
+            Helpers.ROUTER_TRAMPOLINE,
             UniswapV4.POSITION_MANAGER,
             UniswapV4.PERMIT_2,
             UniswapV4.POOL_MANAGER,
