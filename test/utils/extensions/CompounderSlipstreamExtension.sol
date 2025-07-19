@@ -10,6 +10,7 @@ import { PositionState } from "../../../src/cl-managers/state/PositionState.sol"
 contract CompounderSlipstreamExtension is CompounderSlipstream {
     constructor(
         address arcadiaFactory,
+        address routerTrampoline,
         address positionManager,
         address cLFactory,
         address poolImplementation,
@@ -19,6 +20,7 @@ contract CompounderSlipstreamExtension is CompounderSlipstream {
     )
         CompounderSlipstream(
             arcadiaFactory,
+            routerTrampoline,
             positionManager,
             cLFactory,
             poolImplementation,

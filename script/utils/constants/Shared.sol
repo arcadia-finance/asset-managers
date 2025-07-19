@@ -18,6 +18,10 @@ library Compounders {
     address constant UNISWAP_V4 = 0xc89aaAD8Fc7Be29C461Aef085b2f72269dE69c16;
 }
 
+library Helpers {
+    address constant ROUTER_TRAMPOLINE = address(0);
+}
+
 library Rebalancers {
     address constant SLIPSTREAM = 0xB20a0D866CC096C334FDF4A43cFc54a580735994;
     address constant UNISWAP_V3 = 0xB2Dc74DC75B5dECE7cD8Eb7dCF00224F3fD4B26d;

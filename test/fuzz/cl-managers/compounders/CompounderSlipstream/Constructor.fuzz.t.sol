@@ -20,10 +20,11 @@ contract Constructor_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fuzz
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_Constructor(address arcadiaFactory) public {
+    function testFuzz_Success_Constructor(address arcadiaFactory, address routerTrampoline_) public {
         vm.prank(users.owner);
         CompounderSlipstreamExtension compounder_ = new CompounderSlipstreamExtension(
             arcadiaFactory,
+            routerTrampoline_,
             address(slipstreamPositionManager),
             address(cLFactory),
             address(poolImplementation),
@@ -33,5 +34,6 @@ contract Constructor_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fuzz
         );
 
         assertEq(address(compounder_.ARCADIA_FACTORY()), arcadiaFactory);
+        assertEq(address(compounder_.ROUTER_TRAMPOLINE()), routerTrampoline_);
     }
 }
