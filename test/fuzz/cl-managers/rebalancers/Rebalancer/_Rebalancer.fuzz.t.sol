@@ -9,6 +9,7 @@ import { Fuzz_Test } from "../../../Fuzz.t.sol";
 import { IUniswapV3PoolExtension } from
     "../../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/IUniswapV3PoolExtension.sol";
 import { RebalancerExtension } from "../../../../utils/extensions/RebalancerExtension.sol";
+import { RouterTrampoline } from "../../../../../src/cl-managers/RouterTrampoline.sol";
 import { UniswapV3Fixture } from "../../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";
 
 /**
@@ -31,6 +32,8 @@ abstract contract Rebalancer_Fuzz_Test is Fuzz_Test, UniswapV3Fixture {
 
     ERC20Mock internal token0;
     ERC20Mock internal token1;
+
+    RouterTrampoline internal routerTrampoline;
 
     IUniswapV3PoolExtension internal poolUniswap;
 
@@ -58,8 +61,11 @@ abstract contract Rebalancer_Fuzz_Test is Fuzz_Test, UniswapV3Fixture {
         token1 = new ERC20Mock("TokenB", "TOKB", 0);
         (token0, token1) = (token0 < token1) ? (token0, token1) : (token1, token0);
 
+        // Deploy Router Trampoline.
+        routerTrampoline = new RouterTrampoline();
+
         // Deploy test contract.
-        rebalancer = new RebalancerExtension(address(factory));
+        rebalancer = new RebalancerExtension(address(factory), address(routerTrampoline));
     }
 
     /*////////////////////////////////////////////////////////////////

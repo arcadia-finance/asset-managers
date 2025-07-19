@@ -10,6 +10,7 @@ import { RebalancerSlipstream } from "../../../src/cl-managers/rebalancers/Rebal
 contract RebalancerSlipstreamExtension is RebalancerSlipstream {
     constructor(
         address arcadiaFactory,
+        address routerTrampoline,
         address positionManager,
         address cLFactory,
         address poolImplementation,
@@ -19,6 +20,7 @@ contract RebalancerSlipstreamExtension is RebalancerSlipstream {
     )
         RebalancerSlipstream(
             arcadiaFactory,
+            routerTrampoline,
             positionManager,
             cLFactory,
             poolImplementation,
