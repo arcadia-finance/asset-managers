@@ -8,7 +8,9 @@ import { Compounder } from "../../../src/cl-managers/compounders/Compounder.sol"
 import { PositionState } from "../../../src/cl-managers/state/PositionState.sol";
 
 contract CompounderExtension is Compounder {
-    constructor(address arcadiaFactory, address routerTrampoline) Compounder(arcadiaFactory, routerTrampoline) { }
+    constructor(address owner_, address arcadiaFactory, address routerTrampoline)
+        Compounder(owner_, arcadiaFactory, routerTrampoline)
+    { }
 
     function isPositionManager(address positionManager) public view override returns (bool) { }
 

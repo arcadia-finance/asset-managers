@@ -26,13 +26,17 @@ contract CompounderUniswapV3 is Compounder, UniswapV3 {
     ////////////////////////////////////////////////////////////// */
 
     /**
+     * @param owner_ The address of the Owner.
      * @param arcadiaFactory The contract address of the Arcadia Factory.
      * @param routerTrampoline The contract address of the Router Trampoline.
      * @param positionManager The contract address of the Uniswap v3 Position Manager.
      * @param uniswapV3Factory The contract address of the Uniswap v3 Factory.
      */
-    constructor(address arcadiaFactory, address routerTrampoline, address positionManager, address uniswapV3Factory)
-        Compounder(arcadiaFactory, routerTrampoline)
-        UniswapV3(positionManager, uniswapV3Factory)
-    { }
+    constructor(
+        address owner_,
+        address arcadiaFactory,
+        address routerTrampoline,
+        address positionManager,
+        address uniswapV3Factory
+    ) Compounder(owner_, arcadiaFactory, routerTrampoline) UniswapV3(positionManager, uniswapV3Factory) { }
 }

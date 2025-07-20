@@ -32,6 +32,7 @@ contract RebalancerUniswapV4 is Rebalancer, UniswapV4 {
     ////////////////////////////////////////////////////////////// */
 
     /**
+     * @param owner_ The address of the Owner.
      * @param arcadiaFactory The contract address of the Arcadia Factory.
      * @param routerTrampoline The contract address of the Router Trampoline.
      * @param positionManager The contract address of the Uniswap v4 Position Manager.
@@ -40,13 +41,14 @@ contract RebalancerUniswapV4 is Rebalancer, UniswapV4 {
      * @param weth The contract address of WETH.
      */
     constructor(
+        address owner_,
         address arcadiaFactory,
         address routerTrampoline,
         address positionManager,
         address permit2,
         address poolManager,
         address weth
-    ) Rebalancer(arcadiaFactory, routerTrampoline) UniswapV4(positionManager, permit2, poolManager, weth) { }
+    ) Rebalancer(owner_, arcadiaFactory, routerTrampoline) UniswapV4(positionManager, permit2, poolManager, weth) { }
 
     /* ///////////////////////////////////////////////////////////////
                              SWAP LOGIC

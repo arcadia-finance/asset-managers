@@ -135,10 +135,11 @@ abstract contract Compounder is IActionBase, AbstractBase, Guardian {
     ////////////////////////////////////////////////////////////// */
 
     /**
+     * @param owner_ The address of the Owner.
      * @param arcadiaFactory The contract address of the Arcadia Factory.
      * @param routerTrampoline The contract address of the Router Trampoline.
      */
-    constructor(address arcadiaFactory, address routerTrampoline) {
+    constructor(address owner_, address arcadiaFactory, address routerTrampoline) Guardian(owner_) {
         ARCADIA_FACTORY = IArcadiaFactory(arcadiaFactory);
         ROUTER_TRAMPOLINE = IRouterTrampoline(routerTrampoline);
     }

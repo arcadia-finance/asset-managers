@@ -26,9 +26,13 @@ abstract contract YieldClaimerUniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
         UniswapV4_Fuzz_Test.setUp();
 
         // Deploy test contract.
-        vm.prank(users.owner);
         yieldClaimer = new YieldClaimerUniswapV4Extension(
-            address(factory), address(positionManagerV4), address(permit2), address(poolManager), address(weth9)
+            users.owner,
+            address(factory),
+            address(positionManagerV4),
+            address(permit2),
+            address(poolManager),
+            address(weth9)
         );
     }
 }

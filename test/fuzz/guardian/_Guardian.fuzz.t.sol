@@ -24,7 +24,6 @@ abstract contract Guardian_Fuzz_Test is Fuzz_Test {
     function setUp() public virtual override(Fuzz_Test) {
         Fuzz_Test.setUp();
 
-        vm.prank(users.owner);
-        guardian = new GuardianExtension();
+        guardian = new GuardianExtension(users.owner);
     }
 }

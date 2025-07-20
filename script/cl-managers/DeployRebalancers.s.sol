@@ -5,7 +5,7 @@
 pragma solidity ^0.8.26;
 
 import { ArcadiaAssetManagers } from "../utils/constants/Shared.sol";
-import { Assets } from "../../lib/accounts-v2/script/utils/constants/Base.sol";
+import { Assets, Safes } from "../../lib/accounts-v2/script/utils/constants/Base.sol";
 import { Base_AssetManagers_Script } from "../Base.s.sol";
 import { CompounderSlipstream } from "../../src/cl-managers/compounders/CompounderSlipstream.sol";
 import { CompounderUniswapV3 } from "../../src/cl-managers/compounders/CompounderUniswapV3.sol";
@@ -34,6 +34,7 @@ contract DeployCLManagers is Base_AssetManagers_Script {
 
         // Compounders.
         new CompounderSlipstream(
+            Safes.OWNER,
             ArcadiaAssetManagers.FACTORY,
             address(routerTrampoline),
             Slipstream.POSITION_MANAGER,
@@ -44,9 +45,14 @@ contract DeployCLManagers is Base_AssetManagers_Script {
             ArcadiaAssetManagers.WRAPPED_STAKED_SLIPSTREAM
         );
         new CompounderUniswapV3(
-            ArcadiaAssetManagers.FACTORY, address(routerTrampoline), UniswapV3.POSITION_MANAGER, UniswapV3.FACTORY
+            Safes.OWNER,
+            ArcadiaAssetManagers.FACTORY,
+            address(routerTrampoline),
+            UniswapV3.POSITION_MANAGER,
+            UniswapV3.FACTORY
         );
         new CompounderUniswapV4(
+            Safes.OWNER,
             ArcadiaAssetManagers.FACTORY,
             address(routerTrampoline),
             UniswapV4.POSITION_MANAGER,
@@ -57,6 +63,7 @@ contract DeployCLManagers is Base_AssetManagers_Script {
 
         // Rebalancers.
         new RebalancerSlipstream(
+            Safes.OWNER,
             ArcadiaAssetManagers.FACTORY,
             address(routerTrampoline),
             Slipstream.POSITION_MANAGER,
@@ -67,9 +74,14 @@ contract DeployCLManagers is Base_AssetManagers_Script {
             ArcadiaAssetManagers.WRAPPED_STAKED_SLIPSTREAM
         );
         new RebalancerUniswapV3(
-            ArcadiaAssetManagers.FACTORY, address(routerTrampoline), UniswapV3.POSITION_MANAGER, UniswapV3.FACTORY
+            Safes.OWNER,
+            ArcadiaAssetManagers.FACTORY,
+            address(routerTrampoline),
+            UniswapV3.POSITION_MANAGER,
+            UniswapV3.FACTORY
         );
         new RebalancerUniswapV4(
+            Safes.OWNER,
             ArcadiaAssetManagers.FACTORY,
             address(routerTrampoline),
             UniswapV4.POSITION_MANAGER,
@@ -80,6 +92,7 @@ contract DeployCLManagers is Base_AssetManagers_Script {
 
         // Yield Claimers.
         new YieldClaimerSlipstream(
+            Safes.OWNER,
             ArcadiaAssetManagers.FACTORY,
             Slipstream.POSITION_MANAGER,
             Slipstream.FACTORY,
@@ -88,8 +101,11 @@ contract DeployCLManagers is Base_AssetManagers_Script {
             ArcadiaAssetManagers.STAKED_SLIPSTREAM_AM,
             ArcadiaAssetManagers.WRAPPED_STAKED_SLIPSTREAM
         );
-        new YieldClaimerUniswapV3(ArcadiaAssetManagers.FACTORY, UniswapV3.POSITION_MANAGER, UniswapV3.FACTORY);
+        new YieldClaimerUniswapV3(
+            Safes.OWNER, ArcadiaAssetManagers.FACTORY, UniswapV3.POSITION_MANAGER, UniswapV3.FACTORY
+        );
         new YieldClaimerUniswapV4(
+            Safes.OWNER,
             ArcadiaAssetManagers.FACTORY,
             UniswapV4.POSITION_MANAGER,
             UniswapV4.PERMIT_2,

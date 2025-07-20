@@ -20,9 +20,9 @@ contract Constructor_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_Constructor(address arcadiaFactory, address routerTrampoline_) public {
-        vm.prank(users.owner);
+    function testFuzz_Success_Constructor(address owner_, address arcadiaFactory, address routerTrampoline_) public {
         RebalancerSlipstreamExtension rebalancer_ = new RebalancerSlipstreamExtension(
+            owner_,
             arcadiaFactory,
             routerTrampoline_,
             address(slipstreamPositionManager),
@@ -33,6 +33,7 @@ contract Constructor_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz
             address(wrappedStakedSlipstream)
         );
 
+        assertEq(rebalancer_.owner(), owner_);
         assertEq(address(rebalancer_.ARCADIA_FACTORY()), arcadiaFactory);
         assertEq(address(rebalancer_.ROUTER_TRAMPOLINE()), routerTrampoline_);
     }

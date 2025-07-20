@@ -17,12 +17,13 @@ contract YieldClaimerUniswapV3 is YieldClaimer, UniswapV3 {
     ////////////////////////////////////////////////////////////// */
 
     /**
+     * @param owner_ The address of the Owner.
      * @param arcadiaFactory The contract address of the Arcadia Factory.
      * @param positionManager The contract address of the Uniswap v3 Position Manager.
      * @param uniswapV3Factory The contract address of the Uniswap v3 Factory.
      */
-    constructor(address arcadiaFactory, address positionManager, address uniswapV3Factory)
-        YieldClaimer(arcadiaFactory)
+    constructor(address owner_, address arcadiaFactory, address positionManager, address uniswapV3Factory)
+        YieldClaimer(owner_, arcadiaFactory)
         UniswapV3(positionManager, uniswapV3Factory)
     { }
 }

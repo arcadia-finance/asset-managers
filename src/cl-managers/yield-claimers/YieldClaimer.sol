@@ -89,9 +89,10 @@ abstract contract YieldClaimer is IActionBase, AbstractBase, Guardian {
     ////////////////////////////////////////////////////////////// */
 
     /**
+     * @param owner_ The address of the Owner.
      * @param arcadiaFactory The contract address of the Arcadia Factory.
      */
-    constructor(address arcadiaFactory) {
+    constructor(address owner_, address arcadiaFactory) Guardian(owner_) {
         ARCADIA_FACTORY = IArcadiaFactory(arcadiaFactory);
     }
 

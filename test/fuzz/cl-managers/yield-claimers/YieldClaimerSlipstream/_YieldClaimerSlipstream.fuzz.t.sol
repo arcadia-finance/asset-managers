@@ -26,8 +26,8 @@ abstract contract YieldClaimerSlipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         Slipstream_Fuzz_Test.setUp();
 
         // Deploy test contract.
-        vm.prank(users.owner);
         yieldClaimer = new YieldClaimerSlipstreamExtension(
+            users.owner,
             address(factory),
             address(slipstreamPositionManager),
             address(cLFactory),

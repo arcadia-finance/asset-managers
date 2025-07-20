@@ -8,9 +8,13 @@ import { CompounderUniswapV3 } from "../../../src/cl-managers/compounders/Compou
 import { PositionState } from "../../../src/cl-managers/state/PositionState.sol";
 
 contract CompounderUniswapV3Extension is CompounderUniswapV3 {
-    constructor(address arcadiaFactory, address routerTrampoline, address positionManager, address uniswapV3Factory)
-        CompounderUniswapV3(arcadiaFactory, routerTrampoline, positionManager, uniswapV3Factory)
-    { }
+    constructor(
+        address owner_,
+        address arcadiaFactory,
+        address routerTrampoline,
+        address positionManager,
+        address uniswapV3Factory
+    ) CompounderUniswapV3(owner_, arcadiaFactory, routerTrampoline, positionManager, uniswapV3Factory) { }
 
     function getUnderlyingTokens(address positionManager, uint256 id) external view returns (address, address) {
         return _getUnderlyingTokens(positionManager, id);

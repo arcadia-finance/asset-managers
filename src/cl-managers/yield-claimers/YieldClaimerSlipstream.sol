@@ -19,6 +19,7 @@ contract YieldClaimerSlipstream is YieldClaimer, Slipstream {
     ////////////////////////////////////////////////////////////// */
 
     /**
+     * @param owner_ The address of the Owner.
      * @param arcadiaFactory The contract address of the Arcadia Factory.
      * @param positionManager The contract address of the Slipstream Position Manager.
      * @param cLFactory The contract address of the Slipstream Factory.
@@ -28,6 +29,7 @@ contract YieldClaimerSlipstream is YieldClaimer, Slipstream {
      * @param stakedSlipstreamWrapper The contract address of the Staked Slipstream Wrapper.
      */
     constructor(
+        address owner_,
         address arcadiaFactory,
         address positionManager,
         address cLFactory,
@@ -36,7 +38,7 @@ contract YieldClaimerSlipstream is YieldClaimer, Slipstream {
         address stakedSlipstreamAm,
         address stakedSlipstreamWrapper
     )
-        YieldClaimer(arcadiaFactory)
+        YieldClaimer(owner_, arcadiaFactory)
         Slipstream(positionManager, cLFactory, poolImplementation, rewardToken, stakedSlipstreamAm, stakedSlipstreamWrapper)
     { }
 

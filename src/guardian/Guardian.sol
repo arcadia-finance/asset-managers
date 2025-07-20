@@ -60,7 +60,10 @@ abstract contract Guardian is Owned {
                                 CONSTRUCTOR
     ////////////////////////////////////////////////////////////// */
 
-    constructor() Owned(msg.sender) { }
+    /**
+     * @param owner_ The address of the Owner.
+     */
+    constructor(address owner_) Owned(owner_) { }
 
     /* //////////////////////////////////////////////////////////////
                             GUARDIAN LOGIC

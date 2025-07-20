@@ -26,9 +26,8 @@ abstract contract YieldClaimerUniswapV3_Fuzz_Test is UniswapV3_Fuzz_Test {
         UniswapV3_Fuzz_Test.setUp();
 
         // Deploy test contract.
-        vm.prank(users.owner);
         yieldClaimer = new YieldClaimerUniswapV3Extension(
-            address(factory), address(nonfungiblePositionManager), address(uniswapV3Factory)
+            users.owner, address(factory), address(nonfungiblePositionManager), address(uniswapV3Factory)
         );
 
         // Overwrite code hash of the UniswapV3Pool.
