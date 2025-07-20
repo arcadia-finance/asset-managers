@@ -4,8 +4,8 @@
  */
 pragma solidity ^0.8.22;
 
-import { Guardian_Fuzz_Test } from "./_Guardian.fuzz.t.sol";
 import { Guardian } from "../../../src/guardian/Guardian.sol";
+import { Guardian_Fuzz_Test } from "./_Guardian.fuzz.t.sol";
 
 /**
  * @notice Fuzz tests for the function "pause" of contract "Guardian".
