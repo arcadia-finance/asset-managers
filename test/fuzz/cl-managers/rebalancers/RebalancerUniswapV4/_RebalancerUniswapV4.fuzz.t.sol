@@ -36,6 +36,7 @@ abstract contract RebalancerUniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
         routerTrampoline = new RouterTrampoline();
 
         // Deploy test contract.
+        vm.prank(users.owner);
         rebalancer = new RebalancerUniswapV4Extension(
             address(factory),
             address(routerTrampoline),

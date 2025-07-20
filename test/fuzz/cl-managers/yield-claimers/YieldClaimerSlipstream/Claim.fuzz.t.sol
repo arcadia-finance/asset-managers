@@ -11,6 +11,7 @@ import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ER
 import { FixedPoint128 } from
     "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
 import { FullMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
+import { Guardian } from "../../../../../src/guardian/Guardian.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
 import { RebalanceLogic, RebalanceParams } from "../../../../../src/cl-managers/libraries/RebalanceLogic.sol";
 import { StdStorage, stdStorage } from "../../../../../lib/accounts-v2/lib/forge-std/src/Test.sol";
@@ -34,6 +35,22 @@ contract Compound_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstream_Fuz
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
+    function testFuzz_Revert_claim_Paused(
+        address account_,
+        YieldClaimer.InitiatorParams memory initiatorParams,
+        address caller
+    ) public {
+        // Given : Yield Claimer is Paused.
+        vm.prank(users.owner);
+        yieldClaimer.setPauseFlag(true);
+
+        // When : calling claim
+        // Then : it should revert
+        vm.prank(caller);
+        vm.expectRevert(Guardian.Paused.selector);
+        yieldClaimer.claim(account_, initiatorParams);
+    }
+
     function testFuzz_Revert_claim_Reentered(
         address account_,
         YieldClaimer.InitiatorParams memory initiatorParams,

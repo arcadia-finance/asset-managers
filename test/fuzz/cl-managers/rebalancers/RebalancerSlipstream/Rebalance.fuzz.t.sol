@@ -11,6 +11,7 @@ import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ER
 import { FixedPoint128 } from
     "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
 import { FullMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
+import { Guardian } from "../../../../../src/guardian/Guardian.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
 import { Rebalancer } from "../../../../../src/cl-managers/rebalancers/Rebalancer.sol";
 import { RebalancerSlipstream_Fuzz_Test } from "./_RebalancerSlipstream.fuzz.t.sol";
@@ -40,6 +41,22 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
+    function testFuzz_Revert_rebalance_Paused(
+        address account_,
+        Rebalancer.InitiatorParams memory initiatorParams,
+        address caller
+    ) public {
+        // Given : Rebalancer is Paused.
+        vm.prank(users.owner);
+        rebalancer.setPauseFlag(true);
+
+        // When : calling rebalance
+        // Then : it should revert
+        vm.prank(caller);
+        vm.expectRevert(Guardian.Paused.selector);
+        rebalancer.rebalance(account_, initiatorParams);
+    }
+
     function testFuzz_Revert_rebalance_Reentered(
         address account_,
         Rebalancer.InitiatorParams memory initiatorParams,

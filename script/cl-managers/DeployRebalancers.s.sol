@@ -17,6 +17,9 @@ import { RebalancerUniswapV3 } from "../../src/cl-managers/rebalancers/Rebalance
 import { RebalancerUniswapV4 } from "../../src/cl-managers/rebalancers/RebalancerUniswapV4.sol";
 import { RouterTrampoline } from "../../src/cl-managers/RouterTrampoline.sol";
 import { Slipstream, UniswapV3, UniswapV4 } from "../utils/constants/Base.sol";
+import { YieldClaimerSlipstream } from "../../src/cl-managers/yield-claimers/YieldClaimerSlipstream.sol";
+import { YieldClaimerUniswapV3 } from "../../src/cl-managers/yield-claimers/YieldClaimerUniswapV3.sol";
+import { YieldClaimerUniswapV4 } from "../../src/cl-managers/yield-claimers/YieldClaimerUniswapV4.sol";
 
 contract DeployCLManagers is Base_AssetManagers_Script {
     constructor() Base_AssetManagers_Script() { }
@@ -69,6 +72,25 @@ contract DeployCLManagers is Base_AssetManagers_Script {
         new RebalancerUniswapV4(
             ArcadiaAssetManagers.FACTORY,
             address(routerTrampoline),
+            UniswapV4.POSITION_MANAGER,
+            UniswapV4.PERMIT_2,
+            UniswapV4.POOL_MANAGER,
+            Assets.WETH().asset
+        );
+
+        // Yield Claimers.
+        new YieldClaimerSlipstream(
+            ArcadiaAssetManagers.FACTORY,
+            Slipstream.POSITION_MANAGER,
+            Slipstream.FACTORY,
+            Slipstream.POOL_IMPLEMENTATION,
+            Assets.AERO().asset,
+            ArcadiaAssetManagers.STAKED_SLIPSTREAM_AM,
+            ArcadiaAssetManagers.WRAPPED_STAKED_SLIPSTREAM
+        );
+        new YieldClaimerUniswapV3(ArcadiaAssetManagers.FACTORY, UniswapV3.POSITION_MANAGER, UniswapV3.FACTORY);
+        new YieldClaimerUniswapV4(
+            ArcadiaAssetManagers.FACTORY,
             UniswapV4.POSITION_MANAGER,
             UniswapV4.PERMIT_2,
             UniswapV4.POOL_MANAGER,

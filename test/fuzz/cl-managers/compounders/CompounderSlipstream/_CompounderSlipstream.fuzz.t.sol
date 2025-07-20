@@ -36,6 +36,7 @@ abstract contract CompounderSlipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         routerTrampoline = new RouterTrampoline();
 
         // Deploy test contract.
+        vm.prank(users.owner);
         compounder = new CompounderSlipstreamExtension(
             address(factory),
             address(routerTrampoline),

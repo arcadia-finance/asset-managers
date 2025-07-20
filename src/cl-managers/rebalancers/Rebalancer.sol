@@ -10,6 +10,7 @@ import { ArcadiaLogic } from "../libraries/ArcadiaLogic.sol";
 import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { ERC721 } from "../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { Guardian } from "../../guardian/Guardian.sol";
 import { IAccount } from "../../interfaces/IAccount.sol";
 import { IArcadiaFactory } from "../../interfaces/IArcadiaFactory.sol";
 import { IRouterTrampoline } from "../interfaces/IRouterTrampoline.sol";
@@ -33,7 +34,7 @@ import { TickMath } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/
  * based on a hypothetical optimal swap through the pool itself without slippage.
  * This protects the Account owners from incompetent or malicious initiators who route swaps poorly, or try to skim off liquidity from the position.
  */
-abstract contract Rebalancer is IActionBase, AbstractBase {
+abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
     using FixedPointMathLib for uint256;
     using SafeApprove for ERC20;
     using SafeTransferLib for ERC20;
@@ -61,7 +62,7 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
     mapping(address account => bytes data) public metaData;
 
     // A mapping that sets the approved initiator per owner per ccount.
-    mapping(address owner => mapping(address account => address initiator)) public accountToInitiator;
+    mapping(address accountOwner => mapping(address account => address initiator)) public accountToInitiator;
 
     // A struct with the account specific parameters.
     struct AccountInfo {
@@ -178,14 +179,14 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
     ) external {
         if (account != address(0)) revert Reentered();
         if (!ARCADIA_FACTORY.isAccount(account_)) revert NotAnAccount();
-        address owner = IAccount(account_).owner();
-        if (msg.sender != owner) revert OnlyAccountOwner();
+        address accountOwner = IAccount(account_).owner();
+        if (msg.sender != accountOwner) revert OnlyAccountOwner();
 
         if (maxClaimFee > 1e18 || maxSwapFee > 1e18 || maxTolerance > 1e18 || minLiquidityRatio > 1e18) {
             revert InvalidValue();
         }
 
-        accountToInitiator[owner][account_] = initiator;
+        accountToInitiator[accountOwner][account_] = initiator;
         accountInfo[account_] = AccountInfo({
             maxClaimFee: uint64(maxClaimFee),
             maxSwapFee: uint64(maxSwapFee),
@@ -210,7 +211,7 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
      * @param account_ The contract address of the account.
      * @param initiatorParams A struct with the initiator parameters.
      */
-    function rebalance(address account_, InitiatorParams calldata initiatorParams) external {
+    function rebalance(address account_, InitiatorParams calldata initiatorParams) external whenNotPaused {
         // Store Account address, used to validate the caller of the executeAction() callback and serves as a reentrancy guard.
         if (account != address(0)) revert Reentered();
         account = account_;

@@ -36,6 +36,7 @@ abstract contract RebalancerSlipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         routerTrampoline = new RouterTrampoline();
 
         // Deploy test contract.
+        vm.prank(users.owner);
         rebalancer = new RebalancerSlipstreamExtension(
             address(factory),
             address(routerTrampoline),

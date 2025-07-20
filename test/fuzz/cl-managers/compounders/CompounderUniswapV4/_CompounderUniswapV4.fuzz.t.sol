@@ -36,6 +36,7 @@ abstract contract CompounderUniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
         routerTrampoline = new RouterTrampoline();
 
         // Deploy test contract.
+        vm.prank(users.owner);
         compounder = new CompounderUniswapV4Extension(
             address(factory),
             address(routerTrampoline),
