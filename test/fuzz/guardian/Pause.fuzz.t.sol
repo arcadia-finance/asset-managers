@@ -41,14 +41,26 @@ contract Pause_Guardian_Fuzz_Test is Guardian_Fuzz_Test {
         guardian.pause();
     }
 
-    function testFuzz_Success_pause(address guardian_, bool initialFlag) public {
+    function testFuzz_Revert_pause_Paused(address guardian_) public {
         // Given: Guardian is set.
         vm.prank(users.owner);
         guardian.changeGuardian(guardian_);
 
         // And: An initial pause flag is set.
         vm.prank(users.owner);
-        guardian.setPauseFlag(initialFlag);
+        guardian.setPauseFlag(true);
+
+        // When: Guardian calls pause.
+        // Then: It should revert.
+        vm.prank(guardian_);
+        vm.expectRevert(Guardian.Paused.selector);
+        guardian.pause();
+    }
+
+    function testFuzz_Success_pause(address guardian_) public {
+        // Given: Guardian is set.
+        vm.prank(users.owner);
+        guardian.changeGuardian(guardian_);
 
         // When: Guardian calls pause.
         // Then: Event should be emitted.
