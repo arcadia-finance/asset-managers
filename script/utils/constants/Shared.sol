@@ -13,23 +13,23 @@ library ArcadiaAssetManagers {
 }
 
 library Compounders {
-    address constant SLIPSTREAM = 0x57FAA0BC4C045818d46055001702ad88a704A893;
-    address constant UNISWAP_V3 = 0xaaC2DdDA7B72d76dc1EdDd869Fa5933f9AAb501e;
-    address constant UNISWAP_V4 = 0xc89aaAD8Fc7Be29C461Aef085b2f72269dE69c16;
+    address constant SLIPSTREAM = 0x4694c34d153ee777cc07d01ac433bcc010a20ebd;
+    address constant UNISWAP_V3 = 0x80d3548bc54710d46201d554712e8638fd51326d;
+    address constant UNISWAP_V4 = 0xcff15e24a453afad454533e6d10889a84e2a68e1;
 }
 
 library Helpers {
-    address constant ROUTER_TRAMPOLINE = address(0);
+    address constant ROUTER_TRAMPOLINE = 0x354dbba1348985cc952c467b8ddaf5dd07590667;
 }
 
 library Rebalancers {
-    address constant SLIPSTREAM = 0xB20a0D866CC096C334FDF4A43cFc54a580735994;
-    address constant UNISWAP_V3 = 0xB2Dc74DC75B5dECE7cD8Eb7dCF00224F3fD4B26d;
-    address constant UNISWAP_V4 = 0xcF2e1Fe1c81f9Ab6869913bd5518e9461B79af4a;
+    address constant SLIPSTREAM = 0xefe600366e9847d405f2238cf9196e33780b3a42;
+    address constant UNISWAP_V3 = 0xd8285fc23eff687b8b618b78d85052f1ed17236e;
+    address constant UNISWAP_V4 = 0xa8676c8c197e12a71ae82a08b02dd9e666312cf1;
 }
 
 library YieldClaimers {
-    address constant SLIPSTREAM = 0x2a07d99eC1140e25DB07283930160d4BDE93d09f;
-    address constant UNISWAP_V3 = 0xc5815c102F0F1D7030E942d993f0BF44fEE66235;
-    address constant UNISWAP_V4 = 0x2eD3Db522944F5F68A2EBc3692d865D2aA2bA34E;
+    address constant SLIPSTREAM = 0x1f75abf8a24782053b351d9b4ea6d1236ed59105;
+    address constant UNISWAP_V3 = 0x40462e71effd9974fee04b6b327b701d663f753e;
+    address constant UNISWAP_V4 = 0x3bc2b398eeee9807ff76fdb4e11526de0ee80cea;
 }
