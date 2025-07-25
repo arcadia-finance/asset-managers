@@ -1,3 +1,9 @@
 [submodule "lib/accounts-v2"]
 	path = lib/accounts-v2
 	url = https://github.com/arcadia-finance/accounts-v2
+[submodule "lib/flash-loan-router"]
+	path = lib/flash-loan-router
+	url = https://github.com/cowprotocol/flash-loan-router
+[submodule "lib/cowprotocol"]
+	path = lib/cowprotocol
+	url = https://github.com/cowprotocol/contracts
