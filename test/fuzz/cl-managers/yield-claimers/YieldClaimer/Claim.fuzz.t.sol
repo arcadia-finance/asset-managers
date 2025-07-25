@@ -4,6 +4,7 @@
  */
 pragma solidity ^0.8.26;
 
+import { Guardian } from "../../../../../src/guardian/Guardian.sol";
 import { YieldClaimer } from "../../../../../src/cl-managers/yield-claimers/YieldClaimer.sol";
 import { YieldClaimer_Fuzz_Test } from "./_YieldClaimer.fuzz.t.sol";
 
@@ -22,6 +23,22 @@ contract Claim_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
+    function testFuzz_Revert_claim_Paused(
+        address account_,
+        YieldClaimer.InitiatorParams memory initiatorParams,
+        address caller
+    ) public {
+        // Given : Yield Claimer is Paused.
+        vm.prank(users.owner);
+        yieldClaimer.setPauseFlag(true);
+
+        // When : calling claim
+        // Then : it should revert
+        vm.prank(caller);
+        vm.expectRevert(Guardian.Paused.selector);
+        yieldClaimer.claim(account_, initiatorParams);
+    }
+
     function testFuzz_Revert_claim_Reentered(
         address account_,
         YieldClaimer.InitiatorParams memory initiatorParams,

@@ -8,6 +8,7 @@ import { Compounder } from "../../../../../src/cl-managers/compounders/Compounde
 import { CompounderUniswapV4_Fuzz_Test } from "./_CompounderUniswapV4.fuzz.t.sol";
 import { ERC20 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC20.sol";
 import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
+import { Guardian } from "../../../../../src/guardian/Guardian.sol";
 import { IWETH } from "../../../../../src/cl-managers/interfaces/IWETH.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
 import { RebalanceLogic, RebalanceParams } from "../../../../../src/cl-managers/libraries/RebalanceLogic.sol";
@@ -28,6 +29,22 @@ contract Rebalance_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz_Tes
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
+    function testFuzz_Revert_compound_Paused(
+        address account_,
+        Compounder.InitiatorParams memory initiatorParams,
+        address caller
+    ) public {
+        // Given : Compounder is Paused.
+        vm.prank(users.owner);
+        compounder.setPauseFlag(true);
+
+        // When : calling compound
+        // Then : it should revert
+        vm.prank(caller);
+        vm.expectRevert(Guardian.Paused.selector);
+        compounder.compound(account_, initiatorParams);
+    }
+
     function testFuzz_Revert_compound_Reentered(
         address account_,
         Compounder.InitiatorParams memory initiatorParams,

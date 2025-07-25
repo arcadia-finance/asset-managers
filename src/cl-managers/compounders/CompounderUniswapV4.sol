@@ -6,10 +6,9 @@ pragma solidity ^0.8.26;
 
 import { Compounder } from "./Compounder.sol";
 import { Currency } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
-import { ERC20 } from "../../../lib/accounts-v2/lib/solmate/src/tokens/ERC20.sol";
+import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { IWETH } from "../interfaces/IWETH.sol";
 import { PositionState } from "../state/PositionState.sol";
-import { SafeApprove } from "../../libraries/SafeApprove.sol";
 import { UniswapV4 } from "../base/UniswapV4.sol";
 
 /**
@@ -26,22 +25,29 @@ import { UniswapV4 } from "../base/UniswapV4.sol";
  * ensuring that the execution remains within a controlled price range.
  */
 contract CompounderUniswapV4 is Compounder, UniswapV4 {
-    using SafeApprove for ERC20;
+    using SafeTransferLib for ERC20;
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
     ////////////////////////////////////////////////////////////// */
 
     /**
+     * @param owner_ The address of the Owner.
      * @param arcadiaFactory The contract address of the Arcadia Factory.
+     * @param routerTrampoline The contract address of the Router Trampoline.
      * @param positionManager The contract address of the Uniswap v4 Position Manager.
      * @param permit2 The contract address of Permit2.
      * @param poolManager The contract address of the Uniswap v4 Pool Manager.
      * @param weth The contract address of WETH.
      */
-    constructor(address arcadiaFactory, address positionManager, address permit2, address poolManager, address weth)
-        Compounder(arcadiaFactory)
-        UniswapV4(positionManager, permit2, poolManager, weth)
-    { }
+    constructor(
+        address owner_,
+        address arcadiaFactory,
+        address routerTrampoline,
+        address positionManager,
+        address permit2,
+        address poolManager,
+        address weth
+    ) Compounder(owner_, arcadiaFactory, routerTrampoline) UniswapV4(positionManager, permit2, poolManager, weth) { }
 
     /* ///////////////////////////////////////////////////////////////
                              SWAP LOGIC
@@ -55,7 +61,7 @@ contract CompounderUniswapV4 is Compounder, UniswapV4 {
      * @param swapData Arbitrary calldata provided by an initiator for the swap.
      * @dev Initiator has to route swap in such a way that at least minLiquidity of liquidity is added to the position after the swap.
      * And leftovers must be in tokenIn, otherwise the total tokenIn balance will be added as liquidity,
-     * and the initiator fee will be 0 (but the transaction will not revert)
+     * and the initiator fee will be 0 (but the transaction will not revert).
      */
     function _swapViaRouter(
         uint256[] memory balances,
@@ -66,26 +72,35 @@ contract CompounderUniswapV4 is Compounder, UniswapV4 {
         // Decode the swap data.
         (address router, uint256 amountIn, bytes memory data) = abi.decode(swapData, (address, uint256, bytes));
 
+        (address tokenIn, address tokenOut) =
+            zeroToOne ? (position.tokens[0], position.tokens[1]) : (position.tokens[1], position.tokens[0]);
+
         // Handle pools with native ETH.
-        address token0 = position.tokens[0];
-        bool isNative = token0 == address(0);
-        if (zeroToOne && isNative) {
-            token0 = WETH;
-            IWETH(WETH).deposit{ value: amountIn }();
+        bool isNative = position.tokens[0] == address(0);
+        if (isNative) {
+            if (zeroToOne) {
+                tokenIn = WETH;
+                IWETH(WETH).deposit{ value: amountIn }();
+            } else {
+                tokenOut = WETH;
+            }
         }
 
-        // Approve token to swap.
-        ERC20(zeroToOne ? token0 : position.tokens[1]).safeApproveWithRetry(router, amountIn);
+        // Send tokens to the Router Trampoline.
+        ERC20(tokenIn).safeTransfer(address(ROUTER_TRAMPOLINE), amountIn);
 
-        // Execute arbitrary swap.
-        (bool success, bytes memory result) = router.call(data);
-        require(success, string(result));
+        // Execute swap.
+        (uint256 balanceIn, uint256 balanceOut) = ROUTER_TRAMPOLINE.execute(router, data, tokenIn, tokenOut, amountIn);
 
         // Handle pools with native ETH.
-        if (isNative) IWETH(WETH).withdraw(ERC20(WETH).balanceOf(address(this)));
+        if (isNative) {
+            uint256 wethBalance = zeroToOne ? balanceIn : balanceOut;
+            if (wethBalance > 0) IWETH(WETH).withdraw(wethBalance);
+        }
 
-        // Update the balances, token0 might be native ETH.
-        balances[0] = Currency.wrap(position.tokens[0]).balanceOfSelf();
-        balances[1] = ERC20(position.tokens[1]).balanceOf(address(this));
+        // Update the balances.
+        (balances[0], balances[1]) = zeroToOne
+            ? (balances[0] - amountIn + balanceIn, balances[1] + balanceOut)
+            : (balances[0] + balanceOut, balances[1] - amountIn + balanceIn);
     }
 }

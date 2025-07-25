@@ -8,9 +8,13 @@ import { PositionState } from "../../../src/cl-managers/state/PositionState.sol"
 import { RebalancerUniswapV3 } from "../../../src/cl-managers/rebalancers/RebalancerUniswapV3.sol";
 
 contract RebalancerUniswapV3Extension is RebalancerUniswapV3 {
-    constructor(address arcadiaFactory, address positionManager, address uniswapV3Factory)
-        RebalancerUniswapV3(arcadiaFactory, positionManager, uniswapV3Factory)
-    { }
+    constructor(
+        address owner_,
+        address arcadiaFactory,
+        address routerTrampoline,
+        address positionManager,
+        address uniswapV3Factory
+    ) RebalancerUniswapV3(owner_, arcadiaFactory, routerTrampoline, positionManager, uniswapV3Factory) { }
 
     function getUnderlyingTokens(address positionManager, uint256 id) external view returns (address, address) {
         return _getUnderlyingTokens(positionManager, id);

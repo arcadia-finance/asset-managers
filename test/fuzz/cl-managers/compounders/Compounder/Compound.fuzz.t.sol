@@ -6,6 +6,7 @@ pragma solidity ^0.8.26;
 
 import { Compounder } from "../../../../../src/cl-managers/compounders/Compounder.sol";
 import { Compounder_Fuzz_Test } from "./_Compounder.fuzz.t.sol";
+import { Guardian } from "../../../../../src/guardian/Guardian.sol";
 
 /**
  * @notice Fuzz tests for the function "compound" of contract "Compounder".
@@ -22,6 +23,22 @@ contract Compound_Compounder_Fuzz_Test is Compounder_Fuzz_Test {
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
+    function testFuzz_Revert_compound_Paused(
+        address account_,
+        Compounder.InitiatorParams memory initiatorParams,
+        address caller
+    ) public {
+        // Given : Compounder is Paused.
+        vm.prank(users.owner);
+        compounder.setPauseFlag(true);
+
+        // When : calling compound
+        // Then : it should revert
+        vm.prank(caller);
+        vm.expectRevert(Guardian.Paused.selector);
+        compounder.compound(account_, initiatorParams);
+    }
+
     function testFuzz_Revert_compound_Reentered(
         address account_,
         Compounder.InitiatorParams memory initiatorParams,

@@ -8,7 +8,9 @@ import { PositionState } from "../../../src/cl-managers/state/PositionState.sol"
 import { Rebalancer } from "../../../src/cl-managers/rebalancers/Rebalancer.sol";
 
 contract RebalancerExtension is Rebalancer {
-    constructor(address arcadiaFactory) Rebalancer(arcadiaFactory) { }
+    constructor(address owner_, address arcadiaFactory, address routerTrampoline)
+        Rebalancer(owner_, arcadiaFactory, routerTrampoline)
+    { }
 
     function isPositionManager(address positionManager) public view override returns (bool) { }
 

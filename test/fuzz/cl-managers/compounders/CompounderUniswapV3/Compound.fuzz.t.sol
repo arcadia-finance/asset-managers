@@ -7,6 +7,7 @@ pragma solidity ^0.8.26;
 import { Compounder } from "../../../../../src/cl-managers/compounders/Compounder.sol";
 import { CompounderUniswapV3_Fuzz_Test } from "./_CompounderUniswapV3.fuzz.t.sol";
 import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
+import { Guardian } from "../../../../../src/guardian/Guardian.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
 import { RebalanceLogic, RebalanceParams } from "../../../../../src/cl-managers/libraries/RebalanceLogic.sol";
 import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
@@ -26,6 +27,22 @@ contract Compound_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz_Test
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
+    function testFuzz_Revert_compound_Paused(
+        address account_,
+        Compounder.InitiatorParams memory initiatorParams,
+        address caller
+    ) public {
+        // Given : Compounder is Paused.
+        vm.prank(users.owner);
+        compounder.setPauseFlag(true);
+
+        // When : calling compound
+        // Then : it should revert
+        vm.prank(caller);
+        vm.expectRevert(Guardian.Paused.selector);
+        compounder.compound(account_, initiatorParams);
+    }
+
     function testFuzz_Revert_compound_Reentered(
         address account_,
         Compounder.InitiatorParams memory initiatorParams,

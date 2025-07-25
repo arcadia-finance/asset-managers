@@ -20,12 +20,19 @@ contract Constructor_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_T
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_Constructor(address arcadiaFactory) public {
-        vm.prank(users.owner);
+    function testFuzz_Success_Constructor(address owner_, address arcadiaFactory, address routerTrampoline_) public {
         RebalancerUniswapV4Extension rebalancer_ = new RebalancerUniswapV4Extension(
-            arcadiaFactory, address(positionManagerV4), address(permit2), address(poolManager), address(weth9)
+            owner_,
+            arcadiaFactory,
+            routerTrampoline_,
+            address(positionManagerV4),
+            address(permit2),
+            address(poolManager),
+            address(weth9)
         );
 
+        assertEq(rebalancer_.owner(), owner_);
         assertEq(address(rebalancer_.ARCADIA_FACTORY()), arcadiaFactory);
+        assertEq(address(rebalancer_.ROUTER_TRAMPOLINE()), routerTrampoline_);
     }
 }

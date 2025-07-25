@@ -7,6 +7,7 @@ pragma solidity ^0.8.26;
 import { YieldClaimer } from "../../../../../src/cl-managers/yield-claimers/YieldClaimer.sol";
 import { YieldClaimerUniswapV4_Fuzz_Test } from "./_YieldClaimerUniswapV4.fuzz.t.sol";
 import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
+import { Guardian } from "../../../../../src/guardian/Guardian.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
 import { RebalanceLogic, RebalanceParams } from "../../../../../src/cl-managers/libraries/RebalanceLogic.sol";
 import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
@@ -26,6 +27,22 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
+    function testFuzz_Revert_claim_Paused(
+        address account_,
+        YieldClaimer.InitiatorParams memory initiatorParams,
+        address caller
+    ) public {
+        // Given : Yield Claimer is Paused.
+        vm.prank(users.owner);
+        yieldClaimer.setPauseFlag(true);
+
+        // When : calling claim
+        // Then : it should revert
+        vm.prank(caller);
+        vm.expectRevert(Guardian.Paused.selector);
+        yieldClaimer.claim(account_, initiatorParams);
+    }
+
     function testFuzz_Revert_claim_Reentered(
         address account_,
         YieldClaimer.InitiatorParams memory initiatorParams,

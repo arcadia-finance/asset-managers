@@ -26,7 +26,9 @@ contract RebalancerSlipstream is Rebalancer, Slipstream {
     ////////////////////////////////////////////////////////////// */
 
     /**
+     * @param owner_ The address of the Owner.
      * @param arcadiaFactory The contract address of the Arcadia Factory.
+     * @param routerTrampoline The contract address of the Router Trampoline.
      * @param positionManager The contract address of the Slipstream Position Manager.
      * @param cLFactory The contract address of the Slipstream Factory.
      * @param poolImplementation The contract address of the Slipstream Pool Implementation.
@@ -35,7 +37,9 @@ contract RebalancerSlipstream is Rebalancer, Slipstream {
      * @param stakedSlipstreamWrapper The contract address of the Staked Slipstream Wrapper.
      */
     constructor(
+        address owner_,
         address arcadiaFactory,
+        address routerTrampoline,
         address positionManager,
         address cLFactory,
         address poolImplementation,
@@ -43,7 +47,7 @@ contract RebalancerSlipstream is Rebalancer, Slipstream {
         address stakedSlipstreamAm,
         address stakedSlipstreamWrapper
     )
-        Rebalancer(arcadiaFactory)
+        Rebalancer(owner_, arcadiaFactory, routerTrampoline)
         Slipstream(positionManager, cLFactory, poolImplementation, rewardToken, stakedSlipstreamAm, stakedSlipstreamWrapper)
     { }
 }

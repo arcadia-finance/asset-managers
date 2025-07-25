@@ -9,6 +9,7 @@ import { PositionState } from "../../../src/cl-managers/state/PositionState.sol"
 
 contract YieldClaimerSlipstreamExtension is YieldClaimerSlipstream {
     constructor(
+        address owner_,
         address arcadiaFactory,
         address positionManager,
         address cLFactory,
@@ -18,6 +19,7 @@ contract YieldClaimerSlipstreamExtension is YieldClaimerSlipstream {
         address stakedSlipstreamWrapper
     )
         YieldClaimerSlipstream(
+            owner_,
             arcadiaFactory,
             positionManager,
             cLFactory,
