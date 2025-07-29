@@ -14,6 +14,7 @@ remappings = [
     "lib/accounts-v2/lib/v4-periphery:@openzeppelin/=lib/accounts-v2/lib/v4-periphery/lib/v4-core/lib/openzeppelin-contracts/",
     "lib/accounts-v2/lib/v4-periphery/lib/v4-core:@openzeppelin/=lib/accounts-v2/lib/v4-periphery/lib/v4-core/lib/openzeppelin-contracts/",
 ]
+fs_permissions = [{ access = "read", path = "./out"}, { access = "write", path = "./script/out"}]
 evm_version = 'cancun'
 unchecked_cheatcode_artifacts = true
 
