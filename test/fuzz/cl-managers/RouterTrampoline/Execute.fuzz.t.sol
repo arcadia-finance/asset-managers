@@ -91,7 +91,10 @@ contract Execute_RouterTrampoline_Fuzz_Test is RouterTrampoline_Fuzz_Test {
         uint64 amountIn,
         uint64 amountOut
     ) public {
-        // Given: RouterTrampoline has sufficient balance.
+        // Given: Caller is not the routerMock.
+        vm.assume(caller != address(routerMock));
+
+        // And: RouterTrampoline has sufficient balance.
         amountIn = uint64(bound(amountIn, 0, balanceIn));
         deal(address(tokenIn), address(routerTrampoline), balanceIn, true);
         deal(address(tokenOut), address(routerTrampoline), balanceOut, true);
