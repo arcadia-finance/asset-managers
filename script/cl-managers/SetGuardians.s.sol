@@ -8,6 +8,7 @@ import { Base_AssetManagers_Script } from "../Base.s.sol";
 import { Compounders, Rebalancers, YieldClaimers } from "../utils/constants/Shared.sol";
 import { Guardian } from "../../src/guardian/Guardian.sol";
 import { Safes } from "../../lib/accounts-v2/script/utils/constants/Base.sol";
+import { SafesAssetManagers } from "../utils/constants/Base.sol";
 
 contract SetGuardians is Base_AssetManagers_Script {
     constructor() Base_AssetManagers_Script() { }
@@ -30,6 +31,6 @@ contract SetGuardians is Base_AssetManagers_Script {
     }
 
     function setGuardian(address assetManager) internal {
-        addToBatch(Safes.OWNER, assetManager, abi.encodeCall(Guardian.changeGuardian, (Safes.GUARDIAN)));
+        addToBatch(Safes.OWNER, assetManager, abi.encodeCall(Guardian.changeGuardian, (SafesAssetManagers.GUARDIAN)));
     }
 }

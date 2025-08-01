@@ -7,10 +7,10 @@ pragma solidity ^0.8.22;
 import { Base_AssetManagers_Script } from "../Base.s.sol";
 import { Compounders, Rebalancers, YieldClaimers } from "../utils/constants/Shared.sol";
 import { Guardian } from "../../src/guardian/Guardian.sol";
-import { Safes } from "../../lib/accounts-v2/script/utils/constants/Base.sol";
+import { SafesAssetManagers } from "../utils/constants/Base.sol";
 
 contract CircuitBreaker is Base_AssetManagers_Script {
-    address internal SAFE = Safes.GUARDIAN;
+    address internal SAFE = SafesAssetManagers.GUARDIAN;
 
     constructor() Base_AssetManagers_Script() { }
 

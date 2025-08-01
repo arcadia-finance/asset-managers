@@ -6,6 +6,10 @@ pragma solidity ^0.8.22;
 
 import { ExternalContracts } from "../../../lib/accounts-v2/script/utils/constants/Base.sol";
 
+library SafesAssetManagers {
+    address internal constant GUARDIAN = 0x8546d2a8e0c3C6658e8796FF2Ed3c78A5238c527;
+}
+
 library Slipstream {
     address internal constant FACTORY = 0x5e7BB104d84c7CB9B682AaC2F3d509f5F406809A;
     address internal constant POOL_IMPLEMENTATION = 0xeC8E5342B19977B4eF8892e02D8DAEcfa1315831;
