@@ -4,8 +4,8 @@
  */
 pragma solidity ^0.8.26;
 
-import { AccountV1 } from "../../../../../lib/accounts-v2/src/accounts/AccountV1.sol";
-import { AccountSpot } from "../../../../../lib/accounts-v2/src/accounts/AccountSpot.sol";
+import { AccountV3 } from "../../../../../lib/accounts-v2/src/accounts/AccountV3.sol";
+import { AccountV4 } from "../../../../../lib/accounts-v2/src/accounts/AccountV4.sol";
 import { ERC20 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC20.sol";
 import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { FixedPoint128 } from
@@ -84,7 +84,11 @@ contract Compound_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstream_Fuz
         // When : calling claim
         // Then : it should revert
         vm.prank(caller);
-        vm.expectRevert(bytes(""));
+        if (account_.code.length == 0 && !isPrecompile(account_)) {
+            vm.expectRevert(abi.encodePacked("call to non-contract address ", vm.toString(account_)));
+        } else {
+            vm.expectRevert(bytes(""));
+        }
         yieldClaimer.claim(account_, initiatorParams);
     }
 
@@ -539,7 +543,7 @@ contract Compound_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstream_Fuz
 
         // And: Spot Account is used.
         vm.prank(users.accountOwner);
-        account = AccountV1(address(new AccountSpot(address(factory))));
+        account = AccountV3(address(new AccountV4(address(factory), address(accountsGuard))));
         stdstore.target(address(factory)).sig(factory.accountIndex.selector).with_key(address(account)).checked_write(2);
         vm.prank(address(factory));
         account.initialize(users.accountOwner, address(registry), address(0));
@@ -631,7 +635,7 @@ contract Compound_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstream_Fuz
 
         // And: Spot Account is used.
         vm.prank(users.accountOwner);
-        account = AccountV1(address(new AccountSpot(address(factory))));
+        account = AccountV3(address(new AccountV4(address(factory), address(accountsGuard))));
         stdstore.target(address(factory)).sig(factory.accountIndex.selector).with_key(address(account)).checked_write(2);
         vm.prank(address(factory));
         account.initialize(users.accountOwner, address(registry), address(0));

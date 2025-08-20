@@ -76,7 +76,11 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         // When : calling claim
         // Then : it should revert
         vm.prank(caller);
-        vm.expectRevert(bytes(""));
+        if (account_.code.length == 0 && !isPrecompile(account_)) {
+            vm.expectRevert(abi.encodePacked("call to non-contract address ", vm.toString(account_)));
+        } else {
+            vm.expectRevert(bytes(""));
+        }
         yieldClaimer.claim(account_, initiatorParams);
     }
 

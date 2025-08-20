@@ -81,7 +81,11 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         // When : calling rebalance
         // Then : it should revert
         vm.prank(caller);
-        vm.expectRevert(bytes(""));
+        if (account_.code.length == 0 && !isPrecompile(account_)) {
+            vm.expectRevert(abi.encodePacked("call to non-contract address ", vm.toString(account_)));
+        } else {
+            vm.expectRevert(bytes(""));
+        }
         rebalancer.rebalance(account_, initiatorParams);
     }
 
