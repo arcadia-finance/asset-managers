@@ -90,7 +90,7 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         // When : calling rebalance
         // Then : it should revert
         vm.prank(caller);
-        vm.expectRevert(bytes(""));
+        vm.expectRevert(abi.encodePacked("call to non-contract address ", vm.toString(account_)));
         rebalancer.rebalance(account_, initiatorParams);
     }
 

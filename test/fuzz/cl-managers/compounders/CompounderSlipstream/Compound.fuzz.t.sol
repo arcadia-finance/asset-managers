@@ -83,7 +83,7 @@ contract Rebalance_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fuzz_T
         // When : calling compound
         // Then : it should revert
         vm.prank(caller);
-        vm.expectRevert(bytes(""));
+        vm.expectRevert(abi.encodePacked("call to non-contract address ", vm.toString(account_)));
         compounder.compound(account_, initiatorParams);
     }
 

@@ -84,7 +84,7 @@ contract Compound_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstream_Fuz
         // When : calling claim
         // Then : it should revert
         vm.prank(caller);
-        vm.expectRevert(bytes(""));
+        vm.expectRevert(abi.encodePacked("call to non-contract address ", vm.toString(account_)));
         yieldClaimer.claim(account_, initiatorParams);
     }
 

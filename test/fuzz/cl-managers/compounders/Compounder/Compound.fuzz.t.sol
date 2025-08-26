@@ -72,7 +72,7 @@ contract Compound_Compounder_Fuzz_Test is Compounder_Fuzz_Test {
         // When : calling compound
         // Then : it should revert
         vm.prank(caller);
-        vm.expectRevert(bytes(""));
+        vm.expectRevert(abi.encodePacked("call to non-contract address ", vm.toString(account_)));
         compounder.compound(account_, initiatorParams);
     }
 
