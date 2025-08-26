@@ -199,7 +199,7 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
     function deployNativeAM() public {
         // Deploy AM
         vm.startPrank(users.owner);
-        nativeTokenAM = new NativeTokenAM(address(registry));
+        nativeTokenAM = new NativeTokenAM(address(registry), 18);
 
         // Add AM to registry
         registry.addAssetModule(address(nativeTokenAM));
