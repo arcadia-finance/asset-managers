@@ -129,12 +129,22 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         vm.assume(initiator != address(0));
 
         // And: Rebalancer is allowed as Asset Manager.
+        address[] memory assetManagers = new address[](1);
+        assetManagers[0] = address(rebalancer);
+        bool[] memory statuses = new bool[](1);
+        statuses[0] = true;
         vm.prank(users.accountOwner);
-        account.setAssetManager(address(rebalancer), true);
+        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
 
         // And: Rebalancer is allowed as Asset Manager by New Owner.
-        vm.prank(newOwner);
-        account.setAssetManager(address(rebalancer), true);
+        vm.prank(users.accountOwner);
+        vm.warp(block.timestamp + 10 minutes);
+        factory.safeTransferFrom(users.accountOwner, newOwner, address(account));
+        vm.startPrank(newOwner);
+        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
+        vm.warp(block.timestamp + 10 minutes);
+        factory.safeTransferFrom(newOwner, users.accountOwner, address(account));
+        vm.stopPrank();
 
         // And: Account info is set.
         tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
@@ -156,9 +166,8 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: Account is transferred to newOwner.
-        vm.startPrank(account.owner());
-        factory.safeTransferFrom(account.owner(), newOwner, address(account));
-        vm.stopPrank();
+        vm.prank(users.accountOwner);
+        factory.safeTransferFrom(users.accountOwner, newOwner, address(account));
 
         // When : calling rebalance
         // Then : it should revert
@@ -193,8 +202,12 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         deploySlipstreamAM();
 
         // And: Rebalancer is allowed as Asset Manager
+        address[] memory assetManagers = new address[](1);
+        assetManagers[0] = address(rebalancer);
+        bool[] memory statuses = new bool[](1);
+        statuses[0] = true;
         vm.prank(users.accountOwner);
-        account.setAssetManager(address(rebalancer), true);
+        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
 
         // And: Account info is set.
         tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
@@ -317,8 +330,12 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         }
 
         // And: Rebalancer is allowed as Asset Manager
+        address[] memory assetManagers = new address[](1);
+        assetManagers[0] = address(rebalancer);
+        bool[] memory statuses = new bool[](1);
+        statuses[0] = true;
         vm.prank(users.accountOwner);
-        account.setAssetManager(address(rebalancer), true);
+        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
 
         // And: Account info is set.
         tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
@@ -436,14 +453,18 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
 
         // And: Spot Account is used.
         vm.prank(users.accountOwner);
-        account = AccountV3(address(new AccountV4(address(factory), address(accountsGuard))));
+        account = AccountV3(address(new AccountV4(address(factory), address(accountsGuard), address(0))));
         stdstore.target(address(factory)).sig(factory.accountIndex.selector).with_key(address(account)).checked_write(2);
         vm.prank(address(factory));
         account.initialize(users.accountOwner, address(registry), address(0));
 
         // And: Rebalancer is allowed as Asset Manager
+        address[] memory assetManagers = new address[](1);
+        assetManagers[0] = address(rebalancer);
+        bool[] memory statuses = new bool[](1);
+        statuses[0] = true;
         vm.prank(users.accountOwner);
-        account.setAssetManager(address(rebalancer), true);
+        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
 
         // And: Account info is set.
         tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);

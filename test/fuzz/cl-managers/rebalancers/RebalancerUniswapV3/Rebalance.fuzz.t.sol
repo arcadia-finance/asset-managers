@@ -122,12 +122,22 @@ contract Rebalance_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Tes
         vm.assume(initiator != address(0));
 
         // And: Rebalancer is allowed as Asset Manager.
+        address[] memory assetManagers = new address[](1);
+        assetManagers[0] = address(rebalancer);
+        bool[] memory statuses = new bool[](1);
+        statuses[0] = true;
         vm.prank(users.accountOwner);
-        account.setAssetManager(address(rebalancer), true);
+        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
 
         // And: Rebalancer is allowed as Asset Manager by New Owner.
-        vm.prank(newOwner);
-        account.setAssetManager(address(rebalancer), true);
+        vm.prank(users.accountOwner);
+        vm.warp(block.timestamp + 10 minutes);
+        factory.safeTransferFrom(users.accountOwner, newOwner, address(account));
+        vm.startPrank(newOwner);
+        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
+        vm.warp(block.timestamp + 10 minutes);
+        factory.safeTransferFrom(newOwner, users.accountOwner, address(account));
+        vm.stopPrank();
 
         // And: Account info is set.
         tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
@@ -149,9 +159,8 @@ contract Rebalance_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Tes
         initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: Account is transferred to newOwner.
-        vm.startPrank(account.owner());
-        factory.safeTransferFrom(account.owner(), newOwner, address(account));
-        vm.stopPrank();
+        vm.prank(users.accountOwner);
+        factory.safeTransferFrom(users.accountOwner, newOwner, address(account));
 
         // When : calling rebalance
         // Then : it should revert
@@ -186,8 +195,12 @@ contract Rebalance_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Tes
         deployUniswapV3AM();
 
         // And: Rebalancer is allowed as Asset Manager
+        address[] memory assetManagers = new address[](1);
+        assetManagers[0] = address(rebalancer);
+        bool[] memory statuses = new bool[](1);
+        statuses[0] = true;
         vm.prank(users.accountOwner);
-        account.setAssetManager(address(rebalancer), true);
+        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
 
         // And: Account info is set.
         tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
