@@ -103,7 +103,7 @@ contract MerklOperator is Guardian, ReentrancyGuard {
     /**
      * @notice Optional hook called by the Arcadia Account when calling "setMerklOperator()".
      * @param accountOwner The current owner of the Arcadia Account.
-     * param status Bool indicating if the Asset Manager is enabled or disabled..
+     * param status Bool indicating if the Operator is enabled or disabled.
      * @param data Operator specific data, passed by the Account owner.
      */
     function onSetMerklOperator(address accountOwner, bool, bytes calldata data) external nonReentrant {
@@ -238,7 +238,7 @@ contract MerklOperator is Guardian, ReentrancyGuard {
      * @notice Recovers any native or ERC20 tokens left on the contract.
      * @param token The contract address of the token, or address(0) for native tokens.
      */
-    function skim(address token) external onlyOwner nonReentrant {
+    function skim(address token) external onlyOwner whenNotPaused nonReentrant {
         if (token == address(0)) {
             (bool success, bytes memory result) = payable(msg.sender).call{ value: address(this).balance }("");
             require(success, string(result));

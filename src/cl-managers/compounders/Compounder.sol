@@ -149,6 +149,29 @@ abstract contract Compounder is IActionBase, AbstractBase, Guardian {
     /////////////////////////////////////////////////////////////// */
 
     /**
+     * @notice Optional hook called by the Arcadia Account when calling "setAssetManager()".
+     * @param accountOwner The current owner of the Arcadia Account.
+     * param status Bool indicating if the Asset Manager is enabled or disabled.
+     * @param data Operator specific data, passed by the Account owner.
+     */
+    function onSetAssetManager(address accountOwner, bool, bytes calldata data) external {
+        if (account != address(0)) revert Reentered();
+        if (!ARCADIA_FACTORY.isAccount(msg.sender)) revert NotAnAccount();
+
+        (
+            address initiator,
+            uint256 maxClaimFee,
+            uint256 maxSwapFee,
+            uint256 maxTolerance,
+            uint256 minLiquidityRatio,
+            bytes memory metaData_
+        ) = abi.decode(data, (address, uint256, uint256, uint256, uint256, bytes));
+        _setAccountInfo(
+            msg.sender, accountOwner, initiator, maxClaimFee, maxSwapFee, maxTolerance, minLiquidityRatio, metaData_
+        );
+    }
+
+    /**
      * @notice Sets the required information for an Account.
      * @param account_ The contract address of the Arcadia Account to set the information for.
      * @param initiator The address of the initiator.
@@ -174,6 +197,34 @@ abstract contract Compounder is IActionBase, AbstractBase, Guardian {
         address accountOwner = IAccount(account_).owner();
         if (msg.sender != accountOwner) revert OnlyAccountOwner();
 
+        _setAccountInfo(
+            account_, accountOwner, initiator, maxClaimFee, maxSwapFee, maxTolerance, minLiquidityRatio, metaData_
+        );
+    }
+
+    /**
+     * @notice Sets the required information for an Account.
+     * @param account_ The contract address of the Arcadia Account to set the information for.
+     * @param accountOwner The current owner of the Arcadia Account.
+     * @param initiator The address of the initiator.
+     * @param maxClaimFee The maximum fee charged on claimed fees/rewards by the initiator, with 18 decimals precision.
+     * @param maxSwapFee The maximum fee charged on the ideal (without slippage) amountIn by the initiator, with 18 decimals precision.
+     * @param maxTolerance The maximum allowed deviation of the actual pool price for any initiator,
+     * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
+     * @param minLiquidityRatio The ratio of the minimum amount of liquidity that must be minted,
+     * relative to the hypothetical amount of liquidity when we rebalance without slippage, with 18 decimals precision.
+     * @param metaData_ Custom metadata to be stored with the account.
+     */
+    function _setAccountInfo(
+        address account_,
+        address accountOwner,
+        address initiator,
+        uint256 maxClaimFee,
+        uint256 maxSwapFee,
+        uint256 maxTolerance,
+        uint256 minLiquidityRatio,
+        bytes memory metaData_
+    ) internal {
         if (maxClaimFee > 1e18 || maxSwapFee > 1e18 || maxTolerance > 1e18 || minLiquidityRatio > 1e18) {
             revert InvalidValue();
         }
@@ -501,6 +552,25 @@ abstract contract Compounder is IActionBase, AbstractBase, Guardian {
             // Transfer Initiator fees to the initiator.
             if (fees[i] > 0) ERC20(token).safeTransfer(initiator, fees[i]);
             emit FeePaid(msg.sender, initiator, token, fees[i]);
+        }
+    }
+
+    /* ///////////////////////////////////////////////////////////////
+                             SKIM LOGIC
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Recovers any native or ERC20 tokens left on the contract.
+     * @param token The contract address of the token, or address(0) for native tokens.
+     */
+    function skim(address token) external onlyOwner whenNotPaused {
+        if (account != address(0)) revert Reentered();
+
+        if (token == address(0)) {
+            (bool success, bytes memory result) = payable(msg.sender).call{ value: address(this).balance }("");
+            require(success, string(result));
+        } else {
+            ERC20(token).safeTransfer(msg.sender, ERC20(token).balanceOf(address(this)));
         }
     }
 }

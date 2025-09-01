@@ -101,6 +101,21 @@ abstract contract YieldClaimer is IActionBase, AbstractBase, Guardian {
     /////////////////////////////////////////////////////////////// */
 
     /**
+     * @notice Optional hook called by the Arcadia Account when calling "setAssetManager()".
+     * @param accountOwner The current owner of the Arcadia Account.
+     * param status Bool indicating if the Asset Manager is enabled or disabled.
+     * @param data Operator specific data, passed by the Account owner.
+     */
+    function onSetAssetManager(address accountOwner, bool, bytes calldata data) external {
+        if (account != address(0)) revert Reentered();
+        if (!ARCADIA_FACTORY.isAccount(msg.sender)) revert NotAnAccount();
+
+        (address initiator, address feeRecipient, uint256 maxClaimFee, bytes memory metaData_) =
+            abi.decode(data, (address, address, uint256, bytes));
+        _setAccountInfo(msg.sender, accountOwner, initiator, feeRecipient, maxClaimFee, metaData_);
+    }
+
+    /**
      * @notice Sets the required information for an Account.
      * @param account_ The contract address of the Arcadia Account to set the information for.
      * @param initiator The address of the initiator.
@@ -119,8 +134,28 @@ abstract contract YieldClaimer is IActionBase, AbstractBase, Guardian {
         if (!ARCADIA_FACTORY.isAccount(account_)) revert NotAnAccount();
         address accountOwner = IAccount(account_).owner();
         if (msg.sender != accountOwner) revert OnlyAccountOwner();
-        if (feeRecipient == address(0)) revert InvalidRecipient();
 
+        _setAccountInfo(account_, accountOwner, initiator, feeRecipient, maxClaimFee, metaData_);
+    }
+
+    /**
+     * @notice Sets the required information for an Account.
+     * @param account_ The contract address of the Arcadia Account to set the information for.
+     * @param accountOwner The current owner of the Arcadia Account.
+     * @param initiator The address of the initiator.
+     * @param feeRecipient The address of the recipient of the claimed fees.
+     * @param maxClaimFee The maximum fee charged on the claimed fees of the liquidity position, with 18 decimals precision.
+     * @param metaData_ Custom metadata to be stored with the account.
+     */
+    function _setAccountInfo(
+        address account_,
+        address accountOwner,
+        address initiator,
+        address feeRecipient,
+        uint256 maxClaimFee,
+        bytes memory metaData_
+    ) internal {
+        if (feeRecipient == address(0)) revert InvalidRecipient();
         if (maxClaimFee > 1e18) revert InvalidValue();
 
         accountToInitiator[accountOwner][account_] = initiator;
@@ -265,6 +300,25 @@ abstract contract YieldClaimer is IActionBase, AbstractBase, Guardian {
             emit FeePaid(msg.sender, initiator, token, fees[i]);
 
             if (recipient != msg.sender) emit YieldTransferred(msg.sender, recipient, token, amount);
+        }
+    }
+
+    /* ///////////////////////////////////////////////////////////////
+                             SKIM LOGIC
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Recovers any native or ERC20 tokens left on the contract.
+     * @param token The contract address of the token, or address(0) for native tokens.
+     */
+    function skim(address token) external onlyOwner whenNotPaused {
+        if (account != address(0)) revert Reentered();
+
+        if (token == address(0)) {
+            (bool success, bytes memory result) = payable(msg.sender).call{ value: address(this).balance }("");
+            require(success, string(result));
+        } else {
+            ERC20(token).safeTransfer(msg.sender, ERC20(token).balanceOf(address(this)));
         }
     }
 }
