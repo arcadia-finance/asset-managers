@@ -229,4 +229,21 @@ contract MerklOperator is Guardian, ReentrancyGuard {
             }
         }
     }
+
+    /* ///////////////////////////////////////////////////////////////
+                             SKIM LOGIC
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Recovers any native or ERC20 tokens left on the contract.
+     * @param token The contract address of the token, or address(0) for native tokens.
+     */
+    function skim(address token) external onlyOwner nonReentrant {
+        if (token == address(0)) {
+            (bool success, bytes memory result) = payable(msg.sender).call{ value: address(this).balance }("");
+            require(success, string(result));
+        } else {
+            ERC20(token).safeTransfer(msg.sender, ERC20(token).balanceOf(address(this)));
+        }
+    }
 }
