@@ -101,7 +101,7 @@ contract MerklOperator is Guardian, ReentrancyGuard {
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Optional hook called by the Arcadia Account when managing calling "setMerklOperator()".
+     * @notice Optional hook called by the Arcadia Account when calling "setMerklOperator()".
      * @param accountOwner The current owner of the Arcadia Account.
      * param status Bool indicating if the Asset Manager is enabled or disabled..
      * @param data Operator specific data, passed by the Account owner.
