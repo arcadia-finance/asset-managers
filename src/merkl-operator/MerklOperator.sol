@@ -193,6 +193,9 @@ contract MerklOperator is Guardian, ReentrancyGuard {
 
             // Cache balances for each token.
             balances[i] = ERC20(token).balanceOf(address(this));
+
+            // Add account to users array.
+            users[i] = account;
         }
 
         // Claim Merkl rewards.
