@@ -75,7 +75,7 @@ abstract contract Slipstream_Fuzz_Test is
         vm.warp(2 days);
 
         // Deploy Arcadia Accounts Contracts.
-        deployArcadiaAccounts();
+        deployArcadiaAccounts(address(0));
 
         // Deploy fixtures for Slipstream.
         SlipstreamFixture.setUp();

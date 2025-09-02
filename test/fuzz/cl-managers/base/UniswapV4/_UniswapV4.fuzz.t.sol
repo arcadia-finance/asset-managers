@@ -76,7 +76,7 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         vm.warp(2 days);
 
         // Deploy Arcadia Accounts Contracts.
-        deployArcadiaAccounts();
+        deployArcadiaAccounts(address(0));
 
         // Deploy fixture for Uniswap V3.
         UniswapV4Fixture.setUp();
