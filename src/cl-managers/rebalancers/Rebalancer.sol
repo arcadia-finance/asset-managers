@@ -61,7 +61,7 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
     // A mapping from account to custom metadata.
     mapping(address account => bytes data) public metaData;
 
-    // A mapping that sets the approved initiator per owner per ccount.
+    // A mapping that sets the approved initiator per owner per account.
     mapping(address accountOwner => mapping(address account => address initiator)) public accountToInitiator;
 
     // A struct with the account specific parameters.
@@ -369,7 +369,7 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
             msg.sender, positionManager, position, initiatorParams.strategyData
         );
 
-        // Cache variables that are gas expensive to calcultate and used multiple times.
+        // Cache variables that are gas expensive to calculate and used multiple times.
         Cache memory cache = _getCache(accountInfo_, position, initiatorParams.trustedSqrtPrice);
 
         // Check that pool is initially balanced.

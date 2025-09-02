@@ -56,9 +56,9 @@ contract MerklOperator is Guardian, ReentrancyGuard {
         uint256 claimFee;
         // Array of tokens the Merkl rewards are claimed for.
         address[] tokens;
-        // Array with corrsponding cummulative reward amounts.
+        // Array with corresponding cumulative reward amounts.
         uint256[] amounts;
-        // Array with correspondig Array of Merkl proofs.
+        // Array with corresponding Array of Merkl proofs.
         bytes32[][] proofs;
     }
 
