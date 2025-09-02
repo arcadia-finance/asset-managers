@@ -58,7 +58,7 @@ contract MerklOperator is Guardian, ReentrancyGuard {
         address[] tokens;
         // Array with corresponding cumulative reward amounts.
         uint256[] amounts;
-        // Array with corresponding Array of Merkl proofs.
+        // Array with corresponding arrays of Merkl proofs.
         bytes32[][] proofs;
     }
 
