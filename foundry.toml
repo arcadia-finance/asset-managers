@@ -9,8 +9,8 @@ fuzz = { runs = 50, max_test_rejects = 100_000_000}
 no_match_path = "**/{script/}*"
 remappings = [
     "lib/accounts-v2/lib/slipstream:@openzeppelin/=lib/accounts-v2/lib/slipstream/lib/openzeppelin-contracts/",
-    "lib/accounts-v2/lib/v3-periphery:@openzeppelin/=lib/accounts-v2/lib/openzeppelin-contracts/",
-    "lib/accounts-v2/lib/swap-router-contracts:@openzeppelin/=lib/accounts-v2/lib/openzeppelin-contracts/",
+    "lib/accounts-v2/lib/v3-periphery:@openzeppelin/=lib/accounts-v2/lib/openzeppelin-contracts-v3.4/",
+    "lib/accounts-v2/lib/swap-router-contracts:@openzeppelin/=lib/accounts-v2/lib/openzeppelin-contracts-v3.4/",
     "lib/accounts-v2/lib/v4-periphery:@openzeppelin/=lib/accounts-v2/lib/v4-periphery/lib/v4-core/lib/openzeppelin-contracts/",
     "lib/accounts-v2/lib/v4-periphery/lib/v4-core:@openzeppelin/=lib/accounts-v2/lib/v4-periphery/lib/v4-core/lib/openzeppelin-contracts/",
 ]
