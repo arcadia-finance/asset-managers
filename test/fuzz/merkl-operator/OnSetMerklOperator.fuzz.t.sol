@@ -29,11 +29,11 @@ contract OnSetMerklOperator_MerklOperator_Fuzz_Test is MerklOperator_Fuzz_Test {
         bool status,
         bytes memory data
     ) public {
-        // Given: account is not an Arcadia Account
+        // Given: account_ is not an Arcadia Account.
         vm.assume(account_ != address(account));
 
-        // When: calling rebalance
-        // Then: it should revert
+        // When: Calling onSetMerklOperator.
+        // Then: It should revert.
         vm.prank(account_);
         vm.expectRevert(MerklOperator.NotAnAccount.selector);
         merklOperator.onSetMerklOperator(accountOwner, status, data);
@@ -49,7 +49,7 @@ contract OnSetMerklOperator_MerklOperator_Fuzz_Test is MerklOperator_Fuzz_Test {
         accountInfo.rewardRecipient = address(0);
 
         // When: Owner calls onSetMerklOperator.
-        // Then: it should revert
+        // Then: It should revert
         bytes memory data = abi.encode(initiator, accountInfo.rewardRecipient, accountInfo.maxClaimFee, "");
         vm.prank(address(account));
         vm.expectRevert(MerklOperator.InvalidRewardRecipient.selector);
@@ -69,7 +69,7 @@ contract OnSetMerklOperator_MerklOperator_Fuzz_Test is MerklOperator_Fuzz_Test {
         accountInfo.maxClaimFee = uint64(bound(accountInfo.maxClaimFee, 1e18 + 1, type(uint64).max));
 
         // When: Owner calls onSetMerklOperator.
-        // Then: it should revert
+        // Then: It should revert
         bytes memory data = abi.encode(initiator, accountInfo.rewardRecipient, accountInfo.maxClaimFee, "");
         vm.prank(address(account));
         vm.expectRevert(MerklOperator.InvalidValue.selector);

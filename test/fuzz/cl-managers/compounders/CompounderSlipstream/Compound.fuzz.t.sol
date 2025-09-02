@@ -80,6 +80,9 @@ contract Rebalance_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fuzz_T
         // And: Account is not a precompile.
         vm.assume(account_ > address(20));
 
+        // And: Account is not the console.
+        vm.assume(account_ != address(0x000000000000000000636F6e736F6c652e6c6f67));
+
         // When : calling compound
         // Then : it should revert
         vm.prank(caller);

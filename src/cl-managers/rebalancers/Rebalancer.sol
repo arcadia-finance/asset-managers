@@ -61,7 +61,7 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
     // A mapping from account to custom metadata.
     mapping(address account => bytes data) public metaData;
 
-    // A mapping that sets the approved initiator per owner per ccount.
+    // A mapping that sets the approved initiator per owner per account.
     mapping(address accountOwner => mapping(address account => address initiator)) public accountToInitiator;
 
     // A struct with the account specific parameters.
@@ -154,6 +154,40 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
     /////////////////////////////////////////////////////////////// */
 
     /**
+     * @notice Optional hook called by the Arcadia Account when calling "setAssetManager()".
+     * @param accountOwner The current owner of the Arcadia Account.
+     * param status Bool indicating if the Asset Manager is enabled or disabled.
+     * @param data Operator specific data, passed by the Account owner.
+     */
+    function onSetAssetManager(address accountOwner, bool, bytes calldata data) external {
+        if (account != address(0)) revert Reentered();
+        if (!ARCADIA_FACTORY.isAccount(msg.sender)) revert NotAnAccount();
+
+        (
+            address initiator,
+            uint256 maxClaimFee,
+            uint256 maxSwapFee,
+            uint256 maxTolerance,
+            uint256 minLiquidityRatio,
+            address strategyHook,
+            bytes memory strategyData,
+            bytes memory metaData_
+        ) = abi.decode(data, (address, uint256, uint256, uint256, uint256, address, bytes, bytes));
+        _setAccountInfo(
+            msg.sender,
+            accountOwner,
+            initiator,
+            maxClaimFee,
+            maxSwapFee,
+            maxTolerance,
+            minLiquidityRatio,
+            strategyHook,
+            strategyData,
+            metaData_
+        );
+    }
+
+    /**
      * @notice Sets the required information for an Account.
      * @param account_ The contract address of the Arcadia Account to set the information for.
      * @param initiator The address of the initiator.
@@ -183,6 +217,47 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
         address accountOwner = IAccount(account_).owner();
         if (msg.sender != accountOwner) revert OnlyAccountOwner();
 
+        _setAccountInfo(
+            account_,
+            accountOwner,
+            initiator,
+            maxClaimFee,
+            maxSwapFee,
+            maxTolerance,
+            minLiquidityRatio,
+            strategyHook,
+            strategyData,
+            metaData_
+        );
+    }
+
+    /**
+     * @notice Sets the required information for an Account.
+     * @param account_ The contract address of the Arcadia Account to set the information for.
+     * @param accountOwner The current owner of the Arcadia Account.
+     * @param initiator The address of the initiator.
+     * @param maxClaimFee The maximum fee charged on claimed fees/rewards by the initiator, with 18 decimals precision.
+     * @param maxSwapFee The maximum fee charged on the ideal (without slippage) amountIn by the initiator, with 18 decimals precision.
+     * @param maxTolerance The maximum allowed deviation of the actual pool price for any initiator,
+     * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
+     * @param minLiquidityRatio The ratio of the minimum amount of liquidity that must be minted,
+     * relative to the hypothetical amount of liquidity when we rebalance without slippage, with 18 decimals precision.
+     * @param strategyHook The contract address of the strategy hook.
+     * @param strategyData Strategy specific data stored in the hook.
+     * @param metaData_ Custom metadata to be stored with the account.
+     */
+    function _setAccountInfo(
+        address account_,
+        address accountOwner,
+        address initiator,
+        uint256 maxClaimFee,
+        uint256 maxSwapFee,
+        uint256 maxTolerance,
+        uint256 minLiquidityRatio,
+        address strategyHook,
+        bytes memory strategyData,
+        bytes memory metaData_
+    ) internal {
         if (maxClaimFee > 1e18 || maxSwapFee > 1e18 || maxTolerance > 1e18 || minLiquidityRatio > 1e18) {
             revert InvalidValue();
         }
@@ -294,7 +369,7 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
             msg.sender, positionManager, position, initiatorParams.strategyData
         );
 
-        // Cache variables that are gas expensive to calcultate and used multiple times.
+        // Cache variables that are gas expensive to calculate and used multiple times.
         Cache memory cache = _getCache(accountInfo_, position, initiatorParams.trustedSqrtPrice);
 
         // Check that pool is initially balanced.
@@ -536,6 +611,25 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
             // Transfer Initiator fees to the initiator.
             if (fees[i] > 0) ERC20(token).safeTransfer(initiator, fees[i]);
             emit FeePaid(msg.sender, initiator, token, fees[i]);
+        }
+    }
+
+    /* ///////////////////////////////////////////////////////////////
+                             SKIM LOGIC
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Recovers any native or ERC20 tokens left on the contract.
+     * @param token The contract address of the token, or address(0) for native tokens.
+     */
+    function skim(address token) external onlyOwner whenNotPaused {
+        if (account != address(0)) revert Reentered();
+
+        if (token == address(0)) {
+            (bool success, bytes memory result) = payable(msg.sender).call{ value: address(this).balance }("");
+            require(success, string(result));
+        } else {
+            ERC20(token).safeTransfer(msg.sender, ERC20(token).balanceOf(address(this)));
         }
     }
 }

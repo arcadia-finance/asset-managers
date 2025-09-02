@@ -56,7 +56,7 @@ library CLMath {
      *    a) The "Target Ratio" (R_target) is the ratio of the new liquidity position.
      *       It is calculated with the current price and the upper and lower prices of the liquidity position,
      *       see _getTargetRatio() for the derivation.
-     *       To maximise the liquidity of the new position, the balances after the swap should approximate it as close as possible to not have any leftovers.
+     *       To maximize the liquidity of the new position, the balances after the swap should approximate it as close as possible to not have any leftovers.
      *    b) The "Current Ratio" (R_current) is the ratio of the current token balances, it is calculated as follows:
      *       R_current = balance1 / [balance0 * sqrtPrice² + balance1].
      *
@@ -68,12 +68,12 @@ library CLMath {
      *         taking into account fees, but ignoring slippage (-> sqrtPrice remains constant).
      *
      *    If R_current < R_target (swap token0 to token1):
-     *      a) R_target = [amount1 + amoutOut] / [(amount0 - amountIn) * sqrtPrice² + (amount1 + amoutOut)].
+     *      a) R_target = [amount1 + amountOut] / [(amount0 - amountIn) * sqrtPrice² + (amount1 + amountOut)].
      *      b) amountOut = (1 - fee) * amountIn * sqrtPrice².
      *         => amountOut = [(R_target - R_current) * (amount0 * sqrtPrice² + amount1)] / [1 + R_target * fee / (1 - fee)].
      *
      *    If R_current > R_target (swap token1 to token0):
-     *      a) R_target = [(amount1 - amountIn)] / [(amount0 + amoutOut) * sqrtPrice² + (amount1 - amountIn)].
+     *      a) R_target = [(amount1 - amountIn)] / [(amount0 + amountOut) * sqrtPrice² + (amount1 - amountIn)].
      *      b) amountOut = (1 - fee) * amountIn / sqrtPrice².
      *         => amountIn = [(R_current - R_target) * (amount0 * sqrtPrice² + amount1)] / (1 - R_target * fee).
      */

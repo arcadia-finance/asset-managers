@@ -73,6 +73,9 @@ contract Compound_YieldClaimerUniswapV3_Fuzz_Test is YieldClaimerUniswapV3_Fuzz_
         // And: Account is not a precompile.
         vm.assume(account_ > address(20));
 
+        // And: Account is not the console.
+        vm.assume(account_ != address(0x000000000000000000636F6e736F6c652e6c6f67));
+
         // When : calling claim
         // Then : it should revert
         vm.prank(caller);
