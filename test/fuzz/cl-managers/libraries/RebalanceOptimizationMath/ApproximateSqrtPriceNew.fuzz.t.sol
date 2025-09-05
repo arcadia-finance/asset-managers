@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.0;
 
 import { FixedPoint96 } from "../../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
 import { FullMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
@@ -30,7 +30,7 @@ contract ApproximateSqrtPriceNew_SwapMath_Fuzz_Test is RebalanceOptimizationMath
         uint160 sqrtPriceOld,
         uint128 amountIn,
         uint128 amountOut
-    ) public {
+    ) public view {
         // Given: Swap is zero to one.
         bool zeroToOne = true;
 
@@ -78,7 +78,7 @@ contract ApproximateSqrtPriceNew_SwapMath_Fuzz_Test is RebalanceOptimizationMath
         uint160 sqrtPriceOld,
         uint128 amountIn,
         uint128 amountOut
-    ) public {
+    ) public view {
         // Given: Swap is one to zero.
         bool zeroToOne = false;
 

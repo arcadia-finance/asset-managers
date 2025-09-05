@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: MIT
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 interface IStakedSlipstream {
     function burn(uint256 id) external returns (uint256 rewards);
