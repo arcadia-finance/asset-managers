@@ -19,6 +19,6 @@ import { SwapRouter } from "../lib/accounts-v2/lib/slipstream/contracts/peripher
 import { SwapRouter02 } from "../lib/accounts-v2/lib/swap-router-contracts/contracts/SwapRouter02.sol";
 import { Test } from "../lib/accounts-v2/lib/forge-std/src/Test.sol";
 
-contract CompileDifferentPragmaVersions is Test {
+contract CompilePragma7Dot6 is Test {
     function test() public { }
 }

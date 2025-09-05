@@ -8,10 +8,7 @@ import { ActionData } from "../../../../../lib/accounts-v2/src/interfaces/IActio
 import { ERC20 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC20.sol";
 import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
-import { RebalanceLogic, RebalanceParams } from "../../../../../src/cl-managers/libraries/RebalanceLogic.sol";
-import { RouterMock } from "../../../../utils/mocks/RouterMock.sol";
-import { RouterSetPoolPriceMock } from "../../../../utils/mocks/RouterSetPoolPriceMock.sol";
-import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
+import { RebalanceLogic } from "../../../../../src/cl-managers/libraries/RebalanceLogic.sol";
 import { YieldClaimer } from "../../../../../src/cl-managers/yield-claimers/YieldClaimer.sol";
 import { YieldClaimerUniswapV4_Fuzz_Test } from "./_YieldClaimerUniswapV4.fuzz.t.sol";
 
