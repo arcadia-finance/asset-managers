@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 import { YieldClaimer_Fuzz_Test } from "./_YieldClaimer.fuzz.t.sol";
 import { YieldClaimerExtension } from "../../../../utils/extensions/YieldClaimerExtension.sol";

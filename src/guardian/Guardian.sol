@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 import { Owned } from "../../lib/accounts-v2/lib/solmate/src/auth/Owned.sol";
 

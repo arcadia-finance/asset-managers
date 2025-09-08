@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: MIT
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 interface IRouterTrampoline {
     function execute(address router, bytes calldata callData, address tokenIn, address tokenOut, uint256 amountIn)

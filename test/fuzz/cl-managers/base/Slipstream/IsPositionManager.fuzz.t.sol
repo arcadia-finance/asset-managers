@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 import { Slipstream_Fuzz_Test } from "./_Slipstream.fuzz.t.sol";
 
@@ -21,7 +21,7 @@ contract IsPositionManager_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_isPositionManager_False(address positionManager) public {
+    function testFuzz_Success_isPositionManager_False(address positionManager) public view {
         // Given: positionManager is not the Slipstream Position Manager.
         vm.assume(positionManager != address(slipstreamPositionManager));
         vm.assume(positionManager != address(stakedSlipstreamAM));
@@ -34,7 +34,7 @@ contract IsPositionManager_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         assertFalse(isPositionManager);
     }
 
-    function testFuzz_Success_isPositionManager_True_SlipstreamPositionManager() public {
+    function testFuzz_Success_isPositionManager_True_SlipstreamPositionManager() public view {
         // Given: positionManager is the Slipstream Position Manager.
         // When: Calling isPositionManager.
         bool isPositionManager = base.isPositionManager(address(slipstreamPositionManager));
@@ -43,7 +43,7 @@ contract IsPositionManager_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         assertTrue(isPositionManager);
     }
 
-    function testFuzz_Success_isPositionManager_True_StakedSlipstreamAM() public {
+    function testFuzz_Success_isPositionManager_True_StakedSlipstreamAM() public view {
         // Given: positionManager is the Slipstream Position Manager.
         // When: Calling isPositionManager.
         bool isPositionManager = base.isPositionManager(address(stakedSlipstreamAM));
@@ -52,7 +52,7 @@ contract IsPositionManager_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         assertTrue(isPositionManager);
     }
 
-    function testFuzz_Success_isPositionManager_True_WrappedStakedSlipstream() public {
+    function testFuzz_Success_isPositionManager_True_WrappedStakedSlipstream() public view {
         // Given: positionManager is the Slipstream Position Manager.
         // When: Calling isPositionManager.
         bool isPositionManager = base.isPositionManager(address(wrappedStakedSlipstream));

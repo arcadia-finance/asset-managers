@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.0;
 
 import { FixedPoint96 } from "../../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
 import { FullMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
@@ -35,7 +35,7 @@ contract ApproximateOptimalSwapAmounts_SwapMath_Fuzz_Test is RebalanceOptimizati
         uint128 amountIn,
         uint128 amountOut,
         uint128 sqrtPrice
-    ) public {
+    ) public view {
         // Given: Swap is zero to one.
         bool zeroToOne = true;
 
@@ -94,9 +94,9 @@ contract ApproximateOptimalSwapAmounts_SwapMath_Fuzz_Test is RebalanceOptimizati
             (uint256 lAmount0, uint256 lAmount1) =
                 getLiquidityAmounts(sqrtPrice, sqrtRatioLower, sqrtRatioUpper, balance0, balance1);
             vm.assume(balance0 > 1e5);
-            assertApproxEqRel(balance0, lAmount0, 1e18 / 2e1);
             vm.assume(balance1 > 1e5);
-            assertApproxEqRel(balance1, lAmount1, 1e18 / 2e1);
+            assertApproxEqRel(balance0, lAmount0, 1e17);
+            assertApproxEqRel(balance1, lAmount1, 1e17);
         }
     }
 
@@ -108,7 +108,7 @@ contract ApproximateOptimalSwapAmounts_SwapMath_Fuzz_Test is RebalanceOptimizati
         uint128 amountIn,
         uint128 amountOut,
         uint128 sqrtPrice
-    ) public {
+    ) public view {
         // Given: Swap is zero to one.
         bool zeroToOne = true;
 
@@ -165,7 +165,7 @@ contract ApproximateOptimalSwapAmounts_SwapMath_Fuzz_Test is RebalanceOptimizati
         uint128 amountIn,
         uint128 amountOut,
         uint160 sqrtPrice
-    ) public {
+    ) public view {
         // Given: Swap is one to zero.
         bool zeroToOne = false;
 
@@ -224,9 +224,9 @@ contract ApproximateOptimalSwapAmounts_SwapMath_Fuzz_Test is RebalanceOptimizati
             (uint256 lAmount0, uint256 lAmount1) =
                 getLiquidityAmounts(sqrtPrice, sqrtRatioLower, sqrtRatioUpper, balance0, balance1);
             vm.assume(lAmount0 > 1e5);
-            assertApproxEqRel(balance0, lAmount0, 1e18 / 2e1);
             vm.assume(lAmount1 > 1e5);
-            assertApproxEqRel(balance1, lAmount1, 1e18 / 2e1);
+            assertApproxEqRel(balance0, lAmount0, 1e17);
+            assertApproxEqRel(balance1, lAmount1, 1e17);
         }
     }
 
@@ -238,7 +238,7 @@ contract ApproximateOptimalSwapAmounts_SwapMath_Fuzz_Test is RebalanceOptimizati
         uint128 amountIn,
         uint128 amountOut,
         uint160 sqrtPrice
-    ) public {
+    ) public view {
         // Given: Swap is one to zero.
         bool zeroToOne = false;
 

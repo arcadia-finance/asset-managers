@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 import { AbstractBase } from "./AbstractBase.sol";
 import { Actions } from "../../../lib/accounts-v2/lib/v4-periphery/src/libraries/Actions.sol";
@@ -22,6 +22,7 @@ import { PositionInfo } from "../../../lib/accounts-v2/lib/v4-periphery/src/libr
 import { PositionState } from "../state/PositionState.sol";
 import { SafeApprove } from "../../libraries/SafeApprove.sol";
 import { StateLibrary } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/StateLibrary.sol";
+import { SwapParams } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolOperation.sol";
 import { TickMath } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
 /**
@@ -331,7 +332,7 @@ abstract contract UniswapV4 is AbstractBase {
     {
         // Do the swap.
         bytes memory swapData = abi.encode(
-            IPoolManager.SwapParams({
+            SwapParams({
                 zeroForOne: zeroToOne,
                 amountSpecified: int256(amountOut),
                 sqrtPriceLimitX96: zeroToOne ? CLMath.MIN_SQRT_PRICE_LIMIT : CLMath.MAX_SQRT_PRICE_LIMIT
@@ -364,8 +365,7 @@ abstract contract UniswapV4 is AbstractBase {
     function unlockCallback(bytes calldata data) external payable virtual returns (bytes memory results) {
         if (msg.sender != address(POOL_MANAGER)) revert OnlyPoolManager();
 
-        (IPoolManager.SwapParams memory params, PoolKey memory poolKey) =
-            abi.decode(data, (IPoolManager.SwapParams, PoolKey));
+        (SwapParams memory params, PoolKey memory poolKey) = abi.decode(data, (SwapParams, PoolKey));
 
         // Do the swap.
         BalanceDelta delta = POOL_MANAGER.swap(poolKey, params, "");

@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.0;
 
 import { CLMath } from "../../../../../src/cl-managers/libraries/CLMath.sol";
 import { CLMath_Fuzz_Test } from "./_CLMath.fuzz.t.sol";
@@ -82,7 +82,7 @@ contract GetAmountIn_CLMath_Fuzz_Test is CLMath_Fuzz_Test {
         cLMath.getAmountIn(sqrtPrice, false, amountOut, fee);
     }
 
-    function testFuzz_Success_getAmountIn_ZeroToOne(uint256 sqrtPrice, uint256 amountOut, uint256 fee) public {
+    function testFuzz_Success_getAmountIn_ZeroToOne(uint256 sqrtPrice, uint256 amountOut, uint256 fee) public view {
         // Given: sqrtPrice is smaller than type(uint128).max, but bigger than 0.
         sqrtPrice = bound(sqrtPrice, 1, type(uint128).max);
 
@@ -103,7 +103,7 @@ contract GetAmountIn_CLMath_Fuzz_Test is CLMath_Fuzz_Test {
         assertEq(amountIn, amountInExpected);
     }
 
-    function testFuzz_Success_getAmountIn_OneToZero(uint256 sqrtPrice, uint256 amountOut, uint256 fee) public {
+    function testFuzz_Success_getAmountIn_OneToZero(uint256 sqrtPrice, uint256 amountOut, uint256 fee) public view {
         // Given: sqrtPrice is smaller than type(uint128).max, but bigger than Q96.
         sqrtPrice = bound(sqrtPrice, 0, type(uint128).max);
 

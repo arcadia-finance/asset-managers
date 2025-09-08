@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 import { Errors } from "../../../lib/accounts-v2/lib/merkl-contracts/contracts/utils/Errors.sol";
 import { Distributor, MerkleTree } from "../../../lib/accounts-v2/lib/merkl-contracts/contracts/Distributor.sol";
