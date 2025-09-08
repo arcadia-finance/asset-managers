@@ -5,12 +5,10 @@
 pragma solidity ^0.8.0;
 
 import { CLMath } from "../../../../../src/cl-managers/libraries/CLMath.sol";
-import { FixedPoint96 } from "../../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
 import { FullMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { LiquidityAmounts } from "../../../../../src/cl-managers/libraries/LiquidityAmounts.sol";
-import { RebalanceLogic, RebalanceParams } from "../../../../../src/cl-managers/libraries/RebalanceLogic.sol";
+import { RebalanceParams } from "../../../../../src/cl-managers/libraries/RebalanceLogic.sol";
 import { RebalanceLogic_Fuzz_Test } from "./_RebalanceLogic.fuzz.t.sol";
-import { stdError } from "../../../../../lib/accounts-v2/lib/forge-std/src/StdError.sol";
 import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
 /**

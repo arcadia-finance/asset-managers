@@ -5,6 +5,7 @@
 pragma solidity ^0.8.0;
 
 import { Base_Test } from "../../../../../lib/accounts-v2/test/Base.t.sol";
+import { Constants } from "../../../../../lib/accounts-v2/test/utils/Constants.sol";
 import { ERC20Mock } from "../../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { FixedPoint96 } from
     "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint96.sol";
@@ -83,9 +84,8 @@ abstract contract UniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, UniswapV3A
         bytes memory args = abi.encode();
         bytes memory bytecode = abi.encodePacked(vm.getCode("UniswapV3PoolExtension.sol"), args);
         bytes32 poolExtensionInitCodeHash = keccak256(bytecode);
-        bytes32 POOL_INIT_CODE_HASH = 0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54;
         bytecode = address(base).code;
-        bytecode = Utils.veryBadBytesReplacer(bytecode, POOL_INIT_CODE_HASH, poolExtensionInitCodeHash);
+        bytecode = Utils.veryBadBytesReplacer(bytecode, Constants.POOL_INIT_CODE_HASH, poolExtensionInitCodeHash);
 
         // Store overwritten bytecode.
         vm.etch(address(base), bytecode);
@@ -172,6 +172,7 @@ abstract contract UniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, UniswapV3A
         (,,,,,,, position.liquidity,,,,) = nonfungiblePositionManager.positions(position.id);
     }
 
+    /// forge-lint: disable-next-item(mixed-case-function,mixed-case-variable)
     function deployUniswapV3AM() internal {
         // Deploy Add the Asset Module to the Registry.
         vm.startPrank(users.owner);
@@ -184,11 +185,10 @@ abstract contract UniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, UniswapV3A
         bytes memory args = abi.encode();
         bytes memory bytecode = abi.encodePacked(vm.getCode("UniswapV3PoolExtension.sol"), args);
         bytes32 poolExtensionInitCodeHash = keccak256(bytecode);
-        bytes32 POOL_INIT_CODE_HASH = 0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54;
 
         // Overwrite code hash of the UniswapV3AMExtension.
         bytecode = address(uniV3AM).code;
-        bytecode = Utils.veryBadBytesReplacer(bytecode, POOL_INIT_CODE_HASH, poolExtensionInitCodeHash);
+        bytecode = Utils.veryBadBytesReplacer(bytecode, Constants.POOL_INIT_CODE_HASH, poolExtensionInitCodeHash);
         vm.etch(address(uniV3AM), bytecode);
     }
 

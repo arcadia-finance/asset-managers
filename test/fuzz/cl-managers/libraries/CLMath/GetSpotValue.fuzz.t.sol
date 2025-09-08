@@ -9,7 +9,6 @@ import { CLMath_Fuzz_Test } from "./_CLMath.fuzz.t.sol";
 import { FixedPoint96 } from "../../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
 import { FullMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { stdError } from "../../../../../lib/accounts-v2/lib/forge-std/src/StdError.sol";
-import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
 /**
  * @notice Fuzz tests for the function "_getSpotValue" of contract "CLMath".

@@ -5,7 +5,6 @@
 pragma solidity ^0.8.0;
 
 import { PositionState } from "../../../src/cl-managers/state/PositionState.sol";
-import { Rebalancer } from "../../../src/cl-managers/rebalancers/Rebalancer.sol";
 import { StrategyHook } from "../../../src/cl-managers/rebalancers/periphery/StrategyHook.sol";
 
 contract HookMock is StrategyHook {

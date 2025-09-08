@@ -35,6 +35,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is
 
     uint256 internal constant INITIATOR_FEE = 0.01 * 1e18;
     uint24 internal constant POOL_FEE = 100;
+    /// forge-lint: disable-next-line(mixed-case-variable)
     uint128 internal MAX_LIQUIDITY = UniswapHelpers.maxLiquidity(1);
 
     /*////////////////////////////////////////////////////////////////

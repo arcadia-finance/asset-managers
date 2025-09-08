@@ -196,6 +196,7 @@ abstract contract AbstractBase {
      * @notice Returns the onERC721Received selector.
      * @dev Required to receive ERC721 tokens via safeTransferFrom.
      */
+    /// forge-lint: disable-next-item(mixed-case-function)
     function onERC721Received(address, address, uint256, bytes calldata) public pure returns (bytes4) {
         return this.onERC721Received.selector;
     }

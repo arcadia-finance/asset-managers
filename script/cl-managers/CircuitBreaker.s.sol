@@ -10,9 +10,8 @@ import { Guardian } from "../../src/guardian/Guardian.sol";
 import { SafesAssetManagers } from "../utils/constants/Base.sol";
 
 contract CircuitBreaker is Base_AssetManagers_Script {
+    /// forge-lint: disable-next-line(mixed-case-variable)
     address internal SAFE = SafesAssetManagers.GUARDIAN;
-
-    constructor() Base_AssetManagers_Script() { }
 
     function run() public {
         // Pause Asset Managers.

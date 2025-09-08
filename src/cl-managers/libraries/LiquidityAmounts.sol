@@ -11,6 +11,7 @@ import { FullMath } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/
  * @title Liquidity amount functions
  * @notice Provides functions for computing liquidity amounts from token amounts and prices
  */
+/// forge-lint: disable-next-item(mixed-case-variable)
 library LiquidityAmounts {
     /**
      *  @notice Downcasts uint256 to uint128

@@ -55,6 +55,7 @@ abstract contract Slipstream_Fuzz_Test is
 
     ICLPoolExtension internal poolCl;
 
+    /// forge-lint: disable-next-line(mixed-case-variable)
     StakedSlipstreamAM internal stakedSlipstreamAM;
     ICLGauge internal gauge;
 
@@ -201,6 +202,7 @@ abstract contract Slipstream_Fuzz_Test is
         (,,,,,,, position.liquidity,,,,) = slipstreamPositionManager.positions(position.id);
     }
 
+    /// forge-lint: disable-next-item(mixed-case-function, mixed-case-variable)
     function deploySlipstreamAM() internal {
         // Deploy Add the Asset Module to the Registry.
         vm.startPrank(users.owner);
@@ -211,6 +213,7 @@ abstract contract Slipstream_Fuzz_Test is
         vm.stopPrank();
     }
 
+    /// forge-lint: disable-next-item(mixed-case-function, mixed-case-variable)
     function deployStakedSlipstreamAM() internal {
         addAssetToArcadia(AERO, 1e18);
 

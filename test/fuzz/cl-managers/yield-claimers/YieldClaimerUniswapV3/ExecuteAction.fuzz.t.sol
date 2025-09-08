@@ -9,10 +9,6 @@ import { YieldClaimerUniswapV3_Fuzz_Test } from "./_YieldClaimerUniswapV3.fuzz.t
 import { ActionData } from "../../../../../lib/accounts-v2/src/interfaces/IActionBase.sol";
 import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
-import { RebalanceLogic, RebalanceParams } from "../../../../../src/cl-managers/libraries/RebalanceLogic.sol";
-import { RouterMock } from "../../../../utils/mocks/RouterMock.sol";
-import { RouterSetPoolPriceMock } from "../../../../utils/mocks/RouterSetPoolPriceMock.sol";
-import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
 /**
  * @notice Fuzz tests for the function "_executeAction" of contract "YieldClaimerUniswapV3".
@@ -80,9 +76,11 @@ contract ExecuteAction_YieldClaimerUniswapV3_Fuzz_Test is YieldClaimerUniswapV3_
 
         // And: The YieldClaimer owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-start(erc20-unchecked-transfer)
         ERC721(address(nonfungiblePositionManager)).transferFrom(
             users.liquidityProvider, address(yieldClaimer), position.id
         );
+        /// forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: position has fees.
         feeSeed = uint256(bound(feeSeed, 0, type(uint48).max));
@@ -177,9 +175,11 @@ contract ExecuteAction_YieldClaimerUniswapV3_Fuzz_Test is YieldClaimerUniswapV3_
 
         // And: The YieldClaimer owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-start(erc20-unchecked-transfer)
         ERC721(address(nonfungiblePositionManager)).transferFrom(
             users.liquidityProvider, address(yieldClaimer), position.id
         );
+        /// forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: position has fees.
         feeSeed = uint256(bound(feeSeed, 0, type(uint48).max));

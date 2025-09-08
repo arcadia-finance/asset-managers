@@ -6,7 +6,6 @@ pragma solidity ^0.8.0;
 
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { PositionState } from "../../../src/cl-managers/state/PositionState.sol";
-import { Rebalancer } from "../../../src/cl-managers/rebalancers/Rebalancer.sol";
 import { StrategyHook } from "../../../src/cl-managers/rebalancers/periphery/StrategyHook.sol";
 import { TickMath } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
