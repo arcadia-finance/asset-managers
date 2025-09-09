@@ -5,7 +5,7 @@
 pragma solidity ^0.8.0;
 
 import { Errors } from "../../../lib/accounts-v2/lib/merkl-contracts/contracts/utils/Errors.sol";
-import { Distributor, MerkleTree } from "../../../lib/accounts-v2/lib/merkl-contracts/contracts/Distributor.sol";
+import { MerkleTree } from "../../../lib/accounts-v2/lib/merkl-contracts/contracts/Distributor.sol";
 import { Guardian } from "../../../src/guardian/Guardian.sol";
 import { MerklOperator } from "../../../src/merkl-operator/MerklOperator.sol";
 import { MerklOperator_Fuzz_Test } from "./_MerklOperator.fuzz.t.sol";

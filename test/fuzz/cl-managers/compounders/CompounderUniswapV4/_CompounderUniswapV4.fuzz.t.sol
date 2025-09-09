@@ -7,7 +7,6 @@ pragma solidity ^0.8.0;
 import { CompounderUniswapV4Extension } from "../../../../utils/extensions/CompounderUniswapV4Extension.sol";
 import { RouterTrampoline } from "../../../../../src/cl-managers/RouterTrampoline.sol";
 import { UniswapV4_Fuzz_Test } from "../../base/UniswapV4/_UniswapV4.fuzz.t.sol";
-import { Utils } from "../../../../../lib/accounts-v2/test/utils/Utils.sol";
 
 /**
  * @notice Common logic needed by all "CompounderUniswapV4" fuzz tests.

@@ -391,12 +391,16 @@ abstract contract UniswapV4 is AbstractBase {
             if (currency0.isAddressZero()) {
                 POOL_MANAGER.settle{ value: uint128(-delta.amount0()) }();
             } else {
+                // Transfer is properly handled by Currency library.
+                /// forge-lint: disable-next-line(erc20-unchecked-transfer)
                 currency0.transfer(address(POOL_MANAGER), uint128(-delta.amount0()));
                 POOL_MANAGER.settle();
             }
         }
         if (delta.amount1() < 0) {
             POOL_MANAGER.sync(currency1);
+            // Transfer is properly handled by Currency library.
+            /// forge-lint: disable-next-line(erc20-unchecked-transfer)
             currency1.transfer(address(POOL_MANAGER), uint128(-delta.amount1()));
             POOL_MANAGER.settle();
         }

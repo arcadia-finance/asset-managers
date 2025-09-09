@@ -57,6 +57,7 @@ contract Claim_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
 
         // Transfer position to Base.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(base), position.id);
 
         // When: Calling claim.
@@ -112,6 +113,7 @@ contract Claim_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
 
         // Transfer position to Base.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(base), position.id);
 
         // When: Calling claim.

@@ -11,8 +11,6 @@ import { Safes } from "../../lib/accounts-v2/script/utils/constants/Base.sol";
 import { SafesAssetManagers } from "../utils/constants/Base.sol";
 
 contract SetGuardians is Base_AssetManagers_Script {
-    constructor() Base_AssetManagers_Script() { }
-
     function run() public {
         // Set Guardian for Asset Managers.
         setGuardian(Compounders.SLIPSTREAM);

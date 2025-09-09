@@ -8,7 +8,6 @@ import { ActionData } from "../../../../../lib/accounts-v2/src/interfaces/IActio
 import { ERC20 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC20.sol";
 import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
-import { RebalanceLogic } from "../../../../../src/cl-managers/libraries/RebalanceLogic.sol";
 import { YieldClaimer } from "../../../../../src/cl-managers/yield-claimers/YieldClaimer.sol";
 import { YieldClaimerUniswapV4_Fuzz_Test } from "./_YieldClaimerUniswapV4.fuzz.t.sol";
 
@@ -77,6 +76,7 @@ contract ExecuteAction_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_
 
         // And: The YieldClaimer owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(yieldClaimer), position.id);
 
         // And: position has fees.
@@ -170,6 +170,7 @@ contract ExecuteAction_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_
 
         // And: The YieldClaimer owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(yieldClaimer), position.id);
 
         // And: position has fees.
@@ -239,6 +240,7 @@ contract ExecuteAction_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_
 
         // And: The YieldClaimer owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(yieldClaimer), position.id);
 
         // And: position has fees.
@@ -333,6 +335,7 @@ contract ExecuteAction_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_
 
         // And: The YieldClaimer owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(yieldClaimer), position.id);
 
         // And: position has fees.

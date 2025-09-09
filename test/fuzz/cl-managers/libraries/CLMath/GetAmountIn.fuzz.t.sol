@@ -6,7 +6,6 @@ pragma solidity ^0.8.0;
 
 import { CLMath } from "../../../../../src/cl-managers/libraries/CLMath.sol";
 import { CLMath_Fuzz_Test } from "./_CLMath.fuzz.t.sol";
-import { ERC20Mock } from "../../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { FixedPoint96 } from "../../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
 import { FullMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 

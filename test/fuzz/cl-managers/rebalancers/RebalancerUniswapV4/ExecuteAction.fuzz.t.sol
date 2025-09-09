@@ -15,7 +15,6 @@ import { RebalancerUniswapV4_Fuzz_Test } from "./_RebalancerUniswapV4.fuzz.t.sol
 import { RouterMock } from "../../../../utils/mocks/RouterMock.sol";
 import { RouterSetPoolPriceUniV4Mock } from "../../../../utils/mocks/RouterSetPoolPriceUniV4Mock.sol";
 import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
-import { SafeTransferLib } from "../../../../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 /**
  * @notice Fuzz tests for the function "_executeAction" of contract "RebalancerUniswapV4".
  */
@@ -262,6 +261,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
         // And: The Rebalancer owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(rebalancer), position.id);
 
         // And: Rebalancer has balances.
@@ -356,6 +356,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
         // And: The Rebalancer owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(rebalancer), position.id);
 
         // And: Rebalancer has balances.
@@ -443,6 +444,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
         // And: The Rebalancer owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(rebalancer), position.id);
 
         // And: Rebalancer has balances.
@@ -560,6 +562,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
         // And: The Rebalancer owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(rebalancer), position.id);
 
         // And: Rebalancer has balances.
@@ -684,6 +687,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
         // And: The Rebalancer owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(rebalancer), position.id);
 
         // And: Rebalancer has balances.
@@ -803,6 +807,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
         // And: The Rebalancer owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(rebalancer), position.id);
 
         // And: Rebalancer has balances.

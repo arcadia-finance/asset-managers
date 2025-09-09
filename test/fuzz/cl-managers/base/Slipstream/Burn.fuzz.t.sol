@@ -4,11 +4,7 @@
  */
 pragma solidity ^0.8.0;
 
-import { ERC20, ERC20Mock } from "../../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
-import { FixedPoint128 } from
-    "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
-import { FullMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { LiquidityAmounts } from "../../../../../src/cl-managers/libraries/LiquidityAmounts.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
 import { Slipstream_Fuzz_Test } from "./_Slipstream.fuzz.t.sol";
@@ -53,6 +49,7 @@ contract Burn_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
 
         // Transfer position to Base.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(slipstreamPositionManager)).transferFrom(users.liquidityProvider, address(base), position.id);
 
         // When: Calling burn.

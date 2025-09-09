@@ -19,6 +19,16 @@ remappings = [
 ]
 fs_permissions = [{ access = "read", path = "./out"}, { access = "write", path = "./script/out"}]
 unchecked_cheatcode_artifacts = true
+ignored_warnings_from = ["lib/accounts-v2/lib/slipstream/contracts/libraries/EnumerableSet.sol"]
+
+[lint]
+exclude_lints = [
+    "asm-keccak256"
+]
+ignore = [
+    "**/merkl/**/*",
+    "**/merkl-operator/**/*",
+]
 
 [profile.lite]
 src = 'src'

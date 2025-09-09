@@ -259,9 +259,11 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
 
         // And: The Rebalancer owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-start(erc20-unchecked-transfer)
         ERC721(address(nonfungiblePositionManager)).transferFrom(
             users.liquidityProvider, address(rebalancer), position.id
         );
+        /// forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Rebalancer has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1));
@@ -348,9 +350,11 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
 
         // And: The Rebalancer owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-start(erc20-unchecked-transfer)
         ERC721(address(nonfungiblePositionManager)).transferFrom(
             users.liquidityProvider, address(rebalancer), position.id
         );
+        /// forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Rebalancer has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1));
@@ -433,9 +437,11 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
 
         // And: The Rebalancer owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-start(erc20-unchecked-transfer)
         ERC721(address(nonfungiblePositionManager)).transferFrom(
             users.liquidityProvider, address(rebalancer), position.id
         );
+        /// forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Rebalancer has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1));
@@ -552,9 +558,11 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
 
         // And: The Rebalancer owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-start(erc20-unchecked-transfer)
         ERC721(address(nonfungiblePositionManager)).transferFrom(
             users.liquidityProvider, address(rebalancer), position.id
         );
+        /// forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Rebalancer has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1));
