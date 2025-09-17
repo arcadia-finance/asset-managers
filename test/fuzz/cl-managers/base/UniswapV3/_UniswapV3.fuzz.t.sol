@@ -176,7 +176,7 @@ abstract contract UniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, UniswapV3A
     function deployUniswapV3AM() internal {
         // Deploy Add the Asset Module to the Registry.
         vm.startPrank(users.owner);
-        uniV3AM = new UniswapV3AMExtension(address(registry), address(nonfungiblePositionManager));
+        uniV3AM = new UniswapV3AMExtension(users.owner, address(registry), address(nonfungiblePositionManager));
         registry.addAssetModule(address(uniV3AM));
         uniV3AM.setProtocol();
         vm.stopPrank();
