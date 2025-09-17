@@ -207,7 +207,7 @@ abstract contract Slipstream_Fuzz_Test is
         // Deploy Add the Asset Module to the Registry.
         vm.startPrank(users.owner);
         SlipstreamAMExtension slipstreamAM =
-            new SlipstreamAMExtension(address(registry), address(slipstreamPositionManager));
+            new SlipstreamAMExtension(users.owner, address(registry), address(slipstreamPositionManager));
         registry.addAssetModule(address(slipstreamAM));
         slipstreamAM.setProtocol();
         vm.stopPrank();
@@ -219,8 +219,9 @@ abstract contract Slipstream_Fuzz_Test is
 
         // Deploy Add the Asset Module to the Registry.
         vm.startPrank(users.owner);
-        stakedSlipstreamAM =
-            new StakedSlipstreamAM(address(registry), address(slipstreamPositionManager), address(voter), AERO);
+        stakedSlipstreamAM = new StakedSlipstreamAM(
+            users.owner, address(registry), address(slipstreamPositionManager), address(voter), AERO
+        );
         registry.addAssetModule(address(stakedSlipstreamAM));
         stakedSlipstreamAM.initialize();
         vm.stopPrank();

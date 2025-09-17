@@ -184,7 +184,7 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
     function deployUniswapV4AM() internal {
         // Deploy Add the Asset Module to the Registry.
         vm.startPrank(users.owner);
-        uniswapV4HooksRegistry = new UniswapV4HooksRegistry(address(registry), address(positionManagerV4));
+        uniswapV4HooksRegistry = new UniswapV4HooksRegistry(users.owner, address(registry), address(positionManagerV4));
         defaultUniswapV4AM = DefaultUniswapV4AM(uniswapV4HooksRegistry.DEFAULT_UNISWAP_V4_AM());
 
         // Add asset module to Registry.
@@ -199,7 +199,7 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
     function deployNativeAM() public {
         // Deploy AM
         vm.startPrank(users.owner);
-        nativeTokenAM = new NativeTokenAM(address(registry), 18);
+        nativeTokenAM = new NativeTokenAM(users.owner, address(registry), 18);
 
         // Add AM to registry
         registry.addAssetModule(address(nativeTokenAM));
