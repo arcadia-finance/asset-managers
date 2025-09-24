@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 import { CLSwapRouterFixture } from "../../../../../lib/accounts-v2/test/utils/fixtures/slipstream/CLSwapRouter.f.sol";
 import { ERC20Mock } from "../../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
@@ -55,6 +55,7 @@ abstract contract Slipstream_Fuzz_Test is
 
     ICLPoolExtension internal poolCl;
 
+    /// forge-lint: disable-next-line(mixed-case-variable)
     StakedSlipstreamAM internal stakedSlipstreamAM;
     ICLGauge internal gauge;
 
@@ -75,7 +76,7 @@ abstract contract Slipstream_Fuzz_Test is
         vm.warp(2 days);
 
         // Deploy Arcadia Accounts Contracts.
-        deployArcadiaAccounts();
+        deployArcadiaAccounts(address(0));
 
         // Deploy fixtures for Slipstream.
         SlipstreamFixture.setUp();
@@ -201,23 +202,26 @@ abstract contract Slipstream_Fuzz_Test is
         (,,,,,,, position.liquidity,,,,) = slipstreamPositionManager.positions(position.id);
     }
 
+    /// forge-lint: disable-next-item(mixed-case-function, mixed-case-variable)
     function deploySlipstreamAM() internal {
         // Deploy Add the Asset Module to the Registry.
         vm.startPrank(users.owner);
         SlipstreamAMExtension slipstreamAM =
-            new SlipstreamAMExtension(address(registry), address(slipstreamPositionManager));
+            new SlipstreamAMExtension(users.owner, address(registry), address(slipstreamPositionManager));
         registry.addAssetModule(address(slipstreamAM));
         slipstreamAM.setProtocol();
         vm.stopPrank();
     }
 
+    /// forge-lint: disable-next-item(mixed-case-function, mixed-case-variable)
     function deployStakedSlipstreamAM() internal {
         addAssetToArcadia(AERO, 1e18);
 
         // Deploy Add the Asset Module to the Registry.
         vm.startPrank(users.owner);
-        stakedSlipstreamAM =
-            new StakedSlipstreamAM(address(registry), address(slipstreamPositionManager), address(voter), AERO);
+        stakedSlipstreamAM = new StakedSlipstreamAM(
+            users.owner, address(registry), address(slipstreamPositionManager), address(voter), AERO
+        );
         registry.addAssetModule(address(stakedSlipstreamAM));
         stakedSlipstreamAM.initialize();
         vm.stopPrank();

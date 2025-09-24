@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 import { ERC20Mock } from "../../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { Fuzz_Test } from "../../../Fuzz.t.sol";
@@ -49,7 +49,7 @@ abstract contract YieldClaimer_Fuzz_Test is Fuzz_Test, UniswapV3Fixture {
         vm.warp(2 days);
 
         // Deploy Arcadia  Accounts Contracts.
-        deployArcadiaAccounts();
+        deployArcadiaAccounts(address(0));
 
         // Create tokens.
         token0 = new ERC20Mock("TokenA", "TOKA", 0);
@@ -57,7 +57,7 @@ abstract contract YieldClaimer_Fuzz_Test is Fuzz_Test, UniswapV3Fixture {
         (token0, token1) = (token0 < token1) ? (token0, token1) : (token1, token0);
 
         // Deploy test contract.
-        yieldClaimer = new YieldClaimerExtension(address(factory));
+        yieldClaimer = new YieldClaimerExtension(users.owner, address(factory));
     }
 
     /*////////////////////////////////////////////////////////////////

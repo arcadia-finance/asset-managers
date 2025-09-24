@@ -2,11 +2,10 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.0;
 
 import { HookMock } from "../../../../utils/mocks/HookMock.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
-import { Rebalancer } from "../../../../../src/cl-managers/rebalancers/Rebalancer.sol";
 import { Rebalancer_Fuzz_Test } from "./_Rebalancer.fuzz.t.sol";
 import { RouterMock } from "../../../../utils/mocks/RouterMock.sol";
 import { stdError } from "../../../../../lib/accounts-v2/lib/forge-std/src/StdError.sol";
@@ -40,61 +39,6 @@ contract SwapViaRouter_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Revert_swapViaRouter_InvalidRouter(
-        uint128 liquidityPool,
-        PositionState memory position,
-        uint64 balance0,
-        uint64 balance1,
-        uint64 amountIn,
-        bool zeroToOne,
-        bytes memory data,
-        address initiator,
-        bytes memory strategyData
-    ) public {
-        // Given: A pool with liquidity.
-        position.sqrtPrice = bound(position.sqrtPrice, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
-        liquidityPool =
-            uint128(bound(liquidityPool, UniswapHelpers.maxLiquidity(1) / 1000, UniswapHelpers.maxLiquidity(1) / 10));
-        deployAndInitUniswapV3(uint160(position.sqrtPrice), liquidityPool);
-        position.tokens = new address[](2);
-        position.tokens[0] = address(token0);
-        position.tokens[1] = address(token1);
-        position.pool = address(poolUniswap);
-
-        // And: Contract has insufficient balance.
-        uint256[] memory balances = new uint256[](2);
-        balances[0] = balance0;
-        balances[1] = balance1;
-
-        // And: Hook is set.
-        strategyHook = new HookMock();
-        vm.prank(account.owner());
-        rebalancer.setAccountInfo(
-            address(account),
-            initiator,
-            MAX_FEE,
-            MAX_FEE,
-            MAX_TOLERANCE,
-            MIN_LIQUIDITY_RATIO,
-            address(strategyHook),
-            strategyData,
-            ""
-        );
-
-        // And: Contract has balances..
-        deal(address(token0), address(rebalancer), balance0, true);
-        deal(address(token1), address(rebalancer), balance1, true);
-
-        // And: Hook is set as router.
-        bytes memory swapData = abi.encode(address(strategyHook), uint256(amountIn), data);
-
-        // When: Calling swapViaRouter.
-        // Then: It should revert.
-        vm.prank(address(account));
-        vm.expectRevert(Rebalancer.InvalidRouter.selector);
-        rebalancer.swapViaRouter(balances, position, zeroToOne, swapData);
-    }
-
     function testFuzz_Revert_swapViaRouter_RouterReverts(
         uint128 liquidityPool,
         PositionState memory position,
@@ -113,19 +57,17 @@ contract SwapViaRouter_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         position.tokens[1] = address(token1);
         position.pool = address(poolUniswap);
 
-        // And: Contract has insufficient balance.
-        balance0 = uint64(bound(balance0, 0, type(uint64).max - 1));
-        amountIn = uint64(bound(amountIn, balance0 + 1, type(uint64).max));
+        // And: Contract has sufficient balance.
+        balance0 = uint64(bound(balance0, 1, type(uint64).max));
+        amountIn = uint64(bound(amountIn, 1, balance0));
         uint256[] memory balances = new uint256[](2);
         balances[0] = balance0;
         balances[1] = balance1;
-
-        // And: Contract has balances..
         deal(address(token0), address(rebalancer), balance0, true);
         deal(address(token1), address(rebalancer), balance1, true);
 
-        // And: Router mock has balanceOut.
-        deal(address(token1), address(routerMock), amountOut, true);
+        // And: Router mock does not have balanceOut.
+        amountOut = uint64(bound(amountOut, 1, type(uint64).max));
 
         // When: Calling swapViaRouter.
         // Then: It should revert.
@@ -161,8 +103,6 @@ contract SwapViaRouter_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         uint256[] memory balances = new uint256[](2);
         balances[0] = balance0;
         balances[1] = balance1;
-
-        // And: Contract has balances..
         deal(address(token0), address(rebalancer), balance0, true);
         deal(address(token1), address(rebalancer), balance1, true);
 
@@ -205,8 +145,6 @@ contract SwapViaRouter_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         uint256[] memory balances = new uint256[](2);
         balances[0] = balance0;
         balances[1] = balance1;
-
-        // And: Contract has balances..
         deal(address(token0), address(rebalancer), balance0, true);
         deal(address(token1), address(rebalancer), balance1, true);
 

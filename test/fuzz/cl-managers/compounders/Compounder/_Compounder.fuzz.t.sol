@@ -2,13 +2,14 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 import { ERC20Mock } from "../../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { Fuzz_Test } from "../../../Fuzz.t.sol";
 import { IUniswapV3PoolExtension } from
     "../../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/IUniswapV3PoolExtension.sol";
 import { CompounderExtension } from "../../../../utils/extensions/CompounderExtension.sol";
+import { RouterTrampoline } from "../../../../../src/cl-managers/RouterTrampoline.sol";
 import { UniswapV3Fixture } from "../../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";
 
 /**
@@ -32,6 +33,8 @@ abstract contract Compounder_Fuzz_Test is Fuzz_Test, UniswapV3Fixture {
     ERC20Mock internal token0;
     ERC20Mock internal token1;
 
+    RouterTrampoline internal routerTrampoline;
+
     IUniswapV3PoolExtension internal poolUniswap;
 
     /*////////////////////////////////////////////////////////////////
@@ -51,15 +54,18 @@ abstract contract Compounder_Fuzz_Test is Fuzz_Test, UniswapV3Fixture {
         vm.warp(2 days);
 
         // Deploy Arcadia  Accounts Contracts.
-        deployArcadiaAccounts();
+        deployArcadiaAccounts(address(0));
 
         // Create tokens.
         token0 = new ERC20Mock("TokenA", "TOKA", 0);
         token1 = new ERC20Mock("TokenB", "TOKB", 0);
         (token0, token1) = (token0 < token1) ? (token0, token1) : (token1, token0);
 
+        // Deploy Router Trampoline.
+        routerTrampoline = new RouterTrampoline();
+
         // Deploy test contract.
-        compounder = new CompounderExtension(address(factory));
+        compounder = new CompounderExtension(users.owner, address(factory), address(routerTrampoline));
     }
 
     /*////////////////////////////////////////////////////////////////

@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.30;
 
 import { Compounder } from "./Compounder.sol";
 import { UniswapV3 } from "../base/UniswapV3.sol";
@@ -26,12 +26,17 @@ contract CompounderUniswapV3 is Compounder, UniswapV3 {
     ////////////////////////////////////////////////////////////// */
 
     /**
+     * @param owner_ The address of the Owner.
      * @param arcadiaFactory The contract address of the Arcadia Factory.
+     * @param routerTrampoline The contract address of the Router Trampoline.
      * @param positionManager The contract address of the Uniswap v3 Position Manager.
      * @param uniswapV3Factory The contract address of the Uniswap v3 Factory.
      */
-    constructor(address arcadiaFactory, address positionManager, address uniswapV3Factory)
-        Compounder(arcadiaFactory)
-        UniswapV3(positionManager, uniswapV3Factory)
-    { }
+    constructor(
+        address owner_,
+        address arcadiaFactory,
+        address routerTrampoline,
+        address positionManager,
+        address uniswapV3Factory
+    ) Compounder(owner_, arcadiaFactory, routerTrampoline) UniswapV3(positionManager, uniswapV3Factory) { }
 }

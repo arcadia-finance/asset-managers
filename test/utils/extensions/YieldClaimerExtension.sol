@@ -2,13 +2,13 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.0;
 
 import { PositionState } from "../../../src/cl-managers/state/PositionState.sol";
 import { YieldClaimer } from "../../../src/cl-managers/yield-claimers/YieldClaimer.sol";
 
 contract YieldClaimerExtension is YieldClaimer {
-    constructor(address arcadiaFactory) YieldClaimer(arcadiaFactory) { }
+    constructor(address owner_, address arcadiaFactory) YieldClaimer(owner_, arcadiaFactory) { }
 
     function isPositionManager(address positionManager) public view override returns (bool) { }
 

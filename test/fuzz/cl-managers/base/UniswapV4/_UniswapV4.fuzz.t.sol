@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 import { ArcadiaOracle } from "../../../../../lib/accounts-v2/test/utils/mocks/oracles/ArcadiaOracle.sol";
 import { BitPackingLib } from "../../../../../lib/accounts-v2/src/libraries/BitPackingLib.sol";
@@ -15,10 +15,7 @@ import { FixedPoint128 } from
     "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
 import { FullMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { Fuzz_Test } from "../../../Fuzz.t.sol";
-import { IPoolManager } from
-    "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/interfaces/IPoolManager.sol";
 import { NativeTokenAM } from "../../../../../lib/accounts-v2/src/asset-modules/native-token/NativeTokenAM.sol";
-import { PoolId } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolId.sol";
 import { PoolKey } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 import { PositionInfo } from "../../../../../lib/accounts-v2/lib/v4-periphery/src/libraries/PositionInfoLibrary.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
@@ -28,7 +25,6 @@ import { UniswapHelpers } from "../../../../utils/uniswap-v3/UniswapHelpers.sol"
 import { UniswapV4Fixture } from "../../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v4/UniswapV4Fixture.f.sol";
 import { UniswapV4HooksRegistry } from
     "../../../../../lib/accounts-v2/src/asset-modules/UniswapV4/UniswapV4HooksRegistry.sol";
-import { Utils } from "../../../../../lib/accounts-v2/test/utils/Utils.sol";
 
 /**
  * @notice Common logic needed by all "UniswapV4" fuzz tests.
@@ -54,10 +50,12 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
 
     PoolKey internal poolKey;
 
+    /// forge-lint: disable-start(mixed-case-variable)
     ArcadiaOracle internal ethOracle;
     DefaultUniswapV4AM internal defaultUniswapV4AM;
     NativeTokenAM internal nativeTokenAM;
     UniswapV4HooksRegistry internal uniswapV4HooksRegistry;
+    /// forge-lint: disable-end(mixed-case-variable)
 
     /*////////////////////////////////////////////////////////////////
                             TEST CONTRACTS
@@ -76,7 +74,7 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         vm.warp(2 days);
 
         // Deploy Arcadia Accounts Contracts.
-        deployArcadiaAccounts();
+        deployArcadiaAccounts(address(0));
 
         // Deploy fixture for Uniswap V3.
         UniswapV4Fixture.setUp();
@@ -182,10 +180,11 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         );
     }
 
+    /// forge-lint: disable-next-item(mixed-case-function)
     function deployUniswapV4AM() internal {
         // Deploy Add the Asset Module to the Registry.
         vm.startPrank(users.owner);
-        uniswapV4HooksRegistry = new UniswapV4HooksRegistry(address(registry), address(positionManagerV4));
+        uniswapV4HooksRegistry = new UniswapV4HooksRegistry(users.owner, address(registry), address(positionManagerV4));
         defaultUniswapV4AM = DefaultUniswapV4AM(uniswapV4HooksRegistry.DEFAULT_UNISWAP_V4_AM());
 
         // Add asset module to Registry.
@@ -196,10 +195,11 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         vm.stopPrank();
     }
 
+    /// forge-lint: disable-next-item(mixed-case-function)
     function deployNativeAM() public {
         // Deploy AM
         vm.startPrank(users.owner);
-        nativeTokenAM = new NativeTokenAM(address(registry));
+        nativeTokenAM = new NativeTokenAM(users.owner, address(registry), 18);
 
         // Add AM to registry
         registry.addAssetModule(address(nativeTokenAM));

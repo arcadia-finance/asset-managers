@@ -2,15 +2,20 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.0;
 
 import { YieldClaimerUniswapV4 } from "../../../src/cl-managers/yield-claimers/YieldClaimerUniswapV4.sol";
 import { PositionState } from "../../../src/cl-managers/state/PositionState.sol";
 
 contract YieldClaimerUniswapV4Extension is YieldClaimerUniswapV4 {
-    constructor(address arcadiaFactory, address positionManager, address permit2, address poolManager, address weth)
-        YieldClaimerUniswapV4(arcadiaFactory, positionManager, permit2, poolManager, weth)
-    { }
+    constructor(
+        address owner_,
+        address arcadiaFactory,
+        address positionManager,
+        address permit2,
+        address poolManager,
+        address weth
+    ) YieldClaimerUniswapV4(owner_, arcadiaFactory, positionManager, permit2, poolManager, weth) { }
 
     function getUnderlyingTokens(address positionManager, uint256 id) external view returns (address, address) {
         return _getUnderlyingTokens(positionManager, id);

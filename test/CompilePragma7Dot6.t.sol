@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity >=0.6.2;
+pragma solidity 0.7.6;
 pragma experimental ABIEncoderV2;
 
 import { CLFactory } from "../lib/accounts-v2/lib/slipstream/contracts/core/CLFactory.sol";
@@ -19,6 +19,6 @@ import { SwapRouter } from "../lib/accounts-v2/lib/slipstream/contracts/peripher
 import { SwapRouter02 } from "../lib/accounts-v2/lib/swap-router-contracts/contracts/SwapRouter02.sol";
 import { Test } from "../lib/accounts-v2/lib/forge-std/src/Test.sol";
 
-contract CompileDifferentPragmaVersions is Test {
+contract CompilePragma7Dot6 is Test {
     function test() public { }
 }

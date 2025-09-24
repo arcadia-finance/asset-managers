@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 import { UniswapV4_Fuzz_Test } from "./_UniswapV4.fuzz.t.sol";
 
@@ -21,7 +21,7 @@ contract IsPositionManager_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_isPositionManager_False(address positionManager) public {
+    function testFuzz_Success_isPositionManager_False(address positionManager) public view {
         // Given: positionManager is not the UniswapV4 Position Manager.
         vm.assume(positionManager != address(positionManagerV4));
 
@@ -32,7 +32,7 @@ contract IsPositionManager_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
         assertFalse(isPositionManager);
     }
 
-    function testFuzz_Success_isPositionManager_True() public {
+    function testFuzz_Success_isPositionManager_True() public view {
         // Given: positionManager is the UniswapV4 Position Manager.
         // When: Calling isPositionManager.
         bool isPositionManager = base.isPositionManager(address(positionManagerV4));

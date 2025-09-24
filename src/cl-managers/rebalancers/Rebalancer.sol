@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 import { AbstractBase } from "../base/AbstractBase.sol";
 import { ActionData, IActionBase } from "../../../lib/accounts-v2/src/interfaces/IActionBase.sol";
@@ -10,8 +10,10 @@ import { ArcadiaLogic } from "../libraries/ArcadiaLogic.sol";
 import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { ERC721 } from "../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { Guardian } from "../../guardian/Guardian.sol";
 import { IAccount } from "../../interfaces/IAccount.sol";
 import { IArcadiaFactory } from "../../interfaces/IArcadiaFactory.sol";
+import { IRouterTrampoline } from "../interfaces/IRouterTrampoline.sol";
 import { IStrategyHook } from "../interfaces/IStrategyHook.sol";
 import { PositionState } from "../state/PositionState.sol";
 import { RebalanceLogic, RebalanceParams } from "../libraries/RebalanceLogic.sol";
@@ -32,7 +34,7 @@ import { TickMath } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/
  * based on a hypothetical optimal swap through the pool itself without slippage.
  * This protects the Account owners from incompetent or malicious initiators who route swaps poorly, or try to skim off liquidity from the position.
  */
-abstract contract Rebalancer is IActionBase, AbstractBase {
+abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
     using FixedPointMathLib for uint256;
     using SafeApprove for ERC20;
     using SafeTransferLib for ERC20;
@@ -42,6 +44,9 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
 
     // The contract address of the Arcadia Factory.
     IArcadiaFactory public immutable ARCADIA_FACTORY;
+
+    // The contract address of the Router Trampoline.
+    IRouterTrampoline public immutable ROUTER_TRAMPOLINE;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
@@ -56,8 +61,8 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
     // A mapping from account to custom metadata.
     mapping(address account => bytes data) public metaData;
 
-    // A mapping that sets the approved initiator per owner per ccount.
-    mapping(address owner => mapping(address account => address initiator)) public accountToInitiator;
+    // A mapping that sets the approved initiator per owner per account.
+    mapping(address accountOwner => mapping(address account => address initiator)) public accountToInitiator;
 
     // A struct with the account specific parameters.
     struct AccountInfo {
@@ -116,7 +121,6 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
     error InsufficientLiquidity();
     error InvalidInitiator();
     error InvalidPositionManager();
-    error InvalidRouter();
     error InvalidValue();
     error NotAnAccount();
     error OnlyAccount();
@@ -136,15 +140,52 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
     ////////////////////////////////////////////////////////////// */
 
     /**
+     * @param owner_ The address of the Owner.
      * @param arcadiaFactory The contract address of the Arcadia Factory.
+     * @param routerTrampoline The contract address of the Router Trampoline.
      */
-    constructor(address arcadiaFactory) {
+    constructor(address owner_, address arcadiaFactory, address routerTrampoline) Guardian(owner_) {
         ARCADIA_FACTORY = IArcadiaFactory(arcadiaFactory);
+        ROUTER_TRAMPOLINE = IRouterTrampoline(routerTrampoline);
     }
 
     /* ///////////////////////////////////////////////////////////////
                             ACCOUNT LOGIC
     /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Optional hook called by the Arcadia Account when calling "setAssetManager()".
+     * @param accountOwner The current owner of the Arcadia Account.
+     * param status Bool indicating if the Asset Manager is enabled or disabled.
+     * @param data Operator specific data, passed by the Account owner.
+     */
+    function onSetAssetManager(address accountOwner, bool, bytes calldata data) external {
+        if (account != address(0)) revert Reentered();
+        if (!ARCADIA_FACTORY.isAccount(msg.sender)) revert NotAnAccount();
+
+        (
+            address initiator,
+            uint256 maxClaimFee,
+            uint256 maxSwapFee,
+            uint256 maxTolerance,
+            uint256 minLiquidityRatio,
+            address strategyHook,
+            bytes memory strategyData,
+            bytes memory metaData_
+        ) = abi.decode(data, (address, uint256, uint256, uint256, uint256, address, bytes, bytes));
+        _setAccountInfo(
+            msg.sender,
+            accountOwner,
+            initiator,
+            maxClaimFee,
+            maxSwapFee,
+            maxTolerance,
+            minLiquidityRatio,
+            strategyHook,
+            strategyData,
+            metaData_
+        );
+    }
 
     /**
      * @notice Sets the required information for an Account.
@@ -173,14 +214,55 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
     ) external {
         if (account != address(0)) revert Reentered();
         if (!ARCADIA_FACTORY.isAccount(account_)) revert NotAnAccount();
-        address owner = IAccount(account_).owner();
-        if (msg.sender != owner) revert OnlyAccountOwner();
+        address accountOwner = IAccount(account_).owner();
+        if (msg.sender != accountOwner) revert OnlyAccountOwner();
 
+        _setAccountInfo(
+            account_,
+            accountOwner,
+            initiator,
+            maxClaimFee,
+            maxSwapFee,
+            maxTolerance,
+            minLiquidityRatio,
+            strategyHook,
+            strategyData,
+            metaData_
+        );
+    }
+
+    /**
+     * @notice Sets the required information for an Account.
+     * @param account_ The contract address of the Arcadia Account to set the information for.
+     * @param accountOwner The current owner of the Arcadia Account.
+     * @param initiator The address of the initiator.
+     * @param maxClaimFee The maximum fee charged on claimed fees/rewards by the initiator, with 18 decimals precision.
+     * @param maxSwapFee The maximum fee charged on the ideal (without slippage) amountIn by the initiator, with 18 decimals precision.
+     * @param maxTolerance The maximum allowed deviation of the actual pool price for any initiator,
+     * relative to the price calculated with trusted external prices of both assets, with 18 decimals precision.
+     * @param minLiquidityRatio The ratio of the minimum amount of liquidity that must be minted,
+     * relative to the hypothetical amount of liquidity when we rebalance without slippage, with 18 decimals precision.
+     * @param strategyHook The contract address of the strategy hook.
+     * @param strategyData Strategy specific data stored in the hook.
+     * @param metaData_ Custom metadata to be stored with the account.
+     */
+    function _setAccountInfo(
+        address account_,
+        address accountOwner,
+        address initiator,
+        uint256 maxClaimFee,
+        uint256 maxSwapFee,
+        uint256 maxTolerance,
+        uint256 minLiquidityRatio,
+        address strategyHook,
+        bytes memory strategyData,
+        bytes memory metaData_
+    ) internal {
         if (maxClaimFee > 1e18 || maxSwapFee > 1e18 || maxTolerance > 1e18 || minLiquidityRatio > 1e18) {
             revert InvalidValue();
         }
 
-        accountToInitiator[owner][account_] = initiator;
+        accountToInitiator[accountOwner][account_] = initiator;
         accountInfo[account_] = AccountInfo({
             maxClaimFee: uint64(maxClaimFee),
             maxSwapFee: uint64(maxSwapFee),
@@ -205,7 +287,7 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
      * @param account_ The contract address of the account.
      * @param initiatorParams A struct with the initiator parameters.
      */
-    function rebalance(address account_, InitiatorParams calldata initiatorParams) external {
+    function rebalance(address account_, InitiatorParams calldata initiatorParams) external whenNotPaused {
         // Store Account address, used to validate the caller of the executeAction() callback and serves as a reentrancy guard.
         if (account != address(0)) revert Reentered();
         account = account_;
@@ -287,7 +369,7 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
             msg.sender, positionManager, position, initiatorParams.strategyData
         );
 
-        // Cache variables that are gas expensive to calcultate and used multiple times.
+        // Cache variables that are gas expensive to calculate and used multiple times.
         Cache memory cache = _getCache(accountInfo_, position, initiatorParams.trustedSqrtPrice);
 
         // Check that pool is initially balanced.
@@ -461,7 +543,7 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
      * @param swapData Arbitrary calldata provided by an initiator for the swap.
      * @dev Initiator has to route swap in such a way that at least minLiquidity of liquidity is added to the position after the swap.
      * And leftovers must be in tokenIn, otherwise the total tokenIn balance will be added as liquidity,
-     * and the initiator fee will be 0 (but the transaction will not revert)
+     * and the initiator fee will be 0 (but the transaction will not revert).
      */
     function _swapViaRouter(
         uint256[] memory balances,
@@ -471,18 +553,20 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
     ) internal virtual {
         // Decode the swap data.
         (address router, uint256 amountIn, bytes memory data) = abi.decode(swapData, (address, uint256, bytes));
-        if (router == accountInfo[msg.sender].strategyHook) revert InvalidRouter();
 
-        // Approve token to swap.
-        ERC20(zeroToOne ? position.tokens[0] : position.tokens[1]).safeApproveWithRetry(router, amountIn);
+        (address tokenIn, address tokenOut) =
+            zeroToOne ? (position.tokens[0], position.tokens[1]) : (position.tokens[1], position.tokens[0]);
 
-        // Execute arbitrary swap.
-        (bool success, bytes memory result) = router.call(data);
-        require(success, string(result));
+        // Send tokens to the Router Trampoline.
+        ERC20(tokenIn).safeTransfer(address(ROUTER_TRAMPOLINE), amountIn);
+
+        // Execute swap.
+        (uint256 balanceIn, uint256 balanceOut) = ROUTER_TRAMPOLINE.execute(router, data, tokenIn, tokenOut, amountIn);
 
         // Update the balances.
-        balances[0] = ERC20(position.tokens[0]).balanceOf(address(this));
-        balances[1] = ERC20(position.tokens[1]).balanceOf(address(this));
+        (balances[0], balances[1]) = zeroToOne
+            ? (balances[0] - amountIn + balanceIn, balances[1] + balanceOut)
+            : (balances[0] + balanceOut, balances[1] - amountIn + balanceIn);
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -527,6 +611,25 @@ abstract contract Rebalancer is IActionBase, AbstractBase {
             // Transfer Initiator fees to the initiator.
             if (fees[i] > 0) ERC20(token).safeTransfer(initiator, fees[i]);
             emit FeePaid(msg.sender, initiator, token, fees[i]);
+        }
+    }
+
+    /* ///////////////////////////////////////////////////////////////
+                             SKIM LOGIC
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Recovers any native or ERC20 tokens left on the contract.
+     * @param token The contract address of the token, or address(0) for native tokens.
+     */
+    function skim(address token) external onlyOwner whenNotPaused {
+        if (account != address(0)) revert Reentered();
+
+        if (token == address(0)) {
+            (bool success, bytes memory result) = payable(msg.sender).call{ value: address(this).balance }("");
+            require(success, string(result));
+        } else {
+            ERC20(token).safeTransfer(msg.sender, ERC20(token).balanceOf(address(this)));
         }
     }
 }

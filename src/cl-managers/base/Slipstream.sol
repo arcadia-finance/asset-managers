@@ -2,16 +2,10 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 import { AbstractBase } from "./AbstractBase.sol";
-import {
-    CollectParams,
-    DecreaseLiquidityParams,
-    IncreaseLiquidityParams,
-    ICLPositionManager,
-    MintParams
-} from "../interfaces/ICLPositionManager.sol";
+import { ICLPositionManager } from "../interfaces/ICLPositionManager.sol";
 import { CLMath } from "../libraries/CLMath.sol";
 import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
@@ -223,7 +217,7 @@ abstract contract Slipstream is AbstractBase {
         } else {
             // We assume that the amount of tokens to collect never exceeds type(uint128).max.
             (uint256 amount0, uint256 amount1) = POSITION_MANAGER.collect(
-                CollectParams({
+                ICLPositionManager.CollectParams({
                     tokenId: position.id,
                     recipient: address(this),
                     amount0Max: type(uint128).max,
@@ -302,7 +296,7 @@ abstract contract Slipstream is AbstractBase {
     function _burn(uint256[] memory balances, address, PositionState memory position) internal virtual override {
         // Remove liquidity of the position and claim outstanding fees.
         POSITION_MANAGER.decreaseLiquidity(
-            DecreaseLiquidityParams({
+            ICLPositionManager.DecreaseLiquidityParams({
                 tokenId: position.id,
                 liquidity: position.liquidity,
                 amount0Min: 0,
@@ -313,7 +307,7 @@ abstract contract Slipstream is AbstractBase {
 
         // We assume that the amount of tokens to collect never exceeds type(uint128).max.
         (uint256 amount0, uint256 amount1) = POSITION_MANAGER.collect(
-            CollectParams({
+            ICLPositionManager.CollectParams({
                 tokenId: position.id,
                 recipient: address(this),
                 amount0Max: type(uint128).max,
@@ -406,7 +400,7 @@ abstract contract Slipstream is AbstractBase {
         uint256 amount0;
         uint256 amount1;
         (position.id, position.liquidity, amount0, amount1) = POSITION_MANAGER.mint(
-            MintParams({
+            ICLPositionManager.MintParams({
                 token0: position.tokens[0],
                 token1: position.tokens[1],
                 tickSpacing: position.tickSpacing,
@@ -451,7 +445,7 @@ abstract contract Slipstream is AbstractBase {
         uint256 amount0;
         uint256 amount1;
         (position.liquidity, amount0, amount1) = POSITION_MANAGER.increaseLiquidity(
-            IncreaseLiquidityParams({
+            ICLPositionManager.IncreaseLiquidityParams({
                 tokenId: position.id,
                 amount0Desired: amount0Desired,
                 amount1Desired: amount1Desired,

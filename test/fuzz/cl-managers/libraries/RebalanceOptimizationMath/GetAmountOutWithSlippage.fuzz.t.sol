@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.0;
 
 import { CLMathExtension } from "../../../../utils/extensions/CLMathExtension.sol";
 import { ERC20Mock } from "../../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
@@ -35,6 +35,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is
 
     uint256 internal constant INITIATOR_FEE = 0.01 * 1e18;
     uint24 internal constant POOL_FEE = 100;
+    /// forge-lint: disable-next-line(mixed-case-variable)
     uint128 internal MAX_LIQUIDITY = UniswapHelpers.maxLiquidity(1);
 
     /*////////////////////////////////////////////////////////////////

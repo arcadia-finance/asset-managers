@@ -2,14 +2,13 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 import { YieldClaimer } from "../../../../../src/cl-managers/yield-claimers/YieldClaimer.sol";
 import { YieldClaimerUniswapV4_Fuzz_Test } from "./_YieldClaimerUniswapV4.fuzz.t.sol";
 import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
+import { Guardian } from "../../../../../src/guardian/Guardian.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
-import { RebalanceLogic, RebalanceParams } from "../../../../../src/cl-managers/libraries/RebalanceLogic.sol";
-import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
 /**
  * @notice Fuzz tests for the function "claim" of contract "YieldClaimerUniswapV4".
@@ -26,6 +25,22 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
+    function testFuzz_Revert_claim_Paused(
+        address account_,
+        YieldClaimer.InitiatorParams memory initiatorParams,
+        address caller
+    ) public {
+        // Given : Yield Claimer is Paused.
+        vm.prank(users.owner);
+        yieldClaimer.setPauseFlag(true);
+
+        // When : calling claim
+        // Then : it should revert
+        vm.prank(caller);
+        vm.expectRevert(Guardian.Paused.selector);
+        yieldClaimer.claim(account_, initiatorParams);
+    }
+
     function testFuzz_Revert_claim_Reentered(
         address account_,
         YieldClaimer.InitiatorParams memory initiatorParams,
@@ -56,10 +71,17 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         // And: Account is not a precompile.
         vm.assume(account_ > address(20));
 
+        // And: Account is not the console.
+        vm.assume(account_ != address(0x000000000000000000636F6e736F6c652e6c6f67));
+
         // When : calling claim
         // Then : it should revert
         vm.prank(caller);
-        vm.expectRevert(bytes(""));
+        if (account_.code.length == 0 && !isPrecompile(account_)) {
+            vm.expectRevert(abi.encodePacked("call to non-contract address ", vm.toString(account_)));
+        } else {
+            vm.expectRevert(bytes(""));
+        }
         yieldClaimer.claim(account_, initiatorParams);
     }
 
@@ -92,12 +114,22 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         vm.assume(initiator != address(0));
 
         // And: YieldClaimer is allowed as Asset Manager.
+        address[] memory assetManagers = new address[](1);
+        assetManagers[0] = address(yieldClaimer);
+        bool[] memory statuses = new bool[](1);
+        statuses[0] = true;
         vm.prank(users.accountOwner);
-        account.setAssetManager(address(yieldClaimer), true);
+        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
 
         // And: YieldClaimer is allowed as Asset Manager by New Owner.
-        vm.prank(newOwner);
-        account.setAssetManager(address(yieldClaimer), true);
+        vm.prank(users.accountOwner);
+        vm.warp(block.timestamp + 10 minutes);
+        factory.safeTransferFrom(users.accountOwner, newOwner, address(account));
+        vm.startPrank(newOwner);
+        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
+        vm.warp(block.timestamp + 10 minutes);
+        factory.safeTransferFrom(newOwner, users.accountOwner, address(account));
+        vm.stopPrank();
 
         // And: Account info is set.
         vm.prank(account.owner());
@@ -107,9 +139,8 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
 
         // And: Account is transferred to newOwner.
-        vm.startPrank(account.owner());
-        factory.safeTransferFrom(account.owner(), newOwner, address(account));
-        vm.stopPrank();
+        vm.prank(users.accountOwner);
+        factory.safeTransferFrom(users.accountOwner, newOwner, address(account));
 
         // When : calling claim
         // Then : it should revert
@@ -146,8 +177,12 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         deployUniswapV4AM();
 
         // And: YieldClaimer is allowed as Asset Manager
+        address[] memory assetManagers = new address[](1);
+        assetManagers[0] = address(yieldClaimer);
+        bool[] memory statuses = new bool[](1);
+        statuses[0] = true;
         vm.prank(users.accountOwner);
-        account.setAssetManager(address(yieldClaimer), true);
+        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
 
         // And: Account info is set.
         vm.prank(account.owner());
@@ -163,6 +198,7 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
 
         // And: Account owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, users.accountOwner, position.id);
         {
             address[] memory assets_ = new address[](1);
@@ -232,8 +268,12 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         deployUniswapV4AM();
 
         // And: YieldClaimer is allowed as Asset Manager
+        address[] memory assetManagers = new address[](1);
+        assetManagers[0] = address(yieldClaimer);
+        bool[] memory statuses = new bool[](1);
+        statuses[0] = true;
         vm.prank(users.accountOwner);
-        account.setAssetManager(address(yieldClaimer), true);
+        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
 
         // And: Account info is set.
         vm.prank(account.owner());
@@ -249,6 +289,7 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
 
         // And: Account owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, users.accountOwner, position.id);
         {
             address[] memory assets_ = new address[](1);
@@ -310,8 +351,12 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         deployUniswapV4AM();
 
         // And: YieldClaimer is allowed as Asset Manager
+        address[] memory assetManagers = new address[](1);
+        assetManagers[0] = address(yieldClaimer);
+        bool[] memory statuses = new bool[](1);
+        statuses[0] = true;
         vm.prank(users.accountOwner);
-        account.setAssetManager(address(yieldClaimer), true);
+        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
 
         // And: Account info is set.
         vm.prank(account.owner());
@@ -327,6 +372,7 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
 
         // And: Account owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, users.accountOwner, position.id);
         {
             address[] memory assets_ = new address[](1);
@@ -396,8 +442,12 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         deployUniswapV4AM();
 
         // And: YieldClaimer is allowed as Asset Manager
+        address[] memory assetManagers = new address[](1);
+        assetManagers[0] = address(yieldClaimer);
+        bool[] memory statuses = new bool[](1);
+        statuses[0] = true;
         vm.prank(users.accountOwner);
-        account.setAssetManager(address(yieldClaimer), true);
+        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
 
         // And: Account info is set.
         vm.prank(account.owner());
@@ -413,6 +463,7 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
 
         // And: Account owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, users.accountOwner, position.id);
         {
             address[] memory assets_ = new address[](1);

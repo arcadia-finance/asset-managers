@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 import { YieldClaimerUniswapV3_Fuzz_Test } from "./_YieldClaimerUniswapV3.fuzz.t.sol";
 import { YieldClaimerUniswapV3Extension } from "../../../../utils/extensions/YieldClaimerUniswapV3Extension.sol";
@@ -20,12 +20,12 @@ contract Constructor_YieldClaimerUniswapV3_Fuzz_Test is YieldClaimerUniswapV3_Fu
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_Constructor(address arcadiaFactory) public {
-        vm.prank(users.owner);
+    function testFuzz_Success_Constructor(address owner_, address arcadiaFactory) public {
         YieldClaimerUniswapV3Extension yieldClaimer_ = new YieldClaimerUniswapV3Extension(
-            arcadiaFactory, address(nonfungiblePositionManager), address(uniswapV3Factory)
+            owner_, arcadiaFactory, address(nonfungiblePositionManager), address(uniswapV3Factory)
         );
 
+        assertEq(yieldClaimer_.owner(), owner_);
         assertEq(address(yieldClaimer_.ARCADIA_FACTORY()), arcadiaFactory);
     }
 }

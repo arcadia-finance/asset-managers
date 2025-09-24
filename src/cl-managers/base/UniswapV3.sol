@@ -2,16 +2,10 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 import { AbstractBase } from "./AbstractBase.sol";
-import {
-    CollectParams,
-    DecreaseLiquidityParams,
-    IncreaseLiquidityParams,
-    IPositionManagerV3,
-    MintParams
-} from "../interfaces/IPositionManagerV3.sol";
+import { IPositionManagerV3 } from "../interfaces/IPositionManagerV3.sol";
 import { CLMath } from "../libraries/CLMath.sol";
 import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
@@ -173,7 +167,7 @@ abstract contract UniswapV3 is AbstractBase {
     ) internal virtual override {
         // We assume that the amount of tokens to collect never exceeds type(uint128).max.
         (uint256 amount0, uint256 amount1) = POSITION_MANAGER.collect(
-            CollectParams({
+            IPositionManagerV3.CollectParams({
                 tokenId: position.id,
                 recipient: address(this),
                 amount0Max: type(uint128).max,
@@ -225,7 +219,7 @@ abstract contract UniswapV3 is AbstractBase {
     function _burn(uint256[] memory balances, address, PositionState memory position) internal virtual override {
         // Remove liquidity of the position and claim outstanding fees.
         POSITION_MANAGER.decreaseLiquidity(
-            DecreaseLiquidityParams({
+            IPositionManagerV3.DecreaseLiquidityParams({
                 tokenId: position.id,
                 liquidity: position.liquidity,
                 amount0Min: 0,
@@ -236,7 +230,7 @@ abstract contract UniswapV3 is AbstractBase {
 
         // We assume that the amount of tokens to collect never exceeds type(uint128).max.
         (uint256 amount0, uint256 amount1) = POSITION_MANAGER.collect(
-            CollectParams({
+            IPositionManagerV3.CollectParams({
                 tokenId: position.id,
                 recipient: address(this),
                 amount0Max: type(uint128).max,
@@ -326,7 +320,7 @@ abstract contract UniswapV3 is AbstractBase {
         uint256 amount0;
         uint256 amount1;
         (position.id, position.liquidity, amount0, amount1) = POSITION_MANAGER.mint(
-            MintParams({
+            IPositionManagerV3.MintParams({
                 token0: position.tokens[0],
                 token1: position.tokens[1],
                 fee: position.fee,
@@ -370,7 +364,7 @@ abstract contract UniswapV3 is AbstractBase {
         uint256 amount0;
         uint256 amount1;
         (position.liquidity, amount0, amount1) = POSITION_MANAGER.increaseLiquidity(
-            IncreaseLiquidityParams({
+            IPositionManagerV3.IncreaseLiquidityParams({
                 tokenId: position.id,
                 amount0Desired: amount0Desired,
                 amount1Desired: amount1Desired,

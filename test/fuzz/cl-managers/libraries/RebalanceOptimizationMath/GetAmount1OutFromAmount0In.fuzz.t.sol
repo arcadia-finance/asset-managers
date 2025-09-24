@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.0;
 
 import { FullMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { FixedPoint96 } from "../../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
@@ -29,7 +29,7 @@ contract GetAmount1OutFromAmount0In_SwapMath_Fuzz_Test is RebalanceOptimizationM
         uint128 usableLiquidity,
         uint160 sqrtPriceOld,
         uint256 amount0
-    ) public {
+    ) public view {
         // Given: fee is smaller than 1e6 (invariant).
         fee = bound(fee, 0, 1e6);
 

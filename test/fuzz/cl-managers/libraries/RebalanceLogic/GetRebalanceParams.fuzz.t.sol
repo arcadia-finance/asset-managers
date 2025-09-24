@@ -2,15 +2,13 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.0;
 
 import { CLMath } from "../../../../../src/cl-managers/libraries/CLMath.sol";
-import { FixedPoint96 } from "../../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
 import { FullMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { LiquidityAmounts } from "../../../../../src/cl-managers/libraries/LiquidityAmounts.sol";
-import { RebalanceLogic, RebalanceParams } from "../../../../../src/cl-managers/libraries/RebalanceLogic.sol";
+import { RebalanceParams } from "../../../../../src/cl-managers/libraries/RebalanceLogic.sol";
 import { RebalanceLogic_Fuzz_Test } from "./_RebalanceLogic.fuzz.t.sol";
-import { stdError } from "../../../../../lib/accounts-v2/lib/forge-std/src/StdError.sol";
 import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
 /**
@@ -50,7 +48,7 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_getRebalanceParams_BelowRange(TestVariables memory testVars) public {
+    function testFuzz_Success_getRebalanceParams_BelowRange(TestVariables memory testVars) public view {
         // Given: Reasonable current price.
         testVars.sqrtPrice = bound(testVars.sqrtPrice, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
 
@@ -110,7 +108,7 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
         assertEq(rebalanceParams.amountOut, CLMath._getAmountOut(testVars.sqrtPrice, false, testVars.balance1, fee));
     }
 
-    function testFuzz_Success_getRebalanceParams_AboveRange(TestVariables memory testVars) public {
+    function testFuzz_Success_getRebalanceParams_AboveRange(TestVariables memory testVars) public view {
         // Given: Reasonable current price.
         testVars.sqrtPrice = bound(testVars.sqrtPrice, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
 
@@ -170,7 +168,10 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
         assertEq(rebalanceParams.amountOut, CLMath._getAmountOut(testVars.sqrtPrice, true, testVars.balance0, fee));
     }
 
-    function testFuzz_Success_getRebalanceParams_InRange_SmallerCurrentRatio(TestVariables memory testVars) public {
+    function testFuzz_Success_getRebalanceParams_InRange_SmallerCurrentRatio(TestVariables memory testVars)
+        public
+        view
+    {
         // Given: Reasonable current price.
         testVars.sqrtPrice = bound(testVars.sqrtPrice, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
 
@@ -260,7 +261,10 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
         assertEq(rebalanceParams.amountIn, amountInWithFee - amountInitiatorFee_);
     }
 
-    function testFuzz_Success_getRebalanceParams_InRange_BiggerCurrentRatio(TestVariables memory testVars) public {
+    function testFuzz_Success_getRebalanceParams_InRange_BiggerCurrentRatio(TestVariables memory testVars)
+        public
+        view
+    {
         // Given: Reasonable current price.
         testVars.sqrtPrice = bound(testVars.sqrtPrice, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
 

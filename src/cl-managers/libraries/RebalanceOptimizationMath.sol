@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { LiquidityAmounts } from "./LiquidityAmounts.sol";
@@ -38,7 +38,7 @@ library RebalanceOptimizationMath {
      * but the sqrtPrice in turn depends on the amountIn and amountOut via the swap calculations.
      * Since both are highly non-linear, this problem is (according to our understanding) not analytically solvable.
      * Therefore we use an iterative approach to find the optimal swap parameters.
-     * The stop criterium is defined when the relative difference between liquidity0 and liquidity1 is below the convergence threshold.
+     * The stop criterion is defined when the relative difference between liquidity0 and liquidity1 is below the convergence threshold.
      * @dev Convergence is not guaranteed, worst case or the transaction reverts, or a non-optimal swap is performed,
      * But then minLiquidity enforces that either enough liquidity is minted or the transaction will revert.
      * @dev We assume constant active liquidity when calculating the swap parameters.
@@ -85,7 +85,7 @@ library RebalanceOptimizationMath {
             (amountIn, amountOut) = _getSwapParamsExact(zeroToOne, fee, usableLiquidity, sqrtPriceOld, sqrtPriceNew);
 
             // Given the new approximated sqrtPriceNew and its swap amounts,
-            // calculate a better approximation for the optimal amountIn and amountOut, that would maximise the liquidity provided
+            // calculate a better approximation for the optimal amountIn and amountOut, that would maximize the liquidity provided
             // (no leftovers of either token0 or token1).
             (stopCondition, amountIn, amountOut) = _approximateOptimalSwapAmounts(
                 zeroToOne, sqrtRatioLower, sqrtRatioUpper, amount0, amount1, amountIn, amountOut, sqrtPriceNew
@@ -101,13 +101,13 @@ library RebalanceOptimizationMath {
     }
 
     /**
-     * @notice Approximates the SqrtPrice after the swap, given an approximation for the amountIn and amountOut that maximise liquidity added.
+     * @notice Approximates the SqrtPrice after the swap, given an approximation for the amountIn and amountOut that maximize liquidity added.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param fee The fee of the pool, with 6 decimals precision.
      * @param usableLiquidity The amount of active liquidity in the pool, at the current tick.
      * @param sqrtPriceOld The SqrtPrice before the swap.
-     * @param amountIn An approximation of the amount of tokenIn, that maximise liquidity added.
-     * @param amountOut An approximation of the amount of tokenOut, that maximise liquidity added.
+     * @param amountIn An approximation of the amount of tokenIn, that maximize liquidity added.
+     * @param amountOut An approximation of the amount of tokenOut, that maximize liquidity added.
      * @return sqrtPriceNew The approximation of the SqrtPrice after the swap.
      */
     function _approximateSqrtPriceNew(
@@ -228,7 +228,7 @@ library RebalanceOptimizationMath {
     }
 
     /**
-     * @notice Approximates the amountIn and amountOut that maximise liquidity added,
+     * @notice Approximates the amountIn and amountOut that maximize liquidity added,
      * given an approximation for the SqrtPrice after the swap and an approximation of the balances of token0 and token1 after the swap.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param sqrtRatioLower The square root price of the lower tick of the liquidity position, with 96 binary precision.
@@ -238,9 +238,9 @@ library RebalanceOptimizationMath {
      * @param amountIn An approximation of the amount of tokenIn, used to calculate the approximated balances after the swap.
      * @param amountOut An approximation of the amount of tokenOut, used to calculate the approximated balances after the swap.
      * @param sqrtPrice An approximation of the SqrtPrice after the swap.
-     * @return converged Bool indicating if the stop criterium of iteration is met.
-     * @return amountIn_ The new approximation of the amount of tokenIn that maximise liquidity added.
-     * @return amountOut_ The new approximation of the amount of amountOut that maximise liquidity added.
+     * @return converged Bool indicating if the stop criterion of iteration is met.
+     * @return amountIn_ The new approximation of the amount of tokenIn that maximize liquidity added.
+     * @return amountOut_ The new approximation of the amount of amountOut that maximize liquidity added.
      */
     function _approximateOptimalSwapAmounts(
         bool zeroToOne,

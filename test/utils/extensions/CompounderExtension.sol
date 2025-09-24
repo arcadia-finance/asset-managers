@@ -2,13 +2,15 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.0;
 
 import { Compounder } from "../../../src/cl-managers/compounders/Compounder.sol";
 import { PositionState } from "../../../src/cl-managers/state/PositionState.sol";
 
 contract CompounderExtension is Compounder {
-    constructor(address arcadiaFactory) Compounder(arcadiaFactory) { }
+    constructor(address owner_, address arcadiaFactory, address routerTrampoline)
+        Compounder(owner_, arcadiaFactory, routerTrampoline)
+    { }
 
     function isPositionManager(address positionManager) public view override returns (bool) { }
 

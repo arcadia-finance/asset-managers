@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { LiquidityAmounts } from "../../../../../src/cl-managers/libraries/LiquidityAmounts.sol";
@@ -47,6 +47,7 @@ contract Burn_UniswapV3_Fuzz_Test is UniswapV3_Fuzz_Test {
 
         // Transfer position to base.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(nonfungiblePositionManager)).transferFrom(users.liquidityProvider, address(base), position.id);
 
         // When: Calling burn.

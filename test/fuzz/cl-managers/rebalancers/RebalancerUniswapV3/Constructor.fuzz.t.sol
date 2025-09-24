@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 import { RebalancerUniswapV3_Fuzz_Test } from "./_RebalancerUniswapV3.fuzz.t.sol";
 import { RebalancerUniswapV3Extension } from "../../../../utils/extensions/RebalancerUniswapV3Extension.sol";
@@ -20,12 +20,13 @@ contract Constructor_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_T
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_Constructor(address arcadiaFactory) public {
-        vm.prank(users.owner);
+    function testFuzz_Success_Constructor(address owner_, address arcadiaFactory, address routerTrampoline_) public {
         RebalancerUniswapV3Extension rebalancer_ = new RebalancerUniswapV3Extension(
-            arcadiaFactory, address(nonfungiblePositionManager), address(uniswapV3Factory)
+            owner_, arcadiaFactory, routerTrampoline_, address(nonfungiblePositionManager), address(uniswapV3Factory)
         );
 
+        assertEq(rebalancer_.owner(), owner_);
         assertEq(address(rebalancer_.ARCADIA_FACTORY()), arcadiaFactory);
+        assertEq(address(rebalancer_.ROUTER_TRAMPOLINE()), routerTrampoline_);
     }
 }

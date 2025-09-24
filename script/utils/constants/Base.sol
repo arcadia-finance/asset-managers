@@ -2,9 +2,13 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.0;
 
 import { ExternalContracts } from "../../../lib/accounts-v2/script/utils/constants/Base.sol";
+
+library SafesAssetManagers {
+    address internal constant GUARDIAN = 0x8546d2a8e0c3C6658e8796FF2Ed3c78A5238c527;
+}
 
 library Slipstream {
     address internal constant FACTORY = 0x5e7BB104d84c7CB9B682AaC2F3d509f5F406809A;

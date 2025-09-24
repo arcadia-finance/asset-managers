@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.30;
 
 import { Compounder } from "./Compounder.sol";
 import { Slipstream } from "../base/Slipstream.sol";
@@ -26,7 +26,9 @@ contract CompounderSlipstream is Compounder, Slipstream {
     ////////////////////////////////////////////////////////////// */
 
     /**
+     * @param owner_ The address of the Owner.
      * @param arcadiaFactory The contract address of the Arcadia Factory.
+     * @param routerTrampoline The contract address of the Router Trampoline.
      * @param positionManager The contract address of the Slipstream Position Manager.
      * @param cLFactory The contract address of the Slipstream Factory.
      * @param poolImplementation The contract address of the Slipstream Pool Implementation.
@@ -35,7 +37,9 @@ contract CompounderSlipstream is Compounder, Slipstream {
      * @param stakedSlipstreamWrapper The contract address of the Staked Slipstream Wrapper.
      */
     constructor(
+        address owner_,
         address arcadiaFactory,
+        address routerTrampoline,
         address positionManager,
         address cLFactory,
         address poolImplementation,
@@ -43,7 +47,7 @@ contract CompounderSlipstream is Compounder, Slipstream {
         address stakedSlipstreamAm,
         address stakedSlipstreamWrapper
     )
-        Compounder(arcadiaFactory)
+        Compounder(owner_, arcadiaFactory, routerTrampoline)
         Slipstream(positionManager, cLFactory, poolImplementation, rewardToken, stakedSlipstreamAm, stakedSlipstreamWrapper)
     { }
 }

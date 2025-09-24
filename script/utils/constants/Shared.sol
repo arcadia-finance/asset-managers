@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.0;
 
 import { ArcadiaAccounts, AssetModules } from "../../../lib/accounts-v2/script/utils/constants/Shared.sol";
 
@@ -13,19 +13,23 @@ library ArcadiaAssetManagers {
 }
 
 library Compounders {
-    address constant SLIPSTREAM = 0x57FAA0BC4C045818d46055001702ad88a704A893;
-    address constant UNISWAP_V3 = 0xaaC2DdDA7B72d76dc1EdDd869Fa5933f9AAb501e;
-    address constant UNISWAP_V4 = 0xc89aaAD8Fc7Be29C461Aef085b2f72269dE69c16;
+    address constant SLIPSTREAM = 0x4694c34d153EE777CC07d01AC433bcC010A20EBd;
+    address constant UNISWAP_V3 = 0x80D3548bc54710d46201D554712E8638fD51326D;
+    address constant UNISWAP_V4 = 0xCfF15E24a453aFAd454533E6D10889A84e2A68e1;
+}
+
+library Helpers {
+    address constant ROUTER_TRAMPOLINE = 0x354dBBa1348985CC952c467b8ddaF5dD07590667;
 }
 
 library Rebalancers {
-    address constant SLIPSTREAM = 0xB20a0D866CC096C334FDF4A43cFc54a580735994;
-    address constant UNISWAP_V3 = 0xB2Dc74DC75B5dECE7cD8Eb7dCF00224F3fD4B26d;
-    address constant UNISWAP_V4 = 0xcF2e1Fe1c81f9Ab6869913bd5518e9461B79af4a;
+    address constant SLIPSTREAM = 0xEfe600366e9847D405f2238cF9196E33780B3A42;
+    address constant UNISWAP_V3 = 0xD8285fC23eFF687B8b618b78d85052f1eD17236E;
+    address constant UNISWAP_V4 = 0xa8676C8c197E12a71AE82a08B02DD9e666312cF1;
 }
 
 library YieldClaimers {
-    address constant SLIPSTREAM = 0x2a07d99eC1140e25DB07283930160d4BDE93d09f;
-    address constant UNISWAP_V3 = 0xc5815c102F0F1D7030E942d993f0BF44fEE66235;
-    address constant UNISWAP_V4 = 0x2eD3Db522944F5F68A2EBc3692d865D2aA2bA34E;
+    address constant SLIPSTREAM = 0x1f75aBF8a24782053B351D9b4EA6d1236ED59105;
+    address constant UNISWAP_V3 = 0x40462e71Effd9974Fee04B6b327B701D663f753e;
+    address constant UNISWAP_V4 = 0x3BC2B398eEEE9807ff76fdb4E11526dE0Ee80cEa;
 }

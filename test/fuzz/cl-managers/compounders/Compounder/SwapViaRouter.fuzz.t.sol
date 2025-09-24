@@ -2,10 +2,9 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.0;
 
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
-import { Compounder } from "../../../../../src/cl-managers/compounders/Compounder.sol";
 import { Compounder_Fuzz_Test } from "./_Compounder.fuzz.t.sol";
 import { RouterMock } from "../../../../utils/mocks/RouterMock.sol";
 import { stdError } from "../../../../../lib/accounts-v2/lib/forge-std/src/StdError.sol";
@@ -52,19 +51,17 @@ contract SwapViaRouter_Compounder_Fuzz_Test is Compounder_Fuzz_Test {
         position.tokens[1] = address(token1);
         position.pool = address(poolUniswap);
 
-        // And: Contract has insufficient balance.
-        balance0 = uint64(bound(balance0, 0, type(uint64).max - 1));
-        amountIn = uint64(bound(amountIn, balance0 + 1, type(uint64).max));
+        // And: Contract has sufficient balance.
+        balance0 = uint64(bound(balance0, 1, type(uint64).max));
+        amountIn = uint64(bound(amountIn, 1, balance0));
         uint256[] memory balances = new uint256[](2);
         balances[0] = balance0;
         balances[1] = balance1;
-
-        // And: Contract has balances..
         deal(address(token0), address(compounder), balance0, true);
         deal(address(token1), address(compounder), balance1, true);
 
-        // And: Router mock has balanceOut.
-        deal(address(token1), address(routerMock), amountOut, true);
+        // And: Router mock does not have balanceOut.
+        amountOut = uint64(bound(amountOut, 1, type(uint64).max));
 
         // When: Calling swapViaRouter.
         // Then: It should revert.
@@ -100,8 +97,6 @@ contract SwapViaRouter_Compounder_Fuzz_Test is Compounder_Fuzz_Test {
         uint256[] memory balances = new uint256[](2);
         balances[0] = balance0;
         balances[1] = balance1;
-
-        // And: Contract has balances..
         deal(address(token0), address(compounder), balance0, true);
         deal(address(token1), address(compounder), balance1, true);
 

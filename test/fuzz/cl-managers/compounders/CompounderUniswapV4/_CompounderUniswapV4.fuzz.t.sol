@@ -2,16 +2,22 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 import { CompounderUniswapV4Extension } from "../../../../utils/extensions/CompounderUniswapV4Extension.sol";
+import { RouterTrampoline } from "../../../../../src/cl-managers/RouterTrampoline.sol";
 import { UniswapV4_Fuzz_Test } from "../../base/UniswapV4/_UniswapV4.fuzz.t.sol";
-import { Utils } from "../../../../../lib/accounts-v2/test/utils/Utils.sol";
 
 /**
  * @notice Common logic needed by all "CompounderUniswapV4" fuzz tests.
  */
 abstract contract CompounderUniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
+    /*////////////////////////////////////////////////////////////////
+                            VARIABLES
+    /////////////////////////////////////////////////////////////// */
+
+    RouterTrampoline internal routerTrampoline;
+
     /*////////////////////////////////////////////////////////////////
                             TEST CONTRACTS
     /////////////////////////////////////////////////////////////// */
@@ -25,9 +31,18 @@ abstract contract CompounderUniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
     function setUp() public virtual override(UniswapV4_Fuzz_Test) {
         UniswapV4_Fuzz_Test.setUp();
 
+        // Deploy Router Trampoline.
+        routerTrampoline = new RouterTrampoline();
+
         // Deploy test contract.
         compounder = new CompounderUniswapV4Extension(
-            address(factory), address(positionManagerV4), address(permit2), address(poolManager), address(weth9)
+            users.owner,
+            address(factory),
+            address(routerTrampoline),
+            address(positionManagerV4),
+            address(permit2),
+            address(poolManager),
+            address(weth9)
         );
     }
 }

@@ -2,13 +2,14 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.0;
 
 import { YieldClaimerSlipstream } from "../../../src/cl-managers/yield-claimers/YieldClaimerSlipstream.sol";
 import { PositionState } from "../../../src/cl-managers/state/PositionState.sol";
 
 contract YieldClaimerSlipstreamExtension is YieldClaimerSlipstream {
     constructor(
+        address owner_,
         address arcadiaFactory,
         address positionManager,
         address cLFactory,
@@ -18,6 +19,7 @@ contract YieldClaimerSlipstreamExtension is YieldClaimerSlipstream {
         address stakedSlipstreamWrapper
     )
         YieldClaimerSlipstream(
+            owner_,
             arcadiaFactory,
             positionManager,
             cLFactory,

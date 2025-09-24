@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 interface IUniswapV3Pool {
-    function liquidity() external view returns (uint128 liquidity);
+    function liquidity() external view returns (uint128 liquidity_);
 
     function slot0()
         external
@@ -25,5 +25,5 @@ interface IUniswapV3Pool {
         bytes calldata data
     ) external returns (int256 amount0, int256 amount1);
 
-    function tickSpacing() external view returns (int24 tickSpacing);
+    function tickSpacing() external view returns (int24 tickSpacing_);
 }
