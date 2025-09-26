@@ -5,7 +5,7 @@
 pragma solidity ^0.8.0;
 
 import { CompounderUniswapV4_Fuzz_Test } from "./_CompounderUniswapV4.fuzz.t.sol";
-import { HookMock } from "../../../../utils/mocks/HookMock.sol";
+import { RebalancerHookMock } from "../../../../utils/mocks/RebalancerHookMock.sol";
 import { IWETH } from "../../../../../src/cl-managers/interfaces/IWETH.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
 import { RouterMock } from "../../../../utils/mocks/RouterMock.sol";
@@ -23,7 +23,7 @@ contract SwapViaRouter_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
                             VARIABLES
     /////////////////////////////////////////////////////////////// */
 
-    HookMock internal strategyHook;
+    RebalancerHookMock internal strategyHook;
     RouterMock internal routerMock;
 
     /* ///////////////////////////////////////////////////////////////

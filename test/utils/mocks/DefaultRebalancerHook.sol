@@ -9,7 +9,7 @@ import { PositionState } from "../../../src/cl-managers/state/PositionState.sol"
 import { StrategyHook } from "../../../src/cl-managers/rebalancers/periphery/StrategyHook.sol";
 import { TickMath } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
-contract DefaultHook is StrategyHook {
+contract DefaultRebalancerHook is StrategyHook {
     using FixedPointMathLib for uint256;
     /* //////////////////////////////////////////////////////////////
                                STORAGE

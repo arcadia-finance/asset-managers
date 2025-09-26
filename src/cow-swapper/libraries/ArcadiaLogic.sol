@@ -30,7 +30,7 @@ library ArcadiaLogic {
         amounts[0] = amount;
         types[0] = 1;
 
-        ActionData memory assetData =
+        ActionData memory withdrawData =
             ActionData({ assets: assets, assetIds: ids, assetAmounts: amounts, assetTypes: types });
 
         // Empty data objects that have to be encoded when calling flashAction(), but that are not used for this specific flash-action.
@@ -39,7 +39,7 @@ library ArcadiaLogic {
         IPermit2.PermitBatchTransferFrom memory permit;
 
         // Encode the actionData.
-        actionData = abi.encode(assetData, transferFromOwner, permit, signature, actionTargetData);
+        actionData = abi.encode(withdrawData, transferFromOwner, permit, signature, actionTargetData);
     }
 
     /**

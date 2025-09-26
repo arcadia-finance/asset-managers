@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.30;
 
 import { ActionData, IActionBase } from "../../lib/accounts-v2/src/interfaces/IActionBase.sol";
 import { ArcadiaLogic } from "./libraries/ArcadiaLogic.sol";
@@ -10,10 +10,13 @@ import { Borrower } from "../../lib/flash-loan-router/src/mixin/Borrower.sol";
 import { ECDSA } from "./libraries/ECDSA.sol";
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { GPv2Order } from "../../lib/cowprotocol/src/contracts/libraries/GPv2Order.sol";
 import { IAccount } from "../interfaces/IAccount.sol";
 import { IArcadiaFactory } from "../interfaces/IArcadiaFactory.sol";
 import { IERC20 } from "../../lib/flash-loan-router/src/vendored/IERC20.sol";
 import { IFlashLoanRouter } from "../../lib/flash-loan-router/src/interface/IFlashLoanRouter.sol";
+import { IGPv2Settlement } from "./interfaces/IGPv2Settlement.sol";
+import { IOrderHook } from "./interfaces/IOrderHook.sol";
 import { SafeApprove } from "../libraries/SafeApprove.sol";
 
 /**
@@ -22,6 +25,7 @@ import { SafeApprove } from "../libraries/SafeApprove.sol";
  */
 contract CowSwapper is IActionBase, Borrower {
     using FixedPointMathLib for uint256;
+    using GPv2Order for GPv2Order.Data;
     using SafeApprove for ERC20;
     using SafeTransferLib for ERC20;
     /* //////////////////////////////////////////////////////////////
@@ -31,18 +35,18 @@ contract CowSwapper is IActionBase, Borrower {
     // The contract address of the Arcadia Factory.
     IArcadiaFactory public immutable ARCADIA_FACTORY;
 
+    // The domain separator used for signing orders.
+    bytes32 public immutable DOMAIN_SEPARATOR;
+
+    // The contract address of the Hooks Trampoline.
+    address public immutable HOOKS_TRAMPOLINE;
+
     // The EIP-1271 magic value.
     bytes4 internal constant MAGIC_VALUE = 0x1626ba7e;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
     ////////////////////////////////////////////////////////////// */
-
-    // The contract address of the Account, used as transient storage.
-    address internal account;
-
-    // Mapping from initiator to account.
-    mapping(address initiator => address account) public initiatorToAccount;
 
     // Mapping from account to account specific information.
     mapping(address account => AccountInfo) public accountInfo;
@@ -55,24 +59,49 @@ contract CowSwapper is IActionBase, Borrower {
 
     // A struct with the account specific parameters.
     struct AccountInfo {
-        // The address of the recipient of the claimed fees.
-        address initiator;
-        // The contract address of the token to swap to.
-        address tokenOut;
-        // The maximum fee charged on the claimed fees of the liquidity position, with 18 decimals precision.
+        // The maximum fee charged on the amountOut by the initiator, with 18 decimals precision.
         uint64 maxSwapFee;
+        // The contract address of the order hook.
+        address orderHook;
     }
+
+    /* //////////////////////////////////////////////////////////////
+                          TRANSIENT STORAGE
+    ////////////////////////////////////////////////////////////// */
+
+    // The contract address of the Account.
+    address internal transient account;
+
+    // The address of the initiator.
+    address internal transient initiator;
+
+    // The fee charged on the amountOut by the initiator, with 18 decimals precision.
+    uint64 internal transient swapFee;
+
+    // The contract address of the token to swap from.
+    address internal transient tokenIn;
+
+    // The amount of tokenIn to swap.
+    uint256 internal transient amountIn;
+
+    // The contract address of the token to swap to.
+    address internal transient tokenOut;
+
+    // The amount of tokenOut to swap to.
+    uint256 internal transient amountOut;
 
     /* //////////////////////////////////////////////////////////////
                                 ERRORS
     ////////////////////////////////////////////////////////////// */
 
-    error InvalidAccount();
+    error InvalidHash();
     error InvalidInitiator();
+    error InvalidOrder();
     error InvalidValue();
     error NotAnAccount();
     error OnlyAccount();
     error OnlyAccountOwner();
+    error OnlyHooksTrampoline();
     error Reentered();
 
     /* //////////////////////////////////////////////////////////////
@@ -83,15 +112,32 @@ contract CowSwapper is IActionBase, Borrower {
     event FeePaid(address indexed account, address indexed receiver, address indexed asset, uint256 amount);
 
     /* //////////////////////////////////////////////////////////////
+                                MODIFIERS
+    ////////////////////////////////////////////////////////////// */
+
+    /**
+     * @dev Throws if called by any address other than the Hooks Trampoline.
+     */
+    modifier onlyHooksTrampoline() {
+        if (msg.sender != HOOKS_TRAMPOLINE) revert OnlyHooksTrampoline();
+        _;
+    }
+
+    /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
     ////////////////////////////////////////////////////////////// */
 
     /**
      * @param arcadiaFactory The contract address of the Arcadia Factory.
      * @param flashLoanRouter The contract address of the flash-loan router.
+     * @param hooksTrampoline The contract address of the hooks trampoline.
      */
-    constructor(address arcadiaFactory, address flashLoanRouter) Borrower(IFlashLoanRouter(flashLoanRouter)) {
+    constructor(address arcadiaFactory, address flashLoanRouter, address hooksTrampoline)
+        Borrower(IFlashLoanRouter(flashLoanRouter))
+    {
         ARCADIA_FACTORY = IArcadiaFactory(arcadiaFactory);
+        DOMAIN_SEPARATOR = IGPv2Settlement(address(settlementContract)).domainSeparator();
+        HOOKS_TRAMPOLINE = hooksTrampoline;
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -101,16 +147,16 @@ contract CowSwapper is IActionBase, Borrower {
     /**
      * @notice Sets the required information for an Account.
      * @param account_ The contract address of the Arcadia Account to set the information for.
-     * @param initiator The address of the initiator.
-     * @param tokenOut The contract address of the token to swap to.
+     * @param initiator_ The address of the initiator.
      * @param maxSwapFee The maximum fee charged on the claimed fees of the liquidity position, with 18 decimals precision.
      * @param metaData_ Custom metadata to be stored with the account.
      */
     function setAccountInfo(
         address account_,
-        address initiator,
-        address tokenOut,
+        address initiator_,
         uint256 maxSwapFee,
+        address orderHook,
+        bytes calldata hookData,
         bytes calldata metaData_
     ) external {
         if (account != address(0)) revert Reentered();
@@ -120,30 +166,13 @@ contract CowSwapper is IActionBase, Borrower {
 
         if (maxSwapFee > 1e18) revert InvalidValue();
 
-        ownerToAccountToInitiator[owner][account_] = initiator;
-        accountInfo[account_] =
-            AccountInfo({ initiator: initiator, tokenOut: tokenOut, maxSwapFee: uint64(maxSwapFee) });
+        ownerToAccountToInitiator[owner][account_] = initiator_;
+        accountInfo[account_] = AccountInfo({ maxSwapFee: uint64(maxSwapFee), orderHook: orderHook });
         metaData[account_] = metaData_;
 
-        emit AccountInfoSet(account_, initiator);
-    }
+        IOrderHook(orderHook).setHook(account_, hookData);
 
-    /* ///////////////////////////////////////////////////////////////
-                           INITIATOR LOGIC
-    /////////////////////////////////////////////////////////////// */
-
-    /**
-     * @notice Sets per Initiator the next account the swap will be executed for.
-     * @param account_ The contract address of the Arcadia Account.
-     * @dev The account we are swapping for is not part of the signature, and different accounts can have the same initiator.
-     * Therefore the Initator has to set for which Account the next swap will be executed for.
-     * Otherwise a malicious solver can modify the account to swap for.
-     * @dev Each Initiator can only have one pending swap at a time.
-     */
-    function setInitiatorToAccount(address account_) external {
-        if (account != address(0)) revert Reentered();
-
-        initiatorToAccount[msg.sender] = account_;
+        emit AccountInfoSet(account_, initiator_);
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -153,11 +182,14 @@ contract CowSwapper is IActionBase, Borrower {
     /**
      * @notice Executes a CoW Swap for an Arcadia Account.
      * @param account_ The contract address of the account.
-     * @param tokenIn The contract address of the token to swap from.
-     * @param amount The amount of tokenIn to swap.
+     * @param tokenIn_ The contract address of the token to swap from.
+     * @param amountIn_ The amount of tokenIn to swap.
      * @param callBackData The calldata to be passed back to the flash-loan router.
+     * @dev Only one transaction at a time can be included per "flashLoanAndSettle()"
+     * @dev The check that the solver passed the correct input parameters is done via the signature validation in "isValidSignature()".
+     * Both the order parameters (tokenIn_ and amountIn_) as the account_ are included in the messageHash.
      */
-    function triggerFlashLoan(address account_, IERC20 tokenIn, uint256 amount, bytes calldata callBackData)
+    function triggerFlashLoan(address account_, IERC20 tokenIn_, uint256 amountIn_, bytes calldata callBackData)
         internal
         override
         onlyRouter
@@ -166,20 +198,22 @@ contract CowSwapper is IActionBase, Borrower {
         if (account != address(0)) revert Reentered();
         account = account_;
 
-        // If the Initiator is non zero, we know account_ is an actual Arcadia Account set by its current owner.
-        address initiator = ownerToAccountToInitiator[IAccount(account_).owner()][account_];
-        if (initiator == address(0)) revert InvalidInitiator();
+        // If the Initiator is non zero, we know account_ is an actual Arcadia Account,
+        // and the initiator is set by its current owner.
+        // If a malicious solver modifies the account, the initiator signature will no longer be valid.
+        address initiator_ = ownerToAccountToInitiator[IAccount(account_).owner()][account_];
+        if (initiator_ == address(0)) revert InvalidInitiator();
 
-        // Since the account provided by the solver is not part of the signature,
-        // we still have to check that it matches the Account set by the initiator before the swap.
-        // This ensures that a malicious solver cannot modify the account to swap for.
-        if (initiatorToAccount[initiator] != account_) revert InvalidAccount();
+        // Store transient storage.
+        initiator = initiator_;
+        tokenIn = address(tokenIn_);
+        amountIn = amountIn_;
 
         // No need to approve vault relayer to transfer tokenIn,
         // since settlement contract will call approve() on the tokenIn in a driver interaction.
 
         // Encode data for the flash-action.
-        bytes memory actionData = ArcadiaLogic._encodeAction(address(tokenIn), amount, callBackData);
+        bytes memory actionData = ArcadiaLogic._encodeAction(address(tokenIn_), amountIn_, callBackData);
 
         // Call flashAction() with this contract as actionTarget.
         IAccount(account_).flashAction(address(this), actionData);
@@ -201,26 +235,65 @@ contract CowSwapper is IActionBase, Borrower {
 
         // Call callback to flash loan router, this will settle the swap.
         flashLoanCallBack(actionTargetData);
+        // After the swap, send the bought tokens back to the account.
 
-        // Cache accountInfo.
-        AccountInfo memory accountInfo_ = accountInfo[msg.sender];
+        // Cache tokenOut.
+        address tokenOut_ = tokenOut;
 
-        // Calculate token amounts.
-        uint256 balance = ERC20(accountInfo_.tokenOut).balanceOf(address(this));
-        uint256 fee = balance.mulDivDown(accountInfo_.maxSwapFee, 1e18);
-        uint256 amountOut = balance - fee;
+        // Calculate token amounts to be send to Account and initiator.
+        // ToDo: Is check is that balance >= amountOut necessary?
+        // Think not since this is enforced by CoW Swap?
+        uint256 balance = ERC20(tokenOut_).balanceOf(address(this));
+        uint256 fee = balance.mulDivDown(swapFee, 1e18);
+        uint256 amount = balance - fee;
 
         // Send the fee to the initiator.
         if (fee > 0) {
-            ERC20(accountInfo_.tokenOut).safeTransfer(accountInfo_.initiator, fee);
-            emit FeePaid(msg.sender, accountInfo_.initiator, accountInfo_.tokenOut, fee);
+            address initiator_ = initiator;
+            ERC20(tokenOut_).safeTransfer(initiator_, fee);
+            emit FeePaid(msg.sender, initiator_, tokenOut_, fee);
         }
 
         // Approve tokenOut to be deposited into the account.
-        ERC20(accountInfo_.tokenOut).safeApproveWithRetry(msg.sender, amountOut);
+        ERC20(tokenOut_).safeApproveWithRetry(msg.sender, amount);
 
         // Encode deposit data for the flash-action.
-        depositData = ArcadiaLogic._encodeDeposit(accountInfo_.tokenOut, amountOut);
+        depositData = ArcadiaLogic._encodeDeposit(tokenOut_, amount);
+    }
+
+    /* ///////////////////////////////////////////////////////////////
+                            PRE SWAP HOOK
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Hook called before the swap to store initiator parameters (since they could not be passed during triggerFlashLoan).
+     * @param swapFee_ The fee charged on the amountOut by the initiator, with 18 decimals precision.
+     * @param tokenOut_ The contract address of the token to swap to.
+     * @param amountOut_ The amount of tokenOut to swap to.
+     * @param signature Signature encoded as (bytes32 r, bytes32 s, uint8 v).
+     * @dev Only for swapFee_ we need to check that the solver passed the correct value via a signature from the initiator.
+     * The check for the other input parameters is done via the signature validation in "isValidSignature()".
+     * Both tokenOut_ and amountOut_ are part of the order parameters which are included in the messageHash.
+     */
+    function beforeSwap(uint64 swapFee_, address tokenOut_, uint256 amountOut_, bytes memory signature)
+        external
+        onlyHooksTrampoline
+    {
+        // Validate initiator parameters.
+        // tokenOut_ and amountOut_ are later validated via the OrderHook.
+        if (swapFee > accountInfo[account].maxSwapFee) revert InvalidValue();
+
+        // Validate Signature.
+        // ECDSA.recoverSigner() will never return the zero address as signer (reverts instead).
+        // Hence if the equality holds, the "initiator" was non-zero, and "account" and "initiator" were verified during "triggerFlashLoan()".
+        // No need to check tokenOut_ amountOut_ yet, since those are anyway validated via the signature during "isValidSignature()".
+        bytes32 hash_ = keccak256(abi.encode(swapFee_));
+        if (ECDSA.recoverSigner(hash_, signature) != initiator) revert InvalidInitiator();
+
+        // Store order related state.
+        tokenOut = tokenOut_;
+        swapFee = swapFee_;
+        amountOut = amountOut_;
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -229,19 +302,30 @@ contract CowSwapper is IActionBase, Borrower {
 
     /**
      * @notice Verifies according EIP-1271 that the signer is the initiator set for the Arcadia Account.
-     * @param hash_ Hash of message that was signed.
-     * @param signature  Signature encoded as (bytes32 r, bytes32 s, uint8 v).
+     * @param orderHash Hash of the CoW Swap order.
+     * @param verificationData Encoded data required for verification of the swap.
      * @return magicValue The EIP-1271 magic value.
      */
-    function isValidSignature(bytes32 hash_, bytes calldata signature) external view returns (bytes4) {
-        // If the initiator is non zero, we know that an account was set (hence triggerFlashLoan() was called)
-        // and account is an actual Arcadia Account.
-        address initiator = accountInfo[account].initiator;
+    function isValidSignature(bytes32 orderHash, bytes calldata verificationData) external view returns (bytes4) {
+        // Decode verificationData.
+        (bytes memory signature, GPv2Order.Data memory order) = abi.decode(verificationData, (bytes, GPv2Order.Data));
 
-        // Recover the signer of the hash.
+        // Cache Account.
+        address account_ = account;
+
+        // Validate order.
+        if (
+            address(order.sellToken) != tokenIn || order.sellAmount != amountIn || address(order.buyToken) != tokenOut
+                || order.buyAmount != amountOut
+        ) revert InvalidValue();
+        if (orderHash != order.hash(DOMAIN_SEPARATOR)) revert InvalidHash();
+        if (!IOrderHook(accountInfo[account_].orderHook).isValidOrder(account_, order)) revert InvalidOrder();
+
+        // Validate Signature.
         // ECDSA.recoverSigner() will never return the zero address as signer (reverts instead).
-        // Hence if the equality holds, we know that it is the correct initiator who signed the message.
-        if (ECDSA.recoverSigner(hash_, signature) != initiator) revert InvalidInitiator();
+        // Hence if the equality holds, the "initiator" was non-zero, and "account" and "initiator" were verified during "triggerFlashLoan()".
+        bytes32 messageHash = keccak256(abi.encode(orderHash, account_));
+        if (ECDSA.recoverSigner(messageHash, signature) != initiator) revert InvalidInitiator();
 
         // If signature is valid, return EIP-1271 magic value.
         return MAGIC_VALUE;

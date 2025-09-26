@@ -4,7 +4,7 @@
  */
 pragma solidity ^0.8.0;
 
-import { HookMock } from "../../../../utils/mocks/HookMock.sol";
+import { RebalancerHookMock } from "../../../../utils/mocks/RebalancerHookMock.sol";
 import { Rebalancer } from "../../../../../src/cl-managers/rebalancers/Rebalancer.sol";
 import { Rebalancer_Fuzz_Test } from "./_Rebalancer.fuzz.t.sol";
 
@@ -16,7 +16,7 @@ contract ExecuteAction_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
                               TEST CONTRACTS
     /////////////////////////////////////////////////////////////// */
 
-    HookMock internal strategyHook;
+    RebalancerHookMock internal strategyHook;
 
     /* ///////////////////////////////////////////////////////////////
                               SETUP
@@ -25,7 +25,7 @@ contract ExecuteAction_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     function setUp() public override {
         Rebalancer_Fuzz_Test.setUp();
 
-        strategyHook = new HookMock();
+        strategyHook = new RebalancerHookMock();
     }
 
     /*//////////////////////////////////////////////////////////////
