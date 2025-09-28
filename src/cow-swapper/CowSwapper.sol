@@ -10,6 +10,7 @@ import { Borrower } from "../../lib/flash-loan-router/src/mixin/Borrower.sol";
 import { ECDSA } from "./libraries/ECDSA.sol";
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
+import { Guardian } from "../guardian/Guardian.sol";
 import { GPv2Order } from "../../lib/cowprotocol/src/contracts/libraries/GPv2Order.sol";
 import { IAccount } from "../interfaces/IAccount.sol";
 import { IArcadiaFactory } from "../interfaces/IArcadiaFactory.sol";
@@ -23,7 +24,7 @@ import { SafeApprove } from "../libraries/SafeApprove.sol";
  * @title CoW Swapper for Arcadia Accounts.
  * @author Pragma Labs
  */
-contract CowSwapper is IActionBase, Borrower {
+contract CowSwapper is IActionBase, Borrower, Guardian {
     using FixedPointMathLib for uint256;
     using GPv2Order for GPv2Order.Data;
     using SafeApprove for ERC20;
@@ -128,12 +129,14 @@ contract CowSwapper is IActionBase, Borrower {
     ////////////////////////////////////////////////////////////// */
 
     /**
+     * @param owner_ The address of the Owner.
      * @param arcadiaFactory The contract address of the Arcadia Factory.
      * @param flashLoanRouter The contract address of the flash-loan router.
      * @param hooksTrampoline The contract address of the hooks trampoline.
      */
-    constructor(address arcadiaFactory, address flashLoanRouter, address hooksTrampoline)
+    constructor(address owner_, address arcadiaFactory, address flashLoanRouter, address hooksTrampoline)
         Borrower(IFlashLoanRouter(flashLoanRouter))
+        Guardian(owner_)
     {
         ARCADIA_FACTORY = IArcadiaFactory(arcadiaFactory);
         DOMAIN_SEPARATOR = IGPv2Settlement(address(settlementContract)).domainSeparator();
