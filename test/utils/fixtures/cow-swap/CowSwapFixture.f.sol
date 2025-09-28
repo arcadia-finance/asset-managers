@@ -80,7 +80,9 @@ contract CowSwapFixture is Test {
 
         // Set the solver.
         solver = makeAddr("solver");
-        vm.prank(manager);
+        vm.startPrank(manager);
         authenticator.addSolver(solver);
+        authenticator.addSolver(address(flashLoanRouter));
+        vm.stopPrank();
     }
 }

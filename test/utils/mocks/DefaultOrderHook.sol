@@ -46,8 +46,8 @@ contract DefaultOrderHook is OrderHook {
      * @param order The CoW Swap order.
      * @return Bool indicating if the order is valid.
      */
-    function isValidOrder(address, GPv2Order.Data memory order) external pure override returns (bool) {
-        if (order.receiver != address(0)) return false;
+    function isValidOrder(address, GPv2Order.Data memory order) external view override returns (bool) {
+        if (order.receiver != msg.sender) return false;
         if (order.feeAmount > 0) return false;
         if (order.kind != GPv2Order.KIND_SELL) return false;
         if (order.partiallyFillable) return false;

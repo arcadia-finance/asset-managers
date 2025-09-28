@@ -286,6 +286,7 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
         // tokenOut_ and amountOut_ are later validated via the OrderHook.
         if (swapFee > accountInfo[account].maxSwapFee) revert InvalidValue();
 
+        // ToDo: use non replayable signing scheme
         // Validate Signature.
         // ECDSA.recoverSigner() will never return the zero address as signer (reverts instead).
         // Hence if the equality holds, the "initiator" was non-zero, and "account" and "initiator" were verified during "triggerFlashLoan()".
@@ -311,7 +312,7 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
      */
     function isValidSignature(bytes32 orderHash, bytes calldata verificationData) external view returns (bytes4) {
         // Decode verificationData.
-        (bytes memory signature, GPv2Order.Data memory order) = abi.decode(verificationData, (bytes, GPv2Order.Data));
+        (GPv2Order.Data memory order, bytes memory signature) = abi.decode(verificationData, (GPv2Order.Data, bytes));
 
         // Cache Account.
         address account_ = account;
