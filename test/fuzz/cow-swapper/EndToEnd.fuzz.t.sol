@@ -90,14 +90,28 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
             callData: abi.encodeCall(Borrower.approve, (IERC20(address(token0)), address(vaultRelayer), amountIn))
         });
 
+        GPv2Order.Data memory order = GPv2Order.Data({
+            sellToken: token0_,
+            buyToken: token1_,
+            receiver: address(cowSwapper),
+            sellAmount: amountIn,
+            buyAmount: amountOut,
+            validTo: type(uint32).max,
+            appData: bytes32(0),
+            feeAmount: 0,
+            kind: GPv2Order.KIND_SELL,
+            partiallyFillable: false,
+            sellTokenBalance: GPv2Order.BALANCE_ERC20,
+            buyTokenBalance: GPv2Order.BALANCE_ERC20
+        });
+
         {
+            bytes memory signature = getSignature(address(account), swapFee, order, initiatorPrivateKey);
             HooksTrampoline.Hook[] memory hooks = new HooksTrampoline.Hook[](1);
             hooks[0] = HooksTrampoline.Hook({
                 target: address(cowSwapper),
-                callData: abi.encodeCall(
-                    cowSwapper.beforeSwap, (swapFee, address(token1), amountOut, getSignature(swapFee, initiatorPrivateKey))
-                ),
-                gasLimit: 10_000
+                callData: abi.encodeCall(cowSwapper.beforeSwap, (swapFee, order, signature)),
+                gasLimit: 12_000
             });
             interactions[0][1] = ICowSettlement.Interaction({
                 target: address(hooksTrampoline),
@@ -117,21 +131,6 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
             callData: abi.encodeCall(routerMock.swapAssets, (address(token0), address(token1), amountIn, amountOut))
         });
 
-        GPv2Order.Data memory order = GPv2Order.Data({
-            sellToken: token0_,
-            buyToken: token1_,
-            receiver: address(cowSwapper),
-            sellAmount: amountIn,
-            buyAmount: amountOut,
-            validTo: type(uint32).max,
-            appData: bytes32(0),
-            feeAmount: 0,
-            kind: GPv2Order.KIND_SELL,
-            partiallyFillable: false,
-            sellTokenBalance: GPv2Order.BALANCE_ERC20,
-            buyTokenBalance: GPv2Order.BALANCE_ERC20
-        });
-
         bytes memory settlement;
         {
             address[] memory tokens = new address[](2);
@@ -142,7 +141,6 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
             clearingPrices[0] = order.buyAmount;
             clearingPrices[1] = order.sellAmount;
 
-            bytes memory signature = getSignature(order, address(account), initiatorPrivateKey);
             ICowSettlement.Trade[] memory trades = new ICowSettlement.Trade[](1);
             trades[0] = ICowSettlement.Trade(
                 0,
@@ -155,7 +153,7 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
                 order.feeAmount,
                 packFlags(),
                 order.sellAmount,
-                abi.encodePacked(address(cowSwapper), abi.encode(order, signature))
+                abi.encodePacked(address(cowSwapper), bytes(""))
             );
 
             settlement = abi.encodeCall(ICowSettlement.settle, (tokens, clearingPrices, trades, interactions));
@@ -182,17 +180,12 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         flashLoanRouter.flashLoanAndSettle(loans, settlement);
     }
 
-    function getSignature(uint256 swapFee, uint256 privateKey) public pure returns (bytes memory sig) {
-        bytes32 messageHash = keccak256(abi.encode(swapFee));
-        sig = getSignature(messageHash, privateKey);
-    }
-
-    function getSignature(GPv2Order.Data memory order, address account_, uint256 privateKey)
+    function getSignature(address account_, uint256 swapFee, GPv2Order.Data memory order, uint256 privateKey)
         public
         view
         returns (bytes memory sig)
     {
-        bytes32 messageHash = keccak256(abi.encode(order.hash(cowSwapper.DOMAIN_SEPARATOR()), account_));
+        bytes32 messageHash = keccak256(abi.encode(account_, swapFee, order.hash(cowSwapper.DOMAIN_SEPARATOR())));
         sig = getSignature(messageHash, privateKey);
     }
 

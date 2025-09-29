@@ -6,7 +6,7 @@ pragma solidity ^0.8.30;
 
 import { ActionData, IActionBase } from "../../lib/accounts-v2/src/interfaces/IActionBase.sol";
 import { ArcadiaLogic } from "./libraries/ArcadiaLogic.sol";
-import { Borrower } from "../../lib/flash-loan-router/src/mixin/Borrower.sol";
+import { Borrower } from "./vendored/Borrower.sol";
 import { ECDSA } from "./libraries/ECDSA.sol";
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
@@ -33,8 +33,8 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
                                 CONSTANTS
     ////////////////////////////////////////////////////////////// */
 
-    // The contract address of the Arcadia Factory.
-    IArcadiaFactory public immutable ARCADIA_FACTORY;
+    // The EIP-1271 magic value.
+    bytes4 internal constant MAGIC_VALUE = 0x1626ba7e;
 
     // The domain separator used for signing orders.
     bytes32 public immutable DOMAIN_SEPARATOR;
@@ -42,8 +42,11 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
     // The contract address of the Hooks Trampoline.
     address public immutable HOOKS_TRAMPOLINE;
 
-    // The EIP-1271 magic value.
-    bytes4 internal constant MAGIC_VALUE = 0x1626ba7e;
+    // The contract address of the vault relayer.
+    address public immutable VAULT_RELAYER;
+
+    // The contract address of the Arcadia Factory.
+    IArcadiaFactory public immutable ARCADIA_FACTORY;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
@@ -72,34 +75,36 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
 
     // The contract address of the Account.
     address internal transient account;
-
     // The address of the initiator.
     address internal transient initiator;
 
     // The fee charged on the amountOut by the initiator, with 18 decimals precision.
     uint64 internal transient swapFee;
 
-    // The contract address of the token to swap from.
+    // The contract address of the token to swap from (sellToken).
     address internal transient tokenIn;
-
-    // The amount of tokenIn to swap.
-    uint256 internal transient amountIn;
-
-    // The contract address of the token to swap to.
+    // The contract address of the token to swap to (buyToken).
     address internal transient tokenOut;
 
-    // The amount of tokenOut to swap to.
+    // The amount of tokenIn to swap (sellAmount).
+    uint256 internal transient amountIn;
+    // The amount of tokenOut to swap to (buyAmount).
     uint256 internal transient amountOut;
+
+    // The order hash.
+    bytes32 internal transient orderHash;
 
     /* //////////////////////////////////////////////////////////////
                                 ERRORS
     ////////////////////////////////////////////////////////////// */
 
+    error InsufficientBalance();
     error InvalidHash();
     error InvalidInitiator();
     error InvalidOrder();
     error InvalidValue();
     error NotAnAccount();
+    error MissingSignatureVerification();
     error OnlyAccount();
     error OnlyAccountOwner();
     error OnlyHooksTrampoline();
@@ -141,6 +146,7 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
         ARCADIA_FACTORY = IArcadiaFactory(arcadiaFactory);
         DOMAIN_SEPARATOR = IGPv2Settlement(address(settlementContract)).domainSeparator();
         HOOKS_TRAMPOLINE = hooksTrampoline;
+        VAULT_RELAYER = IGPv2Settlement(address(settlementContract)).vaultRelayer();
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -188,9 +194,10 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
      * @param tokenIn_ The contract address of the token to swap from.
      * @param amountIn_ The amount of tokenIn to swap.
      * @param callBackData The calldata to be passed back to the flash-loan router.
-     * @dev Only one transaction at a time can be included per "flashLoanAndSettle()"
-     * @dev The check that the solver passed the correct input parameters is done via the signature validation in "isValidSignature()".
+     * @dev Only one account at a time can be included per "flashLoanAndSettle()"
+     * @dev The check that the solver passed the correct input parameters is done via the signature validation in "beforeSwap()".
      * Both the order parameters (tokenIn_ and amountIn_) as the account_ are included in the messageHash.
+     * If a malicious solver modifies the input parameters, the initiator signature will no longer be valid.
      */
     function triggerFlashLoan(address account_, IERC20 tokenIn_, uint256 amountIn_, bytes calldata callBackData)
         internal
@@ -203,7 +210,6 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
 
         // If the Initiator is non zero, we know account_ is an actual Arcadia Account,
         // and the initiator is set by its current owner.
-        // If a malicious solver modifies the account, the initiator signature will no longer be valid.
         address initiator_ = ownerToAccountToInitiator[IAccount(account_).owner()][account_];
         if (initiator_ == address(0)) revert InvalidInitiator();
 
@@ -211,9 +217,6 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
         initiator = initiator_;
         tokenIn = address(tokenIn_);
         amountIn = amountIn_;
-
-        // No need to approve vault relayer to transfer tokenIn,
-        // since settlement contract will call approve() on the tokenIn in a driver interaction.
 
         // Encode data for the flash-action.
         bytes memory actionData = ArcadiaLogic._encodeAction(address(tokenIn_), amountIn_, callBackData);
@@ -227,26 +230,35 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
 
     /**
      * @notice Callback function called by the Arcadia Account during the flashAction.
-     * @param actionTargetData A bytes object containing the initiator and initiatorParams.
-     * @return depositData A struct with the asset data of the Liquidity Position and with the leftovers after mint, if any.
-     * @dev The Liquidity Position is already transferred to this contract before executeAction() is called.
-     * @dev When rebalancing we will burn the current Liquidity Position and mint a new one with a new tokenId.
+     * @param callBackData A bytes object containing callBack data.
+     * @return depositData A struct with the data to deposit the bought tokens in the account.
      */
-    function executeAction(bytes calldata actionTargetData) external override returns (ActionData memory depositData) {
+    function executeAction(bytes calldata callBackData) external override returns (ActionData memory depositData) {
         // Caller should be the Account, provided as input in triggerFlashLoan().
         if (msg.sender != account) revert OnlyAccount();
 
-        // Call callback to flash loan router, this will settle the swap.
-        flashLoanCallBack(actionTargetData);
+        // Approve the vault relayer to transfer tokenIn.
+        address tokenIn_ = tokenIn;
+        ERC20(tokenIn_).safeApproveWithRetry(VAULT_RELAYER, amountIn);
+
+        // Callback to flash loan router, this will settle the swap.
+        flashLoanCallBack(callBackData);
         // After the swap, send the bought tokens back to the account.
 
-        // Cache tokenOut.
-        address tokenOut_ = tokenOut;
+        // Verify that "isValidSignature()" was called.
+        // A malicious solver could modify the EIP-1271 signature, skipping the check that the orderHash is correct.
+        // If isValidSignature() would be skipped, tokenIn would not be transferred from this contract to the vault relayer,
+        // and the approval would still be non-zero.
+        if (ERC20(tokenIn_).allowance(address(this), VAULT_RELAYER) > 0) {
+            revert MissingSignatureVerification();
+        }
 
         // Calculate token amounts to be send to Account and initiator.
-        // ToDo: Is check is that balance >= amountOut necessary?
+        // ToDo: Is check that balance >= amountOut necessary?
         // Think not since this is enforced by CoW Swap?
+        address tokenOut_ = tokenOut;
         uint256 balance = ERC20(tokenOut_).balanceOf(address(this));
+        if (balance < amountOut) revert InsufficientBalance();
         uint256 fee = balance.mulDivDown(swapFee, 1e18);
         uint256 amount = balance - fee;
 
@@ -271,33 +283,40 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
     /**
      * @notice Hook called before the swap to store initiator parameters (since they could not be passed during triggerFlashLoan).
      * @param swapFee_ The fee charged on the amountOut by the initiator, with 18 decimals precision.
-     * @param tokenOut_ The contract address of the token to swap to.
-     * @param amountOut_ The amount of tokenOut to swap to.
+     * @param order The CoW Swap order.
      * @param signature Signature encoded as (bytes32 r, bytes32 s, uint8 v).
-     * @dev Only for swapFee_ we need to check that the solver passed the correct value via a signature from the initiator.
-     * The check for the other input parameters is done via the signature validation in "isValidSignature()".
-     * Both tokenOut_ and amountOut_ are part of the order parameters which are included in the messageHash.
+     * @dev There is no guarantee the solver includes the "beforeSwap()" hook in the settlement.
+     * But if "beforeSwap()" would not be called during the settlement, then "isValidSignature()" and/or "executeAction()" will revert,
+     * since the order hash and tokenOut will not be set.
      */
-    function beforeSwap(uint64 swapFee_, address tokenOut_, uint256 amountOut_, bytes memory signature)
+    function beforeSwap(uint64 swapFee_, GPv2Order.Data memory order, bytes memory signature)
         external
         onlyHooksTrampoline
     {
-        // Validate initiator parameters.
-        // tokenOut_ and amountOut_ are later validated via the OrderHook.
-        if (swapFee > accountInfo[account].maxSwapFee) revert InvalidValue();
+        // Cache Account.
+        address account_ = account;
 
-        // ToDo: use non replayable signing scheme
+        // Validate swapFee.
+        if (swapFee > accountInfo[account_].maxSwapFee) revert InvalidValue();
+
+        // Validate order.
+        if (address(order.sellToken) != tokenIn || order.sellAmount != amountIn) revert InvalidValue();
+        if (!IOrderHook(accountInfo[account_].orderHook).isValidOrder(account_, order)) revert InvalidOrder();
+
         // Validate Signature.
         // ECDSA.recoverSigner() will never return the zero address as signer (reverts instead).
         // Hence if the equality holds, the "initiator" was non-zero, and "account" and "initiator" were verified during "triggerFlashLoan()".
-        // No need to check tokenOut_ amountOut_ yet, since those are anyway validated via the signature during "isValidSignature()".
-        bytes32 hash_ = keccak256(abi.encode(swapFee_));
-        if (ECDSA.recoverSigner(hash_, signature) != initiator) revert InvalidInitiator();
+        // ToDo: Check if we can set appData, or if the solver overwrites it, if so we need to only pass the full order in "isValidSignature()",
+        // in which case we have to provide two signatures in both "triggerFlashLoan()" and "isValidSignature()".
+        bytes32 orderHash_ = order.hash(DOMAIN_SEPARATOR);
+        bytes32 messageHash = keccak256(abi.encode(account_, swapFee_, orderHash_));
+        if (ECDSA.recoverSigner(messageHash, signature) != initiator) revert InvalidInitiator();
 
-        // Store order related state.
-        tokenOut = tokenOut_;
+        // Store transient state.
         swapFee = swapFee_;
-        amountOut = amountOut_;
+        tokenOut = address(order.buyToken);
+        amountOut = order.buyAmount;
+        orderHash = orderHash_;
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -305,33 +324,20 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Verifies according EIP-1271 that the signer is the initiator set for the Arcadia Account.
-     * @param orderHash Hash of the CoW Swap order.
-     * @param verificationData Encoded data required for verification of the swap.
+     * @notice Verifies EIP-1271 signature.
+     * @param orderHash_ Hash of the CoW Swap order.
+     * param signature The EIP-1271 signature minus the first 20 bytes (which are the address of the account).
      * @return magicValue The EIP-1271 magic value.
+     * @dev There is no guarantee the solver includes a call to "isValidSignature()".
+     * A malicious solver could modify the signature, skipping the check that the orderHash is correct.
+     * If "isValidSignature()" would be skipped, the transaction will revert during "executeAction()",
+     * where we explicitly check that this function is called.
      */
-    function isValidSignature(bytes32 orderHash, bytes calldata verificationData) external view returns (bytes4) {
-        // Decode verificationData.
-        (GPv2Order.Data memory order, bytes memory signature) = abi.decode(verificationData, (GPv2Order.Data, bytes));
+    function isValidSignature(bytes32 orderHash_, bytes calldata) external view returns (bytes4) {
+        // Validate order hash.
+        if (orderHash != orderHash_) revert InvalidHash();
 
-        // Cache Account.
-        address account_ = account;
-
-        // Validate order.
-        if (
-            address(order.sellToken) != tokenIn || order.sellAmount != amountIn || address(order.buyToken) != tokenOut
-                || order.buyAmount != amountOut
-        ) revert InvalidValue();
-        if (orderHash != order.hash(DOMAIN_SEPARATOR)) revert InvalidHash();
-        if (!IOrderHook(accountInfo[account_].orderHook).isValidOrder(account_, order)) revert InvalidOrder();
-
-        // Validate Signature.
-        // ECDSA.recoverSigner() will never return the zero address as signer (reverts instead).
-        // Hence if the equality holds, the "initiator" was non-zero, and "account" and "initiator" were verified during "triggerFlashLoan()".
-        bytes32 messageHash = keccak256(abi.encode(orderHash, account_));
-        if (ECDSA.recoverSigner(messageHash, signature) != initiator) revert InvalidInitiator();
-
-        // If signature is valid, return EIP-1271 magic value.
+        // If order hash is valid, return EIP-1271 magic value.
         return MAGIC_VALUE;
     }
 }

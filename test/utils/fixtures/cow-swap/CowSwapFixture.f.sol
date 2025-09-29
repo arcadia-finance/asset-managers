@@ -4,8 +4,6 @@
  */
 pragma solidity ^0.8.0;
 
-import { ERC1967Proxy } from
-    "../../../../lib/accounts-v2/lib/openzeppelin-contracts-v4.9/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { FlashLoanRouter, ICowSettlement } from "../../../../lib/flash-loan-router/src/FlashLoanRouter.sol";
 import { GPv2AllowListAuthentication } from "../../../../lib/cowprotocol/src/contracts/GPv2AllowListAuthentication.sol";
 import { GPv2Settlement, IVault } from "../../../../lib/cowprotocol/src/contracts/GPv2Settlement.sol";

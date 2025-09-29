@@ -18,6 +18,7 @@ contract HooksTrampoline {
     /// Protocol settlement contract.
     error NotASettlement();
 
+    /// forge-lint: disable-next-item(screaming-snake-case-immutable)
     /// @dev The address of the CoW Protocol settlement contract.
     address public immutable settlement;
 
