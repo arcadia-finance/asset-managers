@@ -111,7 +111,7 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
             hooks[0] = HooksTrampoline.Hook({
                 target: address(cowSwapper),
                 callData: abi.encodeCall(cowSwapper.beforeSwap, (swapFee, order, signature)),
-                gasLimit: 12_000
+                gasLimit: 40_000
             });
             interactions[0][1] = ICowSettlement.Interaction({
                 target: address(hooksTrampoline),

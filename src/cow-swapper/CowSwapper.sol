@@ -48,6 +48,9 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
     // The contract address of the Arcadia Factory.
     IArcadiaFactory public immutable ARCADIA_FACTORY;
 
+    // Mapping keeping track of signed messages.
+    mapping(address initiator => mapping(bytes32 messageHash => bool)) public signed;
+
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
     ////////////////////////////////////////////////////////////// */
@@ -102,6 +105,7 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
     error InvalidHash();
     error InvalidInitiator();
     error InvalidOrder();
+    error ReplayedSignature();
     error InvalidValue();
     error NotAnAccount();
     error MissingSignatureVerification();
@@ -295,6 +299,7 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
     {
         // Cache Account.
         address account_ = account;
+        address initiator_ = initiator;
 
         // Validate swapFee.
         if (swapFee > accountInfo[account_].maxSwapFee) revert InvalidValue();
@@ -310,7 +315,11 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
         // in which case we have to provide two signatures in both "triggerFlashLoan()" and "isValidSignature()".
         bytes32 orderHash_ = order.hash(DOMAIN_SEPARATOR);
         bytes32 messageHash = keccak256(abi.encode(account_, swapFee_, orderHash_));
-        if (ECDSA.recoverSigner(messageHash, signature) != initiator) revert InvalidInitiator();
+        if (signed[initiator_][messageHash]) revert ReplayedSignature();
+        if (ECDSA.recoverSigner(messageHash, signature) != initiator_) revert InvalidInitiator();
+
+        // Avoid replay attacks.
+        signed[initiator_][messageHash] = true;
 
         // Store transient state.
         swapFee = swapFee_;
