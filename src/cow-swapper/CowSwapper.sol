@@ -206,11 +206,13 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
     function triggerFlashLoan(address account_, IERC20 tokenIn_, uint256 amountIn_, bytes calldata callBackData)
         internal
         override
-        onlyRouter
+        whenNotPaused
     {
         // Store Account address, used to validate the caller of the executeAction() callback and serves as a reentrancy guard.
         if (account != address(0)) revert Reentered();
         account = account_;
+
+        if (amountIn_ == 0) revert InvalidValue();
 
         // If the Initiator is non zero, we know account_ is an actual Arcadia Account,
         // and the initiator is set by its current owner.
@@ -297,7 +299,7 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
         external
         onlyHooksTrampoline
     {
-        // Cache Account.
+        // Cache.
         address account_ = account;
         address initiator_ = initiator;
 
@@ -318,7 +320,8 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
         if (signed[initiator_][messageHash]) revert ReplayedSignature();
         if (ECDSA.recoverSigner(messageHash, signature) != initiator_) revert InvalidInitiator();
 
-        // Avoid replay attacks.
+        // Store signed messages to avoid replay attacks.
+        // ToDo: Is this necessary? Since orderHash_ is probably already replay protected by CoW Swap?
         signed[initiator_][messageHash] = true;
 
         // Store transient state.
@@ -339,8 +342,7 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
      * @return magicValue The EIP-1271 magic value.
      * @dev There is no guarantee the solver includes a call to "isValidSignature()".
      * A malicious solver could modify the signature, skipping the check that the orderHash is correct.
-     * If "isValidSignature()" would be skipped, the transaction will revert during "executeAction()",
-     * where we explicitly check that this function is called.
+     * If "isValidSignature()" would be skipped, the transaction will revert during "executeAction()".
      */
     function isValidSignature(bytes32 orderHash_, bytes calldata) external view returns (bytes4) {
         // Validate order hash.

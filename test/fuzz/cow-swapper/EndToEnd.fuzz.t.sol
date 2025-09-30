@@ -38,20 +38,26 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
+    function testFuzz_Revert_EndToEnd_Paused(address account_, InitiatorParams memory initiatorParams, address caller)
+        public
+    { }
+
     function testFuzz_Success_EndToEnd(uint256 initiatorPrivateKey, uint96 amountIn, uint96 amountOut, uint64 swapFee)
         public
     {
-        // Given: An initiator is set.
+        // Given: Valid input parameters.
         // Private key must be less than the secp256k1 curve order and != 0
         initiatorPrivateKey = bound(
             initiatorPrivateKey,
             1,
             115_792_089_237_316_195_423_570_985_008_687_907_852_837_564_279_074_904_382_605_163_141_518_161_494_337 - 1
         );
+        address initiator = vm.addr(initiatorPrivateKey);
         amountIn = uint96(bound(amountIn, 1, type(uint96).max));
         amountOut = uint96(bound(amountOut, 1, type(uint96).max));
         swapFee = uint64(bound(swapFee, 0, MAX_FEE));
 
+        // And: An initiator is set.
         {
             address[] memory assetManagers = new address[](1);
             assetManagers[0] = address(cowSwapper);
@@ -63,11 +69,9 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
             account.setAssetManagers(assetManagers, statuses, datas);
         }
         vm.prank(users.accountOwner);
-        cowSwapper.setAccountInfo(
-            address(account), vm.addr(initiatorPrivateKey), MAX_FEE, address(orderHook), abi.encode(""), ""
-        );
+        cowSwapper.setAccountInfo(address(account), initiator, MAX_FEE, address(orderHook), abi.encode(""), "");
 
-        // Flashloan definition
+        // And: Order is valid.
         Loan.Data[] memory loans = new Loan.Data[](1);
         loans[0] = Loan.Data({
             amount: amountIn,
@@ -105,6 +109,7 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
             buyTokenBalance: GPv2Order.BALANCE_ERC20
         });
 
+        // And: BeforeSwap is called in pre swap hook.
         {
             bytes memory signature = getSignature(address(account), swapFee, order, initiatorPrivateKey);
             HooksTrampoline.Hook[] memory hooks = new HooksTrampoline.Hook[](1);
@@ -131,6 +136,7 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
             callData: abi.encodeCall(routerMock.swapAssets, (address(token0), address(token1), amountIn, amountOut))
         });
 
+        // And: Solver correctly processes the order.
         bytes memory settlement;
         {
             address[] memory tokens = new address[](2);
@@ -159,8 +165,8 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
             settlement = abi.encodeCall(ICowSettlement.settle, (tokens, clearingPrices, trades, interactions));
         }
 
+        // And: Account has sufficient tokenIn balance.
         deal(address(token0), users.accountOwner, amountIn, true);
-        deal(address(token1), address(routerMock), amountOut, true);
         {
             address[] memory assets_ = new address[](1);
             uint256[] memory assetIds_ = new uint256[](1);
@@ -176,8 +182,19 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
             vm.stopPrank();
         }
 
+        // And: Router can successfully execute the swap.
+        deal(address(token1), address(routerMock), amountOut, true);
+
+        // When: The solver calls the flash loan router.
         vm.prank(solver);
         flashLoanRouter.flashLoanAndSettle(loans, settlement);
+
+        // Then: Account has received the expected amount of tokenOut.
+        uint256 fee = uint256(amountOut) * swapFee / 1e18;
+        assertEq(token1.balanceOf(address(account)), amountOut - fee);
+
+        // And: Initiator has received the expected fee.
+        assertEq(token1.balanceOf(initiator), fee);
     }
 
     function getSignature(address account_, uint256 swapFee, GPv2Order.Data memory order, uint256 privateKey)

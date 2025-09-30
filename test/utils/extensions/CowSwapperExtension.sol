@@ -10,4 +10,8 @@ contract CowSwapperExtension is CowSwapper {
     constructor(address owner_, address arcadiaFactory, address flashLoanRouter, address hooksTrampoline)
         CowSwapper(owner_, arcadiaFactory, flashLoanRouter, hooksTrampoline)
     { }
+
+    function setAccount(address account_) public {
+        account = account_;
+    }
 }

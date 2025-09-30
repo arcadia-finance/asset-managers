@@ -10,6 +10,7 @@ import { CowSwapperExtension } from "../../utils/extensions/CowSwapperExtension.
 import { DefaultOrderHook } from "../../utils/mocks/DefaultOrderHook.sol";
 import { ERC20Mock } from "../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { Fuzz_Test } from "../Fuzz.t.sol";
+import { GPv2Order } from "../../../lib/cowprotocol/src/contracts/libraries/GPv2Order.sol";
 import { IERC20 } from "../../../lib/cowprotocol/src/contracts/interfaces/IERC20.sol";
 import { WETH9Fixture } from "../../../lib/accounts-v2/test/utils/fixtures/weth9/WETH9Fixture.f.sol";
 
@@ -33,6 +34,11 @@ abstract contract CowSwapper_Fuzz_Test is Fuzz_Test, BalancerV2Fixture, CowSwapF
     // Need to declare it here since cowprotocol and flash-loan-router use different versions of IERC20.
     IERC20 internal token0_;
     IERC20 internal token1_;
+
+    struct InitiatorParams {
+        uint64 swapFee;
+        GPv2Order.Data order;
+    }
 
     /*////////////////////////////////////////////////////////////////
                             TEST CONTRACTS
