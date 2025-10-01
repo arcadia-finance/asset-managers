@@ -66,6 +66,7 @@ contract MerklOperator is Guardian, ReentrancyGuard {
                                 ERRORS
     ////////////////////////////////////////////////////////////// */
 
+    error InvalidAccountVersion();
     error InvalidClaimRecipient();
     error InvalidInitiator();
     error InvalidRewardRecipient();
@@ -105,6 +106,8 @@ contract MerklOperator is Guardian, ReentrancyGuard {
      * @param accountOwner The current owner of the Arcadia Account.
      * param status Bool indicating if the Operator is enabled or disabled.
      * @param data Operator specific data, passed by the Account owner.
+     * @dev No need to check that the Account version is 3 or greater (versions with cross account reentrancy guard),
+     * since version 1 and 2 don't support the onSetAssetManager hook.
      */
     function onSetMerklOperator(address accountOwner, bool, bytes calldata data) external nonReentrant {
         if (!ARCADIA_FACTORY.isAccount(msg.sender)) revert NotAnAccount();
@@ -132,6 +135,8 @@ contract MerklOperator is Guardian, ReentrancyGuard {
         if (!ARCADIA_FACTORY.isAccount(account)) revert NotAnAccount();
         address accountOwner = IAccount(account).owner();
         if (msg.sender != accountOwner) revert OnlyAccountOwner();
+        // Block Account versions without cross account reentrancy guard.
+        if (IAccount(account).ACCOUNT_VERSION() < 3) revert InvalidAccountVersion();
 
         _setAccountInfo(account, accountOwner, initiator, rewardRecipient, maxClaimFee, metaData_);
     }

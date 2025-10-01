@@ -68,6 +68,7 @@ abstract contract YieldClaimer is IActionBase, AbstractBase, Guardian {
     ////////////////////////////////////////////////////////////// */
 
     error InvalidInitiator();
+    error InvalidAccountVersion();
     error InvalidPositionManager();
     error InvalidRecipient();
     error InvalidValue();
@@ -105,6 +106,8 @@ abstract contract YieldClaimer is IActionBase, AbstractBase, Guardian {
      * @param accountOwner The current owner of the Arcadia Account.
      * param status Bool indicating if the Asset Manager is enabled or disabled.
      * @param data Operator specific data, passed by the Account owner.
+     * @dev No need to check that the Account version is 3 or greater (versions with cross account reentrancy guard),
+     * since version 1 and 2 don't support the onSetAssetManager hook.
      */
     function onSetAssetManager(address accountOwner, bool, bytes calldata data) external {
         if (account != address(0)) revert Reentered();
@@ -134,6 +137,8 @@ abstract contract YieldClaimer is IActionBase, AbstractBase, Guardian {
         if (!ARCADIA_FACTORY.isAccount(account_)) revert NotAnAccount();
         address accountOwner = IAccount(account_).owner();
         if (msg.sender != accountOwner) revert OnlyAccountOwner();
+        // Block Account versions without cross account reentrancy guard.
+        if (IAccount(account_).ACCOUNT_VERSION() < 3) revert InvalidAccountVersion();
 
         _setAccountInfo(account_, accountOwner, initiator, feeRecipient, maxClaimFee, metaData_);
     }
