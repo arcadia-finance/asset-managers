@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 import { AbstractBase } from "../../../../../src/cl-managers/base/AbstractBase.sol";
 import { ERC20, ERC20Mock } from "../../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
@@ -62,6 +62,7 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
 
         // Transfer position to Base.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(slipstreamPositionManager)).transferFrom(users.liquidityProvider, address(base), position.id);
 
         // When: Calling claim.
@@ -121,6 +122,7 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
 
         // Transfer position to Base.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(stakedSlipstreamAM)).transferFrom(users.liquidityProvider, address(base), position.id);
 
         // And: Position earned rewards.
@@ -231,6 +233,7 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
 
         // Transfer position to Base.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(stakedSlipstreamAM)).transferFrom(users.liquidityProvider, address(base), position.id);
 
         // And: Position earned rewards.
@@ -296,6 +299,7 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
 
         // Transfer position to Base.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(wrappedStakedSlipstream)).transferFrom(users.liquidityProvider, address(base), position.id);
 
         // And: Position earned rewards.
@@ -406,6 +410,7 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
 
         // Transfer position to Base.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(wrappedStakedSlipstream)).transferFrom(users.liquidityProvider, address(base), position.id);
 
         // And: Position earned rewards.

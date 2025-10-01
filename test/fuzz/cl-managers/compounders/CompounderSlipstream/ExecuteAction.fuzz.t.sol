@@ -2,13 +2,13 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 import { ActionData } from "../../../../../lib/accounts-v2/src/interfaces/IActionBase.sol";
 import { Compounder } from "../../../../../src/cl-managers/compounders/Compounder.sol";
 import { CompounderSlipstream_Fuzz_Test } from "./_CompounderSlipstream.fuzz.t.sol";
 import { DefaultHook } from "../../../../utils/mocks/DefaultHook.sol";
-import { ERC20, ERC20Mock } from "../../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
+import { ERC20Mock } from "../../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { FixedPoint128 } from
     "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
@@ -220,9 +220,11 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-start(erc20-unchecked-transfer)
         ERC721(address(slipstreamPositionManager)).transferFrom(
             users.liquidityProvider, address(compounder), position.id
         );
+        /// forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Compounder has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1e18));
@@ -320,9 +322,11 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-start(erc20-unchecked-transfer)
         ERC721(address(slipstreamPositionManager)).transferFrom(
             users.liquidityProvider, address(compounder), position.id
         );
+        /// forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Compounder has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1e18));
@@ -432,9 +436,11 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-start(erc20-unchecked-transfer)
         ERC721(address(slipstreamPositionManager)).transferFrom(
             users.liquidityProvider, address(compounder), position.id
         );
+        /// forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Compounder has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1e18));
@@ -559,6 +565,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(stakedSlipstreamAM)).transferFrom(users.liquidityProvider, address(compounder), position.id);
 
         // And: Compounder has balances.
@@ -699,6 +706,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(stakedSlipstreamAM)).transferFrom(users.liquidityProvider, address(compounder), position.id);
 
         // And: Compounder has balances.
@@ -841,6 +849,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(wrappedStakedSlipstream)).transferFrom(users.liquidityProvider, address(compounder), position.id);
 
         // And: Compounder has balances.
@@ -979,6 +988,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(wrappedStakedSlipstream)).transferFrom(users.liquidityProvider, address(compounder), position.id);
 
         // And: Compounder has balances.

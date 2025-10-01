@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 import { ArcadiaAssetManagers } from "../utils/constants/Shared.sol";
 import { Assets, Safes } from "../../lib/accounts-v2/script/utils/constants/Base.sol";
@@ -11,7 +11,6 @@ import { CompounderSlipstream } from "../../src/cl-managers/compounders/Compound
 import { CompounderUniswapV3 } from "../../src/cl-managers/compounders/CompounderUniswapV3.sol";
 import { CompounderUniswapV4 } from "../../src/cl-managers/compounders/CompounderUniswapV4.sol";
 import { Deployers } from "../../lib/accounts-v2/script/utils/constants/Shared.sol";
-import { Helpers } from "../utils/constants/Shared.sol";
 import { RebalancerSlipstream } from "../../src/cl-managers/rebalancers/RebalancerSlipstream.sol";
 import { RebalancerUniswapV3 } from "../../src/cl-managers/rebalancers/RebalancerUniswapV3.sol";
 import { RebalancerUniswapV4 } from "../../src/cl-managers/rebalancers/RebalancerUniswapV4.sol";
@@ -22,8 +21,6 @@ import { YieldClaimerUniswapV3 } from "../../src/cl-managers/yield-claimers/Yiel
 import { YieldClaimerUniswapV4 } from "../../src/cl-managers/yield-claimers/YieldClaimerUniswapV4.sol";
 
 contract DeployCLManagers is Base_AssetManagers_Script {
-    constructor() Base_AssetManagers_Script() { }
-
     function run() public {
         // Sanity check that we use the correct priv key.
         require(vm.addr(deployer) == Deployers.ARCADIA, "Wrong Deployer.");

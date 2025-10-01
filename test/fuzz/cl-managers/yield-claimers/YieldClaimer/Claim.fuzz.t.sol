@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 import { Guardian } from "../../../../../src/guardian/Guardian.sol";
 import { YieldClaimer } from "../../../../../src/cl-managers/yield-claimers/YieldClaimer.sol";
@@ -69,10 +69,17 @@ contract Claim_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         // And: Account is not a precompile.
         vm.assume(account_ > address(20));
 
+        // And: Account is not the console.
+        vm.assume(account_ != address(0x000000000000000000636F6e736F6c652e6c6f67));
+
         // When : calling claim
         // Then : it should revert
         vm.prank(caller);
-        vm.expectRevert(abi.encodePacked("call to non-contract address ", vm.toString(account_)));
+        if (account_.code.length == 0 && !isPrecompile(account_)) {
+            vm.expectRevert(abi.encodePacked("call to non-contract address ", vm.toString(account_)));
+        } else {
+            vm.expectRevert(bytes(""));
+        }
         yieldClaimer.claim(account_, initiatorParams);
     }
 
@@ -105,21 +112,30 @@ contract Claim_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         vm.assume(initiator != address(0));
 
         // And: YieldClaimer is allowed as Asset Manager.
+        address[] memory assetManagers = new address[](1);
+        assetManagers[0] = address(yieldClaimer);
+        bool[] memory statuses = new bool[](1);
+        statuses[0] = true;
         vm.prank(users.accountOwner);
-        account.setAssetManager(address(yieldClaimer), true);
+        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
 
         // And: YieldClaimer is allowed as Asset Manager by New Owner.
-        vm.prank(newOwner);
-        account.setAssetManager(address(yieldClaimer), true);
+        vm.prank(users.accountOwner);
+        vm.warp(block.timestamp + 10 minutes);
+        factory.safeTransferFrom(users.accountOwner, newOwner, address(account));
+        vm.startPrank(newOwner);
+        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
+        vm.warp(block.timestamp + 10 minutes);
+        factory.safeTransferFrom(newOwner, users.accountOwner, address(account));
+        vm.stopPrank();
 
         // And: Account is set.
         vm.prank(account.owner());
         yieldClaimer.setAccountInfo(address(account), initiator, address(account), MAX_FEE, "");
 
         // And: Account is transferred to newOwner.
-        vm.startPrank(account.owner());
-        factory.safeTransferFrom(account.owner(), newOwner, address(account));
-        vm.stopPrank();
+        vm.prank(users.accountOwner);
+        factory.safeTransferFrom(users.accountOwner, newOwner, address(account));
 
         // When : calling claim
         // Then : it should revert

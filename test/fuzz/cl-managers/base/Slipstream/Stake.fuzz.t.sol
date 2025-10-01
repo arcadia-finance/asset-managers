@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
@@ -44,6 +44,7 @@ contract Stake_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
 
         // Transfer position to Base.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(slipstreamPositionManager)).transferFrom(users.liquidityProvider, address(base), position.id);
 
         // When: Calling stake.
@@ -80,6 +81,7 @@ contract Stake_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
 
         // Transfer position to Base.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(slipstreamPositionManager)).transferFrom(users.liquidityProvider, address(base), position.id);
 
         // When: Calling stake.
@@ -116,6 +118,7 @@ contract Stake_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
 
         // Transfer position to Base.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(slipstreamPositionManager)).transferFrom(users.liquidityProvider, address(base), position.id);
 
         // When: Calling stake.

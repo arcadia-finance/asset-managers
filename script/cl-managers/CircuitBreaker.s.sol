@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.0;
 
 import { Base_AssetManagers_Script } from "../Base.s.sol";
 import { Compounders, Rebalancers, YieldClaimers } from "../utils/constants/Shared.sol";
@@ -10,9 +10,8 @@ import { Guardian } from "../../src/guardian/Guardian.sol";
 import { SafesAssetManagers } from "../utils/constants/Base.sol";
 
 contract CircuitBreaker is Base_AssetManagers_Script {
+    /// forge-lint: disable-next-line(mixed-case-variable)
     address internal SAFE = SafesAssetManagers.GUARDIAN;
-
-    constructor() Base_AssetManagers_Script() { }
 
     function run() public {
         // Pause Asset Managers.

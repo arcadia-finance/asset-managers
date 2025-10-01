@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { IWETH } from "../../../../../src/cl-managers/interfaces/IWETH.sol";
@@ -46,6 +46,7 @@ contract Unstake_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
 
         // Transfer position to Base.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(base), position.id);
 
         // When: Calling unstake.
@@ -86,6 +87,7 @@ contract Unstake_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
 
         // Transfer position to Base.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(base), position.id);
 
         // When: Calling unstake.

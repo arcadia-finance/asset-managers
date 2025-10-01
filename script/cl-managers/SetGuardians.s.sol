@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 import { Base_AssetManagers_Script } from "../Base.s.sol";
 import { Compounders, Rebalancers, YieldClaimers } from "../utils/constants/Shared.sol";
@@ -11,8 +11,6 @@ import { Safes } from "../../lib/accounts-v2/script/utils/constants/Base.sol";
 import { SafesAssetManagers } from "../utils/constants/Base.sol";
 
 contract SetGuardians is Base_AssetManagers_Script {
-    constructor() Base_AssetManagers_Script() { }
-
     function run() public {
         // Set Guardian for Asset Managers.
         setGuardian(Compounders.SLIPSTREAM);

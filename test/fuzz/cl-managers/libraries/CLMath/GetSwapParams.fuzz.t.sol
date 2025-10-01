@@ -2,11 +2,10 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.0;
 
 import { CLMath } from "../../../../../src/cl-managers/libraries/CLMath.sol";
 import { CLMath_Fuzz_Test } from "./_CLMath.fuzz.t.sol";
-import { FixedPoint96 } from "../../../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/FixedPoint96.sol";
 import { FullMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
@@ -38,7 +37,7 @@ contract GetSwapParams_CLMath_Fuzz_Test is CLMath_Fuzz_Test {
         uint128 balance0,
         uint128 balance1,
         uint256 fee
-    ) public {
+    ) public view {
         // Given: sqrtPrice is smaller than type(uint128).max (no overflow).
         sqrtPrice = bound(sqrtPrice, TickMath.MIN_SQRT_PRICE, type(uint128).max);
 
@@ -73,7 +72,7 @@ contract GetSwapParams_CLMath_Fuzz_Test is CLMath_Fuzz_Test {
         uint128 balance0,
         uint128 balance1,
         uint256 fee
-    ) public {
+    ) public view {
         // Given: sqrtPrice is smaller than type(uint128).max (no overflow).
         sqrtPrice = bound(sqrtPrice, TickMath.getSqrtPriceAtTick(TickMath.MIN_TICK + 2), type(uint128).max);
 
@@ -108,7 +107,7 @@ contract GetSwapParams_CLMath_Fuzz_Test is CLMath_Fuzz_Test {
         uint128 balance0,
         uint128 balance1,
         uint256 fee
-    ) public {
+    ) public view {
         // Given: sqrtPrice is smaller than type(uint128).max (no overflow).
         {
             uint256 sqrtPriceMin = TickMath.getSqrtPriceAtTick(TickMath.MIN_TICK + 1);
@@ -171,7 +170,7 @@ contract GetSwapParams_CLMath_Fuzz_Test is CLMath_Fuzz_Test {
         uint128 balance0,
         uint128 balance1,
         uint256 fee
-    ) public {
+    ) public view {
         // Given: sqrtPrice is smaller than type(uint128).max (no overflow).
         {
             uint256 sqrtPriceMin = TickMath.getSqrtPriceAtTick(TickMath.MIN_TICK + 1);

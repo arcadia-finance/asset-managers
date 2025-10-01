@@ -2,11 +2,10 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.0;
 
 import { HookMock } from "../../../../utils/mocks/HookMock.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
-import { Rebalancer } from "../../../../../src/cl-managers/rebalancers/Rebalancer.sol";
 import { Rebalancer_Fuzz_Test } from "./_Rebalancer.fuzz.t.sol";
 import { RouterMock } from "../../../../utils/mocks/RouterMock.sol";
 import { stdError } from "../../../../../lib/accounts-v2/lib/forge-std/src/StdError.sol";

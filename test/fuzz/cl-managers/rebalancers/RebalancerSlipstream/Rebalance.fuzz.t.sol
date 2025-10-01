@@ -2,10 +2,10 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
-import { AccountV1 } from "../../../../../lib/accounts-v2/src/accounts/AccountV1.sol";
-import { AccountSpot } from "../../../../../lib/accounts-v2/src/accounts/AccountSpot.sol";
+import { AccountV3 } from "../../../../../lib/accounts-v2/src/accounts/AccountV3.sol";
+import { AccountV4 } from "../../../../../lib/accounts-v2/src/accounts/AccountV4.sol";
 import { DefaultHook } from "../../../../utils/mocks/DefaultHook.sol";
 import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { FixedPoint128 } from
@@ -87,10 +87,17 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         // And: Account is not a precompile.
         vm.assume(account_ > address(20));
 
+        // And: Account is not the console.
+        vm.assume(account_ != address(0x000000000000000000636F6e736F6c652e6c6f67));
+
         // When : calling rebalance
         // Then : it should revert
         vm.prank(caller);
-        vm.expectRevert(abi.encodePacked("call to non-contract address ", vm.toString(account_)));
+        if (account_.code.length == 0 && !isPrecompile(account_)) {
+            vm.expectRevert(abi.encodePacked("call to non-contract address ", vm.toString(account_)));
+        } else {
+            vm.expectRevert(bytes(""));
+        }
         rebalancer.rebalance(account_, initiatorParams);
     }
 
@@ -125,12 +132,22 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         vm.assume(initiator != address(0));
 
         // And: Rebalancer is allowed as Asset Manager.
+        address[] memory assetManagers = new address[](1);
+        assetManagers[0] = address(rebalancer);
+        bool[] memory statuses = new bool[](1);
+        statuses[0] = true;
         vm.prank(users.accountOwner);
-        account.setAssetManager(address(rebalancer), true);
+        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
 
         // And: Rebalancer is allowed as Asset Manager by New Owner.
-        vm.prank(newOwner);
-        account.setAssetManager(address(rebalancer), true);
+        vm.prank(users.accountOwner);
+        vm.warp(block.timestamp + 10 minutes);
+        factory.safeTransferFrom(users.accountOwner, newOwner, address(account));
+        vm.startPrank(newOwner);
+        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
+        vm.warp(block.timestamp + 10 minutes);
+        factory.safeTransferFrom(newOwner, users.accountOwner, address(account));
+        vm.stopPrank();
 
         // And: Account info is set.
         tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
@@ -152,9 +169,8 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: Account is transferred to newOwner.
-        vm.startPrank(account.owner());
-        factory.safeTransferFrom(account.owner(), newOwner, address(account));
-        vm.stopPrank();
+        vm.prank(users.accountOwner);
+        factory.safeTransferFrom(users.accountOwner, newOwner, address(account));
 
         // When : calling rebalance
         // Then : it should revert
@@ -189,8 +205,12 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         deploySlipstreamAM();
 
         // And: Rebalancer is allowed as Asset Manager
+        address[] memory assetManagers = new address[](1);
+        assetManagers[0] = address(rebalancer);
+        bool[] memory statuses = new bool[](1);
+        statuses[0] = true;
         vm.prank(users.accountOwner);
-        account.setAssetManager(address(rebalancer), true);
+        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
 
         // And: Account info is set.
         tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
@@ -228,9 +248,11 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
 
         // And: Account owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-start(erc20-unchecked-transfer)
         ERC721(address(slipstreamPositionManager)).transferFrom(
             users.liquidityProvider, users.accountOwner, position.id
         );
+        /// forge-lint: disable-end(erc20-unchecked-transfer)
         deal(address(token0), users.accountOwner, initiatorParams.amount0, true);
         deal(address(token1), users.accountOwner, initiatorParams.amount1, true);
         {
@@ -313,8 +335,12 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         }
 
         // And: Rebalancer is allowed as Asset Manager
+        address[] memory assetManagers = new address[](1);
+        assetManagers[0] = address(rebalancer);
+        bool[] memory statuses = new bool[](1);
+        statuses[0] = true;
         vm.prank(users.accountOwner);
-        account.setAssetManager(address(rebalancer), true);
+        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
 
         // And: Account info is set.
         tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
@@ -348,6 +374,7 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
 
         // And: Account owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(stakedSlipstreamAM)).transferFrom(users.liquidityProvider, users.accountOwner, position.id);
         deal(address(token0), users.accountOwner, initiatorParams.amount0, true);
         deal(address(token1), users.accountOwner, initiatorParams.amount1, true);
@@ -432,14 +459,18 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
 
         // And: Spot Account is used.
         vm.prank(users.accountOwner);
-        account = AccountV1(address(new AccountSpot(address(factory))));
+        account = AccountV3(address(new AccountV4(address(factory), address(accountsGuard), address(0))));
         stdstore.target(address(factory)).sig(factory.accountIndex.selector).with_key(address(account)).checked_write(2);
         vm.prank(address(factory));
         account.initialize(users.accountOwner, address(registry), address(0));
 
         // And: Rebalancer is allowed as Asset Manager
+        address[] memory assetManagers = new address[](1);
+        assetManagers[0] = address(rebalancer);
+        bool[] memory statuses = new bool[](1);
+        statuses[0] = true;
         vm.prank(users.accountOwner);
-        account.setAssetManager(address(rebalancer), true);
+        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
 
         // And: Account info is set.
         tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
@@ -473,6 +504,7 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
 
         // And: Account owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(wrappedStakedSlipstream)).transferFrom(users.liquidityProvider, address(account), position.id);
         deal(address(token0), address(account), initiatorParams.amount0, true);
         deal(address(token1), address(account), initiatorParams.amount1, true);

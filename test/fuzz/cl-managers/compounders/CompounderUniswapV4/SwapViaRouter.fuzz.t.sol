@@ -2,16 +2,14 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.0;
 
-import { Compounder } from "../../../../../src/cl-managers/compounders/Compounder.sol";
 import { CompounderUniswapV4_Fuzz_Test } from "./_CompounderUniswapV4.fuzz.t.sol";
 import { HookMock } from "../../../../utils/mocks/HookMock.sol";
 import { IWETH } from "../../../../../src/cl-managers/interfaces/IWETH.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
 import { RouterMock } from "../../../../utils/mocks/RouterMock.sol";
 import { stdError } from "../../../../../lib/accounts-v2/lib/forge-std/src/StdError.sol";
-import { UniswapHelpers } from "../../../../utils/uniswap-v3/UniswapHelpers.sol";
 
 /**
  * @notice Fuzz tests for the function "_swapViaRouter" of contract "CompounderUniswapV4".

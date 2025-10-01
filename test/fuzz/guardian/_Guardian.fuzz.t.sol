@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 import { Fuzz_Test } from "../Fuzz.t.sol";
 import { GuardianExtension } from "../../utils/extensions/GuardianExtension.sol";

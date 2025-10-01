@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 import { Compounder } from "../../../../../src/cl-managers/compounders/Compounder.sol";
 import { CompounderUniswapV3_Fuzz_Test } from "./_CompounderUniswapV3.fuzz.t.sol";
@@ -205,9 +205,11 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-start(erc20-unchecked-transfer)
         ERC721(address(nonfungiblePositionManager)).transferFrom(
             users.liquidityProvider, address(compounder), position.id
         );
+        /// forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Compounder has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1e18));
@@ -306,9 +308,11 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-start(erc20-unchecked-transfer)
         ERC721(address(nonfungiblePositionManager)).transferFrom(
             users.liquidityProvider, address(compounder), position.id
         );
+        /// forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Compounder has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1e18));
@@ -418,9 +422,11 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
+        /// forge-lint: disable-start(erc20-unchecked-transfer)
         ERC721(address(nonfungiblePositionManager)).transferFrom(
             users.liquidityProvider, address(compounder), position.id
         );
+        /// forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Compounder has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1e18));

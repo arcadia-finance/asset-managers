@@ -2,10 +2,9 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.0;
 
 import { RouterMock } from "../../../utils/mocks/RouterMock.sol";
-import { RouterTrampoline } from "../../../../src/cl-managers/RouterTrampoline.sol";
 import { RouterTrampoline_Fuzz_Test } from "./_RouterTrampoline.fuzz.t.sol";
 import { stdError } from "../../../../lib/accounts-v2/lib/forge-std/src/StdError.sol";
 

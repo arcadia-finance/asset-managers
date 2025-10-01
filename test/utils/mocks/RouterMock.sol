@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.0;
 
 import { ERC20 } from "../../../lib/accounts-v2/lib/solmate/src/tokens/ERC20.sol";
 
@@ -15,6 +15,7 @@ contract RouterMock {
 
     function swap(address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut) public {
         if (tokenIn != address(0)) {
+            /// forge-lint: disable-next-line(erc20-unchecked-transfer)
             ERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn);
         }
 
@@ -22,6 +23,7 @@ contract RouterMock {
             (bool success,) = payable(msg.sender).call{ value: amountOut }("");
             if (!success) revert EthTransferFailed();
         } else {
+            /// forge-lint: disable-next-line(erc20-unchecked-transfer)
             ERC20(tokenOut).transfer(msg.sender, amountOut);
         }
 
@@ -33,9 +35,11 @@ contract RouterMock {
             (bool success,) = payable(msg.sender).call{ value: amount0 }("");
             if (!success) revert EthTransferFailed();
         } else {
+            /// forge-lint: disable-next-line(erc20-unchecked-transfer)
             ERC20(token0).transfer(msg.sender, amount0);
         }
 
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC20(token1).transfer(msg.sender, amount1);
 
         emit ArbitrarySwap(true);
