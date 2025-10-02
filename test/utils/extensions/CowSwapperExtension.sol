@@ -11,6 +11,42 @@ contract CowSwapperExtension is CowSwapper {
         CowSwapper(owner_, arcadiaFactory, flashLoanRouter, hooksTrampoline)
     { }
 
+    function getAccount() public view returns (address) {
+        return account;
+    }
+
+    function getInitiator() public view returns (address) {
+        return initiator;
+    }
+
+    function getSwapFee() public view returns (uint64) {
+        return swapFee;
+    }
+
+    function getTokenIn() public view returns (address) {
+        return tokenIn;
+    }
+
+    function getTokenOut() public view returns (address) {
+        return tokenOut;
+    }
+
+    function getAmountIn() public view returns (uint256) {
+        return amountIn;
+    }
+
+    function getAmountOut() public view returns (uint256) {
+        return amountOut;
+    }
+
+    function getOrderHash() public view returns (bytes32) {
+        return orderHash;
+    }
+
+    function getMessageHash() public view returns (bytes32) {
+        return messageHash;
+    }
+
     function setAccount(address account_) public {
         account = account_;
     }
@@ -41,5 +77,9 @@ contract CowSwapperExtension is CowSwapper {
 
     function setOrderHash(bytes32 orderHash_) public {
         orderHash = orderHash_;
+    }
+
+    function setMessageHash(bytes32 messageHash_) public {
+        messageHash = messageHash_;
     }
 }

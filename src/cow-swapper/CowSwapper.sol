@@ -96,7 +96,7 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
     ////////////////////////////////////////////////////////////// */
 
     error InvalidAccountVersion();
-    error InvalidHash();
+    error InvalidOrderHash();
     error InvalidInitiator();
     error InvalidOrder();
     error InvalidValue();
@@ -365,7 +365,7 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
      */
     function isValidSignature(bytes32 orderHash_, bytes calldata signature) external view returns (bytes4) {
         // Validate order hash.
-        if (orderHash != orderHash_) revert InvalidHash();
+        if (orderHash != orderHash_) revert InvalidOrderHash();
 
         // Validate Signature.
         // ECDSA.recoverSigner() will never return the zero address as signer (reverts instead).

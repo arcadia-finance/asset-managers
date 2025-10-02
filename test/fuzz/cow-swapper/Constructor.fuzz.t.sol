@@ -28,5 +28,8 @@ contract Constructor_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
 
         assertEq(cowSwapper_.owner(), owner_);
         assertEq(address(cowSwapper_.ARCADIA_FACTORY()), arcadiaFactory);
+        assertEq(address(cowSwapper_.HOOKS_TRAMPOLINE()), hooksTrampoline);
+        assertEq(address(cowSwapper_.VAULT_RELAYER()), address(vaultRelayer));
+        assertEq(address(cowSwapper_.settlementContract()), address(settlement));
     }
 }
