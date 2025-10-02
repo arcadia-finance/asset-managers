@@ -95,6 +95,7 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
                                 ERRORS
     ////////////////////////////////////////////////////////////// */
 
+    error InvalidAccountVersion();
     error InvalidHash();
     error InvalidInitiator();
     error InvalidOrder();
@@ -149,10 +150,29 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
     /////////////////////////////////////////////////////////////// */
 
     /**
+     * @notice Optional hook called by the Arcadia Account when calling "setAssetManager()".
+     * @param accountOwner The current owner of the Arcadia Account.
+     * param status Bool indicating if the Asset Manager is enabled or disabled.
+     * @param data Operator specific data, passed by the Account owner.
+     * @dev No need to check that the Account version is 3 or greater (versions with cross account reentrancy guard),
+     * since version 1 and 2 don't support the onSetAssetManager hook.
+     */
+    function onSetAssetManager(address accountOwner, bool, bytes calldata data) external {
+        if (account != address(0)) revert Reentered();
+        if (!ARCADIA_FACTORY.isAccount(msg.sender)) revert NotAnAccount();
+
+        (address initiator_, uint256 maxSwapFee, address orderHook, bytes memory hookData, bytes memory metaData_) =
+            abi.decode(data, (address, uint256, address, bytes, bytes));
+        _setAccountInfo(msg.sender, accountOwner, initiator_, maxSwapFee, orderHook, hookData, metaData_);
+    }
+
+    /**
      * @notice Sets the required information for an Account.
      * @param account_ The contract address of the Arcadia Account to set the information for.
      * @param initiator_ The address of the initiator.
      * @param maxSwapFee The maximum fee charged on the claimed fees of the liquidity position, with 18 decimals precision.
+     * @param orderHook The contract address of the order hook.
+     * @param hookData Encoded data containing hook specific parameters.
      * @param metaData_ Custom metadata to be stored with the account.
      */
     function setAccountInfo(
@@ -165,12 +185,36 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
     ) external {
         if (account != address(0)) revert Reentered();
         if (!ARCADIA_FACTORY.isAccount(account_)) revert NotAnAccount();
-        address owner = IAccount(account_).owner();
-        if (msg.sender != owner) revert OnlyAccountOwner();
+        address accountOwner = IAccount(account_).owner();
+        if (msg.sender != accountOwner) revert OnlyAccountOwner();
+        // Block Account versions without cross account reentrancy guard.
+        if (IAccount(account_).ACCOUNT_VERSION() < 3) revert InvalidAccountVersion();
 
+        _setAccountInfo(account_, accountOwner, initiator_, maxSwapFee, orderHook, hookData, metaData_);
+    }
+
+    /**
+     * @notice Sets the required information for an Account.
+     * @param account_ The contract address of the Arcadia Account to set the information for.
+     * @param accountOwner The current owner of the Arcadia Account.
+     * @param initiator_ The address of the initiator.
+     * @param maxSwapFee The maximum fee charged on the claimed fees of the liquidity position, with 18 decimals precision.
+     * @param orderHook The contract address of the order hook.
+     * @param hookData Encoded data containing hook specific parameters.
+     * @param metaData_ Custom metadata to be stored with the account.
+     */
+    function _setAccountInfo(
+        address account_,
+        address accountOwner,
+        address initiator_,
+        uint256 maxSwapFee,
+        address orderHook,
+        bytes memory hookData,
+        bytes memory metaData_
+    ) internal {
         if (maxSwapFee > 1e18) revert InvalidValue();
 
-        ownerToAccountToInitiator[owner][account_] = initiator_;
+        ownerToAccountToInitiator[accountOwner][account_] = initiator_;
         accountInfo[account_] = AccountInfo({ maxSwapFee: uint64(maxSwapFee), orderHook: orderHook });
         metaData[account_] = metaData_;
 
@@ -276,7 +320,7 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Hook called before the swap to store the remaining initiator parameters
+     * @notice Hook called before the swap to store the remaining initiator parameters,
      * (since they could not be passed during triggerFlashLoan).
      * @param initiatorData The encoded remaining initiator parameters.
      * @dev There is no guarantee the solver includes the "beforeSwap()" hook in the settlement.
