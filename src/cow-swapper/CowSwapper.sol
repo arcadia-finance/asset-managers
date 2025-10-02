@@ -7,7 +7,7 @@ pragma solidity ^0.8.30;
 import { ActionData, IActionBase } from "../../lib/accounts-v2/src/interfaces/IActionBase.sol";
 import { ArcadiaLogic } from "./libraries/ArcadiaLogic.sol";
 import { Borrower } from "./vendored/Borrower.sol";
-import { ECDSA } from "./libraries/ECDSA.sol";
+import { ECDSA } from "../../lib/accounts-v2/lib/solady/src/utils/ECDSA.sol";
 import { ERC20, SafeTransferLib } from "../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { Guardian } from "../guardian/Guardian.sol";
@@ -42,9 +42,6 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
 
     // The contract address of the Arcadia Factory.
     IArcadiaFactory public immutable ARCADIA_FACTORY;
-
-    // Mapping keeping track of signed messages.
-    mapping(address initiator => mapping(bytes32 messageHash => bool)) public signed;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
@@ -98,11 +95,9 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
                                 ERRORS
     ////////////////////////////////////////////////////////////// */
 
-    error InsufficientBalance();
     error InvalidHash();
     error InvalidInitiator();
     error InvalidOrder();
-    error ReplayedSignature();
     error InvalidValue();
     error NotAnAccount();
     error MissingSignatureVerification();
@@ -256,13 +251,11 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
         }
 
         // Calculate token amounts to be send to Account and initiator.
-        // ToDo: Is check that balance >= amountOut necessary?
-        // Think not since this is enforced by CoW Swap?
+        // No need to check that amount >= order.buyAmount, since this is enforced by CoW Swap.
         address tokenOut_ = tokenOut;
-        uint256 balance = ERC20(tokenOut_).balanceOf(address(this));
-        if (balance < amountOut) revert InsufficientBalance();
-        uint256 fee = balance.mulDivDown(swapFee, 1e18);
-        uint256 amount = balance - fee;
+        uint256 amount = ERC20(tokenOut_).balanceOf(address(this));
+        uint256 fee = amount.mulDivDown(swapFee, 1e18);
+        amount = amount - fee;
 
         // Send the fee to the initiator.
         if (fee > 0) {
@@ -290,11 +283,12 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
      * If "beforeSwap()" would not be called during the settlement,
      * then "isValidSignature()" or "executeAction()" (if "isValidSignature()" is also skipped) will revert,
      * since the order hash and tokenOut will not be set.
+     * @dev GPv2Settlement ensures that signatures for the same orderHash (and hence messageHash) cannot be replayed.
+     * No need to again check for replay attacks here.
      */
     function beforeSwap(bytes calldata initiatorData) external onlyHooksTrampoline {
         // Cache variables.
         address account_ = account;
-        address initiator_ = initiator;
 
         uint64 swapFee_;
         bytes32 orderHash_;
@@ -304,16 +298,10 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
         // Validate swapFee.
         if (swapFee_ > accountInfo[account_].maxSwapFee) revert InvalidValue();
 
-        // Check that the message hash has not been signed before.
-        // ToDo: Is this necessary? Since orderHash_ is probably already replay protected by CoW Swap?
-        bytes32 messageHash_ = keccak256(abi.encode(account_, swapFee_, orderHash_));
-        if (signed[initiator_][messageHash_]) revert ReplayedSignature();
-        signed[initiator_][messageHash_] = true;
-
         // Store transient state.
         swapFee = swapFee_;
         orderHash = orderHash_;
-        messageHash = messageHash_;
+        messageHash = keccak256(abi.encode(account_, swapFee_, orderHash_));
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -328,6 +316,8 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
      * @dev There is no guarantee the solver includes a call to "isValidSignature()".
      * A malicious solver could modify the signature, skipping the check that the orderHash is correct.
      * If "isValidSignature()" would be skipped, the transaction will revert during "executeAction()".
+     * @dev GPv2Settlement ensures that signatures for the same orderHash (and hence messageHash) cannot be replayed.
+     * No need to again check for replay attacks here.
      */
     function isValidSignature(bytes32 orderHash_, bytes calldata signature) external view returns (bytes4) {
         // Validate order hash.
@@ -336,7 +326,7 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
         // Validate Signature.
         // ECDSA.recoverSigner() will never return the zero address as signer (reverts instead).
         // Hence if the equality holds, the "initiator" was non-zero, and "account" and "initiator" were verified during "triggerFlashLoan()".
-        if (ECDSA.recoverSigner(messageHash, signature) != initiator) revert InvalidInitiator();
+        if (ECDSA.recoverCalldata(messageHash, signature) != initiator) revert InvalidInitiator();
 
         // If order hash is valid, return EIP-1271 magic value.
         return MAGIC_VALUE;
