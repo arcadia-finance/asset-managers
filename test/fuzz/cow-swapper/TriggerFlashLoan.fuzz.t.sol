@@ -6,19 +6,13 @@ pragma solidity ^0.8.0;
 
 import { CowSwapper } from "../../../src/cow-swapper/CowSwapper.sol";
 import { CowSwapper_Fuzz_Test } from "./_CowSwapper.fuzz.t.sol";
-import { GPv2Order } from "../../../lib/cowprotocol/src/contracts/libraries/GPv2Order.sol";
 import { Guardian } from "../../../src/guardian/Guardian.sol";
-import { HooksTrampoline } from "../../utils/mocks/HooksTrampoline.sol";
-import { IBorrower } from "../../../lib/flash-loan-router/src/interface/IBorrower.sol";
-import { ICowSettlement } from "../../../lib/flash-loan-router/src/interface/ICowSettlement.sol";
 import { IERC20 } from "../../../lib/flash-loan-router/src/vendored/IERC20.sol";
-import { Loan } from "../../../lib/flash-loan-router/src/library/Loan.sol";
 
 /**
  * @notice Fuzz tests for the function "triggerFlashLoan" of contract "CowSwapper".
  */
 contract TriggerFlashLoan_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
-    using GPv2Order for GPv2Order.Data;
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
@@ -40,7 +34,7 @@ contract TriggerFlashLoan_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         // Given : Caller is not the Flashloan Router.
         vm.assume(caller != address(flashLoanRouter));
 
-        // When : calling compound
+        // When : calling triggerFlashLoan.
         // Then : it should revert
         vm.prank(caller);
         vm.expectRevert("Not the router");
@@ -57,7 +51,7 @@ contract TriggerFlashLoan_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         vm.prank(users.owner);
         cowSwapper.setPauseFlag(true);
 
-        // When : calling compound
+        // When : calling triggerFlashLoan.
         // Then : it should revert
         vm.prank(address(flashLoanRouter));
         vm.expectRevert(Guardian.Paused.selector);
@@ -74,7 +68,7 @@ contract TriggerFlashLoan_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         vm.assume(account_ != address(0));
         cowSwapper.setAccount(account_);
 
-        // When : calling compound
+        // When : calling triggerFlashLoan.
         // Then : it should revert
         vm.prank(address(flashLoanRouter));
         vm.expectRevert(CowSwapper.Reentered.selector);
@@ -89,7 +83,7 @@ contract TriggerFlashLoan_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         // Given : amountIn is zero.
         uint256 amountIn = 0;
 
-        // When : calling compound
+        // When : calling triggerFlashLoan.
         // Then : it should revert
         vm.prank(address(flashLoanRouter));
         vm.expectRevert(CowSwapper.InvalidValue.selector);
@@ -105,16 +99,19 @@ contract TriggerFlashLoan_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         // Given: Account is not an Arcadia Account.
         vm.assume(!factory.isAccount(account_));
 
+        // And: account_ has no owner() function.
+        vm.assume(account_.code.length == 0);
+
         // And: Account is not the console.
         vm.assume(account_ != address(0x000000000000000000636F6e736F6c652e6c6f67));
 
         // And: AmountIn is not zero.
         amountIn = bound(amountIn, 1, type(uint256).max);
 
-        // When : calling compound
+        // When : calling triggerFlashLoan.
         // Then : it should revert
         vm.prank(address(flashLoanRouter));
-        if (account_.code.length == 0 && !isPrecompile(account_)) {
+        if (!isPrecompile(account_)) {
             vm.expectRevert(abi.encodePacked("call to non-contract address ", vm.toString(account_)));
         } else {
             vm.expectRevert(bytes(""));
@@ -132,7 +129,7 @@ contract TriggerFlashLoan_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         // And: AmountIn is not zero.
         amountIn = bound(amountIn, 1, type(uint256).max);
 
-        // When : calling compound
+        // When : calling triggerFlashLoan.
         // Then : it should revert
         vm.prank(address(flashLoanRouter));
         vm.expectRevert(CowSwapper.InvalidInitiator.selector);

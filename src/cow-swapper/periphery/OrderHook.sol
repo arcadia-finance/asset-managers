@@ -4,16 +4,11 @@
  */
 pragma solidity ^0.8.0;
 
-import { GPv2Order } from "../../../lib/cowprotocol/src/contracts/libraries/GPv2Order.sol";
 import { IOrderHook } from "../interfaces/IOrderHook.sol";
 
 /**
- * @title Abstract Strategy Hook.
- * @notice Allows an Arcadia Account to verify custom rebalancing preferences, such as:
- * - The id or the underlying tokens of the position
- * - Directional Preferences.
- * - Minimum Cool Down periods.
- * - ...
+ * @title Abstract Order Hook.
+ * @notice Allows an Initiator to verify order preferences.
  */
 abstract contract OrderHook is IOrderHook {
     /* ///////////////////////////////////////////////////////////////
@@ -22,7 +17,7 @@ abstract contract OrderHook is IOrderHook {
 
     /**
      * @notice Function called by the CoW Swapper to set the Account specific information.
-     * @param account The contract address of the Arcadia Account to set the rebalance info for.
+     * @param account The contract address of the Arcadia Account to set the order info for.
      * @param hookData Encoded data containing hook specific parameters.
      */
     function setHook(address account, bytes calldata hookData) external virtual;
@@ -32,10 +27,19 @@ abstract contract OrderHook is IOrderHook {
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Hook called before the swap is executed.
+     * @notice Hook called to validate and calculate the initiator parameters.
      * @param account The contract address of the Arcadia Account.
-     * @param order The CoW Swap order.
-     * @return Bool indicating if the order is valid.
+     * @param tokenIn The contract address of the token to swap from.
+     * @param amountIn The amount of tokenIn to swap.
+     * @param initiatorData The encoded remaining initiator parameters.
+     * @return swapFee The fee charged on the amountOut by the initiator, with 18 decimals precision.
+     * @return tokenOut The contract address of the token to swap to.
+     * @return amountOut The amount of tokenOut to swap to.
+     * @return orderHash The order hash.
      */
-    function isValidOrder(address account, GPv2Order.Data memory order) external view virtual returns (bool);
+    function getInitiatorParams(address account, address tokenIn, uint256 amountIn, bytes calldata initiatorData)
+        external
+        view
+        virtual
+        returns (uint64 swapFee, address tokenOut, uint256 amountOut, bytes32 orderHash);
 }

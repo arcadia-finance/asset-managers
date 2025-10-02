@@ -4,13 +4,10 @@
  */
 pragma solidity ^0.8.0;
 
-import { Borrower } from "../../../src/cow-swapper/vendored/Borrower.sol";
 import { CowSwapper_Fuzz_Test } from "./_CowSwapper.fuzz.t.sol";
 import { ERC20Mock } from "../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { GPv2Order } from "../../../lib/cowprotocol/src/contracts/libraries/GPv2Order.sol";
-import { HooksTrampoline } from "../../utils/mocks/HooksTrampoline.sol";
 import { IBorrower } from "../../../lib/flash-loan-router/src/interface/IBorrower.sol";
-import { ICowSettlement } from "../../../lib/flash-loan-router/src/interface/ICowSettlement.sol";
 import { IERC20 } from "../../../lib/flash-loan-router/src/vendored/IERC20.sol";
 import { Loan } from "../../../lib/flash-loan-router/src/library/Loan.sol";
 
@@ -39,7 +36,7 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
     function testFuzz_Success_EndToEnd(uint256 initiatorPrivateKey, uint64 swapFee, GPv2Order.Data memory order)
         public
     {
-        // Given: Valid initiator..
+        // Given: Valid initiator.
         initiatorPrivateKey = givenValidPrivatekey(initiatorPrivateKey);
         address initiator = vm.addr(initiatorPrivateKey);
 
@@ -47,13 +44,7 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         swapFee = uint64(bound(swapFee, 0, MAX_FEE));
 
         // And: Valid order.
-        givenValidOrder(order);
-
-        // And: Valid beforeSwap signature.
-        bytes memory initiatorSignature = getSignature(address(account), swapFee, order, initiatorPrivateKey);
-
-        // And: Valid EIP-1271 signature.
-        bytes memory eip1271Signature = abi.encodePacked(address(cowSwapper), bytes(""));
+        givenValidOrder(swapFee, order);
 
         // And: Cow swapper is set as asset manager with initiator.
         setCowSwapper(initiator);
@@ -61,8 +52,12 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         // And: Account has sufficient tokenIn balance.
         depositErc20InAccount(account, ERC20Mock(address(order.sellToken)), order.sellAmount);
 
-        // And: Router can successfully execute the swap.
+        // And: Router can execute the swap.
         deal(address(order.buyToken), address(routerMock), order.buyAmount, true);
+
+        // And: Valid EIP-1271 signature.
+        bytes memory signature =
+            abi.encodePacked(address(cowSwapper), getSignature(address(account), swapFee, order, initiatorPrivateKey));
 
         // And: Solver correctly processes the order.
         Loan.Data[] memory loans = new Loan.Data[](1);
@@ -72,8 +67,7 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
             lender: address(account),
             token: IERC20(address(order.sellToken))
         });
-
-        bytes memory settlementCallData = getSettlementCallData(swapFee, order, initiatorSignature, eip1271Signature);
+        bytes memory settlementCallData = getSettlementCallData(swapFee, order, signature);
 
         // When: The solver calls the flash loan router.
         vm.prank(solver);

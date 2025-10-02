@@ -7,7 +7,7 @@ pragma solidity ^0.8.0;
 import { BalancerV2Fixture } from "../../utils/fixtures/balancer-v2/BalancerV2Fixture.f.sol";
 import { CowSwapFixture } from "../../utils/fixtures/cow-swap/CowSwapFixture.f.sol";
 import { CowSwapperExtension } from "../../utils/extensions/CowSwapperExtension.sol";
-import { DefaultOrderHook } from "../../utils/mocks/DefaultOrderHook.sol";
+import { DefaultOrderHook } from "../../../src/cow-swapper/periphery/DefaultOrderHook.sol";
 import { ERC20Mock } from "../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { Fuzz_Test } from "../Fuzz.t.sol";
 import { GPv2Order } from "../../../lib/cowprotocol/src/contracts/libraries/GPv2Order.sol";
@@ -82,7 +82,7 @@ abstract contract CowSwapper_Fuzz_Test is Fuzz_Test, BalancerV2Fixture, CowSwapF
             new CowSwapperExtension(users.owner, address(factory), address(flashLoanRouter), address(hooksTrampoline));
 
         // Deploy mocked order hook.
-        orderHook = new DefaultOrderHook();
+        orderHook = new DefaultOrderHook(address(cowSwapper));
 
         // Deploy mocked router.
         routerMock = new RouterMock();
@@ -101,7 +101,7 @@ abstract contract CowSwapper_Fuzz_Test is Fuzz_Test, BalancerV2Fixture, CowSwapF
         );
     }
 
-    function givenValidOrder(GPv2Order.Data memory order) internal view {
+    function givenValidOrder(uint64 swapFee, GPv2Order.Data memory order) internal view {
         order.sellToken = IERC20(address(token0));
         order.buyToken = IERC20(address(token1));
         order.receiver = address(cowSwapper);
@@ -113,6 +113,16 @@ abstract contract CowSwapper_Fuzz_Test is Fuzz_Test, BalancerV2Fixture, CowSwapF
         order.partiallyFillable = false;
         order.sellTokenBalance = GPv2Order.BALANCE_ERC20;
         order.buyTokenBalance = GPv2Order.BALANCE_ERC20;
+
+        order.appData = getAppDataHash(swapFee, order);
+    }
+
+    function getAppDataHash(uint64 swapFee, GPv2Order.Data memory order) internal view returns (bytes32 appDataHash) {
+        bytes memory initiatorData = abi.encodePacked(order.buyToken, uint112(order.buyAmount), order.validTo, swapFee);
+        bytes memory beforeSwapCallData = abi.encodeCall(cowSwapper.beforeSwap, (initiatorData));
+
+        appDataHash =
+            orderHook.getAppDataHash(address(account), address(order.sellToken), order.sellAmount, beforeSwapCallData);
     }
 
     function setCowSwapper(address initiator) internal {
@@ -131,28 +141,22 @@ abstract contract CowSwapper_Fuzz_Test is Fuzz_Test, BalancerV2Fixture, CowSwapF
         cowSwapper.setAccountInfo(address(account), initiator, MAX_FEE, address(orderHook), abi.encode(""), "");
     }
 
-    function getSettlementCallData(
-        uint64 swapFee,
-        GPv2Order.Data memory order,
-        bytes memory initiatorSignature,
-        bytes memory eip1271Signature
-    ) internal view returns (bytes memory settlementCallData) {
+    function getSettlementCallData(uint64 swapFee, GPv2Order.Data memory order, bytes memory signature)
+        internal
+        view
+        returns (bytes memory settlementCallData)
+    {
         (
             address[] memory tokens,
             uint256[] memory clearingPrices,
             ICowSettlement.Trade[] memory trades,
             ICowSettlement.Interaction[][3] memory interactions
-        ) = getSettlementData(swapFee, order, initiatorSignature, eip1271Signature);
+        ) = getSettlementData(swapFee, order, signature);
 
         settlementCallData = abi.encodeCall(ICowSettlement.settle, (tokens, clearingPrices, trades, interactions));
     }
 
-    function getSettlementData(
-        uint64 swapFee,
-        GPv2Order.Data memory order,
-        bytes memory initiatorSignature,
-        bytes memory eip1271Signature
-    )
+    function getSettlementData(uint64 swapFee, GPv2Order.Data memory order, bytes memory signature)
         internal
         view
         returns (
@@ -182,7 +186,7 @@ abstract contract CowSwapper_Fuzz_Test is Fuzz_Test, BalancerV2Fixture, CowSwapF
             order.feeAmount,
             packFlags(),
             order.sellAmount,
-            eip1271Signature
+            signature
         );
 
         // Pre swap interactions.
@@ -201,8 +205,11 @@ abstract contract CowSwapper_Fuzz_Test is Fuzz_Test, BalancerV2Fixture, CowSwapF
             HooksTrampoline.Hook[] memory hooks = new HooksTrampoline.Hook[](1);
             hooks[0] = HooksTrampoline.Hook({
                 target: address(cowSwapper),
-                callData: abi.encodeCall(cowSwapper.beforeSwap, (swapFee, order, initiatorSignature)),
-                gasLimit: 40_000
+                callData: abi.encodeCall(
+                    cowSwapper.beforeSwap,
+                    (abi.encodePacked(order.buyToken, uint112(order.buyAmount), order.validTo, swapFee))
+                ),
+                gasLimit: 80_000
             });
             interactions[0][1] = ICowSettlement.Interaction({
                 target: address(hooksTrampoline),
@@ -246,7 +253,7 @@ abstract contract CowSwapper_Fuzz_Test is Fuzz_Test, BalancerV2Fixture, CowSwapF
         view
         returns (bytes memory sig)
     {
-        bytes32 messageHash = keccak256(abi.encode(account_, swapFee, order.hash(cowSwapper.DOMAIN_SEPARATOR())));
+        bytes32 messageHash = keccak256(abi.encode(account_, swapFee, order.hash(orderHook.DOMAIN_SEPARATOR())));
         sig = getSignature(messageHash, privateKey);
     }
 

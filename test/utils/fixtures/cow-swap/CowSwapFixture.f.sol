@@ -4,7 +4,7 @@
  */
 pragma solidity ^0.8.0;
 
-import { FlashLoanRouter, ICowSettlement } from "../../../../lib/flash-loan-router/src/FlashLoanRouter.sol";
+import { FlashLoanRouterExtension, ICowSettlement } from "./extensions/FlashLoanRouterExtension.sol";
 import { GPv2AllowListAuthentication } from "../../../../lib/cowprotocol/src/contracts/GPv2AllowListAuthentication.sol";
 import { GPv2Settlement, IVault } from "../../../../lib/cowprotocol/src/contracts/GPv2Settlement.sol";
 import { GPv2VaultRelayer } from "../../../../lib/cowprotocol/src/contracts/GPv2VaultRelayer.sol";
@@ -16,7 +16,7 @@ contract CowSwapFixture is Test {
                                    CONTRACTS
     //////////////////////////////////////////////////////////////////////////*/
 
-    FlashLoanRouter internal flashLoanRouter;
+    FlashLoanRouterExtension internal flashLoanRouter;
 
     GPv2AllowListAuthentication internal authenticator;
     GPv2Settlement internal settlement;
@@ -71,7 +71,7 @@ contract CowSwapFixture is Test {
         vaultRelayer = GPv2VaultRelayer(settlement.vaultRelayer());
 
         // Deploy flash loan router.
-        flashLoanRouter = new FlashLoanRouter(ICowSettlement(address(settlement)));
+        flashLoanRouter = new FlashLoanRouterExtension(ICowSettlement(address(settlement)));
 
         // Deploy hooks trampoline.
         hooksTrampoline = new HooksTrampoline(address(settlement));

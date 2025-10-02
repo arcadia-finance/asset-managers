@@ -26,7 +26,7 @@ library ArcadiaLogic {
         uint256[] memory types = new uint256[](1);
 
         // Encode asset.
-        assets[0] = address(token);
+        assets[0] = token;
         amounts[0] = amount;
         types[0] = 1;
 
@@ -55,7 +55,7 @@ library ArcadiaLogic {
         uint256[] memory types = new uint256[](1);
 
         // Encode asset.
-        assets[0] = address(token);
+        assets[0] = token;
         amounts[0] = amount;
         types[0] = 1;
 
