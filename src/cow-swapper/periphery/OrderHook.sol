@@ -8,7 +8,7 @@ import { IOrderHook } from "../interfaces/IOrderHook.sol";
 
 /**
  * @title Abstract Order Hook.
- * @notice Allows an Initiator to verify order preferences.
+ * @author Pragma Labs
  */
 abstract contract OrderHook is IOrderHook {
     /* ///////////////////////////////////////////////////////////////
@@ -31,7 +31,7 @@ abstract contract OrderHook is IOrderHook {
      * @param account The contract address of the Arcadia Account.
      * @param tokenIn The contract address of the token to swap from.
      * @param amountIn The amount of tokenIn to swap.
-     * @param initiatorData The encoded remaining initiator parameters.
+     * @param initiatorData The packed encoded remaining initiator parameters.
      * @return swapFee The fee charged on the amountOut by the initiator, with 18 decimals precision.
      * @return tokenOut The contract address of the token to swap to.
      * @return amountOut The amount of tokenOut to swap to.

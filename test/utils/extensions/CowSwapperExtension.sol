@@ -5,81 +5,88 @@
 pragma solidity ^0.8.0;
 
 import { CowSwapper } from "../../../src/cow-swapper/CowSwapper.sol";
+import { IERC20 } from "../../../lib/flash-loan-router/src/vendored/IERC20.sol";
 
 contract CowSwapperExtension is CowSwapper {
     constructor(address owner_, address arcadiaFactory, address flashLoanRouter, address hooksTrampoline)
         CowSwapper(owner_, arcadiaFactory, flashLoanRouter, hooksTrampoline)
     { }
 
-    function getAccount() public view returns (address) {
+    function getAccount() external view returns (address) {
         return account;
     }
 
-    function getInitiator() public view returns (address) {
+    function getInitiator() external view returns (address) {
         return initiator;
     }
 
-    function getSwapFee() public view returns (uint64) {
+    function getSwapFee() external view returns (uint64) {
         return swapFee;
     }
 
-    function getTokenIn() public view returns (address) {
+    function getTokenIn() external view returns (address) {
         return tokenIn;
     }
 
-    function getTokenOut() public view returns (address) {
+    function getTokenOut() external view returns (address) {
         return tokenOut;
     }
 
-    function getAmountIn() public view returns (uint256) {
+    function getAmountIn() external view returns (uint256) {
         return amountIn;
     }
 
-    function getAmountOut() public view returns (uint256) {
+    function getAmountOut() external view returns (uint256) {
         return amountOut;
     }
 
-    function getOrderHash() public view returns (bytes32) {
+    function getOrderHash() external view returns (bytes32) {
         return orderHash;
     }
 
-    function getMessageHash() public view returns (bytes32) {
+    function getMessageHash() external view returns (bytes32) {
         return messageHash;
     }
 
-    function setAccount(address account_) public {
+    function setAccount(address account_) external {
         account = account_;
     }
 
-    function setInitiator(address initiator_) public {
+    function setInitiator(address initiator_) external {
         initiator = initiator_;
     }
 
-    function setSwapFee(uint64 swapFee_) public {
+    function setSwapFee(uint64 swapFee_) external {
         swapFee = swapFee_;
     }
 
-    function setTokenIn(address tokenIn_) public {
+    function setTokenIn(address tokenIn_) external {
         tokenIn = tokenIn_;
     }
 
-    function setTokenOut(address tokenOut_) public {
+    function setTokenOut(address tokenOut_) external {
         tokenOut = tokenOut_;
     }
 
-    function setAmountIn(uint256 amountIn_) public {
+    function setAmountIn(uint256 amountIn_) external {
         amountIn = amountIn_;
     }
 
-    function setAmountOut(uint256 amountOut_) public {
+    function setAmountOut(uint256 amountOut_) external {
         amountOut = amountOut_;
     }
 
-    function setOrderHash(bytes32 orderHash_) public {
+    function setOrderHash(bytes32 orderHash_) external {
         orderHash = orderHash_;
     }
 
-    function setMessageHash(bytes32 messageHash_) public {
+    function setMessageHash(bytes32 messageHash_) external {
         messageHash = messageHash_;
+    }
+
+    function triggerFlashLoan_(address account_, IERC20 tokenIn_, uint256 amountIn_, bytes calldata callBackData)
+        external
+    {
+        triggerFlashLoan(account_, tokenIn_, amountIn_, callBackData);
     }
 }

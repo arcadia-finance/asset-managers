@@ -10,6 +10,10 @@ import { IGPv2Settlement } from "../interfaces/IGPv2Settlement.sol";
 import { OrderHook } from "./OrderHook.sol";
 import { LibString } from "../../../lib/accounts-v2/lib/solady/src/utils/LibString.sol";
 
+/**
+ * @title Order Hook.
+ * @author Pragma Labs
+ */
 contract DefaultOrderHook is OrderHook {
     using GPv2Order for GPv2Order.Data;
     using LibString for string;
@@ -21,7 +25,7 @@ contract DefaultOrderHook is OrderHook {
     bytes32 public immutable DOMAIN_SEPARATOR;
 
     // The contract address of the CoW Swapper.
-    address internal immutable COW_SWAPPER;
+    address public immutable COW_SWAPPER;
     /// forge-lint: disable-next-line(mixed-case-variable)
     string internal COW_SWAPPER_HEX_STRING;
 
@@ -38,9 +42,9 @@ contract DefaultOrderHook is OrderHook {
     // A mapping from an Arcadia Account to a struct with Account-specific information.
     mapping(address cowSwapper => mapping(address account => AccountInfo)) public accountInfo;
 
-    // A struct containing Account-specific strategy information.
+    // A struct containing Account-specific information.
     struct AccountInfo {
-        // A bytes array containing custom strategy information.
+        // A bytes array containing custom information.
         bytes customInfo;
     }
 
@@ -64,7 +68,7 @@ contract DefaultOrderHook is OrderHook {
 
     /**
      * @notice Function called by the CoW Swapper to set the Account specific information.
-     * @param account The contract address of the Arcadia Account to set the rebalance info for.
+     * @param account The contract address of the Arcadia Account to set the order info for.
      * @param hookData Encoded data containing hook specific parameters.
      */
     function setHook(address account, bytes calldata hookData) external override {
@@ -96,7 +100,7 @@ contract DefaultOrderHook is OrderHook {
         returns (uint64 swapFee, address tokenOut, uint256 amountOut, bytes32 orderHash)
     {
         uint32 validTo;
-        (tokenOut, amountOut, validTo, swapFee) = decodeInitiatorData(initiatorData);
+        (tokenOut, amountOut, validTo, swapFee) = _decodeInitiatorData(initiatorData);
 
         GPv2Order.Data memory order = GPv2Order.Data({
             sellToken: IERC20(tokenIn),
@@ -126,7 +130,7 @@ contract DefaultOrderHook is OrderHook {
      * @return swapFee The fee charged on the amountOut by the initiator, with 18 decimals precision.
      * @dev since the beforeSwap calldata has to be converted to hexString, the initiatorData is packed as tightly as possible.
      */
-    function decodeInitiatorData(bytes calldata initiatorData)
+    function _decodeInitiatorData(bytes calldata initiatorData)
         internal
         pure
         returns (address tokenOut, uint112 amountOut, uint32 validTo, uint64 swapFee)
