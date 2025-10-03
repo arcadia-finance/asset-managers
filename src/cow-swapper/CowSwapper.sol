@@ -96,9 +96,9 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
     ////////////////////////////////////////////////////////////// */
 
     error InvalidAccountVersion();
-    error InvalidOrderHash();
     error InvalidInitiator();
     error InvalidOrder();
+    error InvalidOrderHash();
     error InvalidValue();
     error NotAnAccount();
     error MissingSignatureVerification();
