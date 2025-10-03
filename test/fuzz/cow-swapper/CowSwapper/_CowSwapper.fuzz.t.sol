@@ -131,11 +131,11 @@ abstract contract CowSwapper_Fuzz_Test is Fuzz_Test, BalancerV2Fixture, CowSwapF
         statuses[0] = true;
         bytes[] memory datas = new bytes[](1);
         datas[0] = bytes("");
-        vm.prank(users.accountOwner);
+        vm.prank(account.owner());
         account.setAssetManagers(assetManagers, statuses, datas);
 
         // And: Initiator is set on Cow Swapper.
-        vm.prank(users.accountOwner);
+        vm.prank(account.owner());
         cowSwapper.setAccountInfo(address(account), initiator, MAX_FEE, address(orderHook), abi.encode(""), "");
     }
 

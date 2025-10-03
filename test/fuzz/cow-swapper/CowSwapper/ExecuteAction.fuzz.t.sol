@@ -501,7 +501,7 @@ contract ExecuteAction_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         cowSwapper.executeAction(loansWithSettlement);
     }
 
-    function testFuzz_Revert_executeAction_InvalidInitiator(
+    function testFuzz_Revert_executeAction_InvalidSigner(
         uint256 signerPrivateKey,
         uint64 swapFee,
         GPv2Order.Data memory order,
@@ -784,7 +784,7 @@ contract ExecuteAction_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         cowSwapper.executeAction(loansWithSettlement);
     }
 
-    function testFuzz_Success_executeAction(
+    function testFuzz_Success_executeAction_Initiator(
         uint256 initiatorPrivateKey,
         uint64 swapFee,
         GPv2Order.Data memory order,
@@ -831,6 +831,86 @@ contract ExecuteAction_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
 
         // And: Transient state is set.
         cowSwapper.setAccount(address(account));
+        cowSwapper.setInitiator(initiator);
+        cowSwapper.setTokenIn(address(order.sellToken));
+        cowSwapper.setAmountIn(order.sellAmount);
+
+        flashLoanRouter.setPendingBorrower(address(cowSwapper));
+        flashLoanRouter.setPendingDataHash(loansWithSettlement.hash());
+
+        // When: Account calls executeAction.
+        vm.prank(address(account));
+        ActionData memory depositData = cowSwapper.executeAction(loansWithSettlement);
+
+        // Then: Initiator has received the expected fee.
+        uint256 fee = uint256(buyClearingPrice) * swapFee / 1e18;
+        assertEq(order.buyToken.balanceOf(initiator), fee);
+
+        // And: Return data should be correct.
+        assertEq(depositData.assetTypes[0], 1);
+        assertEq(depositData.assetIds[0], 0);
+        assertEq(depositData.assetAmounts[0], buyClearingPrice - fee);
+        assertEq(depositData.assets[0], address(order.buyToken));
+
+        // And: Approval should be set.
+        assertEq(order.buyToken.allowance(address(cowSwapper), address(account)), buyClearingPrice - fee);
+
+        // And: Positive slippage can be pocketed by solver.
+        assertEq(order.buyToken.balanceOf(address(settlement)), buyAmount - buyClearingPrice);
+    }
+
+    function testFuzz_Success_executeAction_AccountOwner(
+        uint256 accountOwnerPrivateKey,
+        uint64 swapFee,
+        GPv2Order.Data memory order,
+        uint256 buyClearingPrice,
+        uint256 buyAmount,
+        address initiator
+    ) public {
+        // Given: Valid Account owner.
+        accountOwnerPrivateKey = givenValidPrivatekey(accountOwnerPrivateKey);
+        address accountOwner = vm.addr(accountOwnerPrivateKey);
+        vm.prank(users.accountOwner);
+        factory.safeTransferFrom(users.accountOwner, accountOwner, address(account));
+
+        // And: Valid swap fee.
+        swapFee = uint64(bound(swapFee, 0, MAX_FEE));
+
+        // And: Valid order.
+        givenValidOrder(swapFee, order);
+
+        // And: Cow swapper is set as asset manager with initiator.
+        vm.assume(initiator != address(0));
+        setCowSwapper(initiator);
+
+        // And: Cow Swapper has balance sellToken.
+        deal(address(order.sellToken), address(cowSwapper), order.sellAmount, true);
+
+        // And: Clearing price is better than order demand.
+        buyClearingPrice = bound(buyClearingPrice, order.buyAmount + 1, type(uint160).max);
+        // And: Slippage is positive
+        buyAmount = bound(buyAmount, buyClearingPrice, type(uint160).max);
+
+        // And: Router can execute the swap.
+        deal(address(order.buyToken), address(routerMock), buyAmount, true);
+
+        // Get the loansWithSettlement call data.
+        bytes memory loansWithSettlement;
+        {
+            bytes memory signature = abi.encodePacked(
+                address(cowSwapper), getSignature(address(account), swapFee, order, accountOwnerPrivateKey)
+            );
+
+            bytes memory settlementCallData =
+                getSettlementCallData(swapFee, order, signature, buyClearingPrice, buyAmount);
+
+            loansWithSettlement = this.getLoansWithSettlement(new Loan.Data[](1), settlementCallData);
+            loansWithSettlement.popLoan();
+        }
+
+        // And: Transient state is set.
+        cowSwapper.setAccount(address(account));
+        cowSwapper.setAccountOwner(accountOwner);
         cowSwapper.setInitiator(initiator);
         cowSwapper.setTokenIn(address(order.sellToken));
         cowSwapper.setAmountIn(order.sellAmount);

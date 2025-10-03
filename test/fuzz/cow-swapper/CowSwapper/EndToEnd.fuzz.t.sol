@@ -416,7 +416,7 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         flashLoanRouter.flashLoanAndSettle(loans, settlementCallData);
     }
 
-    function testFuzz_Revert_EndToEnd_InvalidInitiator(
+    function testFuzz_Revert_EndToEnd_InvalidSigner(
         uint256 signerPrivateKey,
         uint64 swapFee,
         GPv2Order.Data memory order,
@@ -560,7 +560,7 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         flashLoanRouter.flashLoanAndSettle(loans, settlementCallData);
     }
 
-    function testFuzz_Success_EndToEnd(
+    function testFuzz_Success_EndToEnd_Initiator(
         uint256 initiatorPrivateKey,
         uint64 swapFee,
         GPv2Order.Data memory order,
@@ -594,6 +594,75 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         // And: Valid EIP-1271 signature.
         bytes memory signature =
             abi.encodePacked(address(cowSwapper), getSignature(address(account), swapFee, order, initiatorPrivateKey));
+
+        // And: Solver correctly processes the order.
+        Loan.Data[] memory loans = new Loan.Data[](1);
+        loans[0] = Loan.Data({
+            amount: order.sellAmount,
+            borrower: IBorrower(address(cowSwapper)),
+            lender: address(account),
+            token: IERC20(address(order.sellToken))
+        });
+        bytes memory settlementCallData = getSettlementCallData(swapFee, order, signature, buyClearingPrice, buyAmount);
+
+        // When: The solver calls the flash loan router.
+        vm.prank(solver);
+        flashLoanRouter.flashLoanAndSettle(loans, settlementCallData);
+
+        // Then: Account is reset.
+        assertEq(accountsGuard.getAccount(), address(0));
+        assertEq(cowSwapper.getAccount(), address(0));
+
+        // And: Account has received the expected amount of tokenOut.
+        uint256 fee = buyClearingPrice * swapFee / 1e18;
+        assertEq(order.buyToken.balanceOf(address(account)), buyClearingPrice - fee);
+
+        // And: Initiator has received the expected fee.
+        assertEq(order.buyToken.balanceOf(initiator), fee);
+
+        // And: Positive slippage can be pocketed by solver.
+        assertEq(order.buyToken.balanceOf(address(settlement)), buyAmount - buyClearingPrice);
+    }
+
+    function testFuzz_Success_EndToEnd_Initiator(
+        uint256 accountOwnerPrivateKey,
+        uint64 swapFee,
+        GPv2Order.Data memory order,
+        uint256 buyClearingPrice,
+        uint256 buyAmount,
+        address initiator
+    ) public {
+        // Given: Valid Account owner.
+        accountOwnerPrivateKey = givenValidPrivatekey(accountOwnerPrivateKey);
+        address accountOwner = vm.addr(accountOwnerPrivateKey);
+        vm.prank(users.accountOwner);
+        factory.safeTransferFrom(users.accountOwner, accountOwner, address(account));
+
+        // And: Valid swap fee.
+        swapFee = uint64(bound(swapFee, 0, MAX_FEE));
+
+        // And: Valid order.
+        givenValidOrder(swapFee, order);
+
+        // And: Cow swapper is set as asset manager with initiator.
+        vm.assume(initiator != address(0));
+        setCowSwapper(initiator);
+
+        // And: Account has sufficient tokenIn balance.
+        depositErc20InAccount(account, ERC20Mock(address(order.sellToken)), order.sellAmount);
+
+        // And: Clearing price is better than order demand.
+        buyClearingPrice = bound(buyClearingPrice, order.buyAmount + 1, type(uint160).max);
+        // And: Slippage is positive
+        buyAmount = bound(buyAmount, buyClearingPrice, type(uint160).max);
+
+        // And: Router can execute the swap.
+        deal(address(order.buyToken), address(routerMock), buyAmount, true);
+
+        // And: Valid EIP-1271 signature.
+        bytes memory signature = abi.encodePacked(
+            address(cowSwapper), getSignature(address(account), swapFee, order, accountOwnerPrivateKey)
+        );
 
         // And: Solver correctly processes the order.
         Loan.Data[] memory loans = new Loan.Data[](1);
