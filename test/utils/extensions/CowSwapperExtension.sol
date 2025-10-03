@@ -16,6 +16,10 @@ contract CowSwapperExtension is CowSwapper {
         return account;
     }
 
+    function getAccountOwner() external view returns (address) {
+        return accountOwner;
+    }
+
     function getInitiator() external view returns (address) {
         return initiator;
     }
@@ -50,6 +54,10 @@ contract CowSwapperExtension is CowSwapper {
 
     function setAccount(address account_) external {
         account = account_;
+    }
+
+    function setAccountOwner(address accountOwner_) external {
+        accountOwner = accountOwner_;
     }
 
     function setInitiator(address initiator_) external {

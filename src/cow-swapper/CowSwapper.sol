@@ -70,6 +70,8 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
 
     // The contract address of the Account.
     address internal transient account;
+    // The address of the Account owner.
+    address internal transient accountOwner;
     // The address of the initiator.
     address internal transient initiator;
 
@@ -99,6 +101,7 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
     error InvalidInitiator();
     error InvalidOrder();
     error InvalidOrderHash();
+    error InvalidSigner();
     error InvalidValue();
     error NotAnAccount();
     error MissingSignatureVerification();
@@ -151,19 +154,19 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
 
     /**
      * @notice Optional hook called by the Arcadia Account when calling "setAssetManager()".
-     * @param accountOwner The current owner of the Arcadia Account.
+     * @param accountOwner_ The current owner of the Arcadia Account.
      * param status Bool indicating if the Asset Manager is enabled or disabled.
      * @param data Operator specific data, passed by the Account owner.
      * @dev No need to check that the Account version is 3 or greater (versions with cross account reentrancy guard),
      * since version 1 and 2 don't support the onSetAssetManager hook.
      */
-    function onSetAssetManager(address accountOwner, bool, bytes calldata data) external {
+    function onSetAssetManager(address accountOwner_, bool, bytes calldata data) external {
         if (account != address(0)) revert Reentered();
         if (!ARCADIA_FACTORY.isAccount(msg.sender)) revert NotAnAccount();
 
         (address initiator_, uint256 maxSwapFee, address orderHook, bytes memory hookData, bytes memory metaData_) =
             abi.decode(data, (address, uint256, address, bytes, bytes));
-        _setAccountInfo(msg.sender, accountOwner, initiator_, maxSwapFee, orderHook, hookData, metaData_);
+        _setAccountInfo(msg.sender, accountOwner_, initiator_, maxSwapFee, orderHook, hookData, metaData_);
     }
 
     /**
@@ -185,27 +188,29 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
     ) external {
         if (account != address(0)) revert Reentered();
         if (!ARCADIA_FACTORY.isAccount(account_)) revert NotAnAccount();
-        address accountOwner = IAccount(account_).owner();
-        if (msg.sender != accountOwner) revert OnlyAccountOwner();
+        address accountOwner_ = IAccount(account_).owner();
+        if (msg.sender != accountOwner_) revert OnlyAccountOwner();
         // Block Account versions without cross account reentrancy guard.
         if (IAccount(account_).ACCOUNT_VERSION() < 3) revert InvalidAccountVersion();
 
-        _setAccountInfo(account_, accountOwner, initiator_, maxSwapFee, orderHook, hookData, metaData_);
+        _setAccountInfo(account_, accountOwner_, initiator_, maxSwapFee, orderHook, hookData, metaData_);
     }
 
     /**
      * @notice Sets the required information for an Account.
      * @param account_ The contract address of the Arcadia Account to set the information for.
-     * @param accountOwner The current owner of the Arcadia Account.
+     * @param accountOwner_ The current owner of the Arcadia Account.
      * @param initiator_ The address of the initiator.
      * @param maxSwapFee The maximum fee charged on the claimed fees of the liquidity position, with 18 decimals precision.
      * @param orderHook The contract address of the order hook.
      * @param hookData Encoded data containing hook specific parameters.
      * @param metaData_ Custom metadata to be stored with the account.
+     * @dev The initiator for a specific owner for a specific account must be set to a non zero address to use the CoW Swapper.
+     * Also if the Account owner is the only allowed signer.
      */
     function _setAccountInfo(
         address account_,
-        address accountOwner,
+        address accountOwner_,
         address initiator_,
         uint256 maxSwapFee,
         address orderHook,
@@ -214,7 +219,7 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
     ) internal {
         if (maxSwapFee > 1e18) revert InvalidValue();
 
-        ownerToAccountToInitiator[accountOwner][account_] = initiator_;
+        ownerToAccountToInitiator[accountOwner_][account_] = initiator_;
         accountInfo[account_] = AccountInfo({ maxSwapFee: uint64(maxSwapFee), orderHook: orderHook });
         metaData[account_] = metaData_;
 
@@ -251,10 +256,12 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
 
         // If the Initiator is non zero, we know account_ is an actual Arcadia Account,
         // and the initiator is set by its current owner.
-        address initiator_ = ownerToAccountToInitiator[IAccount(account_).owner()][account_];
+        address accountOwner_ = IAccount(account_).owner();
+        address initiator_ = ownerToAccountToInitiator[accountOwner_][account_];
         if (initiator_ == address(0)) revert InvalidInitiator();
 
         // Store transient storage.
+        accountOwner = accountOwner_;
         initiator = initiator_;
         tokenIn = address(tokenIn_);
         amountIn = amountIn_;
@@ -329,6 +336,9 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
      * since the order hash and tokenOut will not be set.
      * @dev GPv2Settlement ensures that signatures for the same orderHash (and hence messageHash) cannot be replayed.
      * No need to again check for replay attacks here.
+     * @dev The swapFee, if non-zero is always paid to the initiator, also if the Account owner is the signer.
+     * While suboptimal, "isValidSignature()" is a view only function so we can't check who is the actual signer.
+     * The Account owner can always sign with the fee set to 0.
      */
     function beforeSwap(bytes calldata initiatorData) external onlyHooksTrampoline {
         // Cache variables.
@@ -370,7 +380,8 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
         // Validate Signature.
         // ECDSA.recoverSigner() will never return the zero address as signer (reverts instead).
         // Hence if the equality holds, the "initiator" was non-zero, and "account" and "initiator" were verified during "triggerFlashLoan()".
-        if (ECDSA.recoverCalldata(messageHash, signature) != initiator) revert InvalidInitiator();
+        address signer = ECDSA.recoverCalldata(messageHash, signature);
+        if (signer != initiator && signer != accountOwner) revert InvalidSigner();
 
         // If order hash is valid, return EIP-1271 magic value.
         return MAGIC_VALUE;
