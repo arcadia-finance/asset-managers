@@ -5,7 +5,7 @@
 pragma solidity ^0.8.0;
 
 import { ActionData } from "../../../../../lib/accounts-v2/src/interfaces/IActionBase.sol";
-import { DefaultHook } from "../../../../utils/mocks/DefaultHook.sol";
+import { DefaultRebalancerHook } from "../../../../utils/mocks/DefaultRebalancerHook.sol";
 import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
 import { Rebalancer } from "../../../../../src/cl-managers/rebalancers/Rebalancer.sol";
@@ -22,7 +22,7 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
                             VARIABLES
     /////////////////////////////////////////////////////////////// */
 
-    DefaultHook internal strategyHook;
+    DefaultRebalancerHook internal strategyHook;
 
     /* ///////////////////////////////////////////////////////////////
                               SETUP
@@ -31,7 +31,7 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
     function setUp() public override {
         RebalancerUniswapV3_Fuzz_Test.setUp();
 
-        strategyHook = new DefaultHook();
+        strategyHook = new DefaultRebalancerHook();
     }
 
     /*//////////////////////////////////////////////////////////////
