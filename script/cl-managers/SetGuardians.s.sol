@@ -7,8 +7,8 @@ pragma solidity ^0.8.0;
 import { Base_AssetManagers_Script } from "../Base.s.sol";
 import { Compounders, Rebalancers, YieldClaimers } from "../utils/constants/Shared.sol";
 import { Guardian } from "../../src/guardian/Guardian.sol";
-import { Safes } from "../../lib/accounts-v2/script/utils/constants/Base.sol";
-import { SafesAssetManagers } from "../utils/constants/Base.sol";
+import { Safes } from "../../lib/accounts-v2/script/utils/constants/Shared.sol";
+import { SafesAssetManagers } from "../utils/constants/Shared.sol";
 
 contract SetGuardians is Base_AssetManagers_Script {
     function run() public {
