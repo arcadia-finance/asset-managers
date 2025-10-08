@@ -7,8 +7,8 @@ pragma solidity ^0.8.0;
 import { ExternalContracts } from "../../../lib/accounts-v2/script/utils/constants/Unichain.sol";
 
 library Slipstream {
-    address constant FACTORY = 0x31832f2a97Fd20664D76Cc421207669b55CE4BC0;
-    address constant POOL_IMPLEMENTATION = 0x10499d88Bd32AF443Fc936F67DE32bE1c8Bb374C;
+    address constant FACTORY = 0x04625B046C69577EfC40e6c0Bb83CDBAfab5a55F;
+    address constant POOL_IMPLEMENTATION = 0x321f7Dfb9B2eA9131B8C17691CF6e01E5c149cA8;
     address internal constant POSITION_MANAGER = ExternalContracts.SLIPSTREAM_POS_MNGR;
 }
 
