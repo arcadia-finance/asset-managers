@@ -5,12 +5,12 @@
 pragma solidity ^0.8.0;
 
 import { ArcadiaAssetManagers } from "../utils/constants/Shared.sol";
-import { Assets, Safes } from "../../lib/accounts-v2/script/utils/constants/Base.sol";
+import { Assets } from "../../lib/accounts-v2/script/utils/constants/Base.sol";
 import { Base_AssetManagers_Script } from "../Base.s.sol";
 import { CompounderSlipstream } from "../../src/cl-managers/compounders/CompounderSlipstream.sol";
 import { CompounderUniswapV3 } from "../../src/cl-managers/compounders/CompounderUniswapV3.sol";
 import { CompounderUniswapV4 } from "../../src/cl-managers/compounders/CompounderUniswapV4.sol";
-import { Deployers } from "../../lib/accounts-v2/script/utils/constants/Shared.sol";
+import { Deployers, Safes } from "../../lib/accounts-v2/script/utils/constants/Shared.sol";
 import { RebalancerSlipstream } from "../../src/cl-managers/rebalancers/RebalancerSlipstream.sol";
 import { RebalancerUniswapV3 } from "../../src/cl-managers/rebalancers/RebalancerUniswapV3.sol";
 import { RebalancerUniswapV4 } from "../../src/cl-managers/rebalancers/RebalancerUniswapV4.sol";

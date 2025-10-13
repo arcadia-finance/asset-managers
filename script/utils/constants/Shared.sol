@@ -33,3 +33,7 @@ library YieldClaimers {
     address constant UNISWAP_V3 = 0x40462e71Effd9974Fee04B6b327B701D663f753e;
     address constant UNISWAP_V4 = 0x3BC2B398eEEE9807ff76fdb4E11526dE0Ee80cEa;
 }
+
+library SafesAssetManagers {
+    address internal constant GUARDIAN = 0x8546d2a8e0c3C6658e8796FF2Ed3c78A5238c527;
+}
