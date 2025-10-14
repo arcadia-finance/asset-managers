@@ -55,7 +55,7 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         YieldClaimer.InitiatorParams memory initiatorParams,
         address initiator
     ) public {
-        // Given: initiator is not holdig balances.
+        // Given: initiator is not holding balances.
         vm.assume(initiator != address(yieldClaimer));
         vm.assume(initiator != users.liquidityProvider);
         vm.assume(initiator != address(account));
@@ -146,13 +146,13 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         address initiator,
         address recipient
     ) public {
-        // Given: initiator is not holdig balances.
+        // Given: initiator is not holding balances.
         vm.assume(initiator != address(yieldClaimer));
         vm.assume(initiator != users.liquidityProvider);
         vm.assume(initiator != address(account));
 
         // And: recipient is not the account or address(0).
-        // Given: recipient is not holdig balances.
+        // Given: recipient is not holding balances.
         vm.assume(recipient != address(yieldClaimer));
         vm.assume(recipient != users.liquidityProvider);
         vm.assume(recipient != address(account));
@@ -228,7 +228,7 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         YieldClaimer.InitiatorParams memory initiatorParams,
         address initiator
     ) public {
-        // Given: initiator is not holdig balances.
+        // Given: initiator is not holding balances.
         vm.assume(initiator != address(yieldClaimer));
         vm.assume(initiator != users.liquidityProvider);
         vm.assume(initiator != address(account));
@@ -319,13 +319,13 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         address initiator,
         address recipient
     ) public {
-        // Given: initiator is not holdig balances.
+        // Given: initiator is not holding balances.
         vm.assume(initiator != address(yieldClaimer));
         vm.assume(initiator != users.liquidityProvider);
         vm.assume(initiator != address(account));
 
         // And: recipient is not the account or address(0).
-        // Given: recipient is not holdig balances.
+        // Given: recipient is not holding balances.
         vm.assume(recipient != address(yieldClaimer));
         vm.assume(recipient != users.liquidityProvider);
         vm.assume(recipient != address(account));
@@ -410,7 +410,7 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         YieldClaimer.InitiatorParams memory initiatorParams,
         address initiator
     ) public {
-        // Given: initiator is not holdig balances.
+        // Given: initiator is not holding balances.
         vm.assume(initiator != address(yieldClaimer));
         vm.assume(initiator != users.liquidityProvider);
         vm.assume(initiator != address(account));
@@ -504,13 +504,13 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         address initiator,
         address recipient
     ) public {
-        // Given: initiator is not holdig balances.
+        // Given: initiator is not holding balances.
         vm.assume(initiator != address(yieldClaimer));
         vm.assume(initiator != users.liquidityProvider);
         vm.assume(initiator != address(account));
 
         // And: recipient is not the account or address(0).
-        // Given: recipient is not holdig balances.
+        // Given: recipient is not holding balances.
         vm.assume(recipient != address(yieldClaimer));
         vm.assume(recipient != users.liquidityProvider);
         vm.assume(recipient != address(account));

@@ -8,7 +8,6 @@ import { ArcadiaAccounts, AssetModules } from "../../../lib/accounts-v2/script/u
 
 library ArcadiaAssetManagers {
     address constant FACTORY = ArcadiaAccounts.FACTORY;
-    address constant MERKL_OPERATOR = 0x969F0251360b9Cf11c68f6Ce9587924c1B8b42C6;
     address constant STAKED_SLIPSTREAM_AM = AssetModules.STAKED_SLIPSTREAM;
     address constant WRAPPED_STAKED_SLIPSTREAM = 0xD74339e0F10fcE96894916B93E5Cc7dE89C98272;
 }
@@ -21,6 +20,11 @@ library Compounders {
 
 library Helpers {
     address constant ROUTER_TRAMPOLINE = 0x354dBBa1348985CC952c467b8ddaF5dD07590667;
+}
+
+library MerklOperators {
+    address constant BASE = 0x4aa34F76F85F72A0F0B6Df7aE109F94Da0575d5F;
+    address constant SHARED = 0x969F0251360b9Cf11c68f6Ce9587924c1B8b42C6;
 }
 
 library Rebalancers {

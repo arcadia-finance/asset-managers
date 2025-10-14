@@ -4,10 +4,10 @@
  */
 pragma solidity ^0.8.0;
 
-import { ERC20Mock } from "../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
-import { Fuzz_Test } from "../Fuzz.t.sol";
-import { MerklFixture } from "../../../lib/accounts-v2/test/utils/fixtures/merkl/MerklFixture.f.sol";
-import { MerklOperatorExtension } from "../../utils/extensions/MerklOperatorExtension.sol";
+import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
+import { Fuzz_Test } from "../../Fuzz.t.sol";
+import { MerklFixture } from "../../../../lib/accounts-v2/test/utils/fixtures/merkl/MerklFixture.f.sol";
+import { MerklOperatorExtension } from "../../../utils/extensions/MerklOperatorExtension.sol";
 
 /**
  * @notice Common logic needed by all "MerklOperator" fuzz tests.
