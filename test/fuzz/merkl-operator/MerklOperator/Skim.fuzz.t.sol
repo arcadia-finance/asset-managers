@@ -4,9 +4,9 @@
  */
 pragma solidity ^0.8.0;
 
-import { Guardian } from "../../../src/guardian/Guardian.sol";
+import { Guardian } from "../../../../src/guardian/Guardian.sol";
 import { MerklOperator_Fuzz_Test } from "./_MerklOperator.fuzz.t.sol";
-import { RevertingReceive } from "../../../lib/accounts-v2/test/utils/mocks/RevertingReceive.sol";
+import { RevertingReceive } from "../../../../lib/accounts-v2/test/utils/mocks/RevertingReceive.sol";
 
 /**
  * @notice Fuzz tests for the function "skim" of contract "MerklOperator".

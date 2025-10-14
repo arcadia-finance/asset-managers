@@ -4,13 +4,13 @@
  */
 pragma solidity ^0.8.0;
 
-import { MerklOperator_Fuzz_Test } from "./_MerklOperator.fuzz.t.sol";
-import { MerklOperatorExtension } from "../../utils/extensions/MerklOperatorExtension.sol";
+import { MerklOperatorBase_Fuzz_Test } from "./_MerklOperatorBase.fuzz.t.sol";
+import { MerklOperatorBaseExtension } from "../../../utils/extensions/MerklOperatorBaseExtension.sol";
 
 /**
- * @notice Fuzz tests for the function "Constructor" of contract "MerklOperator".
+ * @notice Fuzz tests for the function "Constructor" of contract "MerklOperatorBase".
  */
-contract Constructor_MerklOperator_Fuzz_Test is MerklOperator_Fuzz_Test {
+contract Constructor_MerklOperatorBase_Fuzz_Test is MerklOperatorBase_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
@@ -21,7 +21,7 @@ contract Constructor_MerklOperator_Fuzz_Test is MerklOperator_Fuzz_Test {
                               TESTS
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Success_Constructor(address owner_, address arcadiaFactory, address distributor_) public {
-        MerklOperatorExtension merklOperator_ = new MerklOperatorExtension(owner_, arcadiaFactory, distributor_);
+        MerklOperatorBaseExtension merklOperator_ = new MerklOperatorBaseExtension(owner_, arcadiaFactory, distributor_);
 
         assertEq(merklOperator_.owner(), owner_);
         assertEq(address(merklOperator_.ARCADIA_FACTORY()), arcadiaFactory);

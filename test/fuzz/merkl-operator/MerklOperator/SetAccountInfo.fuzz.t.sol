@@ -4,10 +4,11 @@
  */
 pragma solidity ^0.8.0;
 
-import { AccountVariableVersion } from "../../../lib/accounts-v2/test/utils/mocks/accounts/AccountVariableVersion.sol";
-import { MerklOperator } from "../../../src/merkl-operator/MerklOperator.sol";
+import { AccountVariableVersion } from
+    "../../../../lib/accounts-v2/test/utils/mocks/accounts/AccountVariableVersion.sol";
+import { MerklOperator } from "../../../../src/merkl-operator/MerklOperator.sol";
 import { MerklOperator_Fuzz_Test } from "./_MerklOperator.fuzz.t.sol";
-import { StdStorage, stdStorage } from "../../../lib/accounts-v2/lib/forge-std/src/Test.sol";
+import { StdStorage, stdStorage } from "../../../../lib/accounts-v2/lib/forge-std/src/Test.sol";
 
 /**
  * @notice Fuzz tests for the function "setAccountInfo" of contract "MerklOperator".
