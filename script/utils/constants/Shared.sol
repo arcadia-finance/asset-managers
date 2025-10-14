@@ -8,14 +8,15 @@ import { ArcadiaAccounts, AssetModules } from "../../../lib/accounts-v2/script/u
 
 library ArcadiaAssetManagers {
     address constant FACTORY = ArcadiaAccounts.FACTORY;
+    address constant MERKL_OPERATOR = 0x969F0251360b9Cf11c68f6Ce9587924c1B8b42C6;
     address constant STAKED_SLIPSTREAM_AM = AssetModules.STAKED_SLIPSTREAM;
     address constant WRAPPED_STAKED_SLIPSTREAM = 0xD74339e0F10fcE96894916B93E5Cc7dE89C98272;
 }
 
 library Compounders {
-    address constant SLIPSTREAM = 0x4694c34d153EE777CC07d01AC433bcC010A20EBd;
-    address constant UNISWAP_V3 = 0x80D3548bc54710d46201D554712E8638fD51326D;
-    address constant UNISWAP_V4 = 0xCfF15E24a453aFAd454533E6D10889A84e2A68e1;
+    address constant SLIPSTREAM = 0x467837f44A71e3eAB90AEcfC995c84DC6B3cfCF7;
+    address constant UNISWAP_V3 = 0x02e1fa043214E51eDf1F0478c6D0d3D5658a2DC3;
+    address constant UNISWAP_V4 = 0xAA95c9c402b195D8690eCaea2341a76e3266B189;
 }
 
 library Helpers {
@@ -23,15 +24,15 @@ library Helpers {
 }
 
 library Rebalancers {
-    address constant SLIPSTREAM = 0xEfe600366e9847D405f2238cF9196E33780B3A42;
-    address constant UNISWAP_V3 = 0xD8285fC23eFF687B8b618b78d85052f1eD17236E;
-    address constant UNISWAP_V4 = 0xa8676C8c197E12a71AE82a08B02DD9e666312cF1;
+    address constant SLIPSTREAM = 0xE07A9383AF8E0B1320419dFeF205bb9bA75f3Ef2;
+    address constant UNISWAP_V3 = 0xbb22cdbfFF5a263E85917803692db3630bF860c4;
+    address constant UNISWAP_V4 = 0x9E466179c46eB098B564cbE319bA4b3EAd6476C1;
 }
 
 library YieldClaimers {
-    address constant SLIPSTREAM = 0x1f75aBF8a24782053B351D9b4EA6d1236ED59105;
-    address constant UNISWAP_V3 = 0x40462e71Effd9974Fee04B6b327B701D663f753e;
-    address constant UNISWAP_V4 = 0x3BC2B398eEEE9807ff76fdb4E11526dE0Ee80cEa;
+    address constant SLIPSTREAM = 0x5a8278D37b7a787574b6Aa7E18d8C02D994f18Ba;
+    address constant UNISWAP_V3 = 0x75Ed28EA8601Ce9F5FbcAB1c2428f04A57aFaA16;
+    address constant UNISWAP_V4 = 0xD8aa21AB7f9B8601CB7d7A776D3AFA1602d5D8D4;
 }
 
 library SafesAssetManagers {
