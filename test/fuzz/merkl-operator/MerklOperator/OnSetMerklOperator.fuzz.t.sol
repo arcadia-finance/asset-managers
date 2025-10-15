@@ -4,7 +4,7 @@
  */
 pragma solidity ^0.8.0;
 
-import { MerklOperator } from "../../../src/merkl-operator/MerklOperator.sol";
+import { MerklOperator } from "../../../../src/merkl-operator/MerklOperator.sol";
 import { MerklOperator_Fuzz_Test } from "./_MerklOperator.fuzz.t.sol";
 
 /**
