@@ -168,13 +168,13 @@ abstract contract UniswapV4 is AbstractBase {
         override
         returns (uint128 liquidity)
     {
-        PoolKey memory poolKey = PoolKey(
-            Currency.wrap(position.tokens[0]),
-            Currency.wrap(position.tokens[1]),
-            position.fee,
-            position.tickSpacing,
-            IHooks(position.pool)
-        );
+        PoolKey memory poolKey = PoolKey({
+            currency0: Currency.wrap(position.tokens[0]),
+            currency1: Currency.wrap(position.tokens[1]),
+            fee: position.fee,
+            tickSpacing: position.tickSpacing,
+            hooks: IHooks(position.pool)
+        });
         liquidity = POOL_MANAGER.getLiquidity(poolKey.toId());
     }
 
@@ -184,13 +184,13 @@ abstract contract UniswapV4 is AbstractBase {
      * @return sqrtPrice The sqrtPrice of the Pool.
      */
     function _getSqrtPrice(PositionState memory position) internal view virtual override returns (uint160 sqrtPrice) {
-        PoolKey memory poolKey = PoolKey(
-            Currency.wrap(position.tokens[0]),
-            Currency.wrap(position.tokens[1]),
-            position.fee,
-            position.tickSpacing,
-            IHooks(position.pool)
-        );
+        PoolKey memory poolKey = PoolKey({
+            currency0: Currency.wrap(position.tokens[0]),
+            currency1: Currency.wrap(position.tokens[1]),
+            fee: position.fee,
+            tickSpacing: position.tickSpacing,
+            hooks: IHooks(position.pool)
+        });
         (sqrtPrice,,,) = POOL_MANAGER.getSlot0(poolKey.toId());
     }
 
@@ -325,6 +325,7 @@ abstract contract UniswapV4 is AbstractBase {
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param amountOut The amount of tokenOut that must be swapped to.
      */
+    // forge-lint: disable-next-item(unsafe-typecast)
     function _swapViaPool(uint256[] memory balances, PositionState memory position, bool zeroToOne, uint256 amountOut)
         internal
         virtual
@@ -337,13 +338,13 @@ abstract contract UniswapV4 is AbstractBase {
                 amountSpecified: int256(amountOut),
                 sqrtPriceLimitX96: zeroToOne ? CLMath.MIN_SQRT_PRICE_LIMIT : CLMath.MAX_SQRT_PRICE_LIMIT
             }),
-            PoolKey(
-                Currency.wrap(position.tokens[0]),
-                Currency.wrap(position.tokens[1]),
-                position.fee,
-                position.tickSpacing,
-                IHooks(position.pool)
-            )
+            PoolKey({
+                currency0: Currency.wrap(position.tokens[0]),
+                currency1: Currency.wrap(position.tokens[1]),
+                fee: position.fee,
+                tickSpacing: position.tickSpacing,
+                hooks: IHooks(position.pool)
+            })
         );
         bytes memory results = POOL_MANAGER.unlock(swapData);
 
@@ -453,13 +454,13 @@ abstract contract UniswapV4 is AbstractBase {
         );
 
         // Cache the pool key.
-        PoolKey memory poolKey = PoolKey(
-            Currency.wrap(position.tokens[0]),
-            Currency.wrap(position.tokens[1]),
-            position.fee,
-            position.tickSpacing,
-            IHooks(position.pool)
-        );
+        PoolKey memory poolKey = PoolKey({
+            currency0: Currency.wrap(position.tokens[0]),
+            currency1: Currency.wrap(position.tokens[1]),
+            fee: position.fee,
+            tickSpacing: position.tickSpacing,
+            hooks: IHooks(position.pool)
+        });
 
         // Generate calldata to mint new position.
         bytes memory actions = new bytes(3);

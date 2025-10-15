@@ -11,7 +11,7 @@ import { FullMath } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/
  * @title Liquidity amount functions
  * @notice Provides functions for computing liquidity amounts from token amounts and prices
  */
-/// forge-lint: disable-next-item(mixed-case-variable)
+/// forge-lint: disable-next-item(mixed-case-variable,unsafe-typecast)
 library LiquidityAmounts {
     /**
      *  @notice Downcasts uint256 to uint128
@@ -78,7 +78,9 @@ library LiquidityAmounts {
         uint256 amount0,
         uint256 amount1
     ) internal pure returns (uint128 liquidity) {
-        if (sqrtRatioAX96 > sqrtRatioBX96) (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
+        if (sqrtRatioAX96 > sqrtRatioBX96) {
+            (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
+        }
 
         if (sqrtRatioX96 <= sqrtRatioAX96) {
             liquidity = toUint128(getLiquidityForAmount0(sqrtRatioAX96, sqrtRatioBX96, amount0));
@@ -148,7 +150,9 @@ library LiquidityAmounts {
         uint160 sqrtRatioBX96,
         uint128 liquidity
     ) internal pure returns (uint256 amount0, uint256 amount1) {
-        if (sqrtRatioAX96 > sqrtRatioBX96) (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
+        if (sqrtRatioAX96 > sqrtRatioBX96) {
+            (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
+        }
 
         if (sqrtRatioX96 <= sqrtRatioAX96) {
             amount0 = getAmount0ForLiquidity(sqrtRatioAX96, sqrtRatioBX96, liquidity);

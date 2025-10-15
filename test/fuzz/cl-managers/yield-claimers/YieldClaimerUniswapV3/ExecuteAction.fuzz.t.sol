@@ -77,9 +77,8 @@ contract ExecuteAction_YieldClaimerUniswapV3_Fuzz_Test is YieldClaimerUniswapV3_
         // And: The YieldClaimer owns the position.
         vm.prank(users.liquidityProvider);
         /// forge-lint: disable-start(erc20-unchecked-transfer)
-        ERC721(address(nonfungiblePositionManager)).transferFrom(
-            users.liquidityProvider, address(yieldClaimer), position.id
-        );
+        ERC721(address(nonfungiblePositionManager))
+            .transferFrom(users.liquidityProvider, address(yieldClaimer), position.id);
         /// forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: position has fees.
@@ -176,9 +175,8 @@ contract ExecuteAction_YieldClaimerUniswapV3_Fuzz_Test is YieldClaimerUniswapV3_
         // And: The YieldClaimer owns the position.
         vm.prank(users.liquidityProvider);
         /// forge-lint: disable-start(erc20-unchecked-transfer)
-        ERC721(address(nonfungiblePositionManager)).transferFrom(
-            users.liquidityProvider, address(yieldClaimer), position.id
-        );
+        ERC721(address(nonfungiblePositionManager))
+            .transferFrom(users.liquidityProvider, address(yieldClaimer), position.id);
         /// forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: position has fees.

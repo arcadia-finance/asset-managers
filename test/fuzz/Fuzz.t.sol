@@ -4,8 +4,9 @@
  */
 pragma solidity ^0.8.0;
 
-import { ArcadiaAccountsFixture } from
-    "../../lib/accounts-v2/test/utils/fixtures/arcadia-accounts/ArcadiaAccountsFixture.f.sol";
+import {
+    ArcadiaAccountsFixture
+} from "../../lib/accounts-v2/test/utils/fixtures/arcadia-accounts/ArcadiaAccountsFixture.f.sol";
 import { Base_AssetManagers_Test } from "../Base.t.sol";
 import { Base_Test } from "../../lib/accounts-v2/test/Base.t.sol";
 import { TickMath } from "../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";

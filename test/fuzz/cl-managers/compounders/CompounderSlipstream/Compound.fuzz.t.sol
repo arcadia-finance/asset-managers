@@ -9,8 +9,9 @@ import { AccountV4 } from "../../../../../lib/accounts-v2/src/accounts/AccountV4
 import { Compounder } from "../../../../../src/cl-managers/compounders/Compounder.sol";
 import { CompounderSlipstream_Fuzz_Test } from "./_CompounderSlipstream.fuzz.t.sol";
 import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
-import { FixedPoint128 } from
-    "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
+import {
+    FixedPoint128
+} from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
 import { FullMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { Guardian } from "../../../../../src/guardian/Guardian.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
@@ -212,9 +213,8 @@ contract Rebalance_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fuzz_T
         // And: Account owns the position.
         vm.prank(users.liquidityProvider);
         /// forge-lint: disable-start(erc20-unchecked-transfer)
-        ERC721(address(slipstreamPositionManager)).transferFrom(
-            users.liquidityProvider, users.accountOwner, position.id
-        );
+        ERC721(address(slipstreamPositionManager))
+            .transferFrom(users.liquidityProvider, users.accountOwner, position.id);
         /// forge-lint: disable-end(erc20-unchecked-transfer)
         deal(address(token0), users.accountOwner, initiatorParams.amount0, true);
         deal(address(token1), users.accountOwner, initiatorParams.amount1, true);
@@ -248,7 +248,7 @@ contract Rebalance_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fuzz_T
             initiatorParams.trustedSqrtPrice = sqrtPrice;
         }
 
-        // And: liqudity is not 0.
+        // And: liquidity is not 0.
         {
             // Calculate balances available on compounder to rebalance (without fees).
             (uint256 balance0, uint256 balance1) = getFeeAmounts(position.id);
@@ -334,9 +334,8 @@ contract Rebalance_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fuzz_T
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), type(uint256).max, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
-                rewardGrowthGlobalX128Current
-            );
+            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+                .checked_write(rewardGrowthGlobalX128Current);
         }
 
         // And: Account owns the position.
@@ -375,7 +374,7 @@ contract Rebalance_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fuzz_T
             initiatorParams.trustedSqrtPrice = sqrtPrice;
         }
 
-        // And: liqudity is not 0.
+        // And: liquidity is not 0.
         {
             // Calculate balances available on compounder to rebalance (without fees).
             uint256 balance0 = initiatorParams.amount0;
@@ -475,9 +474,8 @@ contract Rebalance_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fuzz_T
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), type(uint256).max, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
-                rewardGrowthGlobalX128Current
-            );
+            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+                .checked_write(rewardGrowthGlobalX128Current);
         }
 
         // And: Account owns the position.
@@ -493,7 +491,7 @@ contract Rebalance_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fuzz_T
             initiatorParams.trustedSqrtPrice = sqrtPrice;
         }
 
-        // And: liqudity is not 0.
+        // And: liquidity is not 0.
         {
             // Calculate balances available on compounder to rebalance (without fees).
             uint256 balance0 = initiatorParams.amount0;

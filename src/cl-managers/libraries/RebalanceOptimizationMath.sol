@@ -132,8 +132,9 @@ library RebalanceOptimizationMath {
                     sqrtPriceOld, usableLiquidity, amountOut, false
                 );
             } else {
-                sqrtPriceNew0 =
-                    SqrtPriceMath.getNextSqrtPriceFromAmount0RoundingUp(sqrtPriceOld, usableLiquidity, amountOut, false);
+                sqrtPriceNew0 = SqrtPriceMath.getNextSqrtPriceFromAmount0RoundingUp(
+                    sqrtPriceOld, usableLiquidity, amountOut, false
+                );
                 sqrtPriceNew1 = SqrtPriceMath.getNextSqrtPriceFromAmount1RoundingDown(
                     sqrtPriceOld, usableLiquidity, amountInLessFee, true
                 );
@@ -269,12 +270,11 @@ library RebalanceOptimizationMath {
             }
 
             // Calculate the relative difference of liquidity0 and liquidity1.
-            uint256 relDiff = 1e18
-                - (
-                    liquidity0 < liquidity1
+            uint256 relDiff =
+                1e18
+                - (liquidity0 < liquidity1
                         ? liquidity0.mulDivDown(1e18, liquidity1)
-                        : liquidity1.mulDivDown(1e18, liquidity0)
-                );
+                        : liquidity1.mulDivDown(1e18, liquidity0));
             // In the optimal solution liquidity0 equals liquidity1,
             // and there are no leftovers for token0 or token1 after minting the liquidity.
             // Hence the relative distance between liquidity0 and liquidity1

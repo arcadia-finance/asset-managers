@@ -238,7 +238,7 @@ contract Rebalance_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz_Tes
             initiatorParams.trustedSqrtPrice = sqrtPrice;
         }
 
-        // And: liqudity is not 0.
+        // And: liquidity is not 0.
         {
             // Calculate balances available on compounder to rebalance (without fees).
             (uint256 balance0, uint256 balance1) = getFeeAmounts(position.id);
@@ -356,7 +356,7 @@ contract Rebalance_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz_Tes
             initiatorParams.trustedSqrtPrice = sqrtPrice;
         }
 
-        // And: liqudity is not 0.
+        // And: liquidity is not 0.
         {
             // Calculate balances available on compounder to rebalance (without fees).
             (uint256 balance0, uint256 balance1) = getFeeAmounts(position.id);

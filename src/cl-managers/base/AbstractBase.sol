@@ -101,9 +101,7 @@ abstract contract AbstractBase {
      * @param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      */
-    function _stake(uint256[] memory balances, address positionManager, PositionState memory position)
-        internal
-        virtual;
+    function _stake(uint256[] memory balances, address positionManager, PositionState memory position) internal virtual;
 
     /**
      * @notice Unstakes a Liquidity Position.
@@ -126,9 +124,7 @@ abstract contract AbstractBase {
      * @param position A struct with position and pool related variables.
      * @dev Must update the balances after the burn.
      */
-    function _burn(uint256[] memory balances, address positionManager, PositionState memory position)
-        internal
-        virtual;
+    function _burn(uint256[] memory balances, address positionManager, PositionState memory position) internal virtual;
 
     /* ///////////////////////////////////////////////////////////////
                              SWAP LOGIC

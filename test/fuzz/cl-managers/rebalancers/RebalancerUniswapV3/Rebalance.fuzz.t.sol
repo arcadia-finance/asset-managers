@@ -242,9 +242,8 @@ contract Rebalance_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Tes
         // And: Account owns the position.
         vm.prank(users.liquidityProvider);
         /// forge-lint: disable-start(erc20-unchecked-transfer)
-        ERC721(address(nonfungiblePositionManager)).transferFrom(
-            users.liquidityProvider, users.accountOwner, position.id
-        );
+        ERC721(address(nonfungiblePositionManager))
+            .transferFrom(users.liquidityProvider, users.accountOwner, position.id);
         /// forge-lint: disable-end(erc20-unchecked-transfer)
         deal(address(token0), users.accountOwner, initiatorParams.amount0, true);
         deal(address(token1), users.accountOwner, initiatorParams.amount1, true);

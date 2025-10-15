@@ -6,8 +6,9 @@ pragma solidity ^0.8.0;
 
 import { ERC20, ERC20Mock } from "../../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
-import { FixedPoint128 } from
-    "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
+import {
+    FixedPoint128
+} from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
 import { FullMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
 import { Slipstream_Fuzz_Test } from "./_Slipstream.fuzz.t.sol";
@@ -82,9 +83,8 @@ contract Unstake_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         setPositionState(position);
 
         // And : An initial rewardGrowthGlobalX128.
-        stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
-            rewardGrowthGlobalX128Last
-        );
+        stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+            .checked_write(rewardGrowthGlobalX128Last);
 
         // Create staked position.
         vm.startPrank(users.liquidityProvider);
@@ -108,9 +108,8 @@ contract Unstake_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         vm.warp(block.timestamp + 1);
         deal(AERO, address(gauge), type(uint256).max, true);
         stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-        stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
-            rewardGrowthGlobalX128Current
-        );
+        stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+            .checked_write(rewardGrowthGlobalX128Current);
 
         // When: Calling unstake.
         balances = base.unstake(balances, address(stakedSlipstreamAM), position);
@@ -160,9 +159,8 @@ contract Unstake_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         setPositionState(position);
 
         // And : An initial rewardGrowthGlobalX128.
-        stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
-            rewardGrowthGlobalX128Last
-        );
+        stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+            .checked_write(rewardGrowthGlobalX128Last);
 
         // Create staked position.
         vm.startPrank(users.liquidityProvider);
@@ -204,9 +202,8 @@ contract Unstake_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         vm.warp(block.timestamp + 1);
         deal(AERO, address(gauge), rewards, true);
         stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-        stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
-            rewardGrowthGlobalX128Current
-        );
+        stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+            .checked_write(rewardGrowthGlobalX128Current);
 
         // When: Calling unstake.
         balances = base.unstake(balances, address(stakedSlipstreamAM), position);
@@ -236,9 +233,8 @@ contract Unstake_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         setPositionState(position);
 
         // And : An initial rewardGrowthGlobalX128.
-        stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
-            rewardGrowthGlobalX128Last
-        );
+        stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+            .checked_write(rewardGrowthGlobalX128Last);
 
         // Create staked position.
         vm.startPrank(users.liquidityProvider);
@@ -262,9 +258,8 @@ contract Unstake_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         vm.warp(block.timestamp + 1);
         deal(AERO, address(gauge), type(uint256).max, true);
         stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-        stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
-            rewardGrowthGlobalX128Current
-        );
+        stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+            .checked_write(rewardGrowthGlobalX128Current);
 
         // When: Calling unstake.
         balances = base.unstake(balances, address(wrappedStakedSlipstream), position);
@@ -314,9 +309,8 @@ contract Unstake_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         setPositionState(position);
 
         // And : An initial rewardGrowthGlobalX128.
-        stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
-            rewardGrowthGlobalX128Last
-        );
+        stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+            .checked_write(rewardGrowthGlobalX128Last);
 
         // Create staked position.
         vm.startPrank(users.liquidityProvider);
@@ -358,9 +352,8 @@ contract Unstake_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         vm.warp(block.timestamp + 1);
         deal(AERO, address(gauge), rewards, true);
         stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-        stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
-            rewardGrowthGlobalX128Current
-        );
+        stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+            .checked_write(rewardGrowthGlobalX128Current);
 
         // When: Calling unstake.
         balances = base.unstake(balances, address(wrappedStakedSlipstream), position);

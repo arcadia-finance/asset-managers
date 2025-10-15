@@ -26,9 +26,7 @@ contract GetPositionState_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_getPositionState_Slipstream(uint128 liquidityPool, PositionState memory position)
-        public
-    {
+    function testFuzz_Success_getPositionState_Slipstream(uint128 liquidityPool, PositionState memory position) public {
         // Given: A valid position.
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position, false);

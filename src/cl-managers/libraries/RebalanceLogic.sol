@@ -63,6 +63,7 @@ library RebalanceLogic {
         // Calculate the maximum amount of liquidity that can be added to the position.
         uint256 minLiquidity;
         {
+            // forge-lint: disable-next-item(unsafe-typecast)
             uint256 liquidity = LiquidityAmounts.getLiquidityForAmounts(
                 uint160(sqrtPrice),
                 uint160(sqrtRatioLower),

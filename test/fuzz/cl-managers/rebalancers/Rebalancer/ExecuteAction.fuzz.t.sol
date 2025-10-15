@@ -74,7 +74,7 @@ contract ExecuteAction_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
             ""
         );
 
-        // And: claimfee is bigger than maxClaimFee.
+        // And: claimFee is bigger than maxClaimFee.
         initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, maxClaimFee + 1, type(uint64).max));
 
         // And: account is set.
@@ -114,7 +114,7 @@ contract ExecuteAction_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
             ""
         );
 
-        // And: claimfee is smaller than maxClaimFee.
+        // And: claimFee is smaller than maxClaimFee.
         initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, maxClaimFee));
 
         // And: swapFee is bigger than maxSwapFee.

@@ -7,8 +7,9 @@ pragma solidity ^0.8.0;
 import { ActionData } from "../../../../../lib/accounts-v2/src/interfaces/IActionBase.sol";
 import { ERC20 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC20.sol";
 import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
-import { FixedPoint128 } from
-    "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
+import {
+    FixedPoint128
+} from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
 import { FullMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
 import { StdStorage, stdStorage } from "../../../../../lib/accounts-v2/lib/forge-std/src/Test.sol";
@@ -83,9 +84,8 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         // And: The YieldClaimer owns the position.
         vm.prank(users.liquidityProvider);
         /// forge-lint: disable-start(erc20-unchecked-transfer)
-        ERC721(address(slipstreamPositionManager)).transferFrom(
-            users.liquidityProvider, address(yieldClaimer), position.id
-        );
+        ERC721(address(slipstreamPositionManager))
+            .transferFrom(users.liquidityProvider, address(yieldClaimer), position.id);
         /// forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: position has fees.
@@ -182,9 +182,8 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         // And: The YieldClaimer owns the position.
         vm.prank(users.liquidityProvider);
         /// forge-lint: disable-start(erc20-unchecked-transfer)
-        ERC721(address(slipstreamPositionManager)).transferFrom(
-            users.liquidityProvider, address(yieldClaimer), position.id
-        );
+        ERC721(address(slipstreamPositionManager))
+            .transferFrom(users.liquidityProvider, address(yieldClaimer), position.id);
         /// forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: position has fees.
@@ -271,9 +270,8 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), type(uint256).max, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
-                rewardGrowthGlobalX128Current
-            );
+            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+                .checked_write(rewardGrowthGlobalX128Current);
         }
         rewards = stakedSlipstreamAM.rewardOf(position.id);
 
@@ -370,9 +368,8 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), type(uint256).max, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
-                rewardGrowthGlobalX128Current
-            );
+            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+                .checked_write(rewardGrowthGlobalX128Current);
         }
         rewards = stakedSlipstreamAM.rewardOf(position.id);
 
@@ -444,9 +441,8 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         // And: The YieldClaimer owns the position.
         vm.prank(users.liquidityProvider);
         /// forge-lint: disable-start(erc20-unchecked-transfer)
-        ERC721(address(wrappedStakedSlipstream)).transferFrom(
-            users.liquidityProvider, address(yieldClaimer), position.id
-        );
+        ERC721(address(wrappedStakedSlipstream))
+            .transferFrom(users.liquidityProvider, address(yieldClaimer), position.id);
         /// forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Position earned rewards.
@@ -456,9 +452,8 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), type(uint256).max, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
-                rewardGrowthGlobalX128Current
-            );
+            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+                .checked_write(rewardGrowthGlobalX128Current);
         }
         rewards = wrappedStakedSlipstream.rewardOf(position.id);
 
@@ -546,9 +541,8 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         // And: The YieldClaimer owns the position.
         vm.prank(users.liquidityProvider);
         /// forge-lint: disable-start(erc20-unchecked-transfer)
-        ERC721(address(wrappedStakedSlipstream)).transferFrom(
-            users.liquidityProvider, address(yieldClaimer), position.id
-        );
+        ERC721(address(wrappedStakedSlipstream))
+            .transferFrom(users.liquidityProvider, address(yieldClaimer), position.id);
         /// forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Position earned rewards.
@@ -558,9 +552,8 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), type(uint256).max, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
-                rewardGrowthGlobalX128Current
-            );
+            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+                .checked_write(rewardGrowthGlobalX128Current);
         }
         rewards = wrappedStakedSlipstream.rewardOf(position.id);
 

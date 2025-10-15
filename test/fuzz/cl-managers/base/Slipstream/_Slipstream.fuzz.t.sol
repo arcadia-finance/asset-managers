@@ -6,17 +6,21 @@ pragma solidity ^0.8.0;
 
 import { CLSwapRouterFixture } from "../../../../../lib/accounts-v2/test/utils/fixtures/slipstream/CLSwapRouter.f.sol";
 import { ERC20Mock } from "../../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
-import { FixedPoint96 } from
-    "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint96.sol";
-import { FixedPoint128 } from
-    "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
+import {
+    FixedPoint96
+} from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint96.sol";
+import {
+    FixedPoint128
+} from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
 import { FullMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { Fuzz_Test } from "../../../Fuzz.t.sol";
 import { ICLGauge } from "../../../../../lib/accounts-v2/src/asset-modules/Slipstream/interfaces/ICLGauge.sol";
-import { ICLPoolExtension } from
-    "../../../../../lib/accounts-v2/test/utils/fixtures/slipstream/extensions/interfaces/ICLPoolExtension.sol";
-import { ICLSwapRouter } from
-    "../../../../../lib/accounts-v2/test/utils/fixtures/slipstream/interfaces/ICLSwapRouter.sol";
+import {
+    ICLPoolExtension
+} from "../../../../../lib/accounts-v2/test/utils/fixtures/slipstream/extensions/interfaces/ICLPoolExtension.sol";
+import {
+    ICLSwapRouter
+} from "../../../../../lib/accounts-v2/test/utils/fixtures/slipstream/interfaces/ICLSwapRouter.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
 import { SlipstreamExtension } from "../../../../utils/extensions/SlipstreamExtension.sol";
 import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
@@ -24,8 +28,9 @@ import { UniswapHelpers } from "../../../../utils/uniswap-v3/UniswapHelpers.sol"
 import { SlipstreamAMExtension } from "../../../../../lib/accounts-v2/test/utils/extensions/SlipstreamAMExtension.sol";
 import { SlipstreamFixture } from "../../../../../lib/accounts-v2/test/utils/fixtures/slipstream/Slipstream.f.sol";
 import { StakedSlipstreamAM } from "../../../../../lib/accounts-v2/src/asset-modules/Slipstream/StakedSlipstreamAM.sol";
-import { WrappedStakedSlipstreamFixture } from
-    "../../../../../lib/accounts-v2/test/utils/fixtures/slipstream/WrappedStakedSlipstream.f.sol";
+import {
+    WrappedStakedSlipstreamFixture
+} from "../../../../../lib/accounts-v2/test/utils/fixtures/slipstream/WrappedStakedSlipstream.f.sol";
 
 /**
  * @notice Common logic needed by all "Slipstream" fuzz tests.
@@ -113,10 +118,7 @@ abstract contract Slipstream_Fuzz_Test is
         id = initSlipstream(2 ** 96, type(uint64).max, TICK_SPACING);
     }
 
-    function initSlipstream(uint160 sqrtPrice, uint128 liquidityPool, int24 tickSpacing)
-        internal
-        returns (uint256 id)
-    {
+    function initSlipstream(uint160 sqrtPrice, uint128 liquidityPool, int24 tickSpacing) internal returns (uint256 id) {
         // Deploy fixtures for Slipstream.
         SlipstreamFixture.setUp();
 
@@ -137,6 +139,7 @@ abstract contract Slipstream_Fuzz_Test is
         );
     }
 
+    // forge-lint: disable-next-item(unsafe-typecast)
     function addAssetsToArcadia(uint256 sqrtPrice) internal {
         uint256 price0 = FullMath.mulDiv(1e18, sqrtPrice ** 2, FixedPoint96.Q96 ** 2);
         uint256 price1 = 1e18;
@@ -274,11 +277,7 @@ abstract contract Slipstream_Fuzz_Test is
 
     function getFeeAmounts(uint256 id) internal view returns (uint256 amount0, uint256 amount1) {
         (
-            ,
-            ,
-            ,
-            ,
-            ,
+            ,,,,,
             int24 tickLower,
             int24 tickUpper,
             uint256 liquidity,
@@ -299,11 +298,11 @@ abstract contract Slipstream_Fuzz_Test is
         // This is however much bigger than any realistic situation.
         unchecked {
             amount0 = FullMath.mulDiv(
-                feeGrowthInside0CurrentX128 - feeGrowthInside0LastX128, liquidity, FixedPoint128.Q128
-            ) + tokensOwed0;
+                    feeGrowthInside0CurrentX128 - feeGrowthInside0LastX128, liquidity, FixedPoint128.Q128
+                ) + tokensOwed0;
             amount1 = FullMath.mulDiv(
-                feeGrowthInside1CurrentX128 - feeGrowthInside1LastX128, liquidity, FixedPoint128.Q128
-            ) + tokensOwed1;
+                    feeGrowthInside1CurrentX128 - feeGrowthInside1LastX128, liquidity, FixedPoint128.Q128
+                ) + tokensOwed1;
         }
     }
 

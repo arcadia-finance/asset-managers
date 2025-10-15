@@ -10,6 +10,7 @@ import { Slipstream_Fuzz_Test } from "./_Slipstream.fuzz.t.sol";
 /**
  * @notice Fuzz tests for the function "uniswapV3SwapCallback" of contract "Slipstream".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract UniswapV3SwapCallback_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP

@@ -206,9 +206,8 @@ contract Compound_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz_Test
         // And: Account owns the position.
         vm.prank(users.liquidityProvider);
         /// forge-lint: disable-start(erc20-unchecked-transfer)
-        ERC721(address(nonfungiblePositionManager)).transferFrom(
-            users.liquidityProvider, users.accountOwner, position.id
-        );
+        ERC721(address(nonfungiblePositionManager))
+            .transferFrom(users.liquidityProvider, users.accountOwner, position.id);
         /// forge-lint: disable-end(erc20-unchecked-transfer)
         deal(address(token0), users.accountOwner, initiatorParams.amount0, true);
         deal(address(token1), users.accountOwner, initiatorParams.amount1, true);
@@ -242,7 +241,7 @@ contract Compound_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz_Test
             initiatorParams.trustedSqrtPrice = sqrtPrice;
         }
 
-        // And: liqudity is not 0.
+        // And: liquidity is not 0.
         {
             // Calculate balances available on compounder to rebalance (without fees).
             (uint256 balance0, uint256 balance1) = getFeeAmounts(position.id);
