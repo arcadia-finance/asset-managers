@@ -206,10 +206,10 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-start(erc20-unchecked-transfer)
+        // forge-lint: disable-start(erc20-unchecked-transfer)
         ERC721(address(nonfungiblePositionManager))
             .transferFrom(users.liquidityProvider, address(compounder), position.id);
-        /// forge-lint: disable-end(erc20-unchecked-transfer)
+        // forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Compounder has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1e18));
@@ -308,10 +308,10 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-start(erc20-unchecked-transfer)
+        // forge-lint: disable-start(erc20-unchecked-transfer)
         ERC721(address(nonfungiblePositionManager))
             .transferFrom(users.liquidityProvider, address(compounder), position.id);
-        /// forge-lint: disable-end(erc20-unchecked-transfer)
+        // forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Compounder has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1e18));
@@ -421,10 +421,10 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-start(erc20-unchecked-transfer)
+        // forge-lint: disable-start(erc20-unchecked-transfer)
         ERC721(address(nonfungiblePositionManager))
             .transferFrom(users.liquidityProvider, address(compounder), position.id);
-        /// forge-lint: disable-end(erc20-unchecked-transfer)
+        // forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Compounder has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1e18));

@@ -53,12 +53,12 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
 
     PoolKey internal poolKey;
 
-    /// forge-lint: disable-start(mixed-case-variable)
+    // forge-lint: disable-start(mixed-case-variable)
     ArcadiaOracle internal ethOracle;
     DefaultUniswapV4AM internal defaultUniswapV4AM;
     NativeTokenAM internal nativeTokenAM;
     UniswapV4HooksRegistry internal uniswapV4HooksRegistry;
-    /// forge-lint: disable-end(mixed-case-variable)
+    // forge-lint: disable-end(mixed-case-variable)
 
     /*////////////////////////////////////////////////////////////////
                             TEST CONTRACTS
@@ -184,7 +184,7 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         );
     }
 
-    /// forge-lint: disable-next-item(mixed-case-function)
+    // forge-lint: disable-next-item(mixed-case-function)
     function deployUniswapV4AM() internal {
         // Deploy Add the Asset Module to the Registry.
         vm.startPrank(users.owner);
@@ -199,7 +199,7 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         vm.stopPrank();
     }
 
-    /// forge-lint: disable-next-item(mixed-case-function)
+    // forge-lint: disable-next-item(mixed-case-function)
     function deployNativeAM() public {
         // Deploy AM
         vm.startPrank(users.owner);

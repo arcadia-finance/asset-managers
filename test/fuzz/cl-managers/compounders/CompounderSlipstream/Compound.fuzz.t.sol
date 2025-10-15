@@ -212,10 +212,10 @@ contract Rebalance_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fuzz_T
 
         // And: Account owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-start(erc20-unchecked-transfer)
+        // forge-lint: disable-start(erc20-unchecked-transfer)
         ERC721(address(slipstreamPositionManager))
             .transferFrom(users.liquidityProvider, users.accountOwner, position.id);
-        /// forge-lint: disable-end(erc20-unchecked-transfer)
+        // forge-lint: disable-end(erc20-unchecked-transfer)
         deal(address(token0), users.accountOwner, initiatorParams.amount0, true);
         deal(address(token1), users.accountOwner, initiatorParams.amount1, true);
         {
@@ -340,7 +340,7 @@ contract Rebalance_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fuzz_T
 
         // And: Account owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(stakedSlipstreamAM)).transferFrom(users.liquidityProvider, users.accountOwner, position.id);
         deal(address(token0), users.accountOwner, initiatorParams.amount0, true);
         deal(address(token1), users.accountOwner, initiatorParams.amount1, true);
@@ -480,7 +480,7 @@ contract Rebalance_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fuzz_T
 
         // And: Account owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(wrappedStakedSlipstream)).transferFrom(users.liquidityProvider, address(account), position.id);
         deal(address(token0), address(account), initiatorParams.amount0, true);
         deal(address(token1), address(account), initiatorParams.amount1, true);

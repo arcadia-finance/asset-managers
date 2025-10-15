@@ -267,10 +267,10 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
 
         // And: The Rebalancer owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-start(erc20-unchecked-transfer)
+        // forge-lint: disable-start(erc20-unchecked-transfer)
         ERC721(address(slipstreamPositionManager))
             .transferFrom(users.liquidityProvider, address(rebalancer), position.id);
-        /// forge-lint: disable-end(erc20-unchecked-transfer)
+        // forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Rebalancer has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1));
@@ -359,10 +359,10 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
 
         // And: The Rebalancer owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-start(erc20-unchecked-transfer)
+        // forge-lint: disable-start(erc20-unchecked-transfer)
         ERC721(address(slipstreamPositionManager))
             .transferFrom(users.liquidityProvider, address(rebalancer), position.id);
-        /// forge-lint: disable-end(erc20-unchecked-transfer)
+        // forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Rebalancer has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1));
@@ -448,10 +448,10 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
 
         // And: The Rebalancer owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-start(erc20-unchecked-transfer)
+        // forge-lint: disable-start(erc20-unchecked-transfer)
         ERC721(address(slipstreamPositionManager))
             .transferFrom(users.liquidityProvider, address(rebalancer), position.id);
-        /// forge-lint: disable-end(erc20-unchecked-transfer)
+        // forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Rebalancer has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1));
@@ -568,10 +568,10 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
 
         // And: The Rebalancer owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-start(erc20-unchecked-transfer)
+        // forge-lint: disable-start(erc20-unchecked-transfer)
         ERC721(address(slipstreamPositionManager))
             .transferFrom(users.liquidityProvider, address(rebalancer), position.id);
-        /// forge-lint: disable-end(erc20-unchecked-transfer)
+        // forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Rebalancer has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1));
@@ -712,7 +712,7 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
 
         // And: The Rebalancer owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(stakedSlipstreamAM)).transferFrom(users.liquidityProvider, address(rebalancer), position.id);
 
         // And: Rebalancer has balances.
@@ -854,7 +854,7 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
 
         // And: The Rebalancer owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(stakedSlipstreamAM)).transferFrom(users.liquidityProvider, address(rebalancer), position.id);
 
         // And: Rebalancer has balances.
@@ -986,7 +986,7 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
 
         // And: The Rebalancer owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(wrappedStakedSlipstream)).transferFrom(users.liquidityProvider, address(rebalancer), position.id);
 
         // And: Rebalancer has balances.
@@ -1128,7 +1128,7 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
 
         // And: The Rebalancer owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(wrappedStakedSlipstream)).transferFrom(users.liquidityProvider, address(rebalancer), position.id);
 
         // And: Rebalancer has balances.

@@ -83,10 +83,10 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
 
         // And: The YieldClaimer owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-start(erc20-unchecked-transfer)
+        // forge-lint: disable-start(erc20-unchecked-transfer)
         ERC721(address(slipstreamPositionManager))
             .transferFrom(users.liquidityProvider, address(yieldClaimer), position.id);
-        /// forge-lint: disable-end(erc20-unchecked-transfer)
+        // forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: position has fees.
         feeSeed = uint256(bound(feeSeed, 0, type(uint48).max));
@@ -181,10 +181,10 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
 
         // And: The YieldClaimer owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-start(erc20-unchecked-transfer)
+        // forge-lint: disable-start(erc20-unchecked-transfer)
         ERC721(address(slipstreamPositionManager))
             .transferFrom(users.liquidityProvider, address(yieldClaimer), position.id);
-        /// forge-lint: disable-end(erc20-unchecked-transfer)
+        // forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: position has fees.
         feeSeed = uint256(bound(feeSeed, 0, type(uint48).max));
@@ -260,7 +260,7 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
 
         // And: The YieldClaimer owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(stakedSlipstreamAM)).transferFrom(users.liquidityProvider, address(yieldClaimer), position.id);
 
         // And: Position earned rewards.
@@ -358,7 +358,7 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
 
         // And: The YieldClaimer owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(stakedSlipstreamAM)).transferFrom(users.liquidityProvider, address(yieldClaimer), position.id);
 
         // And: Position earned rewards.
@@ -440,10 +440,10 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
 
         // And: The YieldClaimer owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-start(erc20-unchecked-transfer)
+        // forge-lint: disable-start(erc20-unchecked-transfer)
         ERC721(address(wrappedStakedSlipstream))
             .transferFrom(users.liquidityProvider, address(yieldClaimer), position.id);
-        /// forge-lint: disable-end(erc20-unchecked-transfer)
+        // forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Position earned rewards.
         rewards = bound(rewards, 0, type(uint64).max);
@@ -540,10 +540,10 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
 
         // And: The YieldClaimer owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-start(erc20-unchecked-transfer)
+        // forge-lint: disable-start(erc20-unchecked-transfer)
         ERC721(address(wrappedStakedSlipstream))
             .transferFrom(users.liquidityProvider, address(yieldClaimer), position.id);
-        /// forge-lint: disable-end(erc20-unchecked-transfer)
+        // forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Position earned rewards.
         rewards = bound(rewards, 0, type(uint64).max);

@@ -7,7 +7,7 @@ pragma solidity ^0.8.0;
 import { TickMath } from "../../../lib/accounts-v2/src/asset-modules/UniswapV3/libraries/TickMath.sol";
 
 library UniswapHelpers {
-    /// forge-lint: disable-next-item(divide-before-multiply,unsafe-typecast)
+    // forge-lint: disable-next-item(divide-before-multiply,unsafe-typecast)
     function maxLiquidity(int24 tickSpacing) internal pure returns (uint128) {
         int24 minTick = (TickMath.MIN_TICK / tickSpacing) * tickSpacing;
         int24 maxTick = (TickMath.MAX_TICK / tickSpacing) * tickSpacing;
