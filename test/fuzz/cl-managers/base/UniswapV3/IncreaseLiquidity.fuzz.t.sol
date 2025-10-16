@@ -41,7 +41,7 @@ contract IncreaseLiquidity_UniswapV3_Fuzz_Test is UniswapV3_Fuzz_Test {
 
         // Transfer position to base.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(nonfungiblePositionManager)).transferFrom(users.liquidityProvider, address(base), position.id);
 
         // And: Liquidity is not 0, does not overflow and is below max liquidity.

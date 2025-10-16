@@ -23,7 +23,9 @@ ignored_warnings_from = ["lib/accounts-v2/lib/slipstream/contracts/libraries/Enu
 
 [lint]
 exclude_lints = [
-    "asm-keccak256"
+    "asm-keccak256",
+    "unsafe-cheatcode",
+    "unwrapped-modifier-logic",
 ]
 ignore = [
     "**/merkl/**/*",

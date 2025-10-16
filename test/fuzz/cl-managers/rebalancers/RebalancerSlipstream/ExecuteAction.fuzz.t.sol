@@ -8,8 +8,9 @@ import { ActionData } from "../../../../../lib/accounts-v2/src/interfaces/IActio
 import { DefaultRebalancerHook } from "../../../../utils/mocks/DefaultRebalancerHook.sol";
 import { ERC20, ERC20Mock } from "../../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
-import { FixedPoint128 } from
-    "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
+import {
+    FixedPoint128
+} from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
 import { FullMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
 import { Rebalancer } from "../../../../../src/cl-managers/rebalancers/Rebalancer.sol";
@@ -22,6 +23,7 @@ import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4
 /**
  * @notice Fuzz tests for the function "_executeAction" of contract "RebalancerSlipstream".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
     using stdStorage for StdStorage;
     /*////////////////////////////////////////////////////////////////
@@ -86,7 +88,7 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
             ""
         );
 
-        // And: claimfee is bigger than maxClaimFee.
+        // And: claimFee is bigger than maxClaimFee.
         initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, maxClaimFee + 1, type(uint64).max));
 
         // And: account is set.
@@ -126,7 +128,7 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
             ""
         );
 
-        // And: claimfee is smaller than maxClaimFee.
+        // And: claimFee is smaller than maxClaimFee.
         initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, maxClaimFee));
 
         // And: swapFee is bigger than maxSwapFee.
@@ -265,11 +267,10 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
 
         // And: The Rebalancer owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-start(erc20-unchecked-transfer)
-        ERC721(address(slipstreamPositionManager)).transferFrom(
-            users.liquidityProvider, address(rebalancer), position.id
-        );
-        /// forge-lint: disable-end(erc20-unchecked-transfer)
+        // forge-lint: disable-start(erc20-unchecked-transfer)
+        ERC721(address(slipstreamPositionManager))
+            .transferFrom(users.liquidityProvider, address(rebalancer), position.id);
+        // forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Rebalancer has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1));
@@ -358,11 +359,10 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
 
         // And: The Rebalancer owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-start(erc20-unchecked-transfer)
-        ERC721(address(slipstreamPositionManager)).transferFrom(
-            users.liquidityProvider, address(rebalancer), position.id
-        );
-        /// forge-lint: disable-end(erc20-unchecked-transfer)
+        // forge-lint: disable-start(erc20-unchecked-transfer)
+        ERC721(address(slipstreamPositionManager))
+            .transferFrom(users.liquidityProvider, address(rebalancer), position.id);
+        // forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Rebalancer has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1));
@@ -448,11 +448,10 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
 
         // And: The Rebalancer owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-start(erc20-unchecked-transfer)
-        ERC721(address(slipstreamPositionManager)).transferFrom(
-            users.liquidityProvider, address(rebalancer), position.id
-        );
-        /// forge-lint: disable-end(erc20-unchecked-transfer)
+        // forge-lint: disable-start(erc20-unchecked-transfer)
+        ERC721(address(slipstreamPositionManager))
+            .transferFrom(users.liquidityProvider, address(rebalancer), position.id);
+        // forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Rebalancer has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1));
@@ -569,11 +568,10 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
 
         // And: The Rebalancer owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-start(erc20-unchecked-transfer)
-        ERC721(address(slipstreamPositionManager)).transferFrom(
-            users.liquidityProvider, address(rebalancer), position.id
-        );
-        /// forge-lint: disable-end(erc20-unchecked-transfer)
+        // forge-lint: disable-start(erc20-unchecked-transfer)
+        ERC721(address(slipstreamPositionManager))
+            .transferFrom(users.liquidityProvider, address(rebalancer), position.id);
+        // forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Rebalancer has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1));
@@ -682,9 +680,8 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), type(uint256).max, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
-                rewardGrowthGlobalX128Current
-            );
+            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+                .checked_write(rewardGrowthGlobalX128Current);
         }
 
         // And: Account info is set.
@@ -715,7 +712,7 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
 
         // And: The Rebalancer owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(stakedSlipstreamAM)).transferFrom(users.liquidityProvider, address(rebalancer), position.id);
 
         // And: Rebalancer has balances.
@@ -825,9 +822,8 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), rewards, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
-                rewardGrowthGlobalX128Current
-            );
+            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+                .checked_write(rewardGrowthGlobalX128Current);
         }
 
         // And: Account info is set.
@@ -858,7 +854,7 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
 
         // And: The Rebalancer owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(stakedSlipstreamAM)).transferFrom(users.liquidityProvider, address(rebalancer), position.id);
 
         // And: Rebalancer has balances.
@@ -958,9 +954,8 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), type(uint256).max, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
-                rewardGrowthGlobalX128Current
-            );
+            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+                .checked_write(rewardGrowthGlobalX128Current);
         }
 
         // And: Account info is set.
@@ -991,7 +986,7 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
 
         // And: The Rebalancer owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(wrappedStakedSlipstream)).transferFrom(users.liquidityProvider, address(rebalancer), position.id);
 
         // And: Rebalancer has balances.
@@ -1101,9 +1096,8 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), rewards, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
-                rewardGrowthGlobalX128Current
-            );
+            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+                .checked_write(rewardGrowthGlobalX128Current);
         }
 
         // And: Account info is set.
@@ -1134,7 +1128,7 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
 
         // And: The Rebalancer owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(wrappedStakedSlipstream)).transferFrom(users.liquidityProvider, address(rebalancer), position.id);
 
         // And: Rebalancer has balances.

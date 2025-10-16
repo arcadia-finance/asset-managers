@@ -69,8 +69,9 @@ contract RebalanceOptimizationMathExtension {
         uint160 sqrtPriceOld,
         uint160 sqrtPriceNew
     ) external pure returns (uint256 amountIn, uint256 amountOut) {
-        (amountIn, amountOut) =
-            RebalanceOptimizationMath._getSwapParamsExact(zeroToOne, fee, usableLiquidity, sqrtPriceOld, sqrtPriceNew);
+        (amountIn, amountOut) = RebalanceOptimizationMath._getSwapParamsExact(
+            zeroToOne, fee, usableLiquidity, sqrtPriceOld, sqrtPriceNew
+        );
     }
 
     function approximateOptimalSwapAmounts(

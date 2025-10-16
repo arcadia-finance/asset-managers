@@ -102,18 +102,14 @@ abstract contract UniswapV3 is AbstractBase {
         // Get data of the Liquidity Position.
         position.id = id;
         (
-            ,
-            ,
-            position.tokens[0],
-            position.tokens[1],
-            position.fee,
-            position.tickLower,
-            position.tickUpper,
-            position.liquidity,
-            ,
-            ,
-            ,
-        ) = POSITION_MANAGER.positions(id);
+                ,,
+                position.tokens[0],
+                position.tokens[1],
+                position.fee,
+                position.tickLower,
+                position.tickUpper,
+                position.liquidity,,,,
+            ) = POSITION_MANAGER.positions(id);
 
         // Get data of the Liquidity Pool.
         position.pool =
@@ -255,19 +251,21 @@ abstract contract UniswapV3 is AbstractBase {
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param amountOut The amount of tokenOut that must be swapped to.
      */
+    // forge-lint: disable-next-item(unsafe-typecast)
     function _swapViaPool(uint256[] memory balances, PositionState memory position, bool zeroToOne, uint256 amountOut)
         internal
         virtual
         override
     {
         // Do the swap.
-        (int256 deltaAmount0, int256 deltaAmount1) = IUniswapV3Pool(position.pool).swap(
-            address(this),
-            zeroToOne,
-            -int256(amountOut),
-            zeroToOne ? CLMath.MIN_SQRT_PRICE_LIMIT : CLMath.MAX_SQRT_PRICE_LIMIT,
-            abi.encode(position.tokens[0], position.tokens[1], position.fee)
-        );
+        (int256 deltaAmount0, int256 deltaAmount1) = IUniswapV3Pool(position.pool)
+            .swap(
+                address(this),
+                zeroToOne,
+                -int256(amountOut),
+                zeroToOne ? CLMath.MIN_SQRT_PRICE_LIMIT : CLMath.MAX_SQRT_PRICE_LIMIT,
+                abi.encode(position.tokens[0], position.tokens[1], position.fee)
+            );
 
         // Update the balances.
         balances[0] = zeroToOne ? balances[0] - uint256(deltaAmount0) : balances[0] + uint256(-deltaAmount0);
@@ -288,6 +286,7 @@ abstract contract UniswapV3 is AbstractBase {
 
         if (PoolAddress.computeAddress(UNISWAP_V3_FACTORY, token0, token1, fee) != msg.sender) revert OnlyPool();
 
+        // forge-lint: disable-next-item(unsafe-typecast)
         if (amount0Delta > 0) {
             ERC20(token0).safeTransfer(msg.sender, uint256(amount0Delta));
         } else if (amount1Delta > 0) {

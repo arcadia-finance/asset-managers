@@ -164,6 +164,8 @@ abstract contract YieldClaimer is IActionBase, AbstractBase, Guardian {
         if (maxClaimFee > 1e18) revert InvalidValue();
 
         accountToInitiator[accountOwner][account_] = initiator;
+        // unsafe cast: maxClaimFee <= 1e18 < type(uint64).max.
+        // forge-lint: disable-next-line(unsafe-typecast)
         accountInfo[account_] = AccountInfo({ feeRecipient: feeRecipient, maxClaimFee: uint64(maxClaimFee) });
         metaData[account_] = metaData_;
 

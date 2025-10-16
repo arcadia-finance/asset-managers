@@ -47,11 +47,9 @@ contract GetAmount0OutFromAmount1In_SwapMath_Fuzz_Test is RebalanceOptimizationM
         }
 
         uint256 amountInLessFee = amount1 * (1e6 - fee) / 1e6;
-        uint256 quotient = (
-            amountInLessFee <= type(uint160).max
+        uint256 quotient = (amountInLessFee <= type(uint160).max
                 ? (amountInLessFee << FixedPoint96.RESOLUTION) / usableLiquidity
-                : FullMath.mulDiv(amountInLessFee, FixedPoint96.Q96, usableLiquidity)
-        );
+                : FullMath.mulDiv(amountInLessFee, FixedPoint96.Q96, usableLiquidity));
         uint256 sqrtPriceNew = sqrtPriceOld + quotient;
         vm.assume(sqrtPriceNew < type(uint160).max);
 

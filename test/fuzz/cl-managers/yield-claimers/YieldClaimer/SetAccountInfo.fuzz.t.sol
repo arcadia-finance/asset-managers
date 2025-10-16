@@ -4,8 +4,9 @@
  */
 pragma solidity ^0.8.0;
 
-import { AccountVariableVersion } from
-    "../../../../../lib/accounts-v2/test/utils/mocks/accounts/AccountVariableVersion.sol";
+import {
+    AccountVariableVersion
+} from "../../../../../lib/accounts-v2/test/utils/mocks/accounts/AccountVariableVersion.sol";
 import { YieldClaimer } from "../../../../../src/cl-managers/yield-claimers/YieldClaimer.sol";
 import { YieldClaimer_Fuzz_Test } from "./_YieldClaimer.fuzz.t.sol";
 import { StdStorage, stdStorage } from "../../../../../lib/accounts-v2/lib/forge-std/src/Test.sol";
@@ -82,12 +83,10 @@ contract SetAccountInfo_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         // Given: Account has an invalid version.
         accountVersion = bound(accountVersion, 0, 2);
         AccountVariableVersion account_ = new AccountVariableVersion(accountVersion, address(factory));
-        stdstore.target(address(factory)).sig(factory.isAccount.selector).with_key(address(account_)).checked_write(
-            true
-        );
-        stdstore.target(address(factory)).sig(factory.accountIndex.selector).with_key(address(account_)).checked_write(
-            2
-        );
+        stdstore.target(address(factory)).sig(factory.isAccount.selector).with_key(address(account_))
+            .checked_write(true);
+        stdstore.target(address(factory)).sig(factory.accountIndex.selector).with_key(address(account_))
+            .checked_write(2);
 
         // When: Owner calls setInitiator on the compounder.
         // Then: it should revert.
@@ -110,9 +109,10 @@ contract SetAccountInfo_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         yieldClaimer.setAccountInfo(address(account), initiator, accountInfo.feeRecipient, accountInfo.maxClaimFee, "");
     }
 
-    function testFuzz_Revert_setAccountInfo_InvalidValue(address initiator, YieldClaimer.AccountInfo memory accountInfo)
-        public
-    {
+    function testFuzz_Revert_setAccountInfo_InvalidValue(
+        address initiator,
+        YieldClaimer.AccountInfo memory accountInfo
+    ) public {
         // Given: recipient is not the zero address.
         vm.assume(accountInfo.feeRecipient != address(0));
 

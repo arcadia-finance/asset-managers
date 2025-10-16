@@ -235,6 +235,9 @@ abstract contract Compounder is IActionBase, AbstractBase, Guardian {
         }
 
         accountToInitiator[accountOwner][account_] = initiator;
+        // unsafe cast: fees <= 1e18 < type(uint64).max.
+        // unsafe cast: upperSqrtPriceDeviation <= √2 * 1e18 < type(uint64).max.
+        // forge-lint: disable-next-item(unsafe-typecast)
         accountInfo[account_] = AccountInfo({
             maxClaimFee: uint64(maxClaimFee),
             maxSwapFee: uint64(maxSwapFee),

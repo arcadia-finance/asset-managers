@@ -48,6 +48,8 @@ contract CompounderSlipstream is Compounder, Slipstream {
         address stakedSlipstreamWrapper
     )
         Compounder(owner_, arcadiaFactory, routerTrampoline)
-        Slipstream(positionManager, cLFactory, poolImplementation, rewardToken, stakedSlipstreamAm, stakedSlipstreamWrapper)
+        Slipstream(
+            positionManager, cLFactory, poolImplementation, rewardToken, stakedSlipstreamAm, stakedSlipstreamWrapper
+        )
     { }
 }

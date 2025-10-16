@@ -65,8 +65,9 @@ contract ApproximateSqrtPriceNew_SwapMath_Fuzz_Test is RebalanceOptimizationMath
 
         // When: Calling _approximateSqrtPriceNew().
         // Then: It does not revert.
-        uint256 sqrtPriceNew =
-            optimizationMath.approximateSqrtPriceNew(zeroToOne, fee, usableLiquidity, sqrtPriceOld, amountIn, amountOut);
+        uint256 sqrtPriceNew = optimizationMath.approximateSqrtPriceNew(
+            zeroToOne, fee, usableLiquidity, sqrtPriceOld, amountIn, amountOut
+        );
 
         // And: sqrtPriceNew is always smaller or equal than sqrtPriceOld.
         assertLe(sqrtPriceNew, sqrtPriceOld);
@@ -122,8 +123,9 @@ contract ApproximateSqrtPriceNew_SwapMath_Fuzz_Test is RebalanceOptimizationMath
 
         // When: Calling _approximateSqrtPriceNew().
         // Then: It does not revert.
-        uint256 sqrtPriceNew =
-            optimizationMath.approximateSqrtPriceNew(zeroToOne, fee, usableLiquidity, sqrtPriceOld, amountIn, amountOut);
+        uint256 sqrtPriceNew = optimizationMath.approximateSqrtPriceNew(
+            zeroToOne, fee, usableLiquidity, sqrtPriceOld, amountIn, amountOut
+        );
 
         // And: sqrtPriceNew is always greater or equal than sqrtPriceOld.
         assertGe(sqrtPriceNew, sqrtPriceOld);

@@ -85,9 +85,10 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         yieldClaimer.claim(account_, initiatorParams);
     }
 
-    function testFuzz_Revert_claim_InvalidInitiator(YieldClaimer.InitiatorParams memory initiatorParams, address caller)
-        public
-    {
+    function testFuzz_Revert_claim_InvalidInitiator(
+        YieldClaimer.InitiatorParams memory initiatorParams,
+        address caller
+    ) public {
         // Given : Caller is not address(0).
         vm.assume(caller != address(0));
 
@@ -198,7 +199,7 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
 
         // And: Account owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, users.accountOwner, position.id);
         {
             address[] memory assets_ = new address[](1);
@@ -289,7 +290,7 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
 
         // And: Account owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, users.accountOwner, position.id);
         {
             address[] memory assets_ = new address[](1);
@@ -372,7 +373,7 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
 
         // And: Account owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, users.accountOwner, position.id);
         {
             address[] memory assets_ = new address[](1);
@@ -463,7 +464,7 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
 
         // And: Account owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, users.accountOwner, position.id);
         {
             address[] memory assets_ = new address[](1);

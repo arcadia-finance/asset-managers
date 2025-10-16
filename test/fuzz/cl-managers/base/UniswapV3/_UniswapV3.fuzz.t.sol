@@ -7,24 +7,30 @@ pragma solidity ^0.8.0;
 import { Base_Test } from "../../../../../lib/accounts-v2/test/Base.t.sol";
 import { Constants } from "../../../../../lib/accounts-v2/test/utils/Constants.sol";
 import { ERC20Mock } from "../../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
-import { FixedPoint96 } from
-    "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint96.sol";
-import { FixedPoint128 } from
-    "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
+import {
+    FixedPoint96
+} from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint96.sol";
+import {
+    FixedPoint128
+} from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
 import { FullMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { Fuzz_Test } from "../../../Fuzz.t.sol";
-import { ISwapRouter02 } from
-    "../../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/interfaces/ISwapRouter02.sol";
-import { IUniswapV3PoolExtension } from
-    "../../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/IUniswapV3PoolExtension.sol";
+import {
+    ISwapRouter02
+} from "../../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/interfaces/ISwapRouter02.sol";
+import {
+    IUniswapV3PoolExtension
+} from "../../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/IUniswapV3PoolExtension.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
-import { SwapRouter02Fixture } from
-    "../../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/SwapRouter02Fixture.f.sol";
+import {
+    SwapRouter02Fixture
+} from "../../../../../lib/accounts-v2/test/utils/fixtures/swap-router-02/SwapRouter02Fixture.f.sol";
 import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 import { UniswapHelpers } from "../../../../utils/uniswap-v3/UniswapHelpers.sol";
 import { UniswapV3AMExtension } from "../../../../../lib/accounts-v2/test/utils/extensions/UniswapV3AMExtension.sol";
-import { UniswapV3AMFixture } from
-    "../../../../../lib/accounts-v2/test/utils/fixtures/arcadia-accounts/UniswapV3AMFixture.f.sol";
+import {
+    UniswapV3AMFixture
+} from "../../../../../lib/accounts-v2/test/utils/fixtures/arcadia-accounts/UniswapV3AMFixture.f.sol";
 import { UniswapV3Fixture } from "../../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";
 import { UniswapV3Extension } from "../../../../utils/extensions/UniswapV3Extension.sol";
 import { Utils } from "../../../../../lib/accounts-v2/test/utils/Utils.sol";
@@ -122,6 +128,7 @@ abstract contract UniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, UniswapV3A
         );
     }
 
+    // forge-lint: disable-next-item(unsafe-typecast)
     function addAssetsToArcadia(uint256 sqrtPrice) internal {
         uint256 price0 = FullMath.mulDiv(1e18, sqrtPrice ** 2, FixedPoint96.Q96 ** 2);
         uint256 price1 = 1e18;
@@ -172,7 +179,7 @@ abstract contract UniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, UniswapV3A
         (,,,,,,, position.liquidity,,,,) = nonfungiblePositionManager.positions(position.id);
     }
 
-    /// forge-lint: disable-next-item(mixed-case-function,mixed-case-variable)
+    // forge-lint: disable-next-item(mixed-case-function,mixed-case-variable)
     function deployUniswapV3AM() internal {
         // Deploy Add the Asset Module to the Registry.
         vm.startPrank(users.owner);
@@ -237,11 +244,7 @@ abstract contract UniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, UniswapV3A
 
     function getFeeAmounts(uint256 id) internal view returns (uint256 amount0, uint256 amount1) {
         (
-            ,
-            ,
-            ,
-            ,
-            ,
+            ,,,,,
             int24 tickLower,
             int24 tickUpper,
             uint256 liquidity,
@@ -262,11 +265,11 @@ abstract contract UniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, UniswapV3A
         // This is however much bigger than any realistic situation.
         unchecked {
             amount0 = FullMath.mulDiv(
-                feeGrowthInside0CurrentX128 - feeGrowthInside0LastX128, liquidity, FixedPoint128.Q128
-            ) + tokensOwed0;
+                    feeGrowthInside0CurrentX128 - feeGrowthInside0LastX128, liquidity, FixedPoint128.Q128
+                ) + tokensOwed0;
             amount1 = FullMath.mulDiv(
-                feeGrowthInside1CurrentX128 - feeGrowthInside1LastX128, liquidity, FixedPoint128.Q128
-            ) + tokensOwed1;
+                    feeGrowthInside1CurrentX128 - feeGrowthInside1LastX128, liquidity, FixedPoint128.Q128
+                ) + tokensOwed1;
         }
     }
 

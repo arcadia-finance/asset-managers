@@ -11,6 +11,6 @@ interface IStakedSlipstream {
 
     function mint(uint256 id) external returns (uint256 id_);
 
-    /// forge-lint: disable-next-line(mixed-case-function)
+    // forge-lint: disable-next-line(mixed-case-function)
     function REWARD_TOKEN() external view returns (address rewardToken);
 }

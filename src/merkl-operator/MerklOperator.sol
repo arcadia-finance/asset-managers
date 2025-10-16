@@ -162,6 +162,8 @@ contract MerklOperator is Guardian, ReentrancyGuard {
         if (maxClaimFee > 1e18) revert InvalidValue();
 
         accountToInitiator[accountOwner][account] = initiator;
+        // unsafe cast: maxClaimFee <= 1e18 < type(uint64).max.
+        // forge-lint: disable-next-line(unsafe-typecast)
         accountInfo[account] = AccountInfo({ rewardRecipient: rewardRecipient, maxClaimFee: uint64(maxClaimFee) });
         metaData[account] = metaData_;
 
