@@ -7,7 +7,7 @@ pragma solidity ^0.8.0;
 import { ActionData } from "../../../../../lib/accounts-v2/src/interfaces/IActionBase.sol";
 import { Compounder } from "../../../../../src/cl-managers/compounders/Compounder.sol";
 import { CompounderUniswapV4_Fuzz_Test } from "./_CompounderUniswapV4.fuzz.t.sol";
-import { DefaultHook } from "../../../../utils/mocks/DefaultHook.sol";
+import { DefaultRebalancerHook } from "../../../../utils/mocks/DefaultRebalancerHook.sol";
 import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { IWETH } from "../../../../../src/cl-managers/interfaces/IWETH.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
@@ -25,7 +25,7 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
                             VARIABLES
     /////////////////////////////////////////////////////////////// */
 
-    DefaultHook internal strategyHook;
+    DefaultRebalancerHook internal strategyHook;
 
     /* ///////////////////////////////////////////////////////////////
                               SETUP
@@ -34,7 +34,7 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
     function setUp() public override {
         CompounderUniswapV4_Fuzz_Test.setUp();
 
-        strategyHook = new DefaultHook();
+        strategyHook = new DefaultRebalancerHook();
     }
 
     /*//////////////////////////////////////////////////////////////
