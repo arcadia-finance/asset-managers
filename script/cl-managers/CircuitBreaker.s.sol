@@ -5,12 +5,11 @@
 pragma solidity ^0.8.0;
 
 import { Base_AssetManagers_Script } from "../Base.s.sol";
-import { Compounders, Rebalancers, YieldClaimers } from "../utils/constants/Shared.sol";
+import { Compounders, Rebalancers, SafesAssetManagers, YieldClaimers } from "../utils/constants/Shared.sol";
 import { Guardian } from "../../src/guardian/Guardian.sol";
-import { SafesAssetManagers } from "../utils/constants/Base.sol";
 
 contract CircuitBreaker is Base_AssetManagers_Script {
-    /// forge-lint: disable-next-line(mixed-case-variable)
+    // forge-lint: disable-next-line(mixed-case-variable)
     address internal SAFE = SafesAssetManagers.GUARDIAN;
 
     function run() public {

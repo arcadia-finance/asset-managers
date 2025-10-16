@@ -55,7 +55,7 @@ contract ExecuteAction_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         vm.prank(account.owner());
         yieldClaimer.setAccountInfo(address(account), initiator, recipient, maxClaimFee, "");
 
-        // And: claimfee is bigger than maxClaimFee.
+        // And: claimFee is bigger than maxClaimFee.
         initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, maxClaimFee + 1, type(uint64).max));
 
         // And: account is set.

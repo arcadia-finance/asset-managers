@@ -55,7 +55,7 @@ contract Claim_UniswapV3_Fuzz_Test is UniswapV3_Fuzz_Test {
 
         // And: Transfer position to Base.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(nonfungiblePositionManager)).transferFrom(users.liquidityProvider, address(base), position.id);
 
         // When: Calling claim.

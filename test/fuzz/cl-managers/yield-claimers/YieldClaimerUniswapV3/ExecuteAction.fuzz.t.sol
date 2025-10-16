@@ -49,7 +49,7 @@ contract ExecuteAction_YieldClaimerUniswapV3_Fuzz_Test is YieldClaimerUniswapV3_
         YieldClaimer.InitiatorParams memory initiatorParams,
         address initiator
     ) public {
-        // Given: initiator is not holdig balances.
+        // Given: initiator is not holding balances.
         vm.assume(initiator != address(yieldClaimer));
         vm.assume(initiator != users.liquidityProvider);
         vm.assume(initiator != address(account));
@@ -76,11 +76,10 @@ contract ExecuteAction_YieldClaimerUniswapV3_Fuzz_Test is YieldClaimerUniswapV3_
 
         // And: The YieldClaimer owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-start(erc20-unchecked-transfer)
-        ERC721(address(nonfungiblePositionManager)).transferFrom(
-            users.liquidityProvider, address(yieldClaimer), position.id
-        );
-        /// forge-lint: disable-end(erc20-unchecked-transfer)
+        // forge-lint: disable-start(erc20-unchecked-transfer)
+        ERC721(address(nonfungiblePositionManager))
+            .transferFrom(users.liquidityProvider, address(yieldClaimer), position.id);
+        // forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: position has fees.
         feeSeed = uint256(bound(feeSeed, 0, type(uint48).max));
@@ -140,13 +139,13 @@ contract ExecuteAction_YieldClaimerUniswapV3_Fuzz_Test is YieldClaimerUniswapV3_
         address initiator,
         address recipient
     ) public {
-        // Given: initiator is not holdig balances.
+        // Given: initiator is not holding balances.
         vm.assume(initiator != address(yieldClaimer));
         vm.assume(initiator != users.liquidityProvider);
         vm.assume(initiator != address(account));
 
         // And: recipient is not the account or address(0).
-        // Given: recipient is not holdig balances.
+        // Given: recipient is not holding balances.
         vm.assume(recipient != address(yieldClaimer));
         vm.assume(recipient != users.liquidityProvider);
         vm.assume(recipient != address(account));
@@ -175,11 +174,10 @@ contract ExecuteAction_YieldClaimerUniswapV3_Fuzz_Test is YieldClaimerUniswapV3_
 
         // And: The YieldClaimer owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-start(erc20-unchecked-transfer)
-        ERC721(address(nonfungiblePositionManager)).transferFrom(
-            users.liquidityProvider, address(yieldClaimer), position.id
-        );
-        /// forge-lint: disable-end(erc20-unchecked-transfer)
+        // forge-lint: disable-start(erc20-unchecked-transfer)
+        ERC721(address(nonfungiblePositionManager))
+            .transferFrom(users.liquidityProvider, address(yieldClaimer), position.id);
+        // forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: position has fees.
         feeSeed = uint256(bound(feeSeed, 0, type(uint48).max));

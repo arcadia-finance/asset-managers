@@ -6,8 +6,9 @@ pragma solidity ^0.8.0;
 
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
 import { Slipstream_Fuzz_Test } from "./_Slipstream.fuzz.t.sol";
-import { SqrtPriceMath } from
-    "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/SqrtPriceMath.sol";
+import {
+    SqrtPriceMath
+} from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/SqrtPriceMath.sol";
 
 /**
  * @notice Fuzz tests for the function "_swapViaPool" of contract "Slipstream".

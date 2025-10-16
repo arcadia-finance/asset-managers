@@ -4,10 +4,10 @@
  */
 pragma solidity ^0.8.0;
 
-import { Errors } from "../../../lib/accounts-v2/lib/merkl-contracts/contracts/utils/Errors.sol";
-import { MerkleTree } from "../../../lib/accounts-v2/lib/merkl-contracts/contracts/Distributor.sol";
-import { Guardian } from "../../../src/guardian/Guardian.sol";
-import { MerklOperator } from "../../../src/merkl-operator/MerklOperator.sol";
+import { Errors } from "../../../../lib/accounts-v2/lib/merkl-contracts/contracts/utils/Errors.sol";
+import { MerkleTree } from "../../../../lib/accounts-v2/lib/merkl-contracts/contracts/Distributor.sol";
+import { Guardian } from "../../../../src/guardian/Guardian.sol";
+import { MerklOperator } from "../../../../src/merkl-operator/MerklOperator.sol";
 import { MerklOperator_Fuzz_Test } from "./_MerklOperator.fuzz.t.sol";
 
 /**
@@ -131,9 +131,10 @@ contract Claim_MerklOperator_Fuzz_Test is MerklOperator_Fuzz_Test {
         merklOperator.claim(address(account), initiatorParams);
     }
 
-    function testFuzz_Revert_claim_InvalidValue(MerklOperator.InitiatorParams memory initiatorParams, address initiator)
-        public
-    {
+    function testFuzz_Revert_claim_InvalidValue(
+        MerklOperator.InitiatorParams memory initiatorParams,
+        address initiator
+    ) public {
         // Given : initiator is not address(0).
         vm.assume(initiator != address(0));
 
@@ -191,19 +192,19 @@ contract Claim_MerklOperator_Fuzz_Test is MerklOperator_Fuzz_Test {
         merklOperator.claim(address(account), initiatorParams);
     }
 
-    function testFuzz_Success_claim_InvalidLengths_Amounts(
+    function testFuzz_Revert_claim_InvalidLengths_Amounts(
         address initiator,
         address recipient,
         uint256 claimFee,
         TokenState memory tokenState0,
         TokenState memory tokenState1
     ) public {
-        // Given: initiator is not holdig balances.
+        // Given: initiator is not holding balances.
         vm.assume(initiator != address(merklOperator));
         vm.assume(initiator != users.liquidityProvider);
         vm.assume(initiator != address(account));
 
-        // And: recipient is not holdig balances.
+        // And: recipient is not holding balances.
         vm.assume(recipient != address(merklOperator));
         vm.assume(recipient != users.liquidityProvider);
         vm.assume(recipient != address(account));
@@ -264,19 +265,19 @@ contract Claim_MerklOperator_Fuzz_Test is MerklOperator_Fuzz_Test {
         );
     }
 
-    function testFuzz_Success_claim_InvalidLengths_Proofs(
+    function testFuzz_Revert_claim_InvalidLengths_Proofs(
         address initiator,
         address recipient,
         uint256 claimFee,
         TokenState memory tokenState0,
         TokenState memory tokenState1
     ) public {
-        // Given: initiator is not holdig balances.
+        // Given: initiator is not holding balances.
         vm.assume(initiator != address(merklOperator));
         vm.assume(initiator != users.liquidityProvider);
         vm.assume(initiator != address(account));
 
-        // And: recipient is not holdig balances.
+        // And: recipient is not holding balances.
         vm.assume(recipient != address(merklOperator));
         vm.assume(recipient != users.liquidityProvider);
         vm.assume(recipient != address(account));
@@ -335,7 +336,7 @@ contract Claim_MerklOperator_Fuzz_Test is MerklOperator_Fuzz_Test {
         );
     }
 
-    function testFuzz_Success_claim_InvalidProof(
+    function testFuzz_Revert_claim_InvalidProof(
         address initiator,
         address recipient,
         uint256 claimFee,
@@ -343,12 +344,12 @@ contract Claim_MerklOperator_Fuzz_Test is MerklOperator_Fuzz_Test {
         TokenState memory tokenState1,
         bytes32 invalidProof
     ) public {
-        // Given: initiator is not holdig balances.
+        // Given: initiator is not holding balances.
         vm.assume(initiator != address(merklOperator));
         vm.assume(initiator != users.liquidityProvider);
         vm.assume(initiator != address(account));
 
-        // And: recipient is not holdig balances.
+        // And: recipient is not holding balances.
         vm.assume(recipient != address(merklOperator));
         vm.assume(recipient != users.liquidityProvider);
         vm.assume(recipient != address(account));
@@ -414,12 +415,12 @@ contract Claim_MerklOperator_Fuzz_Test is MerklOperator_Fuzz_Test {
         TokenState memory tokenState0,
         TokenState memory tokenState1
     ) public {
-        // Given: initiator is not holdig balances.
+        // Given: initiator is not holding balances.
         vm.assume(initiator != address(merklOperator));
         vm.assume(initiator != users.liquidityProvider);
         vm.assume(initiator != address(account));
 
-        // And: recipient is not holdig balances.
+        // And: recipient is not holding balances.
         vm.assume(recipient != address(merklOperator));
         vm.assume(recipient != users.liquidityProvider);
         vm.assume(recipient != address(account));
@@ -503,12 +504,12 @@ contract Claim_MerklOperator_Fuzz_Test is MerklOperator_Fuzz_Test {
         TokenState memory tokenState0,
         bytes32 leaf1
     ) public {
-        // Given: initiator is not holdig balances.
+        // Given: initiator is not holding balances.
         vm.assume(initiator != address(merklOperator));
         vm.assume(initiator != users.liquidityProvider);
         vm.assume(initiator != address(account));
 
-        // And: recipient is not holdig balances.
+        // And: recipient is not holding balances.
         vm.assume(recipient != address(merklOperator));
         vm.assume(recipient != users.liquidityProvider);
         vm.assume(recipient != address(account));

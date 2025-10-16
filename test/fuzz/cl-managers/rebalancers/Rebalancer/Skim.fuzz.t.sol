@@ -69,7 +69,7 @@ contract Skim_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         vm.prank(users.owner);
         rebalancer.transferOwnership(address(revertingReceiver));
 
-        // And: meklOperator has a native token balance.
+        // And: merklOperator has a native token balance.
         uint256 balancePre = address(revertingReceiver).balance;
         amount = bound(amount, 0, type(uint256).max - balancePre);
         vm.deal(address(revertingReceiver), amount);
@@ -82,7 +82,7 @@ contract Skim_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     }
 
     function testFuzz_Success_skim_Ether(uint256 amount) public {
-        // Given: meklOperator has a native token balance.
+        // Given: merklOperator has a native token balance.
         uint256 balancePre = users.owner.balance;
         amount = bound(amount, 0, type(uint256).max - balancePre);
         vm.deal(address(rebalancer), amount);
@@ -99,7 +99,7 @@ contract Skim_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     }
 
     function testFuzz_Success_skim_ERC20(uint256 amount) public {
-        // Given: meklOperator has an ERC20 balance.
+        // Given: merklOperator has an ERC20 balance.
         deal(address(token0), address(rebalancer), amount, true);
 
         // When: Calling skim.

@@ -25,9 +25,7 @@ contract GetSpotValue_CLMath_Fuzz_Test is CLMath_Fuzz_Test {
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Revert_getSpotValue_OverflowPriceX96(uint256 sqrtPrice, bool zeroToOne, uint256 amountIn)
-        public
-    {
+    function testFuzz_Revert_getSpotValue_OverflowPriceX96(uint256 sqrtPrice, bool zeroToOne, uint256 amountIn) public {
         // Given: sqrtPrice is bigger than type(uint128).max -> overflow.
         sqrtPrice = bound(sqrtPrice, uint256(type(uint128).max) + 1, type(uint256).max);
 

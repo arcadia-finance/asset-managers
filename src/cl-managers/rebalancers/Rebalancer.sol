@@ -268,6 +268,9 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
         }
 
         accountToInitiator[accountOwner][account_] = initiator;
+        // unsafe cast: fees <= 1e18 < type(uint64).max.
+        // unsafe cast: upperSqrtPriceDeviation <= √2 * 1e18 < type(uint64).max.
+        // forge-lint: disable-next-item(unsafe-typecast)
         accountInfo[account_] = AccountInfo({
             maxClaimFee: uint64(maxClaimFee),
             maxSwapFee: uint64(maxSwapFee),
@@ -370,9 +373,8 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
         // - Minimum Cool Down Periods.
         // - Excluding rebalancing of certain positions.
         // - ...
-        (position.tickLower, position.tickUpper) = IStrategyHook(accountInfo_.strategyHook).beforeRebalance(
-            msg.sender, positionManager, position, initiatorParams.strategyData
-        );
+        (position.tickLower, position.tickUpper) = IStrategyHook(accountInfo_.strategyHook)
+            .beforeRebalance(msg.sender, positionManager, position, initiatorParams.strategyData);
 
         // Cache variables that are gas expensive to calculate and used multiple times.
         Cache memory cache = _getCache(accountInfo_, position, initiatorParams.trustedSqrtPrice);
@@ -435,9 +437,8 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
 
         // Call the strategy hook after the rebalance (non view function).
         // Can be used to check additional constraints and persist state changes on the hook.
-        IStrategyHook(accountInfo_.strategyHook).afterRebalance(
-            msg.sender, positionManager, initiatorParams.oldId, position, initiatorParams.strategyData
-        );
+        IStrategyHook(accountInfo_.strategyHook)
+            .afterRebalance(msg.sender, positionManager, initiatorParams.oldId, position, initiatorParams.strategyData);
 
         // Approve the liquidity position and leftovers to be deposited back into the Account.
         // And transfer the initiator fees to the initiator.

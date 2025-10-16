@@ -4,15 +4,14 @@
  */
 pragma solidity ^0.8.0;
 
-import { Guardian } from "../../../../../src/guardian/Guardian.sol";
-import { YieldClaimer } from "../../../../../src/cl-managers/yield-claimers/YieldClaimer.sol";
-import { YieldClaimer_Fuzz_Test } from "./_YieldClaimer.fuzz.t.sol";
-import { RevertingReceive } from "../../../../../lib/accounts-v2/test/utils/mocks/RevertingReceive.sol";
+import { Guardian } from "../../../../src/guardian/Guardian.sol";
+import { MerklOperatorBase_Fuzz_Test } from "./_MerklOperatorBase.fuzz.t.sol";
+import { RevertingReceive } from "../../../../lib/accounts-v2/test/utils/mocks/RevertingReceive.sol";
 
 /**
- * @notice Fuzz tests for the function "skim" of contract "YieldClaimer".
+ * @notice Fuzz tests for the function "skim" of contract "MerklOperatorBase".
  */
-contract Skim_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
+contract Skim_MerklOperatorBase_Fuzz_Test is MerklOperatorBase_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                             TEST CONTRACTS
     /////////////////////////////////////////////////////////////// */
@@ -22,52 +21,40 @@ contract Skim_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
     /////////////////////////////////////////////////////////////// */
 
     function setUp() public override {
-        YieldClaimer_Fuzz_Test.setUp();
+        MerklOperatorBase_Fuzz_Test.setUp();
     }
 
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Revert_skim_NonOwner(address nonOwner, address token) public {
-        // Given: Non-owner is not the owner of the yieldClaimer.
+        // Given: Non-owner is not the owner of the merklOperator.
         vm.assume(nonOwner != users.owner);
 
         // When: Calling skim.
         // Then: It should revert.
         vm.prank(nonOwner);
         vm.expectRevert("UNAUTHORIZED");
-        yieldClaimer.skim(token);
+        merklOperator.skim(token);
     }
 
     function testFuzz_Revert_skim_Paused(address token) public {
-        // Given : yieldClaimer is Paused.
+        // Given : merklOperator is Paused.
         vm.prank(users.owner);
-        yieldClaimer.setPauseFlag(true);
+        merklOperator.setPauseFlag(true);
 
         // When: Calling skim.
         // Then: It should revert.
         vm.prank(users.owner);
         vm.expectRevert(Guardian.Paused.selector);
-        yieldClaimer.skim(token);
-    }
-
-    function testFuzz_Revert_compound_Reentered(address account_, address token) public {
-        // Given : account is not address(0)
-        vm.assume(account_ != address(0));
-        yieldClaimer.setAccount(account_);
-
-        // When: Calling skim.
-        // Then: It should revert.
-        vm.prank(users.owner);
-        vm.expectRevert(YieldClaimer.Reentered.selector);
-        yieldClaimer.skim(token);
+        merklOperator.skim(token);
     }
 
     function testFuzz_Revert_skim_NativeToken_Receive(uint256 amount) public {
         // Given: Owner cannot receive native tokens.
         RevertingReceive revertingReceiver = new RevertingReceive();
         vm.prank(users.owner);
-        yieldClaimer.transferOwnership(address(revertingReceiver));
+        merklOperator.transferOwnership(address(revertingReceiver));
 
         // And: merklOperator has a native token balance.
         uint256 balancePre = address(revertingReceiver).balance;
@@ -78,21 +65,21 @@ contract Skim_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         // Then: It should revert.
         vm.prank(address(revertingReceiver));
         vm.expectRevert(RevertingReceive.TestError.selector);
-        yieldClaimer.skim(address(0));
+        merklOperator.skim(address(0));
     }
 
     function testFuzz_Success_skim_Ether(uint256 amount) public {
         // Given: merklOperator has a native token balance.
         uint256 balancePre = users.owner.balance;
         amount = bound(amount, 0, type(uint256).max - balancePre);
-        vm.deal(address(yieldClaimer), amount);
+        vm.deal(address(merklOperator), amount);
 
         // When: Calling skim.
         vm.prank(users.owner);
-        yieldClaimer.skim(address(0));
+        merklOperator.skim(address(0));
 
-        // Then: The balance of the yieldClaimer should be updated.
-        assertEq(address(yieldClaimer).balance, 0);
+        // Then: The balance of the merklOperator should be updated.
+        assertEq(address(merklOperator).balance, 0);
 
         // And: Owner should receive the tokens.
         assertEq(users.owner.balance, balancePre + amount);
@@ -100,14 +87,14 @@ contract Skim_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
 
     function testFuzz_Success_skim_ERC20(uint256 amount) public {
         // Given: merklOperator has an ERC20 balance.
-        deal(address(token0), address(yieldClaimer), amount, true);
+        deal(address(token0), address(merklOperator), amount, true);
 
         // When: Calling skim.
         vm.prank(users.owner);
-        yieldClaimer.skim(address(token0));
+        merklOperator.skim(address(token0));
 
-        // Then: The balance of the yieldClaimer should be updated.
-        assertEq(token0.balanceOf(address(yieldClaimer)), 0);
+        // Then: The balance of the merklOperator should be updated.
+        assertEq(token0.balanceOf(address(merklOperator)), 0);
 
         // And: Owner should receive the tokens.
         assertEq(token0.balanceOf(users.owner), amount);
