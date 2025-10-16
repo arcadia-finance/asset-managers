@@ -238,9 +238,7 @@ abstract contract CowSwapper_Fuzz_Test is Fuzz_Test, BalancerV2Fixture, CowSwapF
                 gasLimit: 80_000
             });
             interactions[0][1] = ICowSettlement.Interaction({
-                target: address(hooksTrampoline),
-                value: 0,
-                callData: abi.encodeCall(hooksTrampoline.execute, (hooks))
+                target: address(hooksTrampoline), value: 0, callData: abi.encodeCall(hooksTrampoline.execute, (hooks))
             });
         }
 

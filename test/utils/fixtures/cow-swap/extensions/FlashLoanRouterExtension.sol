@@ -2,7 +2,9 @@
 pragma solidity ^0.8;
 
 import {
-    FlashLoanRouter, IBorrower, ICowSettlement
+    FlashLoanRouter,
+    IBorrower,
+    ICowSettlement
 } from "../../../../../lib/flash-loan-router/src/FlashLoanRouter.sol";
 
 contract FlashLoanRouterExtension is FlashLoanRouter {

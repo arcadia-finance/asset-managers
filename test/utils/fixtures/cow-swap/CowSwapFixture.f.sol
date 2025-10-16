@@ -63,6 +63,7 @@ contract CowSwapFixture is Test {
             abi.encodePacked(CREATION_CODE_PROXY, abi.encode(address(implementation_), manager), data);
         (bool success, bytes memory value) = address(CREATE2).call{ value: 0 }(bytecode);
         require(success, "Failed to deploy EIP173Proxy.");
+        // forge-lint: disable-next-line(unsafe-typecast)
         address proxy = address(bytes20(value));
         authenticator = GPv2AllowListAuthentication(proxy);
 

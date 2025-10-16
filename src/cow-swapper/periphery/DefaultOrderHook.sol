@@ -109,7 +109,9 @@ contract DefaultOrderHook is OrderHook {
             sellAmount: amountIn,
             buyAmount: amountOut,
             validTo: validTo,
-            appData: getAppDataHash(account, tokenIn, amountIn, abi.encodeCall(ICowSwapper.beforeSwap, (initiatorData))),
+            appData: getAppDataHash(
+                account, tokenIn, amountIn, abi.encodeCall(ICowSwapper.beforeSwap, (initiatorData))
+            ),
             feeAmount: 0,
             kind: GPv2Order.KIND_SELL,
             partiallyFillable: false,

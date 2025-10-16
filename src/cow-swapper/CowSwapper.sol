@@ -125,8 +125,12 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
      * @dev Throws if called by any address other than the Hooks Trampoline.
      */
     modifier onlyHooksTrampoline() {
-        if (msg.sender != HOOKS_TRAMPOLINE) revert OnlyHooksTrampoline();
+        _onlyHooksTrampoline();
         _;
+    }
+
+    function _onlyHooksTrampoline() internal view {
+        if (msg.sender != HOOKS_TRAMPOLINE) revert OnlyHooksTrampoline();
     }
 
     /* //////////////////////////////////////////////////////////////
@@ -220,6 +224,8 @@ contract CowSwapper is IActionBase, Borrower, Guardian {
         if (maxSwapFee > 1e18) revert InvalidValue();
 
         ownerToAccountToInitiator[accountOwner_][account_] = initiator_;
+        // unsafe cast: maxClaimFee <= 1e18 < type(uint64).max.
+        // forge-lint: disable-next-line(unsafe-typecast)
         accountInfo[account_] = AccountInfo({ maxSwapFee: uint64(maxSwapFee), orderHook: orderHook });
         metaData[account_] = metaData_;
 
