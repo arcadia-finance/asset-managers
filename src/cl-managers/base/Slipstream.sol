@@ -87,10 +87,9 @@ abstract contract Slipstream is AbstractBase {
      * @param positionManager the contract address of the position manager to check.
      */
     function isPositionManager(address positionManager) public view virtual override returns (bool) {
-        return (
-            positionManager == address(STAKED_SLIPSTREAM_AM) || positionManager == address(STAKED_SLIPSTREAM_WRAPPER)
-                || positionManager == address(POSITION_MANAGER)
-        );
+        return (positionManager == address(STAKED_SLIPSTREAM_AM)
+                || positionManager == address(STAKED_SLIPSTREAM_WRAPPER)
+                || positionManager == address(POSITION_MANAGER));
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -332,19 +331,21 @@ abstract contract Slipstream is AbstractBase {
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param amountOut The amount of tokenOut that must be swapped to.
      */
+    // forge-lint: disable-next-item(unsafe-typecast)
     function _swapViaPool(uint256[] memory balances, PositionState memory position, bool zeroToOne, uint256 amountOut)
         internal
         virtual
         override
     {
         // Do the swap.
-        (int256 deltaAmount0, int256 deltaAmount1) = ICLPool(position.pool).swap(
-            address(this),
-            zeroToOne,
-            -int256(amountOut),
-            zeroToOne ? CLMath.MIN_SQRT_PRICE_LIMIT : CLMath.MAX_SQRT_PRICE_LIMIT,
-            abi.encode(position.tokens[0], position.tokens[1], position.tickSpacing)
-        );
+        (int256 deltaAmount0, int256 deltaAmount1) = ICLPool(position.pool)
+            .swap(
+                address(this),
+                zeroToOne,
+                -int256(amountOut),
+                zeroToOne ? CLMath.MIN_SQRT_PRICE_LIMIT : CLMath.MAX_SQRT_PRICE_LIMIT,
+                abi.encode(position.tokens[0], position.tokens[1], position.tickSpacing)
+            );
 
         // Update the balances.
         balances[0] = zeroToOne ? balances[0] - uint256(deltaAmount0) : balances[0] + uint256(-deltaAmount0);
@@ -368,6 +369,7 @@ abstract contract Slipstream is AbstractBase {
             revert OnlyPool();
         }
 
+        // forge-lint: disable-next-item(unsafe-typecast)
         if (amount0Delta > 0) {
             ERC20(token0).safeTransfer(msg.sender, uint256(amount0Delta));
         } else if (amount1Delta > 0) {

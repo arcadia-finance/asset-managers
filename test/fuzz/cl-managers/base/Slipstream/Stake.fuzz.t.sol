@@ -44,7 +44,7 @@ contract Stake_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
 
         // Transfer position to Base.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(slipstreamPositionManager)).transferFrom(users.liquidityProvider, address(base), position.id);
 
         // When: Calling stake.
@@ -81,7 +81,7 @@ contract Stake_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
 
         // Transfer position to Base.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(slipstreamPositionManager)).transferFrom(users.liquidityProvider, address(base), position.id);
 
         // When: Calling stake.
@@ -118,7 +118,7 @@ contract Stake_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
 
         // Transfer position to Base.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(slipstreamPositionManager)).transferFrom(users.liquidityProvider, address(base), position.id);
 
         // When: Calling stake.

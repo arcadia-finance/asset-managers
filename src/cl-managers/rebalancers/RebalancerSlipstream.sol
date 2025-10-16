@@ -48,6 +48,8 @@ contract RebalancerSlipstream is Rebalancer, Slipstream {
         address stakedSlipstreamWrapper
     )
         Rebalancer(owner_, arcadiaFactory, routerTrampoline)
-        Slipstream(positionManager, cLFactory, poolImplementation, rewardToken, stakedSlipstreamAm, stakedSlipstreamWrapper)
+        Slipstream(
+            positionManager, cLFactory, poolImplementation, rewardToken, stakedSlipstreamAm, stakedSlipstreamWrapper
+        )
     { }
 }

@@ -39,7 +39,9 @@ contract YieldClaimerSlipstream is YieldClaimer, Slipstream {
         address stakedSlipstreamWrapper
     )
         YieldClaimer(owner_, arcadiaFactory)
-        Slipstream(positionManager, cLFactory, poolImplementation, rewardToken, stakedSlipstreamAm, stakedSlipstreamWrapper)
+        Slipstream(
+            positionManager, cLFactory, poolImplementation, rewardToken, stakedSlipstreamAm, stakedSlipstreamWrapper
+        )
     { }
 
     /* ///////////////////////////////////////////////////////////////

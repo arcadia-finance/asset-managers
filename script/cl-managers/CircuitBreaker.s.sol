@@ -9,7 +9,7 @@ import { Compounders, Rebalancers, SafesAssetManagers, YieldClaimers } from "../
 import { Guardian } from "../../src/guardian/Guardian.sol";
 
 contract CircuitBreaker is Base_AssetManagers_Script {
-    /// forge-lint: disable-next-line(mixed-case-variable)
+    // forge-lint: disable-next-line(mixed-case-variable)
     address internal SAFE = SafesAssetManagers.GUARDIAN;
 
     function run() public {

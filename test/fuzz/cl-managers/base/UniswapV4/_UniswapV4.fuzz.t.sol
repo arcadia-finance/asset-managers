@@ -9,10 +9,12 @@ import { BitPackingLib } from "../../../../../lib/accounts-v2/src/libraries/BitP
 import { Currency } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
 import { DefaultUniswapV4AM } from "../../../../../lib/accounts-v2/src/asset-modules/UniswapV4/DefaultUniswapV4AM.sol";
 import { ERC20Mock } from "../../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
-import { FixedPoint96 } from
-    "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint96.sol";
-import { FixedPoint128 } from
-    "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
+import {
+    FixedPoint96
+} from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint96.sol";
+import {
+    FixedPoint128
+} from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
 import { FullMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { Fuzz_Test } from "../../../Fuzz.t.sol";
 import { NativeTokenAM } from "../../../../../lib/accounts-v2/src/asset-modules/native-token/NativeTokenAM.sol";
@@ -23,8 +25,9 @@ import { UniswapV4Extension } from "../../../../utils/extensions/UniswapV4Extens
 import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 import { UniswapHelpers } from "../../../../utils/uniswap-v3/UniswapHelpers.sol";
 import { UniswapV4Fixture } from "../../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v4/UniswapV4Fixture.f.sol";
-import { UniswapV4HooksRegistry } from
-    "../../../../../lib/accounts-v2/src/asset-modules/UniswapV4/UniswapV4HooksRegistry.sol";
+import {
+    UniswapV4HooksRegistry
+} from "../../../../../lib/accounts-v2/src/asset-modules/UniswapV4/UniswapV4HooksRegistry.sol";
 
 /**
  * @notice Common logic needed by all "UniswapV4" fuzz tests.
@@ -50,12 +53,12 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
 
     PoolKey internal poolKey;
 
-    /// forge-lint: disable-start(mixed-case-variable)
+    // forge-lint: disable-start(mixed-case-variable)
     ArcadiaOracle internal ethOracle;
     DefaultUniswapV4AM internal defaultUniswapV4AM;
     NativeTokenAM internal nativeTokenAM;
     UniswapV4HooksRegistry internal uniswapV4HooksRegistry;
-    /// forge-lint: disable-end(mixed-case-variable)
+    // forge-lint: disable-end(mixed-case-variable)
 
     /*////////////////////////////////////////////////////////////////
                             TEST CONTRACTS
@@ -123,6 +126,7 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         );
     }
 
+    // forge-lint: disable-next-item(unsafe-typecast)
     function addAssetsToArcadia(uint256 sqrtPrice) internal {
         uint256 price0 = FullMath.mulDiv(1e18, sqrtPrice ** 2, FixedPoint96.Q96 ** 2);
         uint256 price1 = 1e18;
@@ -180,7 +184,7 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         );
     }
 
-    /// forge-lint: disable-next-item(mixed-case-function)
+    // forge-lint: disable-next-item(mixed-case-function)
     function deployUniswapV4AM() internal {
         // Deploy Add the Asset Module to the Registry.
         vm.startPrank(users.owner);
@@ -195,7 +199,7 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         vm.stopPrank();
     }
 
-    /// forge-lint: disable-next-item(mixed-case-function)
+    // forge-lint: disable-next-item(mixed-case-function)
     function deployNativeAM() public {
         // Deploy AM
         vm.startPrank(users.owner);

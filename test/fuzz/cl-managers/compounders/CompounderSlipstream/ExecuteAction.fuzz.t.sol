@@ -10,8 +10,9 @@ import { CompounderSlipstream_Fuzz_Test } from "./_CompounderSlipstream.fuzz.t.s
 import { DefaultHook } from "../../../../utils/mocks/DefaultHook.sol";
 import { ERC20Mock } from "../../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
-import { FixedPoint128 } from
-    "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
+import {
+    FixedPoint128
+} from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
 import { FullMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
 import { RebalanceLogic, RebalanceParams } from "../../../../../src/cl-managers/libraries/RebalanceLogic.sol";
@@ -23,6 +24,7 @@ import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4
 /**
  * @notice Fuzz tests for the function "_executeAction" of contract "CompounderSlipstream".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fuzz_Test {
     using stdStorage for StdStorage;
     /*////////////////////////////////////////////////////////////////
@@ -79,7 +81,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
             address(account), initiator, maxClaimFee, maxSwapFee, MAX_TOLERANCE, MIN_LIQUIDITY_RATIO, ""
         );
 
-        // And: claimfee is bigger than maxClaimFee.
+        // And: claimFee is bigger than maxClaimFee.
         initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, maxClaimFee + 1, type(uint64).max));
 
         // And: account is set.
@@ -111,7 +113,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
             address(account), initiator, maxClaimFee, maxSwapFee, MAX_TOLERANCE, MIN_LIQUIDITY_RATIO, ""
         );
 
-        // And: claimfee is smaller than maxClaimFee.
+        // And: claimFee is smaller than maxClaimFee.
         initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, maxClaimFee));
 
         // And: swapFee is bigger than maxSwapFee.
@@ -220,11 +222,10 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-start(erc20-unchecked-transfer)
-        ERC721(address(slipstreamPositionManager)).transferFrom(
-            users.liquidityProvider, address(compounder), position.id
-        );
-        /// forge-lint: disable-end(erc20-unchecked-transfer)
+        // forge-lint: disable-start(erc20-unchecked-transfer)
+        ERC721(address(slipstreamPositionManager))
+            .transferFrom(users.liquidityProvider, address(compounder), position.id);
+        // forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Compounder has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1e18));
@@ -245,7 +246,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
             initiatorParams.trustedSqrtPrice = sqrtPrice;
         }
 
-        // And: liqudity is not 0.
+        // And: liquidity is not 0.
         RebalanceParams memory rebalanceParams;
         {
             // Calculate balances available on compounder to rebalance (without fees).
@@ -322,11 +323,10 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-start(erc20-unchecked-transfer)
-        ERC721(address(slipstreamPositionManager)).transferFrom(
-            users.liquidityProvider, address(compounder), position.id
-        );
-        /// forge-lint: disable-end(erc20-unchecked-transfer)
+        // forge-lint: disable-start(erc20-unchecked-transfer)
+        ERC721(address(slipstreamPositionManager))
+            .transferFrom(users.liquidityProvider, address(compounder), position.id);
+        // forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Compounder has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1e18));
@@ -344,7 +344,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
             vm.assume(tickCurrent > position.tickLower && tickCurrent < position.tickUpper);
         }
 
-        // And: liqudity is not 0.
+        // And: liquidity is not 0.
         RebalanceParams memory rebalanceParams;
         {
             // Calculate balances available on compounder to rebalance (without fees).
@@ -436,11 +436,10 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-start(erc20-unchecked-transfer)
-        ERC721(address(slipstreamPositionManager)).transferFrom(
-            users.liquidityProvider, address(compounder), position.id
-        );
-        /// forge-lint: disable-end(erc20-unchecked-transfer)
+        // forge-lint: disable-start(erc20-unchecked-transfer)
+        ERC721(address(slipstreamPositionManager))
+            .transferFrom(users.liquidityProvider, address(compounder), position.id);
+        // forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Compounder has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1e18));
@@ -461,7 +460,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
             initiatorParams.trustedSqrtPrice = sqrtPrice;
         }
 
-        // And: liqudity is not 0.
+        // And: liquidity is not 0.
         RebalanceParams memory rebalanceParams;
         {
             // Calculate balances available on compounder to rebalance (without fees).
@@ -565,7 +564,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(stakedSlipstreamAM)).transferFrom(users.liquidityProvider, address(compounder), position.id);
 
         // And: Compounder has balances.
@@ -582,9 +581,8 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), type(uint256).max, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
-                rewardGrowthGlobalX128Current
-            );
+            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+                .checked_write(rewardGrowthGlobalX128Current);
         }
 
         // And: account is set.
@@ -596,7 +594,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
             initiatorParams.trustedSqrtPrice = sqrtPrice;
         }
 
-        // And: liqudity is not 0.
+        // And: liquidity is not 0.
         RebalanceParams memory rebalanceParams;
         {
             // Calculate balances available on compounder to rebalance (without fees).
@@ -706,7 +704,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(stakedSlipstreamAM)).transferFrom(users.liquidityProvider, address(compounder), position.id);
 
         // And: Compounder has balances.
@@ -723,9 +721,8 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), rewards, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
-                rewardGrowthGlobalX128Current
-            );
+            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+                .checked_write(rewardGrowthGlobalX128Current);
         }
 
         // And: account is set.
@@ -740,7 +737,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
             initiatorParams.trustedSqrtPrice = sqrtPrice;
         }
 
-        // And: liqudity is not 0.
+        // And: liquidity is not 0.
         RebalanceParams memory rebalanceParams;
         {
             // Calculate balances available on compounder to rebalance (without fees).
@@ -849,7 +846,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(wrappedStakedSlipstream)).transferFrom(users.liquidityProvider, address(compounder), position.id);
 
         // And: Compounder has balances.
@@ -866,9 +863,8 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), type(uint256).max, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
-                rewardGrowthGlobalX128Current
-            );
+            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+                .checked_write(rewardGrowthGlobalX128Current);
         }
 
         // And: account is set.
@@ -880,7 +876,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
             initiatorParams.trustedSqrtPrice = sqrtPrice;
         }
 
-        // And: liqudity is not 0.
+        // And: liquidity is not 0.
         RebalanceParams memory rebalanceParams;
         {
             // Calculate balances available on compounder to rebalance (without fees).
@@ -988,7 +984,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(wrappedStakedSlipstream)).transferFrom(users.liquidityProvider, address(compounder), position.id);
 
         // And: Compounder has balances.
@@ -1005,9 +1001,8 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), rewards, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
-                rewardGrowthGlobalX128Current
-            );
+            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+                .checked_write(rewardGrowthGlobalX128Current);
         }
 
         // And: account is set.
@@ -1019,7 +1014,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
             initiatorParams.trustedSqrtPrice = sqrtPrice;
         }
 
-        // And: liqudity is not 0.
+        // And: liquidity is not 0.
         RebalanceParams memory rebalanceParams;
         {
             // Calculate balances available on compounder to rebalance (without fees).

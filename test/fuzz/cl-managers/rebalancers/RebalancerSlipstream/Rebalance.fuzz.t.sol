@@ -8,8 +8,9 @@ import { AccountV3 } from "../../../../../lib/accounts-v2/src/accounts/AccountV3
 import { AccountV4 } from "../../../../../lib/accounts-v2/src/accounts/AccountV4.sol";
 import { DefaultHook } from "../../../../utils/mocks/DefaultHook.sol";
 import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
-import { FixedPoint128 } from
-    "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
+import {
+    FixedPoint128
+} from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
 import { FullMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { Guardian } from "../../../../../src/guardian/Guardian.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
@@ -248,11 +249,10 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
 
         // And: Account owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-start(erc20-unchecked-transfer)
-        ERC721(address(slipstreamPositionManager)).transferFrom(
-            users.liquidityProvider, users.accountOwner, position.id
-        );
-        /// forge-lint: disable-end(erc20-unchecked-transfer)
+        // forge-lint: disable-start(erc20-unchecked-transfer)
+        ERC721(address(slipstreamPositionManager))
+            .transferFrom(users.liquidityProvider, users.accountOwner, position.id);
+        // forge-lint: disable-end(erc20-unchecked-transfer)
         deal(address(token0), users.accountOwner, initiatorParams.amount0, true);
         deal(address(token1), users.accountOwner, initiatorParams.amount1, true);
         {
@@ -329,9 +329,8 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), type(uint256).max, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
-                rewardGrowthGlobalX128Current
-            );
+            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+                .checked_write(rewardGrowthGlobalX128Current);
         }
 
         // And: Rebalancer is allowed as Asset Manager
@@ -374,7 +373,7 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
 
         // And: Account owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(stakedSlipstreamAM)).transferFrom(users.liquidityProvider, users.accountOwner, position.id);
         deal(address(token0), users.accountOwner, initiatorParams.amount0, true);
         deal(address(token1), users.accountOwner, initiatorParams.amount1, true);
@@ -452,9 +451,8 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), type(uint256).max, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector).checked_write(
-                rewardGrowthGlobalX128Current
-            );
+            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+                .checked_write(rewardGrowthGlobalX128Current);
         }
 
         // And: Spot Account is used.
@@ -504,7 +502,7 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
 
         // And: Account owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(wrappedStakedSlipstream)).transferFrom(users.liquidityProvider, address(account), position.id);
         deal(address(token0), address(account), initiatorParams.amount0, true);
         deal(address(token1), address(account), initiatorParams.amount1, true);

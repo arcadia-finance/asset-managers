@@ -261,10 +261,7 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
         assertEq(rebalanceParams.amountIn, amountInWithFee - amountInitiatorFee_);
     }
 
-    function testFuzz_Success_getRebalanceParams_InRange_BiggerCurrentRatio(TestVariables memory testVars)
-        public
-        view
-    {
+    function testFuzz_Success_getRebalanceParams_InRange_BiggerCurrentRatio(TestVariables memory testVars) public view {
         // Given: Reasonable current price.
         testVars.sqrtPrice = bound(testVars.sqrtPrice, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
 

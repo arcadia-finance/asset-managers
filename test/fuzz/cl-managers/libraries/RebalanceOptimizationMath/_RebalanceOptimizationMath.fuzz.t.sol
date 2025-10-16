@@ -6,7 +6,9 @@ pragma solidity ^0.8.0;
 
 import { Fuzz_Test } from "../../../Fuzz.t.sol";
 import { LiquidityAmounts } from "../../../../../src/cl-managers/libraries/LiquidityAmounts.sol";
-import { RebalanceOptimizationMathExtension } from "../../../../utils/extensions/RebalanceOptimizationMathExtension.sol";
+import {
+    RebalanceOptimizationMathExtension
+} from "../../../../utils/extensions/RebalanceOptimizationMathExtension.sol";
 
 /**
  * @notice Common logic needed by all "RebalanceOptimizationMath" fuzz tests.
@@ -49,8 +51,9 @@ abstract contract RebalanceOptimizationMath_Fuzz_Test is Fuzz_Test {
         uint256 amount0,
         uint256 amount1
     ) internal pure returns (uint256 amount0_, uint256 amount1_) {
-        uint128 liquidity =
-            LiquidityAmounts.getLiquidityForAmounts(sqrtPrice, sqrtRatioLower, sqrtRatioUpper, amount0, amount1);
+        uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
+            sqrtPrice, sqrtRatioLower, sqrtRatioUpper, amount0, amount1
+        );
         (amount0_, amount1_) =
             LiquidityAmounts.getAmountsForLiquidity(sqrtPrice, sqrtRatioLower, sqrtRatioUpper, liquidity);
     }
