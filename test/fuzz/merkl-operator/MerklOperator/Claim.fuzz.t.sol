@@ -131,9 +131,10 @@ contract Claim_MerklOperator_Fuzz_Test is MerklOperator_Fuzz_Test {
         merklOperator.claim(address(account), initiatorParams);
     }
 
-    function testFuzz_Revert_claim_InvalidValue(MerklOperator.InitiatorParams memory initiatorParams, address initiator)
-        public
-    {
+    function testFuzz_Revert_claim_InvalidValue(
+        MerklOperator.InitiatorParams memory initiatorParams,
+        address initiator
+    ) public {
         // Given : initiator is not address(0).
         vm.assume(initiator != address(0));
 

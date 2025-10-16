@@ -23,9 +23,7 @@ library SlipstreamLogic {
     ) internal pure returns (address pool) {
         require(token0 < token1);
         pool = predictDeterministicAddress({
-            master: poolImplementation,
-            salt: keccak256(abi.encode(token0, token1, tickSpacing)),
-            deployer: factory
+            master: poolImplementation, salt: keccak256(abi.encode(token0, token1, tickSpacing)), deployer: factory
         });
     }
 

@@ -12,6 +12,7 @@ import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4
 /**
  * @notice Fuzz tests for the function "_getSwapParams" of contract "CLMath".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract GetSwapParams_CLMath_Fuzz_Test is CLMath_Fuzz_Test {
     /*////////////////////////////////////////////////////////////////
                             CONSTANTS

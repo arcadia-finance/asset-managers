@@ -4,8 +4,9 @@
  */
 pragma solidity ^0.8.0;
 
-import { AccountVariableVersion } from
-    "../../../../../lib/accounts-v2/test/utils/mocks/accounts/AccountVariableVersion.sol";
+import {
+    AccountVariableVersion
+} from "../../../../../lib/accounts-v2/test/utils/mocks/accounts/AccountVariableVersion.sol";
 import { FixedPointMathLib } from "../../../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { HookMock } from "../../../../utils/mocks/HookMock.sol";
 import { Rebalancer } from "../../../../../src/cl-managers/rebalancers/Rebalancer.sol";
@@ -115,12 +116,10 @@ contract SetAccountInfo_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         // Given: Account has an invalid version.
         accountVersion = bound(accountVersion, 0, 2);
         AccountVariableVersion account_ = new AccountVariableVersion(accountVersion, address(factory));
-        stdstore.target(address(factory)).sig(factory.isAccount.selector).with_key(address(account_)).checked_write(
-            true
-        );
-        stdstore.target(address(factory)).sig(factory.accountIndex.selector).with_key(address(account_)).checked_write(
-            2
-        );
+        stdstore.target(address(factory)).sig(factory.isAccount.selector).with_key(address(account_))
+            .checked_write(true);
+        stdstore.target(address(factory)).sig(factory.accountIndex.selector).with_key(address(account_))
+            .checked_write(2);
 
         // When: Owner calls setInitiator on the compounder.
         // Then: it should revert.

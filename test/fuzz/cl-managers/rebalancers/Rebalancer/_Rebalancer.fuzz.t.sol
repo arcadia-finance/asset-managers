@@ -6,8 +6,9 @@ pragma solidity ^0.8.0;
 
 import { ERC20Mock } from "../../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { Fuzz_Test } from "../../../Fuzz.t.sol";
-import { IUniswapV3PoolExtension } from
-    "../../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/IUniswapV3PoolExtension.sol";
+import {
+    IUniswapV3PoolExtension
+} from "../../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/extensions/interfaces/IUniswapV3PoolExtension.sol";
 import { RebalancerExtension } from "../../../../utils/extensions/RebalancerExtension.sol";
 import { RouterTrampoline } from "../../../../../src/cl-managers/RouterTrampoline.sol";
 import { UniswapV3Fixture } from "../../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";

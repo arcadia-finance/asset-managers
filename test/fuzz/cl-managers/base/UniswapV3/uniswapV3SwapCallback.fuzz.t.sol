@@ -10,6 +10,7 @@ import { UniswapV3 } from "../../../../../src/cl-managers/base/UniswapV3.sol";
 /**
  * @notice Fuzz tests for the function "uniswapV3SwapCallback" of contract "UniswapV3".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract UniswapV3SwapCallback_UniswapV3_Fuzz_Test is UniswapV3_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP

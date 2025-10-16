@@ -16,7 +16,9 @@ contract SlipstreamExtension is Slipstream {
         address stakedSlipstreamAm,
         address stakedSlipstreamWrapper
     )
-        Slipstream(positionManager, cLFactory, poolImplementation, rewardToken, stakedSlipstreamAm, stakedSlipstreamWrapper)
+        Slipstream(
+            positionManager, cLFactory, poolImplementation, rewardToken, stakedSlipstreamAm, stakedSlipstreamWrapper
+        )
     { }
 
     function getUnderlyingTokens(address positionManager, uint256 id) external view returns (address, address) {

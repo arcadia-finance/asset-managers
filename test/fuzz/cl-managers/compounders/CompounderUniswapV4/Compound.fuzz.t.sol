@@ -204,7 +204,7 @@ contract Rebalance_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz_Tes
 
         // And: Account owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, users.accountOwner, position.id);
         deal(address(token0), users.accountOwner, initiatorParams.amount0, true);
         deal(address(token1), users.accountOwner, initiatorParams.amount1, true);
@@ -238,7 +238,7 @@ contract Rebalance_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz_Tes
             initiatorParams.trustedSqrtPrice = sqrtPrice;
         }
 
-        // And: liqudity is not 0.
+        // And: liquidity is not 0.
         {
             // Calculate balances available on compounder to rebalance (without fees).
             (uint256 balance0, uint256 balance1) = getFeeAmounts(position.id);
@@ -320,7 +320,7 @@ contract Rebalance_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz_Tes
 
         // And: Account owns the position.
         vm.prank(users.liquidityProvider);
-        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, users.accountOwner, position.id);
         vm.deal(users.accountOwner, initiatorParams.amount0);
         vm.prank(users.accountOwner);
@@ -356,7 +356,7 @@ contract Rebalance_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz_Tes
             initiatorParams.trustedSqrtPrice = sqrtPrice;
         }
 
-        // And: liqudity is not 0.
+        // And: liquidity is not 0.
         {
             // Calculate balances available on compounder to rebalance (without fees).
             (uint256 balance0, uint256 balance1) = getFeeAmounts(position.id);
