@@ -92,21 +92,22 @@ library ArcadiaLogic {
         uint256[] memory types = new uint256[](count);
 
         // Encode liquidity position.
-        assets[0] = positionManager;
-        ids[0] = id;
-        amounts[0] = 1;
-        types[0] = 2;
+        uint256 i;
+        if (id > 0) {
+            assets[0] = positionManager;
+            ids[0] = id;
+            amounts[0] = 1;
+            types[0] = 2;
+            i = 1;
+        }
 
         // Encode underlying assets of the liquidity position.
-        if (count > 1) {
-            uint256 i = 1;
-            for (uint256 j; j < balances.length; j++) {
-                if (balances[j] > 0) {
-                    assets[i] = tokens[j];
-                    amounts[i] = balances[j];
-                    types[i] = 1;
-                    i++;
-                }
+        for (uint256 j; j < balances.length; j++) {
+            if (balances[j] > 0) {
+                assets[i] = tokens[j];
+                amounts[i] = balances[j];
+                types[i] = 1;
+                i++;
             }
         }
 

@@ -50,6 +50,13 @@ contract RebalancerExtension is Rebalancer {
         override
     { }
 
+    function _decreaseLiquidity(
+        uint256[] memory balances,
+        address positionManager,
+        PositionState memory position,
+        uint128 liquidity
+    ) internal override { }
+
     function _swapViaPool(uint256[] memory balances, PositionState memory position, bool zeroToOne, uint256 amountOut)
         internal
         override
