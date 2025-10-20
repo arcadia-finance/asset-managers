@@ -4,7 +4,7 @@
  */
 pragma solidity ^0.8.0;
 
-import { DefaultHook } from "../../../../utils/mocks/DefaultHook.sol";
+import { DefaultRebalancerHook } from "../../../../utils/mocks/DefaultRebalancerHook.sol";
 import { Guardian } from "../../../../../src/guardian/Guardian.sol";
 import { Rebalancer } from "../../../../../src/cl-managers/rebalancers/Rebalancer.sol";
 import { Rebalancer_Fuzz_Test } from "./_Rebalancer.fuzz.t.sol";
@@ -17,7 +17,7 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
                             VARIABLES
     /////////////////////////////////////////////////////////////// */
 
-    DefaultHook internal strategyHook;
+    DefaultRebalancerHook internal strategyHook;
 
     /* ///////////////////////////////////////////////////////////////
                               SETUP
@@ -26,7 +26,7 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     function setUp() public override {
         Rebalancer_Fuzz_Test.setUp();
 
-        strategyHook = new DefaultHook();
+        strategyHook = new DefaultRebalancerHook();
     }
 
     /*//////////////////////////////////////////////////////////////
