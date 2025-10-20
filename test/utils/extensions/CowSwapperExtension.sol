@@ -39,10 +39,6 @@ contract CowSwapperExtension is CowSwapper {
         return amountIn;
     }
 
-    function getAmountOut() external view returns (uint256) {
-        return amountOut;
-    }
-
     function getOrderHash() external view returns (bytes32) {
         return orderHash;
     }
@@ -77,10 +73,6 @@ contract CowSwapperExtension is CowSwapper {
 
     function setAmountIn(uint256 amountIn_) external {
         amountIn = amountIn_;
-    }
-
-    function setAmountOut(uint256 amountOut_) external {
-        amountOut = amountOut_;
     }
 
     function setOrderHash(bytes32 orderHash_) external {

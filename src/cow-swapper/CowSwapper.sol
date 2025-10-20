@@ -88,8 +88,6 @@ contract CowSwapper is IActionBase, Guardian {
 
     // The amount of tokenIn to swap (sellAmount).
     uint256 internal transient amountIn;
-    // The amount of tokenOut to swap to (buyAmount).
-    uint256 internal transient amountOut;
 
     // The order hash.
     bytes32 internal transient orderHash;
@@ -360,7 +358,7 @@ contract CowSwapper is IActionBase, Guardian {
 
         uint64 swapFee_;
         bytes32 orderHash_;
-        (swapFee_, tokenOut, amountOut, orderHash_) =
+        (swapFee_, tokenOut, orderHash_) =
             IOrderHook(accountInfo[account_].orderHook).getInitiatorParams(account_, tokenIn, amountIn, initiatorData);
 
         // Validate swapFee.

@@ -34,12 +34,11 @@ abstract contract OrderHook is IOrderHook {
      * @param initiatorData The packed encoded remaining initiator parameters.
      * @return swapFee The fee charged on the amountOut by the initiator, with 18 decimals precision.
      * @return tokenOut The contract address of the token to swap to.
-     * @return amountOut The amount of tokenOut to swap to.
      * @return orderHash The order hash.
      */
     function getInitiatorParams(address account, address tokenIn, uint256 amountIn, bytes calldata initiatorData)
         external
         view
         virtual
-        returns (uint64 swapFee, address tokenOut, uint256 amountOut, bytes32 orderHash);
+        returns (uint64 swapFee, address tokenOut, bytes32 orderHash);
 }
