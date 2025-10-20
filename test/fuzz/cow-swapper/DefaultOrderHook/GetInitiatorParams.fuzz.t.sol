@@ -41,13 +41,12 @@ contract GetInitiatorParams_DefaultOrderHook_Fuzz_Test is DefaultOrderHook_Fuzz_
 
         // When: getInitiatorParams is called.
         bytes memory initiatorData = abi.encodePacked(order.buyToken, uint112(order.buyAmount), order.validTo, swapFee);
-        (uint64 swapFee_, address tokenOut, uint256 amountOut, bytes32 orderHash) =
+        (uint64 swapFee_, address tokenOut, bytes32 orderHash) =
             orderHook.getInitiatorParams(account_, address(order.sellToken), order.sellAmount, initiatorData);
 
         // Then: Correct values should be returned.
         assertEq(swapFee_, swapFee);
         assertEq(tokenOut, address(order.buyToken));
-        assertEq(amountOut, order.buyAmount);
         assertEq(orderHash, order.hash(orderHook.DOMAIN_SEPARATOR()));
     }
 

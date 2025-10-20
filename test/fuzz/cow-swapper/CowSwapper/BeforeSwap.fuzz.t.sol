@@ -90,7 +90,6 @@ contract BeforeSwap_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
 
         // Then: Transient state is set.
         assertEq(cowSwapper.getTokenOut(), address(order.buyToken));
-        assertEq(cowSwapper.getAmountOut(), order.buyAmount);
         assertEq(cowSwapper.getSwapFee(), swapFee);
         assertEq(cowSwapper.getTokenIn(), address(order.sellToken));
         assertEq(cowSwapper.getOrderHash(), order.hash(orderHook.DOMAIN_SEPARATOR()));

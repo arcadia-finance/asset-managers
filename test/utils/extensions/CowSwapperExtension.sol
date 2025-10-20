@@ -5,7 +5,6 @@
 pragma solidity ^0.8.0;
 
 import { CowSwapper } from "../../../src/cow-swapper/CowSwapper.sol";
-import { IERC20 } from "../../../lib/flash-loan-router/src/vendored/IERC20.sol";
 
 contract CowSwapperExtension is CowSwapper {
     constructor(address owner_, address arcadiaFactory, address flashLoanRouter, address hooksTrampoline)
@@ -38,10 +37,6 @@ contract CowSwapperExtension is CowSwapper {
 
     function getAmountIn() external view returns (uint256) {
         return amountIn;
-    }
-
-    function getAmountOut() external view returns (uint256) {
-        return amountOut;
     }
 
     function getOrderHash() external view returns (bytes32) {
@@ -80,21 +75,11 @@ contract CowSwapperExtension is CowSwapper {
         amountIn = amountIn_;
     }
 
-    function setAmountOut(uint256 amountOut_) external {
-        amountOut = amountOut_;
-    }
-
     function setOrderHash(bytes32 orderHash_) external {
         orderHash = orderHash_;
     }
 
     function setMessageHash(bytes32 messageHash_) external {
         messageHash = messageHash_;
-    }
-
-    function triggerFlashLoan_(address account_, IERC20 tokenIn_, uint256 amountIn_, bytes calldata callBackData)
-        external
-    {
-        triggerFlashLoan(account_, tokenIn_, amountIn_, callBackData);
     }
 }

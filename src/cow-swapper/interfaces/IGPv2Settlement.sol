@@ -3,7 +3,6 @@ pragma solidity ^0.8.26;
 
 interface IGPv2Settlement {
     function domainSeparator() external returns (bytes32);
-    function filledAmount(bytes calldata orderUid) external returns (uint256 amount);
-    function setPreSignature(bytes calldata orderUid, bool signed) external;
+    function settlementContract() external view returns (address);
     function vaultRelayer() external returns (address);
 }
