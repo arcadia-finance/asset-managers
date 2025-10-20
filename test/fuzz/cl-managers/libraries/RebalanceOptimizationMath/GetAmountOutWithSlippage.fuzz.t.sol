@@ -257,7 +257,9 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is
                 fee: POOL_FEE,
                 sqrtPriceLimitX96: 0
             })
-        ) returns (uint256 amountIn_, uint160 sqrtPriceAfter_, uint32, uint256) {
+        ) returns (
+            uint256 amountIn_, uint160 sqrtPriceAfter_, uint32, uint256
+        ) {
             amountIn = amountIn_;
             sqrtPriceAfter = sqrtPriceAfter_;
         } catch {
