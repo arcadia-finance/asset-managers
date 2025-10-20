@@ -270,8 +270,7 @@ library RebalanceOptimizationMath {
             }
 
             // Calculate the relative difference of liquidity0 and liquidity1.
-            uint256 relDiff =
-                1e18
+            uint256 relDiff = 1e18
                 - (liquidity0 < liquidity1
                         ? liquidity0.mulDivDown(1e18, liquidity1)
                         : liquidity1.mulDivDown(1e18, liquidity0));

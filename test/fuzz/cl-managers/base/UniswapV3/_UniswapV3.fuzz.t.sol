@@ -264,12 +264,12 @@ abstract contract UniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, UniswapV3A
         // one or both terms, or their sum, is bigger than a uint128.
         // This is however much bigger than any realistic situation.
         unchecked {
-            amount0 = FullMath.mulDiv(
-                    feeGrowthInside0CurrentX128 - feeGrowthInside0LastX128, liquidity, FixedPoint128.Q128
-                ) + tokensOwed0;
-            amount1 = FullMath.mulDiv(
-                    feeGrowthInside1CurrentX128 - feeGrowthInside1LastX128, liquidity, FixedPoint128.Q128
-                ) + tokensOwed1;
+            amount0 =
+                FullMath.mulDiv(feeGrowthInside0CurrentX128 - feeGrowthInside0LastX128, liquidity, FixedPoint128.Q128)
+                    + tokensOwed0;
+            amount1 =
+                FullMath.mulDiv(feeGrowthInside1CurrentX128 - feeGrowthInside1LastX128, liquidity, FixedPoint128.Q128)
+                    + tokensOwed1;
         }
     }
 
