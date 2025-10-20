@@ -9,5 +9,5 @@ interface IOrderHook {
     function getInitiatorParams(address account, address tokenIn, uint256 amountIn, bytes calldata initiatorData)
         external
         view
-        returns (uint64 swapFee, address tokenOut, uint256 amountOut, bytes32 orderHash);
+        returns (uint64 swapFee, address tokenOut, bytes32 orderHash);
 }
