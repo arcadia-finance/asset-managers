@@ -102,14 +102,14 @@ abstract contract UniswapV3 is AbstractBase {
         // Get data of the Liquidity Position.
         position.id = id;
         (
-                ,,
-                position.tokens[0],
-                position.tokens[1],
-                position.fee,
-                position.tickLower,
-                position.tickUpper,
-                position.liquidity,,,,
-            ) = POSITION_MANAGER.positions(id);
+            ,,
+            position.tokens[0],
+            position.tokens[1],
+            position.fee,
+            position.tickLower,
+            position.tickUpper,
+            position.liquidity,,,,
+        ) = POSITION_MANAGER.positions(id);
 
         // Get data of the Liquidity Pool.
         position.pool =
