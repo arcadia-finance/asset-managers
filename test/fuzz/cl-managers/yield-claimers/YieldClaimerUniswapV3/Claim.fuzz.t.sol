@@ -85,10 +85,9 @@ contract Compound_YieldClaimerUniswapV3_Fuzz_Test is YieldClaimerUniswapV3_Fuzz_
         yieldClaimer.claim(account_, initiatorParams);
     }
 
-    function testFuzz_Revert_claim_InvalidInitiator(
-        YieldClaimer.InitiatorParams memory initiatorParams,
-        address caller
-    ) public {
+    function testFuzz_Revert_claim_InvalidInitiator(YieldClaimer.InitiatorParams memory initiatorParams, address caller)
+        public
+    {
         // Given : Caller is not address(0).
         vm.assume(caller != address(0));
 
