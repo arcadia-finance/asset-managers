@@ -5,8 +5,8 @@
 pragma solidity ^0.8.30;
 
 import { AbstractBase } from "../base/AbstractBase.sol";
-import { ArcadiaLogic } from "../libraries/ArcadiaLogic.sol";
 import { ActionData, IActionBase } from "../../../lib/accounts-v2/src/interfaces/IActionBase.sol";
+import { ArcadiaLogic } from "../libraries/ArcadiaLogic.sol";
 import { ERC20, SafeTransferLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/SafeTransferLib.sol";
 import { ERC721 } from "../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
@@ -35,9 +35,6 @@ abstract contract Closer is IActionBase, AbstractBase, Guardian {
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
     ////////////////////////////////////////////////////////////// */
-
-    // The Account to claim the yield for.
-    address internal transient account;
 
     // A mapping from account_ to account_ specific information.
     mapping(address account_ => AccountInfo) public accountInfo;
@@ -71,6 +68,13 @@ abstract contract Closer is IActionBase, AbstractBase, Guardian {
     }
 
     /* //////////////////////////////////////////////////////////////
+                          TRANSIENT STORAGE
+    ////////////////////////////////////////////////////////////// */
+
+    // The Account to claim the yield for.
+    address internal transient account;
+
+    /* //////////////////////////////////////////////////////////////
                                 ERRORS
     ////////////////////////////////////////////////////////////// */
 
@@ -88,7 +92,6 @@ abstract contract Closer is IActionBase, AbstractBase, Guardian {
     ////////////////////////////////////////////////////////////// */
 
     event AccountInfoSet(address indexed account_, address indexed initiator);
-    event YieldTransferred(address indexed account_, address indexed receiver, address indexed asset, uint256 amount);
     event Close(address indexed account, address indexed positionManager, uint256 id);
 
     /* //////////////////////////////////////////////////////////////
@@ -248,7 +251,7 @@ abstract contract Closer is IActionBase, AbstractBase, Guardian {
         // If the position is staked, unstake it.
         _unstake(balances, positionManager, position);
 
-        // Decrease liquidity of the position and update balances.
+        // Decrease liquidity or fully burn, and update balances.
         if (initiatorParams.liquidity > 0) {
             if (initiatorParams.liquidity < position.liquidity) {
                 _decreaseLiquidity(balances, positionManager, position, initiatorParams.liquidity);
