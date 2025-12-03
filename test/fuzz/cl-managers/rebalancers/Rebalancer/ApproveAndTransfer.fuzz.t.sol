@@ -430,12 +430,6 @@ contract ApproveAndTransfer_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         deal(address(token0), address(rebalancer), balance0, true);
         deal(address(token1), address(rebalancer), balance1, true);
 
-        // And: AmountOut0 is zero.
-        initiatorParams.amountOut0 = 0;
-
-        // And: AmountOut1 is smaller or equal as balance1.
-        initiatorParams.amountOut1 = uint128(bound(initiatorParams.amountOut1, 0, balance1));
-
         // And: Uniswap v3 position.
         nonfungiblePositionManager.mint(address(rebalancer), position.id);
 
@@ -506,12 +500,6 @@ contract ApproveAndTransfer_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
 
         deal(address(token0), address(rebalancer), balance0, true);
         deal(address(token1), address(rebalancer), balance1, true);
-
-        // And: AmountOut0 is zero.
-        initiatorParams.amountOut0 = 0;
-
-        // And: AmountOut1 is smaller or equal as balance1.
-        initiatorParams.amountOut1 = uint128(bound(initiatorParams.amountOut1, 0, balance1));
 
         // And: Uniswap v3 position.
         nonfungiblePositionManager.mint(address(rebalancer), position.id);
