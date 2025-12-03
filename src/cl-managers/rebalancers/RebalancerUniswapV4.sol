@@ -27,6 +27,13 @@ import { UniswapV4 } from "../base/UniswapV4.sol";
 contract RebalancerUniswapV4 is Rebalancer, UniswapV4 {
     using SafeTransferLib for ERC20;
     /* //////////////////////////////////////////////////////////////
+                                CONSTANTS
+    ////////////////////////////////////////////////////////////// */
+
+    // The version of the Asset Manager.
+    string public constant VERSION = "2.1.1";
+
+    /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
     ////////////////////////////////////////////////////////////// */
 
