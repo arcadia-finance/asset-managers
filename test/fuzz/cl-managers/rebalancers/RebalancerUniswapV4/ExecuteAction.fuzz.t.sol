@@ -14,6 +14,7 @@ import { Rebalancer } from "../../../../../src/cl-managers/rebalancers/Rebalance
 import { RebalancerUniswapV4_Fuzz_Test } from "./_RebalancerUniswapV4.fuzz.t.sol";
 import { RouterMock } from "../../../../utils/mocks/RouterMock.sol";
 import { RouterSetPoolPriceUniV4Mock } from "../../../../utils/mocks/RouterSetPoolPriceUniV4Mock.sol";
+import { stdError } from "../../../../../lib/accounts-v2/lib/forge-std/src/StdError.sol";
 import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
 /**
@@ -184,13 +185,13 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         initiatorParams.strategyData = abi.encode(tickLower, tickUpper);
 
         // And: Rebalancer has balances.
-        initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, type(uint16).max));
-        initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, 0, type(uint16).max));
+        initiatorParams.amountIn0 = uint128(bound(initiatorParams.amountIn0, 0, type(uint16).max));
+        initiatorParams.amountIn1 = uint128(bound(initiatorParams.amountIn1, 0, type(uint16).max));
         uint256[] memory balances = new uint256[](2);
-        balances[0] = initiatorParams.amount0;
-        balances[1] = initiatorParams.amount1;
-        deal(address(token0), address(rebalancer), initiatorParams.amount0, true);
-        deal(address(token1), address(rebalancer), initiatorParams.amount1, true);
+        balances[0] = initiatorParams.amountIn0;
+        balances[1] = initiatorParams.amountIn1;
+        deal(address(token0), address(rebalancer), initiatorParams.amountIn0, true);
+        deal(address(token1), address(rebalancer), initiatorParams.amountIn1, true);
 
         // And: account is set.
         rebalancer.setAccount(address(account));
@@ -213,7 +214,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         rebalancer.executeAction(actionTargetData);
     }
 
-    function testFuzz_Revert_executeAction_UnbalancedPoolAfterSwap(
+    function testFuzz_Revert_executeAction_InsufficientBalance0(
         uint128 liquidityPool,
         Rebalancer.InitiatorParams memory initiatorParams,
         PositionState memory position,
@@ -230,12 +231,12 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
         position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
         position.liquidity = uint128(bound(position.liquidity, 1e6, 1e10));
-        setPositionState(position);
+        (uint256 amount0,) = setPositionState(position);
         initiatorParams.positionManager = address(positionManagerV4);
         initiatorParams.oldId = uint96(position.id);
 
         // And: Account info is set.
-        tolerance = bound(tolerance, 0, MAX_TOLERANCE);
+        tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account),
@@ -266,13 +267,221 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(rebalancer), position.id);
 
         // And: Rebalancer has balances.
-        initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1));
-        initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, 0, 1));
+        initiatorParams.amountIn0 = uint128(bound(initiatorParams.amountIn0, 0, 1));
+        initiatorParams.amountIn1 = uint128(bound(initiatorParams.amountIn1, 0, 1));
         uint256[] memory balances = new uint256[](2);
-        balances[0] = initiatorParams.amount0;
-        balances[1] = initiatorParams.amount1;
-        deal(address(token0), address(rebalancer), initiatorParams.amount0, true);
-        deal(address(token1), address(rebalancer), initiatorParams.amount1, true);
+        balances[0] = initiatorParams.amountIn0;
+        balances[1] = initiatorParams.amountIn1;
+        deal(address(token0), address(rebalancer), initiatorParams.amountIn0, true);
+        deal(address(token1), address(rebalancer), initiatorParams.amountIn1, true);
+
+        // And: amountOut0 is bigger as balance0.
+        initiatorParams.amountOut0 =
+            uint128(bound(initiatorParams.amountOut0, amount0 + initiatorParams.amountIn0 + 1, type(uint128).max));
+
+        // And: account is set.
+        rebalancer.setAccount(address(account));
+
+        // And: The pool is balanced.
+        {
+            (uint160 sqrtPrice,,,) = stateView.getSlot0(poolKey.toId());
+            initiatorParams.trustedSqrtPrice = sqrtPrice;
+        }
+
+        // And: The pool is unbalanced after the swap.
+        {
+            (, uint256 lowerSqrtPriceDeviation,,,,) = rebalancer.accountInfo(address(account));
+            uint256 lowerBoundSqrtPrice = initiatorParams.trustedSqrtPrice * lowerSqrtPriceDeviation / 1e18;
+            uint256 newSqrtPrice = bound(position.sqrtPrice, TickMath.MIN_SQRT_PRICE, lowerBoundSqrtPrice);
+
+            RouterSetPoolPriceUniV4Mock router = new RouterSetPoolPriceUniV4Mock();
+            bytes memory routerData = abi.encodeWithSelector(
+                RouterSetPoolPriceUniV4Mock.swap.selector,
+                address(poolManager),
+                poolKey.toId(),
+                TickMath.getTickAtSqrtPrice(uint160(newSqrtPrice)),
+                uint160(newSqrtPrice)
+            );
+            initiatorParams.swapData = abi.encode(address(router), 0, routerData);
+        }
+
+        // When: Calling executeAction().
+        // Then: it should revert.
+        bytes memory actionTargetData = abi.encode(initiator, initiatorParams);
+        vm.prank(address(account));
+        vm.expectRevert(stdError.arithmeticError);
+        rebalancer.executeAction(actionTargetData);
+    }
+
+    function testFuzz_Revert_executeAction_InsufficientBalance1(
+        uint128 liquidityPool,
+        Rebalancer.InitiatorParams memory initiatorParams,
+        PositionState memory position,
+        int24 tickLower,
+        int24 tickUpper,
+        address initiator,
+        uint256 tolerance
+    ) public {
+        // Given: A valid position in range (has both tokens).
+        liquidityPool = givenValidPoolState(liquidityPool, position);
+        setPoolState(liquidityPool, position, false);
+        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
+        position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
+        position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
+        position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
+        position.liquidity = uint128(bound(position.liquidity, 1e6, 1e10));
+        (uint256 amount0, uint256 amount1) = setPositionState(position);
+        initiatorParams.positionManager = address(positionManagerV4);
+        initiatorParams.oldId = uint96(position.id);
+
+        // And: Account info is set.
+        tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
+        vm.prank(account.owner());
+        rebalancer.setAccountInfo(
+            address(account),
+            initiator,
+            MAX_FEE,
+            MAX_FEE,
+            tolerance,
+            MIN_LIQUIDITY_RATIO,
+            address(strategyHook),
+            abi.encode(address(token0), address(token1), ""),
+            ""
+        );
+
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
+        initiatorParams.swapFee = initiatorParams.claimFee;
+
+        // And: A new position with a valid tick range above current tick.
+        tickLower = int24(bound(tickLower, position.tickCurrent, BOUND_TICK_UPPER - 1));
+        tickLower = tickLower / position.tickSpacing * position.tickSpacing;
+        tickUpper = int24(bound(tickUpper, tickLower + 1, BOUND_TICK_UPPER));
+        tickUpper = tickUpper / position.tickSpacing * position.tickSpacing;
+        initiatorParams.strategyData = abi.encode(tickLower, tickUpper);
+
+        // And: The Rebalancer owns the position.
+        vm.prank(users.liquidityProvider);
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
+        ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(rebalancer), position.id);
+
+        // And: Rebalancer has balances.
+        initiatorParams.amountIn0 = uint128(bound(initiatorParams.amountIn0, 0, 1));
+        initiatorParams.amountIn1 = uint128(bound(initiatorParams.amountIn1, 0, 1));
+        uint256[] memory balances = new uint256[](2);
+        balances[0] = initiatorParams.amountIn0;
+        balances[1] = initiatorParams.amountIn1;
+        deal(address(token0), address(rebalancer), initiatorParams.amountIn0, true);
+        deal(address(token1), address(rebalancer), initiatorParams.amountIn1, true);
+
+        // And: Withdrawn amount0 is smaller than the positions balance0.
+        initiatorParams.amountOut0 =
+            uint128(bound(initiatorParams.amountOut0, 0, (amount0 + initiatorParams.amountIn0) / 2));
+
+        // And: amountOut0 is bigger as balance0.
+        initiatorParams.amountOut1 =
+            uint128(bound(initiatorParams.amountOut1, amount1 + initiatorParams.amountIn1 + 1, type(uint128).max));
+
+        // And: account is set.
+        rebalancer.setAccount(address(account));
+
+        // And: The pool is balanced.
+        {
+            (uint160 sqrtPrice,,,) = stateView.getSlot0(poolKey.toId());
+            initiatorParams.trustedSqrtPrice = sqrtPrice;
+        }
+
+        // And: The pool is unbalanced after the swap.
+        {
+            (, uint256 lowerSqrtPriceDeviation,,,,) = rebalancer.accountInfo(address(account));
+            uint256 lowerBoundSqrtPrice = initiatorParams.trustedSqrtPrice * lowerSqrtPriceDeviation / 1e18;
+            uint256 newSqrtPrice = bound(position.sqrtPrice, TickMath.MIN_SQRT_PRICE, lowerBoundSqrtPrice);
+
+            RouterSetPoolPriceUniV4Mock router = new RouterSetPoolPriceUniV4Mock();
+            bytes memory routerData = abi.encodeWithSelector(
+                RouterSetPoolPriceUniV4Mock.swap.selector,
+                address(poolManager),
+                poolKey.toId(),
+                TickMath.getTickAtSqrtPrice(uint160(newSqrtPrice)),
+                uint160(newSqrtPrice)
+            );
+            initiatorParams.swapData = abi.encode(address(router), 0, routerData);
+        }
+
+        // When: Calling executeAction().
+        // Then: it should revert.
+        bytes memory actionTargetData = abi.encode(initiator, initiatorParams);
+        vm.prank(address(account));
+        vm.expectRevert(stdError.arithmeticError);
+        rebalancer.executeAction(actionTargetData);
+    }
+
+    function testFuzz_Revert_executeAction_UnbalancedPoolAfterSwap(
+        uint128 liquidityPool,
+        Rebalancer.InitiatorParams memory initiatorParams,
+        PositionState memory position,
+        int24 tickLower,
+        int24 tickUpper,
+        address initiator,
+        uint256 tolerance
+    ) public {
+        // Given: A valid position in range (has both tokens).
+        liquidityPool = givenValidPoolState(liquidityPool, position);
+        setPoolState(liquidityPool, position, false);
+        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
+        position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
+        position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
+        position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
+        position.liquidity = uint128(bound(position.liquidity, 1e6, 1e10));
+        (uint256 amount0, uint256 amount1) = setPositionState(position);
+        initiatorParams.positionManager = address(positionManagerV4);
+        initiatorParams.oldId = uint96(position.id);
+
+        // And: Account info is set.
+        tolerance = bound(tolerance, 0.0001 * 1e18, MAX_TOLERANCE);
+        vm.prank(account.owner());
+        rebalancer.setAccountInfo(
+            address(account),
+            initiator,
+            MAX_FEE,
+            MAX_FEE,
+            tolerance,
+            MIN_LIQUIDITY_RATIO,
+            address(strategyHook),
+            abi.encode(address(token0), address(token1), ""),
+            ""
+        );
+
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
+        initiatorParams.swapFee = initiatorParams.claimFee;
+
+        // And: A new position with a valid tick range above current tick.
+        tickLower = int24(bound(tickLower, position.tickCurrent, BOUND_TICK_UPPER - 1));
+        tickLower = tickLower / position.tickSpacing * position.tickSpacing;
+        tickUpper = int24(bound(tickUpper, tickLower + 1, BOUND_TICK_UPPER));
+        tickUpper = tickUpper / position.tickSpacing * position.tickSpacing;
+        initiatorParams.strategyData = abi.encode(tickLower, tickUpper);
+
+        // And: The Rebalancer owns the position.
+        vm.prank(users.liquidityProvider);
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
+        ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(rebalancer), position.id);
+
+        // And: Rebalancer has balances.
+        initiatorParams.amountIn0 = uint128(bound(initiatorParams.amountIn0, 0, 1));
+        initiatorParams.amountIn1 = uint128(bound(initiatorParams.amountIn1, 0, 1));
+        uint256[] memory balances = new uint256[](2);
+        balances[0] = initiatorParams.amountIn0;
+        balances[1] = initiatorParams.amountIn1;
+        deal(address(token0), address(rebalancer), initiatorParams.amountIn0, true);
+        deal(address(token1), address(rebalancer), initiatorParams.amountIn1, true);
+
+        // And: Withdrawn amount is smaller than the positions balance.
+        initiatorParams.amountOut0 =
+            uint128(bound(initiatorParams.amountOut0, 0, (amount0 + initiatorParams.amountIn0) / 2));
+        initiatorParams.amountOut1 =
+            uint128(bound(initiatorParams.amountOut1, 0, (amount1 + initiatorParams.amountIn1) / 2));
 
         // And: account is set.
         rebalancer.setAccount(address(account));
@@ -325,7 +534,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
         position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
         position.liquidity = uint128(bound(position.liquidity, 1e6, 1e10));
-        setPositionState(position);
+        (uint256 amount0, uint256 amount1) = setPositionState(position);
         initiatorParams.positionManager = address(positionManagerV4);
         initiatorParams.oldId = uint96(position.id);
 
@@ -361,13 +570,19 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(rebalancer), position.id);
 
         // And: Rebalancer has balances.
-        initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1));
-        initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, 0, 1));
+        initiatorParams.amountIn0 = uint128(bound(initiatorParams.amountIn0, 0, 1));
+        initiatorParams.amountIn1 = uint128(bound(initiatorParams.amountIn1, 0, 1));
         uint256[] memory balances = new uint256[](2);
-        balances[0] = initiatorParams.amount0;
-        balances[1] = initiatorParams.amount1;
-        deal(address(token0), address(rebalancer), initiatorParams.amount0, true);
-        deal(address(token1), address(rebalancer), initiatorParams.amount1, true);
+        balances[0] = initiatorParams.amountIn0;
+        balances[1] = initiatorParams.amountIn1;
+        deal(address(token0), address(rebalancer), initiatorParams.amountIn0, true);
+        deal(address(token1), address(rebalancer), initiatorParams.amountIn1, true);
+
+        // And: Withdrawn amount is smaller than the positions balance.
+        initiatorParams.amountOut0 =
+            uint128(bound(initiatorParams.amountOut0, 0, (amount0 + initiatorParams.amountIn0) / 2));
+        initiatorParams.amountOut1 =
+            uint128(bound(initiatorParams.amountOut1, 0, (amount1 + initiatorParams.amountIn1) / 2));
 
         // And: account is set.
         rebalancer.setAccount(address(account));
@@ -413,7 +628,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
         position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
         position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
-        setPositionState(position);
+        (uint256 amount0, uint256 amount1) = setPositionState(position);
         initiatorParams.positionManager = address(positionManagerV4);
         initiatorParams.oldId = uint96(position.id);
 
@@ -449,13 +664,19 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(rebalancer), position.id);
 
         // And: Rebalancer has balances.
-        initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1));
-        initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, 0, 1));
+        initiatorParams.amountIn0 = uint128(bound(initiatorParams.amountIn0, 0, 1));
+        initiatorParams.amountIn1 = uint128(bound(initiatorParams.amountIn1, 0, 1));
         uint256[] memory balances = new uint256[](2);
-        balances[0] = initiatorParams.amount0;
-        balances[1] = initiatorParams.amount1;
-        deal(address(token0), address(rebalancer), initiatorParams.amount0, true);
-        deal(address(token1), address(rebalancer), initiatorParams.amount1, true);
+        balances[0] = initiatorParams.amountIn0;
+        balances[1] = initiatorParams.amountIn1;
+        deal(address(token0), address(rebalancer), initiatorParams.amountIn0, true);
+        deal(address(token1), address(rebalancer), initiatorParams.amountIn1, true);
+
+        // And: Withdrawn amount is smaller than the positions balance.
+        initiatorParams.amountOut0 =
+            uint128(bound(initiatorParams.amountOut0, 0, (amount0 + initiatorParams.amountIn0) / 2));
+        initiatorParams.amountOut1 =
+            uint128(bound(initiatorParams.amountOut1, 0, (amount1 + initiatorParams.amountIn1) / 2));
 
         // And: Position has fees.
         generateFees(fee0, fee1);
@@ -531,7 +752,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
         position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
         position.liquidity = uint128(bound(position.liquidity, 1e6, 1e10));
-        setPositionState(position);
+        (uint256 amount0, uint256 amount1) = setPositionState(position);
         initiatorParams.positionManager = address(positionManagerV4);
         initiatorParams.oldId = uint96(position.id);
 
@@ -567,13 +788,19 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(rebalancer), position.id);
 
         // And: Rebalancer has balances.
-        initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1));
-        initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, 0, 1));
+        initiatorParams.amountIn0 = uint128(bound(initiatorParams.amountIn0, 0, 1));
+        initiatorParams.amountIn1 = uint128(bound(initiatorParams.amountIn1, 0, 1));
         uint256[] memory balances = new uint256[](2);
-        balances[0] = initiatorParams.amount0;
-        balances[1] = initiatorParams.amount1;
-        deal(address(token0), address(rebalancer), initiatorParams.amount0, true);
-        deal(address(token1), address(rebalancer), initiatorParams.amount1, true);
+        balances[0] = initiatorParams.amountIn0;
+        balances[1] = initiatorParams.amountIn1;
+        deal(address(token0), address(rebalancer), initiatorParams.amountIn0, true);
+        deal(address(token1), address(rebalancer), initiatorParams.amountIn1, true);
+
+        // And: Withdrawn amount is smaller than the positions balance.
+        initiatorParams.amountOut0 =
+            uint128(bound(initiatorParams.amountOut0, 0, (amount0 + initiatorParams.amountIn0) / 2));
+        initiatorParams.amountOut1 =
+            uint128(bound(initiatorParams.amountOut1, 0, (amount1 + initiatorParams.amountIn1) / 2));
 
         // And: Position has fees.
         generateFees(fee0, fee1);
@@ -656,7 +883,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
         position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
         position.liquidity = uint128(bound(position.liquidity, 1e6, 1e10));
-        setPositionState(position);
+        (uint256 amount0, uint256 amount1) = setPositionState(position);
         initiatorParams.positionManager = address(positionManagerV4);
         initiatorParams.oldId = uint96(position.id);
 
@@ -692,15 +919,21 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(rebalancer), position.id);
 
         // And: Rebalancer has balances.
-        initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1));
-        initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, 0, 1));
+        initiatorParams.amountIn0 = uint128(bound(initiatorParams.amountIn0, 0, 1));
+        initiatorParams.amountIn1 = uint128(bound(initiatorParams.amountIn1, 0, 1));
         uint256[] memory balances = new uint256[](2);
-        balances[0] = initiatorParams.amount0;
-        balances[1] = initiatorParams.amount1;
-        vm.deal(address(rebalancer), initiatorParams.amount0);
+        balances[0] = initiatorParams.amountIn0;
+        balances[1] = initiatorParams.amountIn1;
+        vm.deal(address(rebalancer), initiatorParams.amountIn0);
         vm.prank(address(rebalancer));
-        IWETH(address(weth9)).deposit{ value: initiatorParams.amount0 }();
-        deal(address(token1), address(rebalancer), initiatorParams.amount1, true);
+        IWETH(address(weth9)).deposit{ value: initiatorParams.amountIn0 }();
+        deal(address(token1), address(rebalancer), initiatorParams.amountIn1, true);
+
+        // And: Withdrawn amount is smaller than the positions balance.
+        initiatorParams.amountOut0 =
+            uint128(bound(initiatorParams.amountOut0, 0, (amount0 + initiatorParams.amountIn0) / 2));
+        initiatorParams.amountOut1 =
+            uint128(bound(initiatorParams.amountOut1, 0, (amount1 + initiatorParams.amountIn1) / 2));
 
         // And: Position has fees.
         generateFees(fee0, fee1);
@@ -776,7 +1009,7 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
         position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
         position.liquidity = uint128(bound(position.liquidity, 1e6, 1e10));
-        setPositionState(position);
+        (uint256 amount0, uint256 amount1) = setPositionState(position);
         initiatorParams.positionManager = address(positionManagerV4);
         initiatorParams.oldId = uint96(position.id);
 
@@ -812,15 +1045,21 @@ contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(rebalancer), position.id);
 
         // And: Rebalancer has balances.
-        initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1));
-        initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, 0, 1));
+        initiatorParams.amountIn0 = uint128(bound(initiatorParams.amountIn0, 0, 1));
+        initiatorParams.amountIn1 = uint128(bound(initiatorParams.amountIn1, 0, 1));
         uint256[] memory balances = new uint256[](2);
-        balances[0] = initiatorParams.amount0;
-        balances[1] = initiatorParams.amount1;
-        vm.deal(address(rebalancer), initiatorParams.amount0);
+        balances[0] = initiatorParams.amountIn0;
+        balances[1] = initiatorParams.amountIn1;
+        vm.deal(address(rebalancer), initiatorParams.amountIn0);
         vm.prank(address(rebalancer));
-        IWETH(address(weth9)).deposit{ value: initiatorParams.amount0 }();
-        deal(address(token1), address(rebalancer), initiatorParams.amount1, true);
+        IWETH(address(weth9)).deposit{ value: initiatorParams.amountIn0 }();
+        deal(address(token1), address(rebalancer), initiatorParams.amountIn1, true);
+
+        // And: Withdrawn amount is smaller than the positions balance.
+        initiatorParams.amountOut0 =
+            uint128(bound(initiatorParams.amountOut0, 0, (amount0 + initiatorParams.amountIn0) / 2));
+        initiatorParams.amountOut1 =
+            uint128(bound(initiatorParams.amountOut1, 0, (amount1 + initiatorParams.amountIn1) / 2));
 
         // And: Position has fees.
         generateFees(fee0, fee1);

@@ -198,8 +198,8 @@ abstract contract Slipstream_Fuzz_Test is
         position.liquidity = uint128(bound(position.liquidity, 1e6, poolCl.liquidity() / 1e3));
     }
 
-    function setPositionState(PositionState memory position) internal {
-        (position.id,,) = addLiquidityCL(
+    function setPositionState(PositionState memory position) internal returns (uint256 amount0, uint256 amount1) {
+        (position.id, amount0, amount1) = addLiquidityCL(
             poolCl, position.liquidity, users.liquidityProvider, position.tickLower, position.tickUpper, false
         );
         (,,,,,,, position.liquidity,,,,) = slipstreamPositionManager.positions(position.id);

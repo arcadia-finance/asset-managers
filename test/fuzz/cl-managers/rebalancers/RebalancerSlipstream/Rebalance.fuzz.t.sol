@@ -198,7 +198,7 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
         position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
         position.liquidity = uint128(bound(position.liquidity, 1e10, 1e20));
-        setPositionState(position);
+        (uint256 amount0, uint256 amount1) = setPositionState(position);
         initiatorParams.positionManager = address(slipstreamPositionManager);
         initiatorParams.oldId = uint96(position.id);
 
@@ -206,12 +206,14 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         deploySlipstreamAM();
 
         // And: Rebalancer is allowed as Asset Manager
-        address[] memory assetManagers = new address[](1);
-        assetManagers[0] = address(rebalancer);
-        bool[] memory statuses = new bool[](1);
-        statuses[0] = true;
-        vm.prank(users.accountOwner);
-        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
+        {
+            address[] memory assetManagers = new address[](1);
+            assetManagers[0] = address(rebalancer);
+            bool[] memory statuses = new bool[](1);
+            statuses[0] = true;
+            vm.prank(users.accountOwner);
+            account.setAssetManagers(assetManagers, statuses, new bytes[](1));
+        }
 
         // And: Account info is set.
         tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
@@ -240,8 +242,14 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         initiatorParams.strategyData = abi.encode(tickLower, tickUpper);
 
         // And: Limited leftovers.
-        initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, type(uint8).max));
-        initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, 0, type(uint8).max));
+        initiatorParams.amountIn0 = uint128(bound(initiatorParams.amountIn0, 0, type(uint8).max));
+        initiatorParams.amountIn1 = uint128(bound(initiatorParams.amountIn1, 0, type(uint8).max));
+
+        // And: Withdrawn amount is smaller than the positions balance.
+        initiatorParams.amountOut0 =
+            uint128(bound(initiatorParams.amountOut0, 0, (amount0 + initiatorParams.amountIn0) / 2));
+        initiatorParams.amountOut1 =
+            uint128(bound(initiatorParams.amountOut1, 0, (amount1 + initiatorParams.amountIn1) / 2));
 
         // And: position has fees.
         feeSeed = uint256(bound(feeSeed, 0, type(uint56).max));
@@ -253,8 +261,8 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         ERC721(address(slipstreamPositionManager))
             .transferFrom(users.liquidityProvider, users.accountOwner, position.id);
         // forge-lint: disable-end(erc20-unchecked-transfer)
-        deal(address(token0), users.accountOwner, initiatorParams.amount0, true);
-        deal(address(token1), users.accountOwner, initiatorParams.amount1, true);
+        deal(address(token0), users.accountOwner, initiatorParams.amountIn0, true);
+        deal(address(token1), users.accountOwner, initiatorParams.amountIn1, true);
         {
             address[] memory assets_ = new address[](3);
             uint256[] memory assetIds_ = new uint256[](3);
@@ -265,16 +273,16 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
             assetAmounts_[0] = 1;
 
             assets_[1] = address(token0);
-            assetAmounts_[1] = initiatorParams.amount0;
+            assetAmounts_[1] = initiatorParams.amountIn0;
 
             assets_[2] = address(token1);
-            assetAmounts_[2] = initiatorParams.amount1;
+            assetAmounts_[2] = initiatorParams.amountIn1;
 
             // And : Deposit position in Account
             vm.startPrank(users.accountOwner);
             ERC721(address(slipstreamPositionManager)).approve(address(account), position.id);
-            token0.approve(address(account), initiatorParams.amount0);
-            token1.approve(address(account), initiatorParams.amount1);
+            token0.approve(address(account), initiatorParams.amountIn0);
+            token1.approve(address(account), initiatorParams.amountIn1);
             account.deposit(assets_, assetIds_, assetAmounts_);
             vm.stopPrank();
         }
@@ -292,6 +300,10 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
 
         // Then: New position should be deposited back into the account.
         assertEq(ERC721(address(slipstreamPositionManager)).ownerOf(position.id + 1), address(account));
+
+        // And: Account balances should be correct.
+        assertGe(token0.balanceOf(address(account)), initiatorParams.amountOut0);
+        assertGe(token1.balanceOf(address(account)), initiatorParams.amountOut1);
     }
 
     function testFuzz_Success_rebalance_StakedSlipstream(
@@ -312,7 +324,7 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
         position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
         position.liquidity = uint128(bound(position.liquidity, 1e10, 1e20));
-        setPositionState(position);
+        (uint256 amount0, uint256 amount1) = setPositionState(position);
         initiatorParams.positionManager = address(stakedSlipstreamAM);
         initiatorParams.oldId = uint96(position.id);
 
@@ -334,12 +346,14 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         }
 
         // And: Rebalancer is allowed as Asset Manager
-        address[] memory assetManagers = new address[](1);
-        assetManagers[0] = address(rebalancer);
-        bool[] memory statuses = new bool[](1);
-        statuses[0] = true;
-        vm.prank(users.accountOwner);
-        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
+        {
+            address[] memory assetManagers = new address[](1);
+            assetManagers[0] = address(rebalancer);
+            bool[] memory statuses = new bool[](1);
+            statuses[0] = true;
+            vm.prank(users.accountOwner);
+            account.setAssetManagers(assetManagers, statuses, new bytes[](1));
+        }
 
         // And: Account info is set.
         tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
@@ -368,15 +382,21 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         initiatorParams.strategyData = abi.encode(tickLower, tickUpper);
 
         // And: Limited leftovers.
-        initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, type(uint8).max));
-        initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, 0, type(uint8).max));
+        initiatorParams.amountIn0 = uint128(bound(initiatorParams.amountIn0, 0, type(uint8).max));
+        initiatorParams.amountIn1 = uint128(bound(initiatorParams.amountIn1, 0, type(uint8).max));
+
+        // And: Withdrawn amount is smaller than the positions balance.
+        initiatorParams.amountOut0 =
+            uint128(bound(initiatorParams.amountOut0, 0, (amount0 + initiatorParams.amountIn0) / 2));
+        initiatorParams.amountOut1 =
+            uint128(bound(initiatorParams.amountOut1, 0, (amount1 + initiatorParams.amountIn1) / 2));
 
         // And: Account owns the position.
         vm.prank(users.liquidityProvider);
         // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(stakedSlipstreamAM)).transferFrom(users.liquidityProvider, users.accountOwner, position.id);
-        deal(address(token0), users.accountOwner, initiatorParams.amount0, true);
-        deal(address(token1), users.accountOwner, initiatorParams.amount1, true);
+        deal(address(token0), users.accountOwner, initiatorParams.amountIn0, true);
+        deal(address(token1), users.accountOwner, initiatorParams.amountIn1, true);
         {
             address[] memory assets_ = new address[](3);
             uint256[] memory assetIds_ = new uint256[](3);
@@ -387,16 +407,16 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
             assetAmounts_[0] = 1;
 
             assets_[1] = address(token0);
-            assetAmounts_[1] = initiatorParams.amount0;
+            assetAmounts_[1] = initiatorParams.amountIn0;
 
             assets_[2] = address(token1);
-            assetAmounts_[2] = initiatorParams.amount1;
+            assetAmounts_[2] = initiatorParams.amountIn1;
 
             // And : Deposit position in Account
             vm.startPrank(users.accountOwner);
             ERC721(address(stakedSlipstreamAM)).approve(address(account), position.id);
-            token0.approve(address(account), initiatorParams.amount0);
-            token1.approve(address(account), initiatorParams.amount1);
+            token0.approve(address(account), initiatorParams.amountIn0);
+            token1.approve(address(account), initiatorParams.amountIn1);
             account.deposit(assets_, assetIds_, assetAmounts_);
             vm.stopPrank();
         }
@@ -414,6 +434,10 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
 
         // Then: New position should be deposited back into the account.
         assertEq(ERC721(address(stakedSlipstreamAM)).ownerOf(position.id + 1), address(account));
+
+        // And: Account balances should be correct.
+        assertGe(token0.balanceOf(address(account)), initiatorParams.amountOut0);
+        assertGe(token1.balanceOf(address(account)), initiatorParams.amountOut1);
     }
 
     function testFuzz_Success_rebalance_WrappedStakedSlipstream(
@@ -434,7 +458,7 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
         position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
         position.liquidity = uint128(bound(position.liquidity, 1e10, 1e20));
-        setPositionState(position);
+        (uint256 amount0, uint256 amount1) = setPositionState(position);
         initiatorParams.positionManager = address(wrappedStakedSlipstream);
         initiatorParams.oldId = uint96(position.id);
 
@@ -463,12 +487,14 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         account.initialize(users.accountOwner, address(registry), address(0));
 
         // And: Rebalancer is allowed as Asset Manager
-        address[] memory assetManagers = new address[](1);
-        assetManagers[0] = address(rebalancer);
-        bool[] memory statuses = new bool[](1);
-        statuses[0] = true;
-        vm.prank(users.accountOwner);
-        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
+        {
+            address[] memory assetManagers = new address[](1);
+            assetManagers[0] = address(rebalancer);
+            bool[] memory statuses = new bool[](1);
+            statuses[0] = true;
+            vm.prank(users.accountOwner);
+            account.setAssetManagers(assetManagers, statuses, new bytes[](1));
+        }
 
         // And: Account info is set.
         tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
@@ -497,15 +523,21 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         initiatorParams.strategyData = abi.encode(tickLower, tickUpper);
 
         // And: Limited leftovers.
-        initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, type(uint8).max));
-        initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, 0, type(uint8).max));
+        initiatorParams.amountIn0 = uint128(bound(initiatorParams.amountIn0, 0, type(uint8).max));
+        initiatorParams.amountIn1 = uint128(bound(initiatorParams.amountIn1, 0, type(uint8).max));
+
+        // And: Withdrawn amount is smaller than the positions balance.
+        initiatorParams.amountOut0 =
+            uint128(bound(initiatorParams.amountOut0, 0, (amount0 + initiatorParams.amountIn0) / 2));
+        initiatorParams.amountOut1 =
+            uint128(bound(initiatorParams.amountOut1, 0, (amount1 + initiatorParams.amountIn1) / 2));
 
         // And: Account owns the position.
         vm.prank(users.liquidityProvider);
         // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(wrappedStakedSlipstream)).transferFrom(users.liquidityProvider, address(account), position.id);
-        deal(address(token0), address(account), initiatorParams.amount0, true);
-        deal(address(token1), address(account), initiatorParams.amount1, true);
+        deal(address(token0), address(account), initiatorParams.amountIn0, true);
+        deal(address(token1), address(account), initiatorParams.amountIn1, true);
 
         // And: The pool is balanced.
         {
@@ -520,5 +552,9 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
 
         // Then: New position should be deposited back into the account.
         assertEq(ERC721(address(wrappedStakedSlipstream)).ownerOf(position.id + 1), address(account));
+
+        // And: Account balances should be correct.
+        assertGe(token0.balanceOf(address(account)), initiatorParams.amountOut0);
+        assertGe(token1.balanceOf(address(account)), initiatorParams.amountOut1);
     }
 }

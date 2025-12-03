@@ -172,8 +172,8 @@ abstract contract UniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, UniswapV3A
         position.liquidity = uint128(bound(position.liquidity, 1e6, poolUniswap.liquidity() / 1e3));
     }
 
-    function setPositionState(PositionState memory position) internal {
-        (position.id,,) = addLiquidityUniV3(
+    function setPositionState(PositionState memory position) internal returns (uint256 amount0, uint256 amount1) {
+        (position.id, amount0, amount1) = addLiquidityUniV3(
             poolUniswap, position.liquidity, users.liquidityProvider, position.tickLower, position.tickUpper, false
         );
         (,,,,,,, position.liquidity,,,,) = nonfungiblePositionManager.positions(position.id);

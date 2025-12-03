@@ -172,7 +172,11 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         position.liquidity = uint128(bound(position.liquidity, 1e6, stateView.getLiquidity(poolKey.toId()) / 1e3));
     }
 
-    function setPositionState(PositionState memory position) internal {
+    function setPositionState(PositionState memory position) internal returns (uint256 amount0, uint256 amount1) {
+        uint256 balance0Before;
+        uint256 balance1Before;
+        if (address(token0) != address(0)) balance0Before = token0.balanceOf(address(poolManager));
+        if (address(token1) != address(0)) balance1Before = token1.balanceOf(address(poolManager));
         position.id = mintPositionV4(
             poolKey,
             position.tickLower,
@@ -182,6 +186,8 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
             type(uint128).max,
             users.liquidityProvider
         );
+        if (address(token0) != address(0)) amount0 = token0.balanceOf(address(poolManager)) - balance0Before;
+        if (address(token1) != address(0)) amount1 = token1.balanceOf(address(poolManager)) - balance1Before;
     }
 
     // forge-lint: disable-next-item(mixed-case-function)
