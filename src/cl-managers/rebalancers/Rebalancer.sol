@@ -19,6 +19,7 @@ import { PositionState } from "../state/PositionState.sol";
 import { RebalanceLogic, RebalanceParams } from "../libraries/RebalanceLogic.sol";
 import { RebalanceOptimizationMath } from "../libraries/RebalanceOptimizationMath.sol";
 import { SafeApprove } from "../../libraries/SafeApprove.sol";
+import { SafeCastLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/SafeCastLib.sol";
 import { TickMath } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
 /**
@@ -37,6 +38,7 @@ import { TickMath } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/
 abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
     using FixedPointMathLib for uint256;
     using SafeApprove for ERC20;
+    using SafeCastLib for uint256;
     using SafeTransferLib for ERC20;
     /* //////////////////////////////////////////////////////////////
                                 CONSTANTS
@@ -90,9 +92,9 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
         uint128 amountIn0;
         // The amount of token1 withdrawn from the account.
         uint128 amountIn1;
-        // The amount of token0 send to the account.
+        // The amount of token0 to send to the account.
         uint128 amountOut0;
-        // The amount of token1 send to the account.
+        // The amount of token1 to send to the account.
         uint128 amountOut1;
         // The sqrtPrice the pool should have, given by the initiator.
         uint256 trustedSqrtPrice;
@@ -298,6 +300,9 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
      * @notice Rebalances a Concentrated Liquidity Positions, owned by an Arcadia Account.
      * @param account_ The contract address of the account.
      * @param initiatorParams A struct with the initiator parameters.
+     * @dev The amountOuts, provided by the initiator with the initiatorParams,
+     * must be smaller or equal to the rebalancers balance after burning the position or the rebalance reverts.
+     * To withdraw the full underlying balance of a liquidity position to the account, set amountOut for that token to type(uint128).max.
      */
     function rebalance(address account_, InitiatorParams calldata initiatorParams) external whenNotPaused {
         // Store Account address, used to validate the caller of the executeAction() callback and serves as a reentrancy guard.
@@ -396,7 +401,15 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
         // Remove liquidity of the position and update balances.
         _burn(balances, positionManager, position);
 
+        // Check if we want to withdraw the full underlying balance of one of the underlying tokens to the account.
+        if (initiatorParams.amountOut0 == type(uint128).max) {
+            initiatorParams.amountOut0 = (balances[0] - fees[0]).safeCastTo128();
+        } else if (initiatorParams.amountOut1 == type(uint128).max) {
+            initiatorParams.amountOut1 = (balances[1] - fees[1]).safeCastTo128();
+        }
+
         // Get the rebalance parameters, based on a hypothetical swap through the pool itself without slippage.
+        // Reverts if balance is smaller than the required fees and amountOut.
         RebalanceParams memory rebalanceParams = RebalanceLogic._getRebalanceParams(
             accountInfo_.minLiquidityRatio,
             position.fee,
@@ -617,7 +630,7 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
 
             token = position.tokens[i];
             // At least amountOut must be returned to the Account.
-            // reverts if balance is smaller than the required amountOut.
+            // Reverts if balance is smaller than the required amountOut.
             if (balances[i] - amountOut > fees[i]) {
                 balances[i] = balances[i] - fees[i];
             } else {

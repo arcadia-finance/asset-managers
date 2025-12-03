@@ -19,7 +19,6 @@ import { FullMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4
 import { Fuzz_Test } from "../../../Fuzz.t.sol";
 import { NativeTokenAM } from "../../../../../lib/accounts-v2/src/asset-modules/native-token/NativeTokenAM.sol";
 import { PoolKey } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
-import { PositionInfo } from "../../../../../lib/accounts-v2/lib/v4-periphery/src/libraries/PositionInfoLibrary.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
 import { UniswapV4Extension } from "../../../../utils/extensions/UniswapV4Extension.sol";
 import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
@@ -245,36 +244,5 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
             : token0.mint(address(poolManager), amount0);
 
         token1.mint(address(poolManager), amount1);
-    }
-
-    function getFeeAmounts(uint256 id) internal view returns (uint256 amount0, uint256 amount1) {
-        PositionInfo info = positionManagerV4.positionInfo(id);
-
-        (uint256 feeGrowthInside0CurrentX128, uint256 feeGrowthInside1CurrentX128) =
-            stateView.getFeeGrowthInside(poolKey.toId(), info.tickLower(), info.tickUpper());
-
-        bytes32 positionId =
-            keccak256(abi.encodePacked(address(positionManagerV4), info.tickLower(), info.tickUpper(), bytes32(id)));
-
-        (, uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128) =
-            stateView.getPositionInfo(poolKey.toId(), positionId);
-
-        // Calculate accumulated fees since the last time the position was updated:
-        // (feeGrowthInsideCurrentX128 - feeGrowthInsideLastX128) * liquidity.
-        // Fee calculations in PositionManager.sol overflow (without reverting) when
-        // one or both terms, or their sum, is bigger than a uint128.
-        // This is however much bigger than any realistic situation.
-        unchecked {
-            amount0 = FullMath.mulDiv(
-                feeGrowthInside0CurrentX128 - feeGrowthInside0LastX128,
-                positionManagerV4.getPositionLiquidity(id),
-                FixedPoint128.Q128
-            );
-            amount1 = FullMath.mulDiv(
-                feeGrowthInside1CurrentX128 - feeGrowthInside1LastX128,
-                positionManagerV4.getPositionLiquidity(id),
-                FixedPoint128.Q128
-            );
-        }
     }
 }

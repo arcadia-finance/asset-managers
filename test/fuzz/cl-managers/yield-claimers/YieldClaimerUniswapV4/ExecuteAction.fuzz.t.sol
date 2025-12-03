@@ -82,7 +82,7 @@ contract ExecuteAction_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_
         // And: position has fees.
         feeSeed = uint256(bound(feeSeed, 0, type(uint48).max));
         generateFees(feeSeed, feeSeed);
-        (uint256 fee0, uint256 fee1) = getFeeAmounts(position.id);
+        (uint256 fee0, uint256 fee1) = getFeeAmountsV4(position.id);
 
         // And: account is set.
         yieldClaimer.setAccount(address(account));
@@ -176,7 +176,7 @@ contract ExecuteAction_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_
         // And: position has fees.
         feeSeed = uint256(bound(feeSeed, 0, type(uint48).max));
         generateFees(feeSeed, feeSeed);
-        (uint256 fee0, uint256 fee1) = getFeeAmounts(position.id);
+        (uint256 fee0, uint256 fee1) = getFeeAmountsV4(position.id);
 
         // And: account is set.
         yieldClaimer.setAccount(address(account));
@@ -246,7 +246,7 @@ contract ExecuteAction_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_
         // And: position has fees.
         feeSeed = uint256(bound(feeSeed, 0, type(uint48).max));
         generateFees(feeSeed, feeSeed);
-        (uint256 fee0, uint256 fee1) = getFeeAmounts(position.id);
+        (uint256 fee0, uint256 fee1) = getFeeAmountsV4(position.id);
 
         // And: account is set.
         yieldClaimer.setAccount(address(account));
@@ -341,7 +341,7 @@ contract ExecuteAction_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_
         // And: position has fees.
         feeSeed = uint256(bound(feeSeed, 0, type(uint48).max));
         generateFees(feeSeed, feeSeed);
-        (uint256 fee0, uint256 fee1) = getFeeAmounts(position.id);
+        (uint256 fee0, uint256 fee1) = getFeeAmountsV4(position.id);
 
         // And: account is set.
         yieldClaimer.setAccount(address(account));
