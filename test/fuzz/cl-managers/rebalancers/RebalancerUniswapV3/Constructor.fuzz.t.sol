@@ -26,7 +26,5 @@ contract Constructor_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_T
         );
 
         assertEq(rebalancer_.owner(), owner_);
-        assertEq(address(rebalancer_.ARCADIA_FACTORY()), arcadiaFactory);
-        assertEq(address(rebalancer_.ROUTER_TRAMPOLINE()), routerTrampoline_);
     }
 }

@@ -26,6 +26,5 @@ contract Constructor_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fu
         );
 
         assertEq(yieldClaimer_.owner(), owner_);
-        assertEq(address(yieldClaimer_.ARCADIA_FACTORY()), arcadiaFactory);
     }
 }

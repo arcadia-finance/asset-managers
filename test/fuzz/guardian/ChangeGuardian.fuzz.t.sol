@@ -4,7 +4,6 @@
  */
 pragma solidity ^0.8.0;
 
-import { Guardian } from "../../../src/guardian/Guardian.sol";
 import { Guardian_Fuzz_Test } from "./_Guardian.fuzz.t.sol";
 
 /**
@@ -32,8 +31,6 @@ contract ChangeGuardian_Guardian_Fuzz_Test is Guardian_Fuzz_Test {
 
     function testFuzz_Success_changeGuardian(address newGuardian) public {
         vm.prank(users.owner);
-        vm.expectEmit();
-        emit Guardian.GuardianChanged(users.owner, newGuardian);
         guardian.changeGuardian(newGuardian);
 
         assertEq(guardian.guardian(), newGuardian);

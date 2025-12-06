@@ -90,10 +90,11 @@ contract RebalancerExtension is Rebalancer {
         address initiator,
         uint256[] memory balances,
         uint256[] memory fees,
+        Rebalancer.InitiatorParams memory initiatorParams,
         address positionManager,
         PositionState memory position
     ) external returns (uint256[] memory balances_, uint256 count) {
-        count = _approveAndTransfer(initiator, balances, fees, positionManager, position);
+        count = _approveAndTransfer(initiator, balances, fees, initiatorParams, positionManager, position);
         balances_ = balances;
     }
 

@@ -23,6 +23,9 @@ contract MerklOperator is Guardian, ReentrancyGuard {
                                 CONSTANTS
     ////////////////////////////////////////////////////////////// */
 
+    // The version of the Asset Manager.
+    string public constant VERSION = "1.0.0";
+
     // The contract address of the Arcadia Factory.
     IArcadiaFactory public immutable ARCADIA_FACTORY;
 

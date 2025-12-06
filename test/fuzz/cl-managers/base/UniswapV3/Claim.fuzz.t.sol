@@ -51,7 +51,7 @@ contract Claim_UniswapV3_Fuzz_Test is UniswapV3_Fuzz_Test {
 
         // And: position has fees.
         generateFees(swap0, swap1);
-        (uint256 fee0, uint256 fee1) = getFeeAmounts(position.id);
+        (uint256 fee0, uint256 fee1) = getFeeAmountsV3(position.id);
 
         // And: Transfer position to Base.
         vm.prank(users.liquidityProvider);

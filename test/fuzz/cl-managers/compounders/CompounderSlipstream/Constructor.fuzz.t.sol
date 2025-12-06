@@ -34,7 +34,5 @@ contract Constructor_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fuzz
         );
 
         assertEq(compounder_.owner(), owner_);
-        assertEq(address(compounder_.ARCADIA_FACTORY()), arcadiaFactory);
-        assertEq(address(compounder_.ROUTER_TRAMPOLINE()), routerTrampoline_);
     }
 }

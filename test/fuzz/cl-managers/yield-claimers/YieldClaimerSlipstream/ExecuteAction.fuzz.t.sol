@@ -91,7 +91,7 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         // And: position has fees.
         feeSeed = uint256(bound(feeSeed, 0, type(uint48).max));
         generateFees(feeSeed, feeSeed);
-        (uint256 fee0, uint256 fee1) = getFeeAmounts(position.id);
+        (uint256 fee0, uint256 fee1) = getFeeAmountsCL(position.id);
 
         // And: account is set.
         yieldClaimer.setAccount(address(account));
@@ -189,7 +189,7 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         // And: position has fees.
         feeSeed = uint256(bound(feeSeed, 0, type(uint48).max));
         generateFees(feeSeed, feeSeed);
-        (uint256 fee0, uint256 fee1) = getFeeAmounts(position.id);
+        (uint256 fee0, uint256 fee1) = getFeeAmountsCL(position.id);
 
         // And: account is set.
         yieldClaimer.setAccount(address(account));

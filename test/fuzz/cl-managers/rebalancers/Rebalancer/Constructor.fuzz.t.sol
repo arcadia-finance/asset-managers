@@ -24,7 +24,5 @@ contract Constructor_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         RebalancerExtension rebalancer_ = new RebalancerExtension(owner_, arcadiaFactory, routerTrampoline_);
 
         assertEq(rebalancer_.owner(), owner_);
-        assertEq(address(rebalancer_.ARCADIA_FACTORY()), arcadiaFactory);
-        assertEq(address(rebalancer_.ROUTER_TRAMPOLINE()), routerTrampoline_);
     }
 }

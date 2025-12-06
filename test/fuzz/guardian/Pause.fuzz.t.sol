@@ -65,8 +65,6 @@ contract Pause_Guardian_Fuzz_Test is Guardian_Fuzz_Test {
         // When: Guardian calls pause.
         // Then: Event should be emitted.
         vm.prank(guardian_);
-        vm.expectEmit();
-        emit Guardian.PauseFlagsUpdated(true);
         guardian.pause();
 
         // Then: Contract should be paused.

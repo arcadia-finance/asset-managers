@@ -59,7 +59,7 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
 
         // And: position has fees.
         generateFees(swap0, swap1);
-        (uint256 fee0, uint256 fee1) = getFeeAmounts(position.id);
+        (uint256 fee0, uint256 fee1) = getFeeAmountsCL(position.id);
 
         // Transfer position to Base.
         vm.prank(users.liquidityProvider);

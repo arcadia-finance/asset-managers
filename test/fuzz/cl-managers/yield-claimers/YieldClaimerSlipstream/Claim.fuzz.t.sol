@@ -209,7 +209,7 @@ contract Compound_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstream_Fuz
         // And: position has fees.
         feeSeed = uint256(bound(feeSeed, 0, type(uint48).max));
         generateFees(feeSeed, feeSeed);
-        (uint256 fee0, uint256 fee1) = getFeeAmounts(position.id);
+        (uint256 fee0, uint256 fee1) = getFeeAmountsCL(position.id);
 
         // And: Account owns the position.
         vm.prank(users.liquidityProvider);
@@ -303,7 +303,7 @@ contract Compound_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstream_Fuz
         // And: position has fees.
         feeSeed = uint256(bound(feeSeed, 0, type(uint48).max));
         generateFees(feeSeed, feeSeed);
-        (uint256 fee0, uint256 fee1) = getFeeAmounts(position.id);
+        (uint256 fee0, uint256 fee1) = getFeeAmountsCL(position.id);
 
         // And: Account owns the position.
         vm.prank(users.liquidityProvider);

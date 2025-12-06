@@ -250,7 +250,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
         RebalanceParams memory rebalanceParams;
         {
             // Calculate balances available on compounder to rebalance (without fees).
-            (uint256 balance0, uint256 balance1) = getFeeAmounts(position.id);
+            (uint256 balance0, uint256 balance1) = getFeeAmountsCL(position.id);
             balance0 = initiatorParams.amount0 + balance0 - balance0 * initiatorParams.claimFee / 1e18;
             balance1 = initiatorParams.amount1 + balance1 - balance1 * initiatorParams.claimFee / 1e18;
             vm.assume(balance0 + balance1 > 1e10);
@@ -348,7 +348,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
         RebalanceParams memory rebalanceParams;
         {
             // Calculate balances available on compounder to rebalance (without fees).
-            (uint256 balance0, uint256 balance1) = getFeeAmounts(position.id);
+            (uint256 balance0, uint256 balance1) = getFeeAmountsCL(position.id);
             balance0 = initiatorParams.amount0 + balance0 - balance0 * initiatorParams.claimFee / 1e18;
             balance1 = initiatorParams.amount1 + balance1 - balance1 * initiatorParams.claimFee / 1e18;
             vm.assume(balance0 + balance1 > 1e10);
@@ -464,7 +464,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
         RebalanceParams memory rebalanceParams;
         {
             // Calculate balances available on compounder to rebalance (without fees).
-            (uint256 balance0, uint256 balance1) = getFeeAmounts(position.id);
+            (uint256 balance0, uint256 balance1) = getFeeAmountsCL(position.id);
             balance0 = initiatorParams.amount0 + balance0 - balance0 * initiatorParams.claimFee / 1e18;
             balance1 = initiatorParams.amount1 + balance1 - balance1 * initiatorParams.claimFee / 1e18;
             vm.assume(balance0 + balance1 > 1e10);

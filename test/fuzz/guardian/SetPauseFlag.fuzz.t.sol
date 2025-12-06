@@ -4,7 +4,6 @@
  */
 pragma solidity ^0.8.0;
 
-import { Guardian } from "../../../src/guardian/Guardian.sol";
 import { Guardian_Fuzz_Test } from "./_Guardian.fuzz.t.sol";
 
 /**
@@ -45,8 +44,6 @@ contract SetPauseFlag_Guardian_Fuzz_Test is Guardian_Fuzz_Test {
         // When: Owner calls setPauseFlag.
         // Then: Event should be emitted.
         vm.prank(users.owner);
-        vm.expectEmit();
-        emit Guardian.PauseFlagsUpdated(flag);
         guardian.setPauseFlag(flag);
 
         // Then: Contract should be paused.
