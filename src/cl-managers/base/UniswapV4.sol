@@ -128,14 +128,9 @@ abstract contract UniswapV4 is AbstractBase {
      * @param id The id of the Liquidity Position.
      * @return position A struct with position and pool related variables.
      */
-    function _getPositionState(address, uint256 id)
-        internal
-        view
-        virtual
-        override
-        returns (PositionState memory position)
-    {
+    function _getPositionState(address, uint256 id) internal view virtual override returns (PositionState memory) {
         // Positions have two underlying tokens.
+        PositionState memory position;
         position.tokens = new address[](2);
 
         // Get data of the Liquidity Position.
@@ -154,6 +149,7 @@ abstract contract UniswapV4 is AbstractBase {
         position.fee = poolKey.fee;
         position.tickSpacing = poolKey.tickSpacing;
         (position.sqrtPrice, position.tickCurrent,,) = POOL_MANAGER.getSlot0(poolKey.toId());
+        return position;
     }
 
     /**

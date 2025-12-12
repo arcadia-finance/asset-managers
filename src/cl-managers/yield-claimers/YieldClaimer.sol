@@ -27,7 +27,7 @@ abstract contract YieldClaimer is IActionBase, AbstractBase, Guardian {
     ////////////////////////////////////////////////////////////// */
 
     // The contract address of the Arcadia Factory.
-    IArcadiaFactory public immutable ARCADIA_FACTORY;
+    IArcadiaFactory internal immutable ARCADIA_FACTORY;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE

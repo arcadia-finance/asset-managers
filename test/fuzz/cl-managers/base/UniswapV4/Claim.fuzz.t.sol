@@ -53,7 +53,7 @@ contract Claim_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
 
         // And: position has fees.
         generateFees(fee0, fee1);
-        (uint256 fee0_, uint256 fee1_) = getFeeAmounts(position.id);
+        (uint256 fee0_, uint256 fee1_) = getFeeAmountsV4(position.id);
 
         // Transfer position to Base.
         vm.prank(users.liquidityProvider);
@@ -109,7 +109,7 @@ contract Claim_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
 
         // And: position has fees.
         generateFees(fee0, fee1);
-        (uint256 fee0_, uint256 fee1_) = getFeeAmounts(position.id);
+        (uint256 fee0_, uint256 fee1_) = getFeeAmountsV4(position.id);
 
         // Transfer position to Base.
         vm.prank(users.liquidityProvider);

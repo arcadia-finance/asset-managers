@@ -10,9 +10,6 @@ import { ERC20Mock } from "../../../../../lib/accounts-v2/test/utils/mocks/token
 import {
     FixedPoint96
 } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint96.sol";
-import {
-    FixedPoint128
-} from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
 import { FullMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { Fuzz_Test } from "../../../Fuzz.t.sol";
 import {
@@ -172,8 +169,8 @@ abstract contract UniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, UniswapV3A
         position.liquidity = uint128(bound(position.liquidity, 1e6, poolUniswap.liquidity() / 1e3));
     }
 
-    function setPositionState(PositionState memory position) internal {
-        (position.id,,) = addLiquidityUniV3(
+    function setPositionState(PositionState memory position) internal returns (uint256 amount0, uint256 amount1) {
+        (position.id, amount0, amount1) = addLiquidityUniV3(
             poolUniswap, position.liquidity, users.liquidityProvider, position.tickLower, position.tickUpper, false
         );
         (,,,,,,, position.liquidity,,,,) = nonfungiblePositionManager.positions(position.id);
@@ -240,63 +237,5 @@ abstract contract UniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, UniswapV3A
             );
         }
         vm.stopPrank();
-    }
-
-    function getFeeAmounts(uint256 id) internal view returns (uint256 amount0, uint256 amount1) {
-        (
-            ,,,,,
-            int24 tickLower,
-            int24 tickUpper,
-            uint256 liquidity,
-            uint256 feeGrowthInside0LastX128,
-            uint256 feeGrowthInside1LastX128,
-            uint256 tokensOwed0,
-            uint256 tokensOwed1
-        ) = nonfungiblePositionManager.positions(id);
-
-        (uint256 feeGrowthInside0CurrentX128, uint256 feeGrowthInside1CurrentX128) =
-            _getFeeGrowthInside(tickLower, tickUpper);
-
-        // Calculate the total amount of fees by adding the already realized fees (tokensOwed),
-        // to the accumulated fees since the last time the position was updated:
-        // (feeGrowthInsideCurrentX128 - feeGrowthInsideLastX128) * liquidity.
-        // Fee calculations in NonfungiblePositionManager.sol overflow (without reverting) when
-        // one or both terms, or their sum, is bigger than a uint128.
-        // This is however much bigger than any realistic situation.
-        unchecked {
-            amount0 = FullMath.mulDiv(
-                feeGrowthInside0CurrentX128 - feeGrowthInside0LastX128, liquidity, FixedPoint128.Q128
-            ) + tokensOwed0;
-            amount1 = FullMath.mulDiv(
-                feeGrowthInside1CurrentX128 - feeGrowthInside1LastX128, liquidity, FixedPoint128.Q128
-            ) + tokensOwed1;
-        }
-    }
-
-    function _getFeeGrowthInside(int24 tickLower, int24 tickUpper)
-        internal
-        view
-        returns (uint256 feeGrowthInside0X128, uint256 feeGrowthInside1X128)
-    {
-        (, int24 tickCurrent,,,,,) = poolUniswap.slot0();
-        (,, uint256 lowerFeeGrowthOutside0X128, uint256 lowerFeeGrowthOutside1X128,,,,) = poolUniswap.ticks(tickLower);
-        (,, uint256 upperFeeGrowthOutside0X128, uint256 upperFeeGrowthOutside1X128,,,,) = poolUniswap.ticks(tickUpper);
-
-        // Calculate the fee growth inside of the Liquidity Range since the last time the position was updated.
-        // feeGrowthInside can overflow (without reverting), as is the case in the Uniswap fee calculations.
-        unchecked {
-            if (tickCurrent < tickLower) {
-                feeGrowthInside0X128 = lowerFeeGrowthOutside0X128 - upperFeeGrowthOutside0X128;
-                feeGrowthInside1X128 = lowerFeeGrowthOutside1X128 - upperFeeGrowthOutside1X128;
-            } else if (tickCurrent < tickUpper) {
-                feeGrowthInside0X128 =
-                    poolUniswap.feeGrowthGlobal0X128() - lowerFeeGrowthOutside0X128 - upperFeeGrowthOutside0X128;
-                feeGrowthInside1X128 =
-                    poolUniswap.feeGrowthGlobal1X128() - lowerFeeGrowthOutside1X128 - upperFeeGrowthOutside1X128;
-            } else {
-                feeGrowthInside0X128 = upperFeeGrowthOutside0X128 - lowerFeeGrowthOutside0X128;
-                feeGrowthInside1X128 = upperFeeGrowthOutside1X128 - lowerFeeGrowthOutside1X128;
-            }
-        }
     }
 }
