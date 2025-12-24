@@ -127,6 +127,25 @@ abstract contract AbstractBase {
     function _burn(uint256[] memory balances, address positionManager, PositionState memory position) internal virtual;
 
     /* ///////////////////////////////////////////////////////////////
+                    DECREASE LIQUIDITY LOGIC
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Decreases liquidity of the Liquidity Position.
+     * @param balances The balances of the underlying tokens.
+     * @param positionManager The contract address of the Position Manager.
+     * @param position A struct with position and pool related variables.
+     * @param liquidity The amount of liquidity to decrease.
+     * @dev Must update the balances and delta liquidity after the increase.
+     */
+    function _decreaseLiquidity(
+        uint256[] memory balances,
+        address positionManager,
+        PositionState memory position,
+        uint128 liquidity
+    ) internal virtual;
+
+    /* ///////////////////////////////////////////////////////////////
                              SWAP LOGIC
     /////////////////////////////////////////////////////////////// */
 
@@ -168,7 +187,7 @@ abstract contract AbstractBase {
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Swaps one token for another to rebalance the Liquidity Position.
+     * @notice Increases liquidity of the Liquidity Position.
      * @param balances The balances of the underlying tokens.
      * @param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
