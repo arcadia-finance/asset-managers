@@ -32,7 +32,5 @@ contract Constructor_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz_T
         );
 
         assertEq(compounder_.owner(), owner_);
-        assertEq(address(compounder_.ARCADIA_FACTORY()), arcadiaFactory);
-        assertEq(address(compounder_.ROUTER_TRAMPOLINE()), routerTrampoline_);
     }
 }

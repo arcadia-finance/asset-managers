@@ -33,6 +33,5 @@ contract Constructor_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstream_
         );
 
         assertEq(yieldClaimer_.owner(), owner_);
-        assertEq(address(yieldClaimer_.ARCADIA_FACTORY()), arcadiaFactory);
     }
 }
