@@ -24,7 +24,5 @@ contract Constructor_Compounder_Fuzz_Test is Compounder_Fuzz_Test {
         CompounderExtension compounder_ = new CompounderExtension(owner_, arcadiaFactory, routerTrampoline_);
 
         assertEq(compounder_.owner(), owner_);
-        assertEq(address(compounder_.ARCADIA_FACTORY()), arcadiaFactory);
-        assertEq(address(compounder_.ROUTER_TRAMPOLINE()), routerTrampoline_);
     }
 }

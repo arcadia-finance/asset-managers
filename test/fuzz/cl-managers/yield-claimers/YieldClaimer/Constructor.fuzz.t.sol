@@ -24,6 +24,5 @@ contract Constructor_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         YieldClaimerExtension yieldClaimer_ = new YieldClaimerExtension(owner_, arcadiaFactory);
 
         assertEq(yieldClaimer_.owner(), owner_);
-        assertEq(address(yieldClaimer_.ARCADIA_FACTORY()), arcadiaFactory);
     }
 }

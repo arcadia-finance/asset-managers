@@ -284,6 +284,7 @@ abstract contract StopLoss is IActionBase, AbstractBase, Guardian {
         accountOwner = accountOwner_;
         initiator = initiator_;
         positionManager = positionManager_;
+        // forge-lint: disable-next-line(unsafe-typecast)
         id = uint96(id_);
         numeraire = numeraire_;
 
@@ -329,8 +330,7 @@ abstract contract StopLoss is IActionBase, AbstractBase, Guardian {
         // Caller must be the Account, provided as input in triggerFlashLoan().
         if (msg.sender != account) revert OnlyAccount();
 
-        (uint256 balanceNumeraire, bytes memory callBackData) =
-            abi.decode(actionTargetData, (uint256, bytes));
+        (uint256 balanceNumeraire, bytes memory callBackData) = abi.decode(actionTargetData, (uint256, bytes));
         address positionManager_ = positionManager;
         uint256 id_ = id;
         address numeraire_ = numeraire;
@@ -354,9 +354,11 @@ abstract contract StopLoss is IActionBase, AbstractBase, Guardian {
 
         // Calculate swap Fee.
         uint256 amountIn_ = amountIn;
-        if(amountIn_ > balances[numeraireIndex]) revert InsufficientBalance();
+        if (amountIn_ > balances[numeraireIndex]) revert InsufficientBalance();
         uint256 fee = amountIn_.mulDivDown(swapFee, 1e18);
-        if (balances[numeraireIndex] - fees[numeraireIndex] < fee) fee = balances[numeraireIndex] - fees[numeraireIndex];
+        if (balances[numeraireIndex] - fees[numeraireIndex] < fee) {
+            fee = balances[numeraireIndex] - fees[numeraireIndex];
+        }
         fees[numeraireIndex] += fee;
 
         // Approve the vault relayer to transfer tokenIn.

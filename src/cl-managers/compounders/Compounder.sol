@@ -42,10 +42,10 @@ abstract contract Compounder is IActionBase, AbstractBase, Guardian {
     ////////////////////////////////////////////////////////////// */
 
     // The contract address of the Arcadia Factory.
-    IArcadiaFactory public immutable ARCADIA_FACTORY;
+    IArcadiaFactory internal immutable ARCADIA_FACTORY;
 
     // The contract address of the Router Trampoline.
-    IRouterTrampoline public immutable ROUTER_TRAMPOLINE;
+    IRouterTrampoline internal immutable ROUTER_TRAMPOLINE;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE

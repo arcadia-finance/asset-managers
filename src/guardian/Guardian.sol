@@ -30,13 +30,6 @@ abstract contract Guardian is Owned {
     error OnlyGuardian();
 
     /* //////////////////////////////////////////////////////////////
-                                EVENTS
-    ////////////////////////////////////////////////////////////// */
-
-    event GuardianChanged(address indexed user, address indexed newGuardian);
-    event PauseFlagsUpdated(bool pauseUpdate);
-
-    /* //////////////////////////////////////////////////////////////
                                 MODIFIERS
     ////////////////////////////////////////////////////////////// */
 
@@ -44,16 +37,24 @@ abstract contract Guardian is Owned {
      * @dev Only guardians can call functions with this modifier.
      */
     modifier onlyGuardian() {
-        if (msg.sender != guardian) revert OnlyGuardian();
+        _onlyGuardian();
         _;
+    }
+
+    function _onlyGuardian() internal view {
+        if (msg.sender != guardian) revert OnlyGuardian();
     }
 
     /**
      * @dev Throws if the Asset Manager is paused.
      */
     modifier whenNotPaused() {
-        if (paused) revert Paused();
+        _whenNotPaused();
         _;
+    }
+
+    function _whenNotPaused() internal view {
+        if (paused) revert Paused();
     }
 
     /* //////////////////////////////////////////////////////////////
@@ -74,7 +75,7 @@ abstract contract Guardian is Owned {
      * @param guardian_ The address of the new guardian.
      */
     function changeGuardian(address guardian_) external onlyOwner {
-        emit GuardianChanged(msg.sender, guardian = guardian_);
+        guardian = guardian_;
     }
 
     /* //////////////////////////////////////////////////////////////
@@ -85,7 +86,7 @@ abstract contract Guardian is Owned {
      * @notice Pauses the Asset Manager.
      */
     function pause() external onlyGuardian whenNotPaused {
-        emit PauseFlagsUpdated(paused = true);
+        paused = true;
     }
 
     /**
@@ -93,6 +94,6 @@ abstract contract Guardian is Owned {
      * @param paused_ Flag indicating if the Asset Manager is paused.
      */
     function setPauseFlag(bool paused_) external onlyOwner {
-        emit PauseFlagsUpdated(paused = paused_);
+        paused = paused_;
     }
 }
