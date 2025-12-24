@@ -40,7 +40,7 @@ contract OnSetAssetManager_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         yieldClaimer.onSetAssetManager(accountOwner, status, data);
     }
 
-    function testFuzz_Revert_onSetMerklOperator_NotAnAccount(
+    function testFuzz_Revert_onSetAssetManager_NotAnAccount(
         address caller,
         address account_,
         address accountOwner,

@@ -19,6 +19,7 @@ import { PositionState } from "../state/PositionState.sol";
 import { RebalanceLogic, RebalanceParams } from "../libraries/RebalanceLogic.sol";
 import { RebalanceOptimizationMath } from "../libraries/RebalanceOptimizationMath.sol";
 import { SafeApprove } from "../../libraries/SafeApprove.sol";
+import { SafeCastLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/SafeCastLib.sol";
 import { TickMath } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
 /**
@@ -37,22 +38,23 @@ import { TickMath } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/
 abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
     using FixedPointMathLib for uint256;
     using SafeApprove for ERC20;
+    using SafeCastLib for uint256;
     using SafeTransferLib for ERC20;
     /* //////////////////////////////////////////////////////////////
                                 CONSTANTS
     ////////////////////////////////////////////////////////////// */
 
     // The contract address of the Arcadia Factory.
-    IArcadiaFactory public immutable ARCADIA_FACTORY;
+    IArcadiaFactory internal immutable ARCADIA_FACTORY;
 
     // The contract address of the Router Trampoline.
-    IRouterTrampoline public immutable ROUTER_TRAMPOLINE;
+    IRouterTrampoline internal immutable ROUTER_TRAMPOLINE;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
     ////////////////////////////////////////////////////////////// */
 
-    // The Account to rebalance the fees for, used as transient storage.
+    // The Account to rebalance, used as transient storage.
     address internal account;
 
     // A mapping from account to account specific information.
@@ -87,9 +89,13 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
         // The id of the position.
         uint96 oldId;
         // The amount of token0 withdrawn from the account.
-        uint128 amount0;
+        uint128 amountIn0;
         // The amount of token1 withdrawn from the account.
-        uint128 amount1;
+        uint128 amountIn1;
+        // The amount of token0 to send to the account.
+        uint128 amountOut0;
+        // The amount of token1 to send to the account.
+        uint128 amountOut1;
         // The sqrtPrice the pool should have, given by the initiator.
         uint256 trustedSqrtPrice;
         // The fee charged on the claimed fees of the liquidity position, with 18 decimals precision.
@@ -294,6 +300,9 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
      * @notice Rebalances a Concentrated Liquidity Positions, owned by an Arcadia Account.
      * @param account_ The contract address of the account.
      * @param initiatorParams A struct with the initiator parameters.
+     * @dev The amountOuts, provided by the initiator with the initiatorParams,
+     * must be smaller or equal to the rebalancers balance after burning the position or the rebalance reverts.
+     * To withdraw the full underlying balance of a liquidity position to the account, set amountOut for that token to type(uint128).max.
      */
     function rebalance(address account_, InitiatorParams calldata initiatorParams) external whenNotPaused {
         // Store Account address, used to validate the caller of the executeAction() callback and serves as a reentrancy guard.
@@ -310,7 +319,7 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
         // If leftovers have to be withdrawn from account, get token0 and token1.
         address token0;
         address token1;
-        if (initiatorParams.amount0 > 0 || initiatorParams.amount1 > 0) {
+        if (initiatorParams.amountIn0 > 0 || initiatorParams.amountIn1 > 0) {
             (token0, token1) = _getUnderlyingTokens(initiatorParams.positionManager, initiatorParams.oldId);
         }
 
@@ -320,8 +329,8 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
             initiatorParams.oldId,
             token0,
             token1,
-            initiatorParams.amount0,
-            initiatorParams.amount1,
+            initiatorParams.amountIn0,
+            initiatorParams.amountIn1,
             abi.encode(msg.sender, initiatorParams)
         );
 
@@ -361,8 +370,8 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
 
         // Rebalancer has withdrawn the underlying tokens from the Account.
         uint256[] memory balances = new uint256[](position.tokens.length);
-        balances[0] = initiatorParams.amount0;
-        balances[1] = initiatorParams.amount1;
+        balances[0] = initiatorParams.amountIn0;
+        balances[1] = initiatorParams.amountIn1;
         uint256[] memory fees = new uint256[](balances.length);
 
         // Call the strategy hook before the rebalance (view function, cannot modify state of pool or old position).
@@ -392,7 +401,15 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
         // Remove liquidity of the position and update balances.
         _burn(balances, positionManager, position);
 
+        // Check if we want to withdraw the full underlying balance of one of the underlying tokens to the account.
+        if (initiatorParams.amountOut0 == type(uint128).max) {
+            initiatorParams.amountOut0 = (balances[0] - fees[0]).safeCastTo128();
+        } else if (initiatorParams.amountOut1 == type(uint128).max) {
+            initiatorParams.amountOut1 = (balances[1] - fees[1]).safeCastTo128();
+        }
+
         // Get the rebalance parameters, based on a hypothetical swap through the pool itself without slippage.
+        // Reverts if balance is smaller than the required fees and amountOut.
         RebalanceParams memory rebalanceParams = RebalanceLogic._getRebalanceParams(
             accountInfo_.minLiquidityRatio,
             position.fee,
@@ -400,8 +417,8 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
             position.sqrtPrice,
             cache.sqrtRatioLower,
             cache.sqrtRatioUpper,
-            balances[0] - fees[0],
-            balances[1] - fees[1]
+            balances[0] - fees[0] - initiatorParams.amountOut0,
+            balances[1] - fees[1] - initiatorParams.amountOut1
         );
         if (rebalanceParams.zeroToOne) fees[0] += rebalanceParams.amountInitiatorFee;
         else fees[1] += rebalanceParams.amountInitiatorFee;
@@ -423,8 +440,9 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
         // As explained before _swap(), tokenOut should be the limiting factor when increasing liquidity
         // therefore we only subtract the initiator fee from the amountOut, not from the amountIn.
         // Update balances, id and liquidity after the mint.
-        (uint256 amount0Desired, uint256 amount1Desired) =
-            rebalanceParams.zeroToOne ? (balances[0], balances[1] - fees[1]) : (balances[0] - fees[0], balances[1]);
+        (uint256 amount0Desired, uint256 amount1Desired) = rebalanceParams.zeroToOne
+            ? (balances[0] - initiatorParams.amountOut0, balances[1] - fees[1] - initiatorParams.amountOut1)
+            : (balances[0] - fees[0] - initiatorParams.amountOut0, balances[1] - initiatorParams.amountOut1);
         _mint(balances, positionManager, position, amount0Desired, amount1Desired);
 
         // Check that the actual liquidity of the position is above the minimum threshold.
@@ -442,7 +460,7 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
 
         // Approve the liquidity position and leftovers to be deposited back into the Account.
         // And transfer the initiator fees to the initiator.
-        uint256 count = _approveAndTransfer(initiator, balances, fees, positionManager, position);
+        uint256 count = _approveAndTransfer(initiator, balances, fees, initiatorParams, positionManager, position);
 
         // Encode deposit data for the flash-action.
         depositData = ArcadiaLogic._encodeDeposit(positionManager, position.id, position.tokens, balances, count);
@@ -521,6 +539,8 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
         // This can be done either directly through the pool, or via a router with custom swap data.
         if (initiatorParams.swapData.length == 0) {
             // Calculate a more accurate amountOut, with slippage.
+            uint256 amount0 = balances[0] - fees[0] - initiatorParams.amountOut0;
+            uint256 amount1 = balances[1] - fees[1] - initiatorParams.amountOut1;
             uint256 amountOut = RebalanceOptimizationMath._getAmountOutWithSlippage(
                 rebalanceParams.zeroToOne,
                 position.fee,
@@ -528,8 +548,8 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
                 uint160(position.sqrtPrice),
                 cache.sqrtRatioLower,
                 cache.sqrtRatioUpper,
-                balances[0] - fees[0],
-                balances[1] - fees[1],
+                amount0,
+                amount1,
                 rebalanceParams.amountIn,
                 rebalanceParams.amountOut
             );
@@ -593,25 +613,35 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
         address initiator,
         uint256[] memory balances,
         uint256[] memory fees,
+        InitiatorParams memory initiatorParams,
         address positionManager,
         PositionState memory position
     ) internal returns (uint256 count) {
         // Approve the Liquidity Position.
         ERC721(positionManager).approve(msg.sender, position.id);
 
-        // Transfer Initiator fees and approve the leftovers.
+        // Transfer Initiator fees and approve amountOut and leftovers.
         address token;
+        uint256 amountOut;
         count = 1;
         for (uint256 i; i < balances.length; i++) {
+            if (i <= 1) amountOut = i == 0 ? initiatorParams.amountOut0 : initiatorParams.amountOut1;
+            else amountOut = 0;
+
             token = position.tokens[i];
-            // If there are leftovers, deposit them back into the Account.
-            if (balances[i] > fees[i]) {
+            // At least amountOut must be returned to the Account.
+            // Reverts if balance is smaller than the required amountOut.
+            if (balances[i] - amountOut > fees[i]) {
                 balances[i] = balances[i] - fees[i];
+            } else {
+                fees[i] = balances[i] - amountOut;
+                balances[i] = amountOut;
+            }
+
+            // Approve Account to deposit tokens.
+            if (balances[i] > 0) {
                 ERC20(token).safeApproveWithRetry(msg.sender, balances[i]);
                 count++;
-            } else {
-                fees[i] = balances[i];
-                balances[i] = 0;
             }
 
             // Transfer Initiator fees to the initiator.

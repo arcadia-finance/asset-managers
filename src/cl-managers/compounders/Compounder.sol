@@ -42,16 +42,16 @@ abstract contract Compounder is IActionBase, AbstractBase, Guardian {
     ////////////////////////////////////////////////////////////// */
 
     // The contract address of the Arcadia Factory.
-    IArcadiaFactory public immutable ARCADIA_FACTORY;
+    IArcadiaFactory internal immutable ARCADIA_FACTORY;
 
     // The contract address of the Router Trampoline.
-    IRouterTrampoline public immutable ROUTER_TRAMPOLINE;
+    IRouterTrampoline internal immutable ROUTER_TRAMPOLINE;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
     ////////////////////////////////////////////////////////////// */
 
-    // The Account to rebalance the fees for, used as transient storage.
+    // The Account to compound the fees for, used as transient storage.
     address internal account;
 
     // A mapping from account to account specific information.

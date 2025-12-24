@@ -7,7 +7,7 @@ pragma solidity ^0.8.0;
 import { ActionData } from "../../../../../lib/accounts-v2/src/interfaces/IActionBase.sol";
 import { Compounder } from "../../../../../src/cl-managers/compounders/Compounder.sol";
 import { CompounderSlipstream_Fuzz_Test } from "./_CompounderSlipstream.fuzz.t.sol";
-import { DefaultHook } from "../../../../utils/mocks/DefaultHook.sol";
+import { DefaultRebalancerHook } from "../../../../utils/mocks/DefaultRebalancerHook.sol";
 import { ERC20Mock } from "../../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import {
@@ -31,7 +31,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
                             VARIABLES
     /////////////////////////////////////////////////////////////// */
 
-    DefaultHook internal strategyHook;
+    DefaultRebalancerHook internal strategyHook;
 
     /* ///////////////////////////////////////////////////////////////
                               SETUP
@@ -40,7 +40,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
     function setUp() public override {
         CompounderSlipstream_Fuzz_Test.setUp();
 
-        strategyHook = new DefaultHook();
+        strategyHook = new DefaultRebalancerHook();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -250,7 +250,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
         RebalanceParams memory rebalanceParams;
         {
             // Calculate balances available on compounder to rebalance (without fees).
-            (uint256 balance0, uint256 balance1) = getFeeAmounts(position.id);
+            (uint256 balance0, uint256 balance1) = getFeeAmountsCL(position.id);
             balance0 = initiatorParams.amount0 + balance0 - balance0 * initiatorParams.claimFee / 1e18;
             balance1 = initiatorParams.amount1 + balance1 - balance1 * initiatorParams.claimFee / 1e18;
             vm.assume(balance0 + balance1 > 1e10);
@@ -348,7 +348,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
         RebalanceParams memory rebalanceParams;
         {
             // Calculate balances available on compounder to rebalance (without fees).
-            (uint256 balance0, uint256 balance1) = getFeeAmounts(position.id);
+            (uint256 balance0, uint256 balance1) = getFeeAmountsCL(position.id);
             balance0 = initiatorParams.amount0 + balance0 - balance0 * initiatorParams.claimFee / 1e18;
             balance1 = initiatorParams.amount1 + balance1 - balance1 * initiatorParams.claimFee / 1e18;
             vm.assume(balance0 + balance1 > 1e10);
@@ -464,7 +464,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
         RebalanceParams memory rebalanceParams;
         {
             // Calculate balances available on compounder to rebalance (without fees).
-            (uint256 balance0, uint256 balance1) = getFeeAmounts(position.id);
+            (uint256 balance0, uint256 balance1) = getFeeAmountsCL(position.id);
             balance0 = initiatorParams.amount0 + balance0 - balance0 * initiatorParams.claimFee / 1e18;
             balance1 = initiatorParams.amount1 + balance1 - balance1 * initiatorParams.claimFee / 1e18;
             vm.assume(balance0 + balance1 > 1e10);

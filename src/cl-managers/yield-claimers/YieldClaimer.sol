@@ -27,13 +27,13 @@ abstract contract YieldClaimer is IActionBase, AbstractBase, Guardian {
     ////////////////////////////////////////////////////////////// */
 
     // The contract address of the Arcadia Factory.
-    IArcadiaFactory public immutable ARCADIA_FACTORY;
+    IArcadiaFactory internal immutable ARCADIA_FACTORY;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
     ////////////////////////////////////////////////////////////// */
 
-    // The Account to rebalance the fees for, used as transient storage.
+    // The Account to claim the yield for, used as transient storage.
     address internal account;
 
     // A mapping from account to account specific information.

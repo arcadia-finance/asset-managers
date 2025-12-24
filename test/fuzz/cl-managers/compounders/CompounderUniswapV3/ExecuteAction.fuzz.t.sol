@@ -7,7 +7,7 @@ pragma solidity ^0.8.0;
 import { Compounder } from "../../../../../src/cl-managers/compounders/Compounder.sol";
 import { CompounderUniswapV3_Fuzz_Test } from "./_CompounderUniswapV3.fuzz.t.sol";
 import { ActionData } from "../../../../../lib/accounts-v2/src/interfaces/IActionBase.sol";
-import { DefaultHook } from "../../../../utils/mocks/DefaultHook.sol";
+import { DefaultRebalancerHook } from "../../../../utils/mocks/DefaultRebalancerHook.sol";
 import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
 import { RebalanceLogic, RebalanceParams } from "../../../../../src/cl-managers/libraries/RebalanceLogic.sol";
@@ -24,7 +24,7 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
                             VARIABLES
     /////////////////////////////////////////////////////////////// */
 
-    DefaultHook internal strategyHook;
+    DefaultRebalancerHook internal strategyHook;
 
     /* ///////////////////////////////////////////////////////////////
                               SETUP
@@ -33,7 +33,7 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
     function setUp() public override {
         CompounderUniswapV3_Fuzz_Test.setUp();
 
-        strategyHook = new DefaultHook();
+        strategyHook = new DefaultRebalancerHook();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -234,7 +234,7 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
         RebalanceParams memory rebalanceParams;
         {
             // Calculate balances available on compounder to rebalance (without fees).
-            (uint256 balance0, uint256 balance1) = getFeeAmounts(position.id);
+            (uint256 balance0, uint256 balance1) = getFeeAmountsV3(position.id);
             balance0 = initiatorParams.amount0 + balance0 - balance0 * initiatorParams.claimFee / 1e18;
             balance1 = initiatorParams.amount1 + balance1 - balance1 * initiatorParams.claimFee / 1e18;
             vm.assume(balance0 + balance1 > 1e8);
@@ -333,7 +333,7 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
         RebalanceParams memory rebalanceParams;
         {
             // Calculate balances available on compounder to rebalance (without fees).
-            (uint256 balance0, uint256 balance1) = getFeeAmounts(position.id);
+            (uint256 balance0, uint256 balance1) = getFeeAmountsV3(position.id);
             balance0 = initiatorParams.amount0 + balance0 - balance0 * initiatorParams.claimFee / 1e18;
             balance1 = initiatorParams.amount1 + balance1 - balance1 * initiatorParams.claimFee / 1e18;
             vm.assume(balance0 + balance1 > 1e10);
@@ -449,7 +449,7 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
         RebalanceParams memory rebalanceParams;
         {
             // Calculate balances available on compounder to rebalance (without fees).
-            (uint256 balance0, uint256 balance1) = getFeeAmounts(position.id);
+            (uint256 balance0, uint256 balance1) = getFeeAmountsV3(position.id);
             balance0 = initiatorParams.amount0 + balance0 - balance0 * initiatorParams.claimFee / 1e18;
             balance1 = initiatorParams.amount1 + balance1 - balance1 * initiatorParams.claimFee / 1e18;
             vm.assume(balance0 + balance1 > 1e8);

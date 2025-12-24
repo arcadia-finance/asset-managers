@@ -109,10 +109,9 @@ contract SetAccountInfo_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         yieldClaimer.setAccountInfo(address(account), initiator, accountInfo.feeRecipient, accountInfo.maxClaimFee, "");
     }
 
-    function testFuzz_Revert_setAccountInfo_InvalidValue(
-        address initiator,
-        YieldClaimer.AccountInfo memory accountInfo
-    ) public {
+    function testFuzz_Revert_setAccountInfo_InvalidValue(address initiator, YieldClaimer.AccountInfo memory accountInfo)
+        public
+    {
         // Given: recipient is not the zero address.
         vm.assume(accountInfo.feeRecipient != address(0));
 
