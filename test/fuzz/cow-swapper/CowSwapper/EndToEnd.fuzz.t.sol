@@ -427,6 +427,7 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
 
         // And: Signer is not the initiator.
         vm.assume(initiator != vm.addr(signerPrivateKey));
+        vm.assume(initiator != address(0));
 
         // And: Valid swap fee.
         swapFee = uint64(bound(swapFee, 0, MAX_FEE));

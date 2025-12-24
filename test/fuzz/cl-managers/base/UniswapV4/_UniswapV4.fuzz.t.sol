@@ -19,7 +19,6 @@ import { FullMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4
 import { Fuzz_Test } from "../../../Fuzz.t.sol";
 import { NativeTokenAM } from "../../../../../lib/accounts-v2/src/asset-modules/native-token/NativeTokenAM.sol";
 import { PoolKey } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
-import { PositionInfo } from "../../../../../lib/accounts-v2/lib/v4-periphery/src/libraries/PositionInfoLibrary.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
 import { UniswapV4Extension } from "../../../../utils/extensions/UniswapV4Extension.sol";
 import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
@@ -172,7 +171,11 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         position.liquidity = uint128(bound(position.liquidity, 1e6, stateView.getLiquidity(poolKey.toId()) / 1e3));
     }
 
-    function setPositionState(PositionState memory position) internal {
+    function setPositionState(PositionState memory position) internal returns (uint256 amount0, uint256 amount1) {
+        uint256 balance0Before;
+        uint256 balance1Before;
+        if (address(token0) != address(0)) balance0Before = token0.balanceOf(address(poolManager));
+        if (address(token1) != address(0)) balance1Before = token1.balanceOf(address(poolManager));
         position.id = mintPositionV4(
             poolKey,
             position.tickLower,
@@ -182,6 +185,8 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
             type(uint128).max,
             users.liquidityProvider
         );
+        if (address(token0) != address(0)) amount0 = token0.balanceOf(address(poolManager)) - balance0Before;
+        if (address(token1) != address(0)) amount1 = token1.balanceOf(address(poolManager)) - balance1Before;
     }
 
     // forge-lint: disable-next-item(mixed-case-function)
@@ -239,36 +244,5 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
             : token0.mint(address(poolManager), amount0);
 
         token1.mint(address(poolManager), amount1);
-    }
-
-    function getFeeAmounts(uint256 id) internal view returns (uint256 amount0, uint256 amount1) {
-        PositionInfo info = positionManagerV4.positionInfo(id);
-
-        (uint256 feeGrowthInside0CurrentX128, uint256 feeGrowthInside1CurrentX128) =
-            stateView.getFeeGrowthInside(poolKey.toId(), info.tickLower(), info.tickUpper());
-
-        bytes32 positionId =
-            keccak256(abi.encodePacked(address(positionManagerV4), info.tickLower(), info.tickUpper(), bytes32(id)));
-
-        (, uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128) =
-            stateView.getPositionInfo(poolKey.toId(), positionId);
-
-        // Calculate accumulated fees since the last time the position was updated:
-        // (feeGrowthInsideCurrentX128 - feeGrowthInsideLastX128) * liquidity.
-        // Fee calculations in PositionManager.sol overflow (without reverting) when
-        // one or both terms, or their sum, is bigger than a uint128.
-        // This is however much bigger than any realistic situation.
-        unchecked {
-            amount0 = FullMath.mulDiv(
-                feeGrowthInside0CurrentX128 - feeGrowthInside0LastX128,
-                positionManagerV4.getPositionLiquidity(id),
-                FixedPoint128.Q128
-            );
-            amount1 = FullMath.mulDiv(
-                feeGrowthInside1CurrentX128 - feeGrowthInside1LastX128,
-                positionManagerV4.getPositionLiquidity(id),
-                FixedPoint128.Q128
-            );
-        }
     }
 }

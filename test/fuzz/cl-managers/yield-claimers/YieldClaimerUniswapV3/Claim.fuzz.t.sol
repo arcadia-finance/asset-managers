@@ -85,10 +85,9 @@ contract Compound_YieldClaimerUniswapV3_Fuzz_Test is YieldClaimerUniswapV3_Fuzz_
         yieldClaimer.claim(account_, initiatorParams);
     }
 
-    function testFuzz_Revert_claim_InvalidInitiator(
-        YieldClaimer.InitiatorParams memory initiatorParams,
-        address caller
-    ) public {
+    function testFuzz_Revert_claim_InvalidInitiator(YieldClaimer.InitiatorParams memory initiatorParams, address caller)
+        public
+    {
         // Given : Caller is not address(0).
         vm.assume(caller != address(0));
 
@@ -196,7 +195,7 @@ contract Compound_YieldClaimerUniswapV3_Fuzz_Test is YieldClaimerUniswapV3_Fuzz_
         // And: position has fees.
         feeSeed = uint256(bound(feeSeed, 0, type(uint48).max));
         generateFees(feeSeed, feeSeed);
-        (uint256 fee0, uint256 fee1) = getFeeAmounts(position.id);
+        (uint256 fee0, uint256 fee1) = getFeeAmountsV3(position.id);
 
         // And: Account owns the position.
         vm.prank(users.liquidityProvider);
@@ -291,7 +290,7 @@ contract Compound_YieldClaimerUniswapV3_Fuzz_Test is YieldClaimerUniswapV3_Fuzz_
         // And: position has fees.
         feeSeed = uint256(bound(feeSeed, 0, type(uint48).max));
         generateFees(feeSeed, feeSeed);
-        (uint256 fee0, uint256 fee1) = getFeeAmounts(position.id);
+        (uint256 fee0, uint256 fee1) = getFeeAmountsV3(position.id);
 
         // And: Account owns the position.
         vm.prank(users.liquidityProvider);

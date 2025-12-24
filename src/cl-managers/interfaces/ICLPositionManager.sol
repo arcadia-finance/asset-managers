@@ -52,6 +52,8 @@ interface ICLPositionManager {
         payable
         returns (uint256 amount0, uint256 amount1);
 
+    function factory() external view returns (address);
+
     function increaseLiquidity(IncreaseLiquidityParams calldata params)
         external
         payable

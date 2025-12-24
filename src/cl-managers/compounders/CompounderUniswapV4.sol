@@ -26,6 +26,13 @@ import { UniswapV4 } from "../base/UniswapV4.sol";
 contract CompounderUniswapV4 is Compounder, UniswapV4 {
     using SafeTransferLib for ERC20;
     /* //////////////////////////////////////////////////////////////
+                                CONSTANTS
+    ////////////////////////////////////////////////////////////// */
+
+    // The version of the Asset Manager.
+    string public constant VERSION = "2.1.0";
+
+    /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
     ////////////////////////////////////////////////////////////// */
 
