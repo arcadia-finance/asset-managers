@@ -271,12 +271,26 @@ contract CowSwapper is IActionBase, Guardian {
         account = address(0);
     }
 
+    /**
+     * @notice Dummy approve function required by the settlement contract. Does nothing.
+     * @param token The address of the token to approve (unused).
+     * @param target The address to approve as spender (unused).
+     * @param amount The amount to approve (unused).
+     */
     function approve(address token, address target, uint256 amount) external { }
 
+    /**
+     * @notice Returns the address of the CoW Settlement contract.
+     * @return cowSettlement The address of the settlement contract.
+     */
     function settlementContract() external view returns (address cowSettlement) {
         cowSettlement = address(COW_SETTLEMENT);
     }
 
+    /**
+     * @notice Returns the address of the flash loan router.
+     * @return flashLoanRouter The address of the flash loan router contract.
+     */
     function router() external view returns (address flashLoanRouter) {
         flashLoanRouter = address(FLASH_LOAN_ROUTER);
     }
