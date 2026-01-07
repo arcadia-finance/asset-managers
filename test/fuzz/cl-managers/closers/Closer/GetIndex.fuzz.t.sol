@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.0;
 
 import { Closer_Fuzz_Test } from "./_Closer.fuzz.t.sol";
 
@@ -26,6 +26,10 @@ contract GetIndex_Closer_Fuzz_Test is Closer_Fuzz_Test {
         // Given: Token exists in array.
         arrayLength = uint8(bound(arrayLength, 1, 10));
         tokenIndex = uint8(bound(tokenIndex, 0, arrayLength - 1));
+
+        // Given: Token doesn't collide with sequentially generated addresses.
+        vm.assume(token < address(uint160(1)) || token > address(uint160(arrayLength)));
+
         address[] memory tokens = new address[](arrayLength);
         for (uint256 i; i < arrayLength; i++) {
             // forge-lint: disable-next-line(unsafe-typecast)

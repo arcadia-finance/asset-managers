@@ -221,7 +221,12 @@ abstract contract Closer is IActionBase, AbstractBase, Guardian {
      * @dev The Liquidity Position is already transferred to this contract before executeAction() is called.
      * @dev When rebalancing we will burn the current Liquidity Position and mint a new one with a new tokenId.
      */
-    function executeAction(bytes calldata actionTargetData) external override returns (ActionData memory depositData) {
+    function executeAction(bytes calldata actionTargetData)
+        external
+        virtual
+        override
+        returns (ActionData memory depositData)
+    {
         // Caller should be the Account, provided as input in rebalance().
         if (msg.sender != account) revert OnlyAccount();
 
@@ -247,14 +252,15 @@ abstract contract Closer is IActionBase, AbstractBase, Guardian {
         // Claim pending yields and update balances.
         _claim(balances, fees, positionManager, position, initiatorParams.claimFee);
 
-        // If the position is staked, unstake it.
-        _unstake(balances, positionManager, position);
-
-        // Decrease liquidity or fully burn, and update balances.
-        // ToDo: Do we need to check if the pool is balanced when decreasing liquidity?
+        // Decrease liquidity or fully burn position, and update balances.
         if (initiatorParams.liquidity > 0) {
+            // If the position is staked, unstake it.
+            _unstake(balances, positionManager, position);
+
             if (initiatorParams.liquidity < position.liquidity) {
                 _decreaseLiquidity(balances, positionManager, position, initiatorParams.liquidity);
+                // If the position was staked, stake it.
+                _stake(balances, positionManager, position);
             } else {
                 _burn(balances, positionManager, position);
                 position.id = 0;

@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.0;
 
 import { Closer_Fuzz_Test } from "./_Closer.fuzz.t.sol";
 import { LendingPoolMock } from "../../../../utils/mocks/LendingPoolMock.sol";
@@ -19,6 +19,9 @@ contract RepayDebt_Closer_Fuzz_Test is Closer_Fuzz_Test {
 
     function setUp() public override {
         Closer_Fuzz_Test.setUp();
+
+        // Add token1 to Arcadia (required for numeraire).
+        addAssetToArcadia(address(token1), int256(1e18));
 
         // Deploy mock lending pool.
         lendingPoolMock = new LendingPoolMock(address(token1));

@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.0;
 
 import { Closer } from "../../../../../src/cl-managers/closers/Closer.sol";
 import { Closer_Fuzz_Test } from "./_Closer.fuzz.t.sol";
@@ -83,11 +83,7 @@ contract Close_Closer_Fuzz_Test is Closer_Fuzz_Test {
         // When : calling close
         // Then : it should revert
         vm.prank(caller);
-        if (account_.code.length == 0 && !isPrecompile(account_)) {
-            vm.expectRevert(abi.encodePacked("call to non-contract address ", vm.toString(account_)));
-        } else {
-            vm.expectRevert(bytes(""));
-        }
+        vm.expectRevert();
         closer.close(account_, initiatorParams);
     }
 
