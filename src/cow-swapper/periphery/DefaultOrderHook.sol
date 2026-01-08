@@ -137,7 +137,6 @@ contract DefaultOrderHook is OrderHook {
         pure
         returns (address tokenOut, uint112 amountOut, uint32 validTo, uint64 swapFee)
     {
-        /// @solidity memory-safe-assembly
         assembly {
             // Load first 256 bits of initiatorData and shift right by 96 bits to extract tokenOut.
             tokenOut := shr(OFFSET_96_BITS, calldataload(initiatorData.offset))

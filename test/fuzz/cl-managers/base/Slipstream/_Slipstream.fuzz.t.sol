@@ -58,6 +58,8 @@ abstract contract Slipstream_Fuzz_Test is
     ICLPoolExtension internal poolCl;
 
     // forge-lint: disable-next-line(mixed-case-variable)
+    SlipstreamAMExtension internal slipstreamAM;
+    // forge-lint: disable-next-line(mixed-case-variable)
     StakedSlipstreamAM internal stakedSlipstreamAM;
     ICLGauge internal gauge;
 
@@ -206,8 +208,7 @@ abstract contract Slipstream_Fuzz_Test is
     function deploySlipstreamAM() internal {
         // Deploy Add the Asset Module to the Registry.
         vm.startPrank(users.owner);
-        SlipstreamAMExtension slipstreamAM =
-            new SlipstreamAMExtension(users.owner, address(registry), address(slipstreamPositionManager));
+        slipstreamAM = new SlipstreamAMExtension(users.owner, address(registry), address(slipstreamPositionManager));
         registry.addAssetModule(address(slipstreamAM));
         slipstreamAM.setProtocol();
         vm.stopPrank();
