@@ -4,15 +4,21 @@
  */
 pragma solidity ^0.8.0;
 
+import { ArcadiaOracle } from "../../../../../lib/accounts-v2/test/utils/mocks/oracles/ArcadiaOracle.sol";
+import { BitPackingLib } from "../../../../../lib/accounts-v2/src/libraries/BitPackingLib.sol";
 import { Closer } from "../../../../../src/cl-managers/closers/Closer.sol";
 import { CloserUniswapV4_Fuzz_Test } from "./_CloserUniswapV4.fuzz.t.sol";
+import { ERC20Mock } from "../../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { Guardian } from "../../../../../src/guardian/Guardian.sol";
+import { LendingPoolMock } from "../../../../utils/mocks/LendingPoolMock.sol";
+import { NativeTokenAM } from "../../../../../lib/accounts-v2/src/asset-modules/native-token/NativeTokenAM.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
 
 /**
  * @notice Fuzz tests for the function "close" of contract "CloserUniswapV4".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract Close_CloserUniswapV4_Fuzz_Test is CloserUniswapV4_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
@@ -206,6 +212,10 @@ contract Close_CloserUniswapV4_Fuzz_Test is CloserUniswapV4_Fuzz_Test {
         position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
         position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
         setPositionState(position);
+        initiatorParams.positionManager = address(positionManagerV4);
+        initiatorParams.id = uint96(position.id);
+
+        // And: UniswapV4 is allowed.
         deployUniswapV4AM();
 
         // And: Closer is allowed as Asset Manager.
@@ -220,13 +230,15 @@ contract Close_CloserUniswapV4_Fuzz_Test is CloserUniswapV4_Fuzz_Test {
         vm.prank(account.owner());
         closer.setAccountInfo(address(account), initiator, MAX_CLAIM_FEE, "");
 
-        // And: Configure initiator params.
-        initiatorParams.positionManager = address(positionManagerV4);
-        initiatorParams.id = uint96(position.id);
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_CLAIM_FEE));
+
+        // And: Liquidity might be (fully) decreased.
         initiatorParams.liquidity = uint128(bound(initiatorParams.liquidity, 0, position.liquidity));
+
+        // And: No debt repayment.
         initiatorParams.withdrawAmount = 0;
         initiatorParams.maxRepayAmount = 0;
-        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_CLAIM_FEE));
 
         // And: Position has fees.
         feeSeed = uint256(bound(feeSeed, type(uint8).max, type(uint48).max));
@@ -273,6 +285,10 @@ contract Close_CloserUniswapV4_Fuzz_Test is CloserUniswapV4_Fuzz_Test {
         position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
         position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
         setPositionState(position);
+        initiatorParams.positionManager = address(positionManagerV4);
+        initiatorParams.id = uint96(position.id);
+
+        // And: UniswapV4 is allowed.
         deployUniswapV4AM();
 
         // And: Closer is allowed as Asset Manager.
@@ -287,13 +303,15 @@ contract Close_CloserUniswapV4_Fuzz_Test is CloserUniswapV4_Fuzz_Test {
         vm.prank(account.owner());
         closer.setAccountInfo(address(account), initiator, MAX_CLAIM_FEE, "");
 
-        // And: Configure initiator params - partial decrease only (not full burn).
-        initiatorParams.positionManager = address(positionManagerV4);
-        initiatorParams.id = uint96(position.id);
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_CLAIM_FEE));
+
+        // And: Liquidity is partially decreased (not full burn).
         initiatorParams.liquidity = uint128(bound(initiatorParams.liquidity, 0, position.liquidity - 1));
+
+        // And: No debt repayment.
         initiatorParams.withdrawAmount = 0;
         initiatorParams.maxRepayAmount = 0;
-        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_CLAIM_FEE));
 
         // And: Position has fees.
         feeSeed = uint256(bound(feeSeed, type(uint8).max, type(uint48).max));
@@ -338,6 +356,10 @@ contract Close_CloserUniswapV4_Fuzz_Test is CloserUniswapV4_Fuzz_Test {
         position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
         position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
         setPositionState(position);
+        initiatorParams.positionManager = address(positionManagerV4);
+        initiatorParams.id = uint96(position.id);
+
+        // And: UniswapV4 is allowed.
         deployUniswapV4AM();
 
         // And: Closer is allowed as Asset Manager.
@@ -352,13 +374,15 @@ contract Close_CloserUniswapV4_Fuzz_Test is CloserUniswapV4_Fuzz_Test {
         vm.prank(account.owner());
         closer.setAccountInfo(address(account), initiator, MAX_CLAIM_FEE, "");
 
-        // And: Configure initiator params - full burn (liquidity >= position.liquidity).
-        initiatorParams.positionManager = address(positionManagerV4);
-        initiatorParams.id = uint96(position.id);
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_CLAIM_FEE));
+
+        // And: Position is fully burned.
         initiatorParams.liquidity = position.liquidity;
+
+        // And: No debt repayment.
         initiatorParams.withdrawAmount = 0;
         initiatorParams.maxRepayAmount = 0;
-        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_CLAIM_FEE));
 
         // And: Position has fees.
         feeSeed = uint256(bound(feeSeed, type(uint8).max, type(uint48).max));
@@ -385,5 +409,278 @@ contract Close_CloserUniswapV4_Fuzz_Test is CloserUniswapV4_Fuzz_Test {
         // Then: Position is burned.
         vm.expectRevert();
         ERC721(address(positionManagerV4)).ownerOf(position.id);
+    }
+
+    function testFuzz_Success_close_NotNative_WithDebtRepayment(
+        PositionState memory position,
+        uint256 feeSeed,
+        Closer.InitiatorParams memory initiatorParams,
+        address initiator,
+        uint256 debt
+    ) public {
+        // Given: Create tokens and add to Arcadia.
+        token0 = new ERC20Mock("TokenA", "TOKA", 0);
+        token1 = new ERC20Mock("TokenB", "TOKB", 0);
+        (token0, token1) = (token0 < token1) ? (token0, token1) : (token1, token0);
+        addAssetToArcadia(address(token0), int256(1e18));
+        addAssetToArcadia(address(token1), int256(1e18));
+
+        // And: Create pool.
+        poolKey = initializePoolV4(address(token0), address(token1), 2 ** 96, address(0), POOL_FEE, TICK_SPACING);
+        mintPositionV4(
+            poolKey,
+            BOUND_TICK_LOWER / TICK_SPACING * TICK_SPACING,
+            BOUND_TICK_UPPER / TICK_SPACING * TICK_SPACING,
+            1e18,
+            type(uint128).max,
+            type(uint128).max,
+            users.liquidityProvider
+        );
+
+        // And: Deploy AM.
+        deployUniswapV4AM();
+
+        // And: Configure lending pool and risk parameters.
+        LendingPoolMock lendingPoolMock = new LendingPoolMock(address(token1));
+        lendingPoolMock.setRiskManager(users.riskManager);
+        vm.startPrank(users.riskManager);
+        registry.setRiskParameters(address(lendingPoolMock), 0, 0, type(uint64).max);
+        registry.setRiskParametersOfPrimaryAsset(
+            address(lendingPoolMock), address(token0), 0, type(uint112).max, 9000, 9500
+        );
+        registry.setRiskParametersOfPrimaryAsset(
+            address(lendingPoolMock), address(token1), 0, type(uint112).max, 9000, 9500
+        );
+        uniswapV4HooksRegistry.setRiskParametersOfDerivedAM(
+            address(lendingPoolMock), address(defaultUniswapV4AM), type(uint112).max, 10_000
+        );
+        vm.stopPrank();
+
+        // And: Create position with bounded liquidity.
+        position.tickLower = -10_000 / TICK_SPACING * TICK_SPACING;
+        position.tickUpper = 10_000 / TICK_SPACING * TICK_SPACING;
+        position.liquidity = uint128(bound(position.liquidity, 1e10, 1e12));
+        position.tickSpacing = TICK_SPACING;
+        position.fee = POOL_FEE;
+        position.tokens = new address[](2);
+        position.tokens[0] = address(token0);
+        position.tokens[1] = address(token1);
+        position.id = mintPositionV4(
+            poolKey,
+            position.tickLower,
+            position.tickUpper,
+            position.liquidity,
+            type(uint128).max,
+            type(uint128).max,
+            users.liquidityProvider
+        );
+        initiatorParams.positionManager = address(positionManagerV4);
+        initiatorParams.id = uint96(position.id);
+
+        // And: Closer is allowed as Asset Manager.
+        address[] memory assetManagers = new address[](1);
+        assetManagers[0] = address(closer);
+        bool[] memory statuses = new bool[](1);
+        statuses[0] = true;
+        vm.prank(users.accountOwner);
+        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
+
+        // And: Account info is set.
+        vm.prank(account.owner());
+        closer.setAccountInfo(address(account), initiator, MAX_CLAIM_FEE, "");
+
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_CLAIM_FEE));
+
+        // And: Liquidity might be (fully) decreased.
+        initiatorParams.liquidity = uint128(bound(initiatorParams.liquidity, 0, position.liquidity));
+
+        // And: Debt is repaid.
+        initiatorParams.maxRepayAmount = bound(initiatorParams.maxRepayAmount, 0, type(uint256).max);
+        initiatorParams.withdrawAmount = bound(
+            initiatorParams.withdrawAmount,
+            0,
+            initiatorParams.maxRepayAmount < 1e8 ? initiatorParams.maxRepayAmount : 1e8
+        );
+
+        // And: Position has debt.
+        debt = bound(debt, 1, 1e8);
+        lendingPoolMock.setDebt(address(account), debt);
+
+        // And: Position has fees.
+        feeSeed = uint256(bound(feeSeed, type(uint8).max, type(uint48).max));
+        generateFees(feeSeed, feeSeed);
+
+        // And: Account owns the position, has withdrawAmount of numeraire, and is a margin account.
+        vm.prank(users.liquidityProvider);
+        ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, users.accountOwner, position.id);
+        deal(address(token1), users.accountOwner, initiatorParams.withdrawAmount);
+        address[] memory assets_ = new address[](2);
+        uint256[] memory assetIds_ = new uint256[](2);
+        uint256[] memory assetAmounts_ = new uint256[](2);
+        assets_[0] = address(positionManagerV4);
+        assetIds_[0] = position.id;
+        assetAmounts_[0] = 1;
+        assets_[1] = address(token1);
+        assetIds_[1] = 0;
+        assetAmounts_[1] = initiatorParams.withdrawAmount;
+        vm.startPrank(users.accountOwner);
+        account.openMarginAccount(address(lendingPoolMock));
+        ERC721(address(positionManagerV4)).approve(address(account), position.id);
+        token1.approve(address(account), initiatorParams.withdrawAmount);
+        account.deposit(assets_, assetIds_, assetAmounts_);
+        vm.stopPrank();
+
+        // When: Calling close().
+        vm.prank(initiator);
+        closer.close(address(account), initiatorParams);
+
+        // Then: Debt should be reduced or stay the same.
+        assertLe(lendingPoolMock.debt(address(account)), debt);
+    }
+
+    function testFuzz_Success_close_IsNative_WithDebtRepayment(
+        uint256 feeSeed,
+        Closer.InitiatorParams memory initiatorParams,
+        address initiator,
+        uint128 liquidity,
+        uint256 debt
+    ) public {
+        // Given: Create token1 and add to Arcadia.
+        token1 = new ERC20Mock("TokenB", "TOKB", 0);
+        addAssetToArcadia(address(token1), int256(1e18));
+
+        // And: Create single ETH oracle and use it for both weth9 (erc20AM) and address(0) (nativeTokenAM).
+        {
+            ArcadiaOracle ethOracle = initMockedOracle(18, "ETH / USD", int256(1e18));
+            vm.startPrank(chainlinkOM.owner());
+            chainlinkOM.addOracle(address(ethOracle), "ETH", "USD", 2 days);
+            vm.stopPrank();
+
+            uint80[] memory oracleEthToUsdArr = new uint80[](1);
+            oracleEthToUsdArr[0] = uint80(chainlinkOM.oracleToOracleId(address(ethOracle)));
+
+            // Add weth9 via erc20AM using the ETH oracle.
+            vm.startPrank(registry.owner());
+            erc20AM.addAsset(address(weth9), BitPackingLib.pack(BA_TO_QA_SINGLE, oracleEthToUsdArr));
+            vm.stopPrank();
+
+            // Deploy native AM and add address(0) using the same ETH oracle.
+            vm.startPrank(users.owner);
+            nativeTokenAM = new NativeTokenAM(users.owner, address(registry), 18);
+            registry.addAssetModule(address(nativeTokenAM));
+            nativeTokenAM.addAsset(address(0), BitPackingLib.pack(BA_TO_QA_SINGLE, oracleEthToUsdArr));
+            vm.stopPrank();
+        }
+
+        // And: Create pool with native ETH.
+        poolKey = initializePoolV4(address(0), address(token1), 2 ** 96, address(0), POOL_FEE, TICK_SPACING);
+        mintPositionV4(
+            poolKey,
+            BOUND_TICK_LOWER / TICK_SPACING * TICK_SPACING,
+            BOUND_TICK_UPPER / TICK_SPACING * TICK_SPACING,
+            1e18,
+            type(uint128).max,
+            type(uint128).max,
+            users.liquidityProvider
+        );
+
+        // And: Deploy UniswapV4 AM.
+        deployUniswapV4AM();
+
+        // And: Lending pool and risk parameters. Numeraire is token1 (not native ETH).
+        LendingPoolMock lendingPoolMock = new LendingPoolMock(address(token1));
+        lendingPoolMock.setRiskManager(users.riskManager);
+        vm.startPrank(users.riskManager);
+        registry.setRiskParameters(address(lendingPoolMock), 0, 0, type(uint64).max);
+        registry.setRiskParametersOfPrimaryAsset(
+            address(lendingPoolMock), address(weth9), 0, type(uint112).max, 9000, 9500
+        );
+        registry.setRiskParametersOfPrimaryAsset(
+            address(lendingPoolMock), address(token1), 0, type(uint112).max, 9000, 9500
+        );
+        registry.setRiskParametersOfPrimaryAsset(address(lendingPoolMock), address(0), 0, type(uint112).max, 9000, 9500);
+        uniswapV4HooksRegistry.setRiskParametersOfDerivedAM(
+            address(lendingPoolMock), address(defaultUniswapV4AM), type(uint112).max, 10_000
+        );
+        vm.stopPrank();
+
+        // And: Create position with bounded liquidity.
+        liquidity = uint128(bound(liquidity, 1e10, 1e12));
+        uint256 positionId = mintPositionV4(
+            poolKey,
+            -10_000 / TICK_SPACING * TICK_SPACING,
+            10_000 / TICK_SPACING * TICK_SPACING,
+            liquidity,
+            type(uint128).max,
+            type(uint128).max,
+            users.liquidityProvider
+        );
+        initiatorParams.positionManager = address(positionManagerV4);
+        initiatorParams.id = uint96(positionId);
+
+        // And: Closer is allowed as Asset Manager.
+        address[] memory assetManagers = new address[](1);
+        assetManagers[0] = address(closer);
+        bool[] memory statuses = new bool[](1);
+        statuses[0] = true;
+        vm.prank(users.accountOwner);
+        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
+
+        // And: Account info is set.
+        vm.prank(account.owner());
+        closer.setAccountInfo(address(account), initiator, MAX_CLAIM_FEE, "");
+
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_CLAIM_FEE));
+
+        // And: Liquidity might be (fully) decreased.
+        initiatorParams.liquidity = uint128(bound(initiatorParams.liquidity, 0, liquidity));
+
+        // And: Debt is repaid.
+        initiatorParams.maxRepayAmount = bound(initiatorParams.maxRepayAmount, 0, type(uint256).max);
+        initiatorParams.withdrawAmount = bound(
+            initiatorParams.withdrawAmount,
+            0,
+            initiatorParams.maxRepayAmount < 1e8 ? initiatorParams.maxRepayAmount : 1e8
+        );
+
+        // And: Position has fees.
+        feeSeed = uint256(bound(feeSeed, type(uint8).max, type(uint48).max));
+        generateFees(feeSeed, feeSeed);
+
+        // And: Account owns the position, has withdrawAmount of numeraire (token1), and is a margin account.
+        {
+            vm.prank(users.liquidityProvider);
+            ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, users.accountOwner, positionId);
+            deal(address(token1), users.accountOwner, initiatorParams.withdrawAmount);
+            address[] memory assets_ = new address[](2);
+            uint256[] memory assetIds_ = new uint256[](2);
+            uint256[] memory assetAmounts_ = new uint256[](2);
+            assets_[0] = address(positionManagerV4);
+            assetIds_[0] = positionId;
+            assetAmounts_[0] = 1;
+            assets_[1] = address(token1);
+            assetIds_[1] = 0;
+            assetAmounts_[1] = initiatorParams.withdrawAmount;
+            vm.startPrank(users.accountOwner);
+            account.openMarginAccount(address(lendingPoolMock));
+            ERC721(address(positionManagerV4)).approve(address(account), positionId);
+            token1.approve(address(account), initiatorParams.withdrawAmount);
+            account.deposit(assets_, assetIds_, assetAmounts_);
+            vm.stopPrank();
+        }
+
+        // And: Debt is bounded by the collateral value to ensure account is healthy.
+        uint256 collateralValue = account.getCollateralValue();
+        debt = bound(debt, 1, collateralValue > 1 ? collateralValue - 1 : 1);
+        lendingPoolMock.setDebt(address(account), debt);
+
+        // When: Calling close().
+        vm.prank(initiator);
+        closer.close(address(account), initiatorParams);
+
+        // Then: Debt should be reduced or stay the same.
+        assertLe(lendingPoolMock.debt(address(account)), debt);
     }
 }

@@ -224,4 +224,36 @@ contract Close_Closer_Fuzz_Test is Closer_Fuzz_Test {
         vm.expectRevert(Closer.InvalidValue.selector);
         closer.close(address(account), initiatorParams);
     }
+
+    function testFuzz_Revert_close_InvalidNumeraire(
+        Closer.InitiatorParams memory initiatorParams,
+        uint256 maxClaimFee,
+        address initiator
+    ) public {
+        // Given: maxClaimFee is smaller or equal to 1e18.
+        maxClaimFee = uint64(bound(maxClaimFee, 0, 1e18));
+
+        // And: info is set.
+        vm.prank(account.owner());
+        closer.setAccountInfo(address(account), initiator, maxClaimFee, "");
+
+        // And: Position manager is valid.
+        closer.setReturnValue(true);
+
+        // And: claimFee is smaller or equal to maxClaimFee.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, maxClaimFee));
+
+        // And: withdrawAmount is smaller or equal to maxRepayAmount.
+        initiatorParams.maxRepayAmount = bound(initiatorParams.maxRepayAmount, 1, type(uint256).max);
+        initiatorParams.withdrawAmount = bound(initiatorParams.withdrawAmount, 0, initiatorParams.maxRepayAmount);
+
+        // And: Account does not have a margin account opened (numeraire is address(0)).
+        // This is the default state - no openMarginAccount() call.
+
+        // When: Initiator calls close with maxRepayAmount > 0 but no numeraire set.
+        // Then: it should revert.
+        vm.prank(initiator);
+        vm.expectRevert(Closer.InvalidNumeraire.selector);
+        closer.close(address(account), initiatorParams);
+    }
 }

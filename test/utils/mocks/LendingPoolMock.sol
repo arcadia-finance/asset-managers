@@ -18,15 +18,17 @@ contract LendingPoolMock is ILendingPool {
                                 STORAGE
     ////////////////////////////////////////////////////////////// */
 
-    ERC20 public asset;
-    mapping(address => uint256) public debt;
+    uint96 public minimumMargin;
 
     address public riskManager;
     address public numeraire;
     address public liquidator;
-    uint96 public minimumMargin;
-    mapping(uint256 => bool) public isValidVersion;
     address internal callbackAccount;
+
+    ERC20 public asset;
+
+    mapping(address => uint256) public debt;
+    mapping(uint256 => bool) public isValidVersion;
 
     /* //////////////////////////////////////////////////////////////
                                 ERRORS
@@ -49,7 +51,7 @@ contract LendingPoolMock is ILendingPool {
     }
 
     /* //////////////////////////////////////////////////////////////
-                        ILENDINGPOOL FUNCTIONS
+                        LENDINGPOOL FUNCTIONS
     ////////////////////////////////////////////////////////////// */
 
     function setDebt(address account, uint256 debt_) external {
@@ -69,7 +71,7 @@ contract LendingPoolMock is ILendingPool {
     }
 
     /* //////////////////////////////////////////////////////////////
-                        ICREDITOR FUNCTIONS
+                        CREDITOR FUNCTIONS
     ////////////////////////////////////////////////////////////// */
 
     function openMarginAccount(uint256) external view returns (bool, address, address, uint256) {

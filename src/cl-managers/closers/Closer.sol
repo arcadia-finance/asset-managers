@@ -80,6 +80,7 @@ abstract contract Closer is IActionBase, AbstractBase, Guardian {
 
     error InvalidAccountVersion();
     error InvalidInitiator();
+    error InvalidNumeraire();
     error InvalidPositionManager();
     error InvalidValue();
     error NotAnAccount();
@@ -194,7 +195,12 @@ abstract contract Closer is IActionBase, AbstractBase, Guardian {
         if (initiatorParams.claimFee > accountInfo[account_].maxClaimFee) revert InvalidValue();
         if (initiatorParams.withdrawAmount > initiatorParams.maxRepayAmount) revert InvalidValue();
 
-        address numeraire = IAccount(account_).numeraire();
+        // If numeraire has to be withdrawn from the account, a numeraire must have been set.
+        address numeraire;
+        if (initiatorParams.maxRepayAmount > 0) {
+            numeraire = IAccount(account_).numeraire();
+            if (numeraire == address(0)) revert InvalidNumeraire();
+        }
 
         // Encode data for the flash-action.
         bytes memory actionData = ArcadiaLogic._encodeAction(

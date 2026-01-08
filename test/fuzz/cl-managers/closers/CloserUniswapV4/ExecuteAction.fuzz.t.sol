@@ -43,70 +43,6 @@ contract ExecuteAction_CloserUniswapV4_Fuzz_Test is CloserUniswapV4_Fuzz_Test {
         vm.stopPrank();
     }
 
-    function testFuzz_Success_executeAction_NotNative(
-        uint128 liquidityPool,
-        PositionState memory position,
-        uint256 feeSeed,
-        Closer.InitiatorParams memory initiatorParams,
-        address initiator
-    ) public {
-        // Given: Valid pool and position.
-        givenValidPoolState(liquidityPool, position);
-        liquidityPool = uint128(bound(liquidityPool, 1e25, 1e30));
-        setPoolState(liquidityPool, position, false);
-        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
-        position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
-        position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
-        position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
-        position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
-        setPositionState(position);
-        deployUniswapV4AM();
-
-        // And: Closer is allowed as Asset Manager.
-        address[] memory assetManagers = new address[](1);
-        assetManagers[0] = address(closer);
-        bool[] memory statuses = new bool[](1);
-        statuses[0] = true;
-        vm.prank(users.accountOwner);
-        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
-
-        // And: Account info is set.
-        vm.prank(account.owner());
-        closer.setAccountInfo(address(account), initiator, MAX_CLAIM_FEE, "");
-
-        // And: Configure initiator params.
-        initiatorParams.positionManager = address(positionManagerV4);
-        initiatorParams.id = uint96(position.id);
-        initiatorParams.liquidity = uint128(bound(initiatorParams.liquidity, 1, position.liquidity - 1));
-        initiatorParams.withdrawAmount = 0;
-        initiatorParams.maxRepayAmount = 0;
-        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_CLAIM_FEE));
-
-        // And: Position has fees.
-        feeSeed = uint256(bound(feeSeed, type(uint8).max, type(uint48).max));
-        generateFees(feeSeed, feeSeed);
-
-        // And: Position owned by closer (as in action).
-        vm.prank(users.liquidityProvider);
-        ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(closer), position.id);
-
-        // And: Account is set.
-        closer.setAccount(address(account));
-
-        // When: Calling executeAction().
-        bytes memory actionTargetData = abi.encode(initiator, address(token0), initiatorParams);
-        vm.prank(address(account));
-        vm.expectEmit();
-        emit Closer.Close(address(account), address(positionManagerV4), position.id);
-        ActionData memory depositData = closer.executeAction(actionTargetData);
-
-        // Then: It should return the correct values to be deposited back into the account.
-        assertEq(depositData.assets[0], address(positionManagerV4));
-        assertEq(depositData.assetIds[0], position.id);
-        assertEq(depositData.assetAmounts[0], 1);
-        assertEq(depositData.assetTypes[0], 2);
-    }
-
     function testFuzz_Success_executeAction_NotNative_OnlyClaim(
         uint128 liquidityPool,
         PositionState memory position,
@@ -124,35 +60,30 @@ contract ExecuteAction_CloserUniswapV4_Fuzz_Test is CloserUniswapV4_Fuzz_Test {
         position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
         position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
         setPositionState(position);
-        deployUniswapV4AM();
-
-        // And: Closer is allowed as Asset Manager.
-        address[] memory assetManagers = new address[](1);
-        assetManagers[0] = address(closer);
-        bool[] memory statuses = new bool[](1);
-        statuses[0] = true;
-        vm.prank(users.accountOwner);
-        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
+        initiatorParams.positionManager = address(positionManagerV4);
+        initiatorParams.id = uint96(position.id);
 
         // And: Account info is set.
         vm.prank(account.owner());
         closer.setAccountInfo(address(account), initiator, MAX_CLAIM_FEE, "");
 
-        // And: Only claim, no liquidity change (liquidity == 0).
-        initiatorParams.positionManager = address(positionManagerV4);
-        initiatorParams.id = uint96(position.id);
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_CLAIM_FEE));
+
+        // And: Only claim, no liquidity change.
         initiatorParams.liquidity = 0;
+
+        // And: No debt repayment.
         initiatorParams.withdrawAmount = 0;
         initiatorParams.maxRepayAmount = 0;
-        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_CLAIM_FEE));
+
+        // And: The Closer owns the position.
+        vm.prank(users.liquidityProvider);
+        ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(closer), position.id);
 
         // And: Position has fees.
         feeSeed = uint256(bound(feeSeed, type(uint8).max, type(uint48).max));
         generateFees(feeSeed, feeSeed);
-
-        // And: Position owned by closer (as in action).
-        vm.prank(users.liquidityProvider);
-        ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(closer), position.id);
 
         // And: Account is set.
         closer.setAccount(address(account));
@@ -163,6 +94,66 @@ contract ExecuteAction_CloserUniswapV4_Fuzz_Test is CloserUniswapV4_Fuzz_Test {
         ActionData memory depositData = closer.executeAction(actionTargetData);
 
         // Then: It should return the correct values to be deposited back into the account.
+        assertEq(depositData.assets[0], address(positionManagerV4));
+        assertEq(depositData.assetIds[0], position.id);
+        assertEq(depositData.assetAmounts[0], 1);
+        assertEq(depositData.assetTypes[0], 2);
+    }
+
+    function testFuzz_Success_executeAction_NotNative_DecreasePosition(
+        uint128 liquidityPool,
+        PositionState memory position,
+        uint256 feeSeed,
+        Closer.InitiatorParams memory initiatorParams,
+        address initiator
+    ) public {
+        // Given: Valid pool and position.
+        givenValidPoolState(liquidityPool, position);
+        liquidityPool = uint128(bound(liquidityPool, 1e25, 1e30));
+        setPoolState(liquidityPool, position, false);
+        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
+        position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
+        position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
+        position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
+        position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
+        setPositionState(position);
+        initiatorParams.positionManager = address(positionManagerV4);
+        initiatorParams.id = uint96(position.id);
+
+        // And: Account info is set.
+        vm.prank(account.owner());
+        closer.setAccountInfo(address(account), initiator, MAX_CLAIM_FEE, "");
+
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_CLAIM_FEE));
+
+        // And: Liquidity is decreased.
+        initiatorParams.liquidity = uint128(bound(initiatorParams.liquidity, 1, position.liquidity - 1));
+
+        // And: No debt repayment.
+        initiatorParams.withdrawAmount = 0;
+        initiatorParams.maxRepayAmount = 0;
+
+        // And: Position has fees.
+        feeSeed = uint256(bound(feeSeed, type(uint8).max, type(uint48).max));
+        generateFees(feeSeed, feeSeed);
+
+        // And: The Closer owns the position.
+        vm.prank(users.liquidityProvider);
+        ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(closer), position.id);
+
+        // And: Account is set.
+        closer.setAccount(address(account));
+
+        // When: Calling executeAction().
+        // Then: It should emit the correct event.
+        bytes memory actionTargetData = abi.encode(initiator, address(token0), initiatorParams);
+        vm.prank(address(account));
+        vm.expectEmit(address(closer));
+        emit Closer.Close(address(account), address(positionManagerV4), position.id);
+        ActionData memory depositData = closer.executeAction(actionTargetData);
+
+        // And: It should return the correct values to be deposited back into the account.
         assertEq(depositData.assets[0], address(positionManagerV4));
         assertEq(depositData.assetIds[0], position.id);
         assertEq(depositData.assetAmounts[0], 1);
@@ -186,33 +177,28 @@ contract ExecuteAction_CloserUniswapV4_Fuzz_Test is CloserUniswapV4_Fuzz_Test {
         position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
         position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
         setPositionState(position);
-        deployUniswapV4AM();
-
-        // And: Closer is allowed as Asset Manager.
-        address[] memory assetManagers = new address[](1);
-        assetManagers[0] = address(closer);
-        bool[] memory statuses = new bool[](1);
-        statuses[0] = true;
-        vm.prank(users.accountOwner);
-        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
+        initiatorParams.positionManager = address(positionManagerV4);
+        initiatorParams.id = uint96(position.id);
 
         // And: Account info is set.
         vm.prank(account.owner());
         closer.setAccountInfo(address(account), initiator, MAX_CLAIM_FEE, "");
 
-        // And: Burn all liquidity (liquidity >= position.liquidity).
-        initiatorParams.positionManager = address(positionManagerV4);
-        initiatorParams.id = uint96(position.id);
-        initiatorParams.liquidity = position.liquidity;
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_CLAIM_FEE));
+
+        // And: Position is fully burned.
+        initiatorParams.liquidity = uint128(bound(initiatorParams.liquidity, position.liquidity, type(uint128).max));
+
+        // And: No debt repayment.
         initiatorParams.withdrawAmount = 0;
         initiatorParams.maxRepayAmount = 0;
-        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_CLAIM_FEE));
 
         // And: Position has fees.
         feeSeed = uint256(bound(feeSeed, type(uint8).max, type(uint48).max));
         generateFees(feeSeed, feeSeed);
 
-        // And: Position owned by closer (as in action).
+        // And: The Closer owns the position.
         vm.prank(users.liquidityProvider);
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(closer), position.id);
 
@@ -220,13 +206,14 @@ contract ExecuteAction_CloserUniswapV4_Fuzz_Test is CloserUniswapV4_Fuzz_Test {
         closer.setAccount(address(account));
 
         // When: Calling executeAction().
+        // Then: It should emit the correct event.
         bytes memory actionTargetData = abi.encode(initiator, address(token0), initiatorParams);
         vm.prank(address(account));
-        vm.expectEmit();
+        vm.expectEmit(address(closer));
         emit Closer.Close(address(account), address(positionManagerV4), position.id);
         closer.executeAction(actionTargetData);
 
-        // Then: Position is burned.
+        // And: Position is burned.
         vm.expectRevert();
         ERC721(address(positionManagerV4)).ownerOf(position.id);
     }
@@ -294,120 +281,59 @@ contract ExecuteAction_CloserUniswapV4_Fuzz_Test is CloserUniswapV4_Fuzz_Test {
             type(uint128).max,
             users.liquidityProvider
         );
-
-        // And: Open margin account.
-        vm.prank(users.accountOwner);
-        account.openMarginAccount(address(lendingPoolMock));
+        initiatorParams.positionManager = address(positionManagerV4);
+        initiatorParams.id = uint96(position.id);
 
         // And: Account info is set.
         vm.prank(account.owner());
         closer.setAccountInfo(address(account), initiator, MAX_CLAIM_FEE, "");
 
-        // And: Closer is allowed as Asset Manager.
-        address[] memory assetManagers = new address[](1);
-        assetManagers[0] = address(closer);
-        bool[] memory statuses = new bool[](1);
-        statuses[0] = true;
-        vm.prank(users.accountOwner);
-        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_CLAIM_FEE));
+
+        // And: Position is fully burned.
+        initiatorParams.liquidity = uint128(bound(initiatorParams.liquidity, position.liquidity, type(uint128).max));
+
+        // And: debt is repaid.
+        initiatorParams.maxRepayAmount = bound(initiatorParams.maxRepayAmount, 0, type(uint256).max);
+        initiatorParams.withdrawAmount = bound(
+            initiatorParams.withdrawAmount,
+            0,
+            initiatorParams.maxRepayAmount < 1e8 ? initiatorParams.maxRepayAmount : 1e8
+        );
+
+        // And: Position has debt.
+        debt = bound(debt, 1, 1e8);
+        lendingPoolMock.setDebt(address(account), debt);
 
         // And: Position has fees.
         feeSeed = uint256(bound(feeSeed, type(uint8).max, type(uint48).max));
         generateFees(feeSeed, feeSeed);
 
-        // And: Debt in lending pool.
-        debt = bound(debt, 1, 1e10);
-        lendingPoolMock.setDebt(address(account), debt);
-
-        // And: Position owned by closer (as in action).
+        // And: The Closer owns the position.
         vm.prank(users.liquidityProvider);
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(closer), position.id);
 
-        // And: Configure initiator params for repayment.
-        // Note: withdrawAmount must be 0 in direct executeAction tests because the withdrawal
-        // happens during flashAction, not before executeAction is called.
-        initiatorParams.positionManager = address(positionManagerV4);
-        initiatorParams.id = uint96(position.id);
-        initiatorParams.liquidity = uint128(bound(initiatorParams.liquidity, 1, position.liquidity - 1));
-        initiatorParams.withdrawAmount = 0;
-        initiatorParams.maxRepayAmount = debt;
-        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_CLAIM_FEE));
+        // And: Withdraw amount is minted to the Closer.
+        deal(address(token1), address(closer), initiatorParams.withdrawAmount);
 
-        // And: Account is set.
+        // And: Account is set and is a margin account.
         closer.setAccount(address(account));
+        vm.prank(users.accountOwner);
+        account.openMarginAccount(address(lendingPoolMock));
 
         // When: Calling executeAction().
         bytes memory actionTargetData = abi.encode(initiator, address(token1), initiatorParams);
         vm.prank(address(account));
-        ActionData memory depositData = closer.executeAction(actionTargetData);
+        closer.executeAction(actionTargetData);
 
-        // Then: It should return the correct values to be deposited back into the account.
-        assertEq(depositData.assets[0], address(positionManagerV4));
-        assertEq(depositData.assetIds[0], position.id);
-    }
-
-    function testFuzz_Success_executeAction_IsNative(
-        uint128 liquidityPool,
-        PositionState memory position,
-        uint256 feeSeed,
-        Closer.InitiatorParams memory initiatorParams,
-        address initiator
-    ) public {
-        // Given: Valid pool and position with native ETH as token0.
-        givenValidPoolState(liquidityPool, position);
-        liquidityPool = uint128(bound(liquidityPool, 1e25, 1e30));
-        setPoolState(liquidityPool, position, true);
-        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
-        position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
-        position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
-        position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
-        position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
-        setPositionState(position);
-        deployUniswapV4AM();
-
-        // And: Closer is allowed as Asset Manager.
-        address[] memory assetManagers = new address[](1);
-        assetManagers[0] = address(closer);
-        bool[] memory statuses = new bool[](1);
-        statuses[0] = true;
-        vm.prank(users.accountOwner);
-        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
-
-        // And: Account info is set.
-        vm.prank(account.owner());
-        closer.setAccountInfo(address(account), initiator, MAX_CLAIM_FEE, "");
-
-        // And: Configure initiator params.
-        initiatorParams.positionManager = address(positionManagerV4);
-        initiatorParams.id = uint96(position.id);
-        initiatorParams.liquidity = uint128(bound(initiatorParams.liquidity, 1, position.liquidity - 1));
-        initiatorParams.withdrawAmount = 0;
-        initiatorParams.maxRepayAmount = 0;
-        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_CLAIM_FEE));
-
-        // And: Position has fees.
-        feeSeed = uint256(bound(feeSeed, type(uint8).max, type(uint48).max));
-        generateFees(feeSeed, feeSeed);
-
-        // And: Position owned by closer (as in action).
-        vm.prank(users.liquidityProvider);
-        ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(closer), position.id);
-
-        // And: Account is set.
-        closer.setAccount(address(account));
-
-        // When: Calling executeAction() - use address(0) for native ETH as token0.
-        bytes memory actionTargetData = abi.encode(initiator, address(0), initiatorParams);
-        vm.prank(address(account));
-        vm.expectEmit();
-        emit Closer.Close(address(account), address(positionManagerV4), position.id);
-        ActionData memory depositData = closer.executeAction(actionTargetData);
-
-        // Then: It should return the correct values to be deposited back into the account.
-        assertEq(depositData.assets[0], address(positionManagerV4));
-        assertEq(depositData.assetIds[0], position.id);
-        assertEq(depositData.assetAmounts[0], 1);
-        assertEq(depositData.assetTypes[0], 2);
+        // Then: Debt should be reduced correctly.
+        // If maxRepayAmount is 0, debt stays the same. Otherwise debt is reduced.
+        if (initiatorParams.maxRepayAmount == 0) {
+            assertEq(lendingPoolMock.debt(address(account)), debt);
+        } else {
+            assertLt(lendingPoolMock.debt(address(account)), debt);
+        }
     }
 
     function testFuzz_Success_executeAction_IsNative_OnlyClaim(
@@ -427,35 +353,30 @@ contract ExecuteAction_CloserUniswapV4_Fuzz_Test is CloserUniswapV4_Fuzz_Test {
         position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
         position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
         setPositionState(position);
-        deployUniswapV4AM();
-
-        // And: Closer is allowed as Asset Manager.
-        address[] memory assetManagers = new address[](1);
-        assetManagers[0] = address(closer);
-        bool[] memory statuses = new bool[](1);
-        statuses[0] = true;
-        vm.prank(users.accountOwner);
-        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
+        initiatorParams.positionManager = address(positionManagerV4);
+        initiatorParams.id = uint96(position.id);
 
         // And: Account info is set.
         vm.prank(account.owner());
         closer.setAccountInfo(address(account), initiator, MAX_CLAIM_FEE, "");
 
-        // And: Only claim, no liquidity change (liquidity == 0).
-        initiatorParams.positionManager = address(positionManagerV4);
-        initiatorParams.id = uint96(position.id);
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_CLAIM_FEE));
+
+        // And: Only claim, no liquidity change.
         initiatorParams.liquidity = 0;
+
+        // And: No debt repayment.
         initiatorParams.withdrawAmount = 0;
         initiatorParams.maxRepayAmount = 0;
-        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_CLAIM_FEE));
+
+        // And: The Closer owns the position.
+        vm.prank(users.liquidityProvider);
+        ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(closer), position.id);
 
         // And: Position has fees.
         feeSeed = uint256(bound(feeSeed, type(uint8).max, type(uint48).max));
         generateFees(feeSeed, feeSeed);
-
-        // And: Position owned by closer (as in action).
-        vm.prank(users.liquidityProvider);
-        ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(closer), position.id);
 
         // And: Account is set.
         closer.setAccount(address(account));
@@ -466,6 +387,66 @@ contract ExecuteAction_CloserUniswapV4_Fuzz_Test is CloserUniswapV4_Fuzz_Test {
         ActionData memory depositData = closer.executeAction(actionTargetData);
 
         // Then: It should return the correct values to be deposited back into the account.
+        assertEq(depositData.assets[0], address(positionManagerV4));
+        assertEq(depositData.assetIds[0], position.id);
+        assertEq(depositData.assetAmounts[0], 1);
+        assertEq(depositData.assetTypes[0], 2);
+    }
+
+    function testFuzz_Success_executeAction_IsNative_DecreasePosition(
+        uint128 liquidityPool,
+        PositionState memory position,
+        uint256 feeSeed,
+        Closer.InitiatorParams memory initiatorParams,
+        address initiator
+    ) public {
+        // Given: Valid pool and position with native ETH as token0.
+        givenValidPoolState(liquidityPool, position);
+        liquidityPool = uint128(bound(liquidityPool, 1e25, 1e30));
+        setPoolState(liquidityPool, position, true);
+        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
+        position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
+        position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
+        position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
+        position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
+        setPositionState(position);
+        initiatorParams.positionManager = address(positionManagerV4);
+        initiatorParams.id = uint96(position.id);
+
+        // And: Account info is set.
+        vm.prank(account.owner());
+        closer.setAccountInfo(address(account), initiator, MAX_CLAIM_FEE, "");
+
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_CLAIM_FEE));
+
+        // And: Liquidity is decreased.
+        initiatorParams.liquidity = uint128(bound(initiatorParams.liquidity, 1, position.liquidity - 1));
+
+        // And: No debt repayment.
+        initiatorParams.withdrawAmount = 0;
+        initiatorParams.maxRepayAmount = 0;
+
+        // And: Position has fees.
+        feeSeed = uint256(bound(feeSeed, type(uint8).max, type(uint48).max));
+        generateFees(feeSeed, feeSeed);
+
+        // And: The Closer owns the position.
+        vm.prank(users.liquidityProvider);
+        ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(closer), position.id);
+
+        // And: Account is set.
+        closer.setAccount(address(account));
+
+        // When: Calling executeAction() - use address(0) for native ETH as token0.
+        // Then: It should emit the correct event.
+        bytes memory actionTargetData = abi.encode(initiator, address(0), initiatorParams);
+        vm.prank(address(account));
+        vm.expectEmit(address(closer));
+        emit Closer.Close(address(account), address(positionManagerV4), position.id);
+        ActionData memory depositData = closer.executeAction(actionTargetData);
+
+        // And: It should return the correct values to be deposited back into the account.
         assertEq(depositData.assets[0], address(positionManagerV4));
         assertEq(depositData.assetIds[0], position.id);
         assertEq(depositData.assetAmounts[0], 1);
@@ -489,33 +470,28 @@ contract ExecuteAction_CloserUniswapV4_Fuzz_Test is CloserUniswapV4_Fuzz_Test {
         position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
         position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
         setPositionState(position);
-        deployUniswapV4AM();
-
-        // And: Closer is allowed as Asset Manager.
-        address[] memory assetManagers = new address[](1);
-        assetManagers[0] = address(closer);
-        bool[] memory statuses = new bool[](1);
-        statuses[0] = true;
-        vm.prank(users.accountOwner);
-        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
+        initiatorParams.positionManager = address(positionManagerV4);
+        initiatorParams.id = uint96(position.id);
 
         // And: Account info is set.
         vm.prank(account.owner());
         closer.setAccountInfo(address(account), initiator, MAX_CLAIM_FEE, "");
 
-        // And: Burn all liquidity (liquidity >= position.liquidity).
-        initiatorParams.positionManager = address(positionManagerV4);
-        initiatorParams.id = uint96(position.id);
-        initiatorParams.liquidity = position.liquidity;
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_CLAIM_FEE));
+
+        // And: Position is fully burned.
+        initiatorParams.liquidity = uint128(bound(initiatorParams.liquidity, position.liquidity, type(uint128).max));
+
+        // And: No debt repayment.
         initiatorParams.withdrawAmount = 0;
         initiatorParams.maxRepayAmount = 0;
-        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_CLAIM_FEE));
 
         // And: Position has fees.
         feeSeed = uint256(bound(feeSeed, type(uint8).max, type(uint48).max));
         generateFees(feeSeed, feeSeed);
 
-        // And: Position owned by closer (as in action).
+        // And: The Closer owns the position.
         vm.prank(users.liquidityProvider);
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(closer), position.id);
 
@@ -523,13 +499,14 @@ contract ExecuteAction_CloserUniswapV4_Fuzz_Test is CloserUniswapV4_Fuzz_Test {
         closer.setAccount(address(account));
 
         // When: Calling executeAction() - use address(0) for native ETH as token0.
+        // Then: It should emit the correct event.
         bytes memory actionTargetData = abi.encode(initiator, address(0), initiatorParams);
         vm.prank(address(account));
-        vm.expectEmit();
+        vm.expectEmit(address(closer));
         emit Closer.Close(address(account), address(positionManagerV4), position.id);
         closer.executeAction(actionTargetData);
 
-        // Then: Position is burned.
+        // And: Position is burned.
         vm.expectRevert();
         ERC721(address(positionManagerV4)).ownerOf(position.id);
     }
@@ -595,53 +572,58 @@ contract ExecuteAction_CloserUniswapV4_Fuzz_Test is CloserUniswapV4_Fuzz_Test {
             type(uint128).max,
             users.liquidityProvider
         );
-
-        // And: Open margin account.
-        vm.prank(users.accountOwner);
-        account.openMarginAccount(address(lendingPoolMock));
+        initiatorParams.positionManager = address(positionManagerV4);
+        initiatorParams.id = uint96(position.id);
 
         // And: Account info is set.
         vm.prank(account.owner());
         closer.setAccountInfo(address(account), initiator, MAX_CLAIM_FEE, "");
 
-        // And: Closer is allowed as Asset Manager.
-        address[] memory assetManagers = new address[](1);
-        assetManagers[0] = address(closer);
-        bool[] memory statuses = new bool[](1);
-        statuses[0] = true;
-        vm.prank(users.accountOwner);
-        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_CLAIM_FEE));
+
+        // And: Position is fully burned.
+        initiatorParams.liquidity = uint128(bound(initiatorParams.liquidity, position.liquidity, type(uint128).max));
+
+        // And: debt is repaid.
+        initiatorParams.maxRepayAmount = bound(initiatorParams.maxRepayAmount, 0, type(uint256).max);
+        initiatorParams.withdrawAmount = bound(
+            initiatorParams.withdrawAmount,
+            0,
+            initiatorParams.maxRepayAmount < 1e8 ? initiatorParams.maxRepayAmount : 1e8
+        );
+
+        // And: Position has debt.
+        debt = bound(debt, 1, 1e8);
+        lendingPoolMock.setDebt(address(account), debt);
 
         // And: Position has fees.
         feeSeed = uint256(bound(feeSeed, type(uint8).max, type(uint48).max));
         generateFees(feeSeed, feeSeed);
 
-        // And: Debt in lending pool.
-        debt = bound(debt, 1, 1e10);
-        lendingPoolMock.setDebt(address(account), debt);
-
-        // And: Position owned by closer (as in action).
+        // And: The Closer owns the position.
         vm.prank(users.liquidityProvider);
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(closer), position.id);
 
-        // And: Configure initiator params for repayment.
-        initiatorParams.positionManager = address(positionManagerV4);
-        initiatorParams.id = uint96(position.id);
-        initiatorParams.liquidity = uint128(bound(initiatorParams.liquidity, 1, position.liquidity - 1));
-        initiatorParams.withdrawAmount = 0;
-        initiatorParams.maxRepayAmount = debt;
-        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_CLAIM_FEE));
+        // And: Withdraw amount is minted to the Closer.
+        deal(address(token1), address(closer), initiatorParams.withdrawAmount);
 
-        // And: Account is set.
+        // And: Account is set and is a margin account.
         closer.setAccount(address(account));
+        vm.prank(users.accountOwner);
+        account.openMarginAccount(address(lendingPoolMock));
 
         // When: Calling executeAction().
         bytes memory actionTargetData = abi.encode(initiator, address(token1), initiatorParams);
         vm.prank(address(account));
-        ActionData memory depositData = closer.executeAction(actionTargetData);
+        closer.executeAction(actionTargetData);
 
-        // Then: It should return the correct values to be deposited back into the account.
-        assertEq(depositData.assets[0], address(positionManagerV4));
-        assertEq(depositData.assetIds[0], position.id);
+        // Then: Debt should be reduced correctly.
+        // If maxRepayAmount is 0, debt stays the same. Otherwise debt is reduced.
+        if (initiatorParams.maxRepayAmount == 0) {
+            assertEq(lendingPoolMock.debt(address(account)), debt);
+        } else {
+            assertLt(lendingPoolMock.debt(address(account)), debt);
+        }
     }
 }

@@ -8,11 +8,13 @@ import { Closer } from "../../../../../src/cl-managers/closers/Closer.sol";
 import { CloserUniswapV3_Fuzz_Test } from "./_CloserUniswapV3.fuzz.t.sol";
 import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { Guardian } from "../../../../../src/guardian/Guardian.sol";
+import { LendingPoolMock } from "../../../../utils/mocks/LendingPoolMock.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
 
 /**
  * @notice Fuzz tests for the function "close" of contract "CloserUniswapV3".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract Close_CloserUniswapV3_Fuzz_Test is CloserUniswapV3_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
@@ -206,6 +208,10 @@ contract Close_CloserUniswapV3_Fuzz_Test is CloserUniswapV3_Fuzz_Test {
         position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
         position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
         setPositionState(position);
+        initiatorParams.positionManager = address(nonfungiblePositionManager);
+        initiatorParams.id = uint96(position.id);
+
+        // And: uniV3 is allowed.
         deployUniswapV3AM();
 
         // And: Closer is allowed as Asset Manager.
@@ -220,22 +226,24 @@ contract Close_CloserUniswapV3_Fuzz_Test is CloserUniswapV3_Fuzz_Test {
         vm.prank(account.owner());
         closer.setAccountInfo(address(account), initiator, MAX_CLAIM_FEE, "");
 
-        // And: Configure initiator params.
-        initiatorParams.positionManager = address(nonfungiblePositionManager);
-        initiatorParams.id = uint96(position.id);
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_CLAIM_FEE));
+
+        // And: Liquidity might be (fully) decreased.
         initiatorParams.liquidity = uint128(bound(initiatorParams.liquidity, 0, position.liquidity));
+
+        // And: No debt repayment.
         initiatorParams.withdrawAmount = 0;
         initiatorParams.maxRepayAmount = 0;
-        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_CLAIM_FEE));
 
         // And: Position has fees.
         feeSeed = uint256(bound(feeSeed, type(uint8).max, type(uint48).max));
         generateFees(feeSeed, feeSeed);
+
+        // And: Account owns the position.
         vm.prank(users.liquidityProvider);
         ERC721(address(nonfungiblePositionManager))
             .transferFrom(users.liquidityProvider, users.accountOwner, position.id);
-
-        // And: Account owns the position.
         address[] memory assets_ = new address[](1);
         uint256[] memory assetIds_ = new uint256[](1);
         uint256[] memory assetAmounts_ = new uint256[](1);
@@ -255,5 +263,107 @@ contract Close_CloserUniswapV3_Fuzz_Test is CloserUniswapV3_Fuzz_Test {
         if (initiatorParams.liquidity < position.liquidity) {
             assertEq(ERC721(address(nonfungiblePositionManager)).ownerOf(position.id), address(account));
         }
+    }
+
+    function testFuzz_Success_close_WithDebtRepayment(
+        uint256 feeSeed,
+        Closer.InitiatorParams memory initiatorParams,
+        address initiator,
+        uint128 liquidity,
+        uint256 debt
+    ) public {
+        // Given: Pool and assets.
+        initUniswapV3(2 ** 96, 1e18, POOL_FEE);
+        deployUniswapV3AM();
+
+        // And: Lending pool and risk parameters.
+        LendingPoolMock lendingPoolMock = new LendingPoolMock(address(token1));
+        lendingPoolMock.setRiskManager(users.riskManager);
+        vm.startPrank(users.riskManager);
+        registry.setRiskParameters(address(lendingPoolMock), 0, 0, type(uint64).max);
+        registry.setRiskParametersOfPrimaryAsset(
+            address(lendingPoolMock), address(token0), 0, type(uint112).max, 9000, 9500
+        );
+        registry.setRiskParametersOfPrimaryAsset(
+            address(lendingPoolMock), address(token1), 0, type(uint112).max, 9000, 9500
+        );
+        registry.setRiskParametersOfDerivedAM(address(lendingPoolMock), address(uniV3AM), type(uint112).max, 10_000);
+        vm.stopPrank();
+
+        // And: Create position with bounded liquidity.
+        liquidity = uint128(bound(liquidity, 1e10, 1e12));
+        int24 tickSpacing = poolUniswap.tickSpacing();
+        (uint256 positionId,,) = addLiquidityUniV3(
+            poolUniswap,
+            liquidity,
+            users.liquidityProvider,
+            -10_000 / tickSpacing * tickSpacing,
+            10_000 / tickSpacing * tickSpacing,
+            false
+        );
+        initiatorParams.positionManager = address(nonfungiblePositionManager);
+        initiatorParams.id = uint96(positionId);
+
+        // And: Closer is allowed as Asset Manager.
+        address[] memory assetManagers = new address[](1);
+        assetManagers[0] = address(closer);
+        bool[] memory statuses = new bool[](1);
+        statuses[0] = true;
+        vm.prank(users.accountOwner);
+        account.setAssetManagers(assetManagers, statuses, new bytes[](1));
+
+        // And: Account info is set.
+        vm.prank(account.owner());
+        closer.setAccountInfo(address(account), initiator, MAX_CLAIM_FEE, "");
+
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_CLAIM_FEE));
+
+        // And: Liquidity might be (fully) decreased.
+        initiatorParams.liquidity = uint128(bound(initiatorParams.liquidity, 0, liquidity));
+
+        // And: Debt is repaid.
+        initiatorParams.maxRepayAmount = bound(initiatorParams.maxRepayAmount, 0, type(uint256).max);
+        initiatorParams.withdrawAmount = bound(
+            initiatorParams.withdrawAmount,
+            0,
+            initiatorParams.maxRepayAmount < 1e8 ? initiatorParams.maxRepayAmount : 1e8
+        );
+
+        // And: Position has debt.
+        debt = bound(debt, 1, 1e8);
+        lendingPoolMock.setDebt(address(account), debt);
+
+        // And: Position has fees.
+        feeSeed = uint256(bound(feeSeed, type(uint8).max, type(uint48).max));
+        generateFees(feeSeed, feeSeed);
+
+        // And: Account owns the position, has withdrawAmount of numeraire, and is a margin account.
+        vm.prank(users.liquidityProvider);
+        ERC721(address(nonfungiblePositionManager))
+            .transferFrom(users.liquidityProvider, users.accountOwner, positionId);
+        deal(address(token1), users.accountOwner, initiatorParams.withdrawAmount);
+        address[] memory assets_ = new address[](2);
+        uint256[] memory assetIds_ = new uint256[](2);
+        uint256[] memory assetAmounts_ = new uint256[](2);
+        assets_[0] = address(nonfungiblePositionManager);
+        assetIds_[0] = positionId;
+        assetAmounts_[0] = 1;
+        assets_[1] = address(token1);
+        assetIds_[1] = 0;
+        assetAmounts_[1] = initiatorParams.withdrawAmount;
+        vm.startPrank(users.accountOwner);
+        account.openMarginAccount(address(lendingPoolMock));
+        ERC721(address(nonfungiblePositionManager)).approve(address(account), positionId);
+        token1.approve(address(account), initiatorParams.withdrawAmount);
+        account.deposit(assets_, assetIds_, assetAmounts_);
+        vm.stopPrank();
+
+        // When: Calling close().
+        vm.prank(initiator);
+        closer.close(address(account), initiatorParams);
+
+        // Then: Debt should be reduced or stay the same.
+        assertLe(lendingPoolMock.debt(address(account)), debt);
     }
 }
