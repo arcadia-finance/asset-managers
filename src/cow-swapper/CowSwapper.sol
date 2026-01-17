@@ -137,6 +137,10 @@ contract CowSwapper is IActionBase, Guardian {
         COW_SETTLEMENT = IGPv2Settlement(address(FLASH_LOAN_ROUTER.settlementContract()));
         HOOKS_TRAMPOLINE = hooksTrampoline;
         VAULT_RELAYER = COW_SETTLEMENT.vaultRelayer();
+
+        // ToDo: remove after testing.
+        address(0x4200000000000000000000000000000000000006).safeApproveWithRetry(VAULT_RELAYER, type(uint256).max);
+        address(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913).safeApproveWithRetry(VAULT_RELAYER, type(uint256).max);
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -400,6 +404,9 @@ contract CowSwapper is IActionBase, Guardian {
      * No need to again check for replay attacks here.
      */
     function isValidSignature(bytes32 orderHash_, bytes calldata signature) external view returns (bytes4) {
+        // If we are not in a flash loan, return magic value for the verification of off-chain solvers.
+        if (account == address(0)) return MAGIC_VALUE;
+
         // Validate order hash.
         if (orderHash != orderHash_) revert InvalidOrderHash();
 

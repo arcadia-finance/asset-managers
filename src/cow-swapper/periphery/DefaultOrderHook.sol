@@ -137,7 +137,6 @@ contract DefaultOrderHook is OrderHook {
         pure
         returns (address tokenOut, uint112 amountOut, uint32 validTo, uint64 swapFee)
     {
-        /// @solidity memory-safe-assembly
         assembly {
             // Load first 256 bits of initiatorData and shift right by 96 bits to extract tokenOut.
             tokenOut := shr(OFFSET_96_BITS, calldataload(initiatorData.offset))
@@ -173,19 +172,45 @@ contract DefaultOrderHook is OrderHook {
                 string.concat(
                     '{"appCode":"Arcadia 0.1.0","metadata":{"flashloan":{"amount":"',
                     LibString.toString(amountIn),
-                    '","borrower":"',
-                    COW_SWAPPER_HEX_STRING,
-                    '","lender":"',
+                    '","liquidityProvider":"',
                     LibString.toHexString(account),
+                    '","protocolAdapter":"',
+                    COW_SWAPPER_HEX_STRING,
+                    '","receiver":"',
+                    COW_SWAPPER_HEX_STRING,
                     '","token":"',
                     LibString.toHexString(tokenIn),
                     '"},"hooks":{"pre":[{"callData":"',
                     LibString.toHexString(beforeSwapCallData),
                     '","gasLimit":"80000","target":"',
                     COW_SWAPPER_HEX_STRING,
-                    '"}],"version":"0.1.0"},"quote":{"slippageBips":100}},"version":"1.6.0"}'
+                    '"}],"version":"0.2.0"}},"version":"1.11.0"}'
                 )
             )
+        );
+    }
+
+    function getAppData(address account, address tokenIn, uint256 amountIn, bytes memory beforeSwapCallData)
+        public
+        view
+        returns (string memory appData)
+    {
+        appData = string.concat(
+            '{"appCode":"Arcadia 0.1.0","metadata":{"flashloan":{"amount":"',
+            LibString.toString(amountIn),
+            '","liquidityProvider":"',
+            LibString.toHexString(account),
+            '","protocolAdapter":"',
+            COW_SWAPPER_HEX_STRING,
+            '","receiver":"',
+            COW_SWAPPER_HEX_STRING,
+            '","token":"',
+            LibString.toHexString(tokenIn),
+            '"},"hooks":{"pre":[{"callData":"',
+            LibString.toHexString(beforeSwapCallData),
+            '","gasLimit":"80000","target":"',
+            COW_SWAPPER_HEX_STRING,
+            '"}],"version":"0.2.0"}},"version":"1.11.0"}'
         );
     }
 }
