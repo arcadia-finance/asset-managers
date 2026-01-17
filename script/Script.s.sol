@@ -94,6 +94,7 @@ contract Sign is Test {
         uint256 accountOwner = vm.envUint("PRIVATE_KEY_ACCOUNT_OWNER");
         require(vm.addr(accountOwner) == ACCOUNT_OWNER, "Wrong Sender.");
 
+        // forge-lint: disable-next-line(unsafe-typecast)
         bytes memory initiatorData = abi.encodePacked(TOKEN_OUT, uint112(AMOUNT_OUT), validTo, SWAP_FEE);
         bytes memory beforeSwapCallData = abi.encodeCall(ICowSwapper.beforeSwap, (initiatorData));
 
