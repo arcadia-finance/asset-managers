@@ -73,6 +73,39 @@ contract SwapViaRouter_Compounder_Fuzz_Test is Compounder_Fuzz_Test {
         compounder.swapViaRouter(balances, position, true, swapData);
     }
 
+    function testFuzz_Success_swapViaRouter_EmptyCall(
+        uint128 liquidityPool,
+        PositionState memory position,
+        uint64 balance0,
+        uint64 balance1,
+        bool zeroToOne
+    ) public {
+        // Given: A pool with liquidity.
+        position.sqrtPrice = bound(position.sqrtPrice, BOUND_SQRT_PRICE_LOWER * 1e3, BOUND_SQRT_PRICE_UPPER / 1e3);
+        liquidityPool =
+            uint128(bound(liquidityPool, UniswapHelpers.maxLiquidity(1) / 1000, UniswapHelpers.maxLiquidity(1) / 10));
+        deployAndInitUniswapV3(uint160(position.sqrtPrice), liquidityPool);
+        position.tokens = new address[](2);
+        position.tokens[0] = address(token0);
+        position.tokens[1] = address(token1);
+        position.pool = address(poolUniswap);
+
+        // And: Contract has sufficient balance.
+        uint256[] memory balances = new uint256[](2);
+        balances[0] = balance0;
+        balances[1] = balance1;
+        deal(address(token0), address(compounder), balance0, true);
+        deal(address(token1), address(compounder), balance1, true);
+
+        // When: Calling swapViaRouter.
+        bytes memory swapData = abi.encode(address(0), 0, "");
+        balances = compounder.swapViaRouter(balances, position, zeroToOne, swapData);
+
+        // Then: The correct balances are returned.
+        assertEq(balances[0], balance0);
+        assertEq(balances[1], balance1);
+    }
+
     function testFuzz_Success_swapViaRouter_ZeroToOne(
         uint128 liquidityPool,
         PositionState memory position,
