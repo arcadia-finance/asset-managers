@@ -20,7 +20,7 @@ import {
 import { QuoterV2Extension } from "../lib/accounts-v2/test/utils/extensions/QuoterV2Extension.sol";
 import { SwapRouter } from "../lib/accounts-v2/lib/slipstream/contracts/periphery/SwapRouter.sol";
 import { SwapRouter02 } from "../lib/accounts-v2/lib/swap-router-contracts/contracts/SwapRouter02.sol";
-import { Test } from "../lib/accounts-v2/lib/forge-std/src/Test.sol";
+import { Test } from "../lib/accounts-v2/lib/forge-std-v1.13/src/Test.sol";
 // forge-lint: disable-end(unused-import)
 
 contract CompilePragma7Dot6 is Test {

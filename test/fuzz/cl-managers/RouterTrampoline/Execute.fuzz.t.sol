@@ -113,4 +113,21 @@ contract Execute_RouterTrampoline_Fuzz_Test is RouterTrampoline_Fuzz_Test {
         assertEq(tokenIn.balanceOf(caller), balanceIn - amountIn);
         assertEq(tokenOut.balanceOf(caller), uint256(balanceOut) + amountOut);
     }
+
+    function testFuzz_Success_execute_EmptyCall(address caller, uint64 balanceIn, uint64 balanceOut) public {
+        // Given: Caller is not the routerMock.
+        vm.assume(caller != address(routerMock));
+
+        // And: RouterTrampoline has sufficient balance.
+        deal(address(tokenIn), address(routerTrampoline), balanceIn, true);
+        deal(address(tokenOut), address(routerTrampoline), balanceOut, true);
+
+        // When: Calling execute.
+        vm.prank(caller);
+        routerTrampoline.execute(address(0), "", address(tokenIn), address(tokenOut), 0);
+
+        // Then: Caller receives the correct amount of tokens.
+        assertEq(tokenIn.balanceOf(caller), balanceIn);
+        assertEq(tokenOut.balanceOf(caller), uint256(balanceOut));
+    }
 }
