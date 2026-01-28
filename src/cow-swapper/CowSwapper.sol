@@ -318,7 +318,6 @@ contract CowSwapper is IActionBase, Guardian {
 
         // Callback to flash loan router, this will settle the swap.
         FLASH_LOAN_ROUTER.borrowerCallBack(callBackData);
-        // After the swap, send the bought tokens back to the account.
 
         // Verify that "isValidSignature()" was called.
         // A malicious solver could modify the EIP-1271 signature, skipping the check that the orderHash is correct.
