@@ -7,10 +7,9 @@ pragma solidity ^0.8.0;
 import { AccountV3 } from "../lib/accounts-v2/src/accounts/AccountV3.sol";
 import { CowSwapper } from "../src/cow-swapper/CowSwapper.sol";
 import { DefaultOrderHook } from "../src/cow-swapper/periphery/DefaultOrderHook.sol";
+import { ECDSA } from "../lib/accounts-v2/lib/solady/src/utils/ECDSA.sol";
 import { ICowSwapper } from "../src/cow-swapper/interfaces/ICowSwapper.sol";
 import { Test } from "../lib/accounts-v2/lib/forge-std/src/Test.sol";
-
-import { ECDSA } from "../lib/accounts-v2/lib/solady/src/utils/ECDSA.sol";
 
 contract Deploy is Test {
     address internal constant DEPLOYER = 0x29E923A6DE8761FdBE2a57618a978F1C3cEE6bdF;
