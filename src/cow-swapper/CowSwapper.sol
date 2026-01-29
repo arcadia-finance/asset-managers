@@ -345,14 +345,17 @@ contract CowSwapper is IActionBase, Guardian {
         // Caller must be the Account, provided as input in triggerFlashLoan().
         if (msg.sender != account) revert OnlyAccount();
 
+        // Cache the balance of tokenIn before the swap.
+        address tokenIn_ = tokenIn;
+        uint256 balanceBefore = IERC20(tokenIn_).balanceOf(address(this));
+
         // Callback to flash loan router, this will settle the swap.
         FLASH_LOAN_ROUTER.borrowerCallBack(callBackData);
 
         // Verify that "isValidSignature()" was called.
         // A malicious solver could modify the EIP-1271 signature, skipping the check that the orderHash is correct.
-        // If isValidSignature() would be skipped, tokenIn would not be transferred from this contract to the vault relayer,
-        // and the balance would still be non-zero.
-        if (IERC20(tokenIn).balanceOf(address(this)) > 0) {
+        // If isValidSignature() would be skipped, tokenIn would not be transferred from this contract to the vault relayer.
+        if (IERC20(tokenIn_).balanceOf(address(this)) != balanceBefore - amountIn) {
             revert MissingSignatureVerification();
         }
 
