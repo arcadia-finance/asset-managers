@@ -28,6 +28,9 @@ contract CowSwapper is IActionBase, Guardian {
                                 CONSTANTS
     ////////////////////////////////////////////////////////////// */
 
+    // The version of the CowSwapper.
+    string public constant VERSION = "1.0.0";
+
     // The EIP-1271 magic value.
     bytes4 internal constant MAGIC_VALUE = 0x1626ba7e;
 
@@ -137,10 +140,40 @@ contract CowSwapper is IActionBase, Guardian {
         COW_SETTLEMENT = IGPv2Settlement(address(FLASH_LOAN_ROUTER.settlementContract()));
         HOOKS_TRAMPOLINE = hooksTrampoline;
         VAULT_RELAYER = COW_SETTLEMENT.vaultRelayer();
+    }
 
-        // ToDo: remove after testing.
-        address(0x4200000000000000000000000000000000000006).safeApproveWithRetry(VAULT_RELAYER, type(uint256).max);
-        address(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913).safeApproveWithRetry(VAULT_RELAYER, type(uint256).max);
+    /* ///////////////////////////////////////////////////////////////
+                          TOKEN APPROVALS
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Approves the vaultRelayer to spend the specified token.
+     * @param token The contract address of the token to approve..
+     */
+    function approveToken(address token) external {
+        if (account != address(0)) revert Reentered();
+
+        _approveToken(token);
+    }
+
+    /**
+     * @notice Approves the vaultRelayer to spend the specified tokens.
+     * @param tokens The contract addresses of the tokens to approve.
+     */
+    function approveTokens(address[] calldata tokens) external {
+        if (account != address(0)) revert Reentered();
+
+        for (uint256 i = 0; i < tokens.length; i++) {
+            _approveToken(tokens[i]);
+        }
+    }
+
+    /**
+     * @notice Approves the vaultRelayer to spend the specified token.
+     * @param token The contract address of the token to approve..
+     */
+    function _approveToken(address token) internal {
+        token.safeApproveWithRetry(VAULT_RELAYER, type(uint256).max);
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -312,18 +345,14 @@ contract CowSwapper is IActionBase, Guardian {
         // Caller must be the Account, provided as input in triggerFlashLoan().
         if (msg.sender != account) revert OnlyAccount();
 
-        // Approve the vault relayer to transfer tokenIn.
-        address tokenIn_ = tokenIn;
-        tokenIn_.safeApproveWithRetry(VAULT_RELAYER, amountIn);
-
         // Callback to flash loan router, this will settle the swap.
         FLASH_LOAN_ROUTER.borrowerCallBack(callBackData);
 
         // Verify that "isValidSignature()" was called.
         // A malicious solver could modify the EIP-1271 signature, skipping the check that the orderHash is correct.
         // If isValidSignature() would be skipped, tokenIn would not be transferred from this contract to the vault relayer,
-        // and the approval would still be non-zero.
-        if (IERC20(tokenIn_).allowance(address(this), VAULT_RELAYER) > 0) {
+        // and the balance would still be non-zero.
+        if (IERC20(tokenIn).balanceOf(address(this)) > 0) {
             revert MissingSignatureVerification();
         }
 
