@@ -36,7 +36,7 @@ contract GetAppDataHash_DefaultOrderHook_Fuzz_Test is DefaultOrderHook_Fuzz_Test
         );
 
         // Then: It should match the hash calculated with https://explorer.cow.fi/appdata?tab=encode.
-        // AppData JSON: {"appCode":"Arcadia 0.1.0","metadata":{"flashloan":{"amount":"1","borrower":"0xc7183455a4c133ae270771860664b6b7ec320bb1","lender":"0x426981ec47ca15c15c800430754b459b62c14410","token":"0x426981ec47ca15c15c800430754b459b62c14410"},"hooks":{"pre":[{"callData":"0x00","gasLimit":"80000","target":"0xc7183455a4c133ae270771860664b6b7ec320bb1"}],"version":"0.1.0"},"quote":{"slippageBips":100}},"version":"1.6.0"}
-        assertEq(appDataHash, 0x4eb78053eac0de75d2b1631e24ffc645fcf00ec36136bb130f5e9ac6ce62ae2e);
+        // AppData JSON: {"appCode":"Arcadia 0.1.0","metadata":{"flashloan":{"amount":"1","liquidityProvider":"0x426981ec47ca15c15c800430754b459b62c14410","protocolAdapter":"0xc7183455a4c133ae270771860664b6b7ec320bb1","receiver":"0xc7183455a4c133ae270771860664b6b7ec320bb1","token":"0x426981ec47ca15c15c800430754b459b62c14410"},"hooks":{"pre":[{"callData":"0x00","gasLimit":"80000","target":"0xc7183455a4c133ae270771860664b6b7ec320bb1"}],"version":"0.2.0"}},"version":"1.11.0"}
+        assertEq(appDataHash, 0xca6aaa556223fffdcd962fe57d1653cd9bce7ce6b9d38799fc269f36ebcdd63b);
     }
 }

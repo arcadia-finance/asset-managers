@@ -119,6 +119,9 @@ contract ExecuteAction_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         // And: Cow Swapper has balance sellToken.
         deal(address(order.sellToken), address(cowSwapper), order.sellAmount, true);
 
+        // And: TokenIn is approved.
+        cowSwapper.approveToken(address(order.sellToken));
+
         // And: Router can execute the swap.
         deal(address(order.buyToken), address(routerMock), order.buyAmount, true);
 
@@ -727,6 +730,69 @@ contract ExecuteAction_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         cowSwapper.executeAction(loansWithSettlement);
     }
 
+    function testFuzz_Revert_executeAction_MissingApproval(
+        uint256 initiatorPrivateKey,
+        uint64 swapFee,
+        GPv2Order.Data memory order,
+        uint256 buyClearingPrice,
+        uint256 buyAmount
+    ) public {
+        // Given: Valid initiator.
+        initiatorPrivateKey = givenValidPrivatekey(initiatorPrivateKey);
+        address initiator = vm.addr(initiatorPrivateKey);
+
+        // And: Valid swap fee.
+        swapFee = uint64(bound(swapFee, 0, MAX_FEE));
+
+        // And: Valid order.
+        givenValidOrder(swapFee, order);
+
+        // And: Cow swapper is set as asset manager with initiator.
+        setCowSwapper(initiator);
+
+        // And: Cow Swapper has balance sellToken.
+        deal(address(order.sellToken), address(cowSwapper), order.sellAmount, true);
+
+        // And: TokenIn is not approved.
+        assert(order.sellToken.allowance(address(cowSwapper), address(vaultRelayer)) == 0);
+
+        // And: Clearing price is better than order demand.
+        buyClearingPrice = bound(buyClearingPrice, order.buyAmount + 1, type(uint160).max);
+        // And: Slippage is positive
+        buyAmount = bound(buyAmount, buyClearingPrice, type(uint160).max);
+
+        // And: Router can execute the swap.
+        deal(address(order.buyToken), address(routerMock), buyAmount, true);
+
+        bytes memory loansWithSettlement;
+        {
+            bytes memory signature = abi.encodePacked(
+                address(cowSwapper), getSignature(address(account), swapFee, order, initiatorPrivateKey)
+            );
+
+            bytes memory settlementCallData =
+                getSettlementCallData(swapFee, order, signature, buyClearingPrice, buyAmount);
+
+            loansWithSettlement = this.getLoansWithSettlement(new Loan.Data[](1), settlementCallData);
+            loansWithSettlement.popLoan();
+        }
+
+        // And: Transient state is set.
+        cowSwapper.setAccount(address(account));
+        cowSwapper.setInitiator(initiator);
+        cowSwapper.setTokenIn(address(order.sellToken));
+        cowSwapper.setAmountIn(order.sellAmount);
+
+        flashLoanRouter.setPendingBorrower(address(cowSwapper));
+        flashLoanRouter.setPendingDataHash(loansWithSettlement.hash());
+
+        // When: Account calls executeAction.
+        // Then: it should revert.
+        vm.prank(address(account));
+        vm.expectRevert("Settlement reverted");
+        cowSwapper.executeAction(loansWithSettlement);
+    }
+
     function testFuzz_Revert_executeAction_InsufficientBuyToken(
         uint256 initiatorPrivateKey,
         uint64 swapFee,
@@ -748,6 +814,9 @@ contract ExecuteAction_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
 
         // And: Cow Swapper has balance sellToken.
         deal(address(order.sellToken), address(cowSwapper), order.sellAmount, true);
+
+        // And: TokenIn is approved.
+        cowSwapper.approveToken(address(order.sellToken));
 
         // And: Slippage is negative.
         buyAmount = bound(buyAmount, 0, order.buyAmount - 1);
@@ -806,6 +875,9 @@ contract ExecuteAction_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
 
         // And: Cow Swapper has balance sellToken.
         deal(address(order.sellToken), address(cowSwapper), order.sellAmount, true);
+
+        // And: TokenIn is approved.
+        cowSwapper.approveToken(address(order.sellToken));
 
         // And: Clearing price is better than order demand.
         buyClearingPrice = bound(buyClearingPrice, order.buyAmount + 1, type(uint160).max);
@@ -885,6 +957,9 @@ contract ExecuteAction_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
 
         // And: Cow Swapper has balance sellToken.
         deal(address(order.sellToken), address(cowSwapper), order.sellAmount, true);
+
+        // And: TokenIn is approved.
+        cowSwapper.approveToken(address(order.sellToken));
 
         // And: Clearing price is better than order demand.
         buyClearingPrice = bound(buyClearingPrice, order.buyAmount + 1, type(uint160).max);

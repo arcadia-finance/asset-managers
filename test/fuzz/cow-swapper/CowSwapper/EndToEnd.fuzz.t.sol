@@ -181,6 +181,9 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         // And: Account has sufficient tokenIn balance.
         depositErc20InAccount(account, ERC20Mock(address(order.sellToken)), order.sellAmount);
 
+        // And: TokenIn is approved.
+        cowSwapper.approveToken(address(order.sellToken));
+
         // And: Router can execute the swap.
         deal(address(order.buyToken), address(routerMock), order.buyAmount, true);
 
@@ -512,6 +515,62 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         flashLoanRouter.flashLoanAndSettle(loans, settlementCallData);
     }
 
+    function testFuzz_Revert_EndToEnd_MissingApproval(
+        uint256 initiatorPrivateKey,
+        uint64 swapFee,
+        GPv2Order.Data memory order,
+        uint256 buyClearingPrice,
+        uint256 buyAmount
+    ) public {
+        // Given: Valid initiator.
+        initiatorPrivateKey = givenValidPrivatekey(initiatorPrivateKey);
+        address initiator = vm.addr(initiatorPrivateKey);
+
+        // And: Valid swap fee.
+        swapFee = uint64(bound(swapFee, 0, MAX_FEE));
+
+        // And: Valid order.
+        givenValidOrder(swapFee, order);
+
+        // And: Cow swapper is set as asset manager with initiator.
+        setCowSwapper(initiator);
+
+        // And: Account has sufficient tokenIn balance.
+        depositErc20InAccount(account, ERC20Mock(address(order.sellToken)), order.sellAmount);
+
+        // And: TokenIn is not approved.
+        assert(order.sellToken.allowance(address(cowSwapper), address(vaultRelayer)) == 0);
+
+        // And: Clearing price is better than order demand.
+        buyClearingPrice = bound(buyClearingPrice, order.buyAmount + 1, type(uint160).max);
+        // And: Slippage is positive
+        buyAmount = bound(buyAmount, buyClearingPrice, type(uint160).max);
+
+        // And: Router can execute the swap.
+        deal(address(order.buyToken), address(routerMock), buyAmount, true);
+
+        // And: Valid EIP-1271 signature.
+        bytes memory signature = abi.encodePacked(
+            address(cowSwapper), getSignature(address(account), swapFee, order, initiatorPrivateKey)
+        );
+
+        // And: Solver correctly processes the order.
+        Loan.Data[] memory loans = new Loan.Data[](1);
+        loans[0] = Loan.Data({
+            amount: order.sellAmount,
+            borrower: IBorrower(address(cowSwapper)),
+            lender: address(account),
+            token: IERC20(address(order.sellToken))
+        });
+        bytes memory settlementCallData = getSettlementCallData(swapFee, order, signature, buyClearingPrice, buyAmount);
+
+        // When: The solver calls the flash loan router.
+        // Then: it should revert.
+        vm.prank(solver);
+        vm.expectRevert("Settlement reverted");
+        flashLoanRouter.flashLoanAndSettle(loans, settlementCallData);
+    }
+
     function testFuzz_Revert_EndToEnd_InsufficientBuyToken(
         uint256 initiatorPrivateKey,
         uint64 swapFee,
@@ -533,6 +592,9 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
 
         // And: Account has sufficient tokenIn balance.
         depositErc20InAccount(account, ERC20Mock(address(order.sellToken)), order.sellAmount);
+
+        // And: TokenIn is approved.
+        cowSwapper.approveToken(address(order.sellToken));
 
         // And: Slippage is negative.
         buyAmount = bound(buyAmount, 0, order.buyAmount - 1);
@@ -584,6 +646,9 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         // And: Account has sufficient tokenIn balance.
         depositErc20InAccount(account, ERC20Mock(address(order.sellToken)), order.sellAmount);
 
+        // And: TokenIn is approved.
+        cowSwapper.approveToken(address(order.sellToken));
+
         // And: Clearing price is better than order demand.
         buyClearingPrice = bound(buyClearingPrice, order.buyAmount + 1, type(uint160).max);
         // And: Slippage is positive
@@ -625,7 +690,7 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         assertEq(order.buyToken.balanceOf(address(settlement)), buyAmount - buyClearingPrice);
     }
 
-    function testFuzz_Success_EndToEnd_Initiator(
+    function testFuzz_Success_EndToEnd_AccountOwner(
         uint256 accountOwnerPrivateKey,
         uint64 swapFee,
         GPv2Order.Data memory order,
@@ -651,6 +716,9 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
 
         // And: Account has sufficient tokenIn balance.
         depositErc20InAccount(account, ERC20Mock(address(order.sellToken)), order.sellAmount);
+
+        // And: TokenIn is approved.
+        cowSwapper.approveToken(address(order.sellToken));
 
         // And: Clearing price is better than order demand.
         buyClearingPrice = bound(buyClearingPrice, order.buyAmount + 1, type(uint160).max);
