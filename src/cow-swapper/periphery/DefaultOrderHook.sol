@@ -167,24 +167,39 @@ contract DefaultOrderHook is OrderHook {
         view
         returns (bytes32 appDataHash)
     {
-        appDataHash = keccak256(
-            bytes(
-                string.concat(
-                    '{"appCode":"Arcadia 0.1.0","metadata":{"flashloan":{"amount":"',
-                    LibString.toString(amountIn),
-                    '","borrower":"',
-                    COW_SWAPPER_HEX_STRING,
-                    '","lender":"',
-                    LibString.toHexString(account),
-                    '","token":"',
-                    LibString.toHexString(tokenIn),
-                    '"},"hooks":{"pre":[{"callData":"',
-                    LibString.toHexString(beforeSwapCallData),
-                    '","gasLimit":"80000","target":"',
-                    COW_SWAPPER_HEX_STRING,
-                    '"}],"version":"0.1.0"},"quote":{"slippageBips":100}},"version":"1.6.0"}'
-                )
-            )
+        appDataHash = keccak256(bytes(getAppData(account, tokenIn, amountIn, beforeSwapCallData)));
+    }
+
+    /**
+     * @notice Returns the AppData of the swap.
+     * @param account The contract address of the Arcadia Account.
+     * @param tokenIn The contract address of the token to swap from.
+     * @param amountIn The amount of tokenIn to swap.
+     * @param beforeSwapCallData The calldata of the beforeSwap() hook.
+     * @return appData The AppData JSON string.
+     * @dev The AppData JSON string must match the metadata passed when submitting the swap.
+     */
+    function getAppData(address account, address tokenIn, uint256 amountIn, bytes memory beforeSwapCallData)
+        public
+        view
+        returns (string memory appData)
+    {
+        appData = string.concat(
+            '{"appCode":"Arcadia 0.1.0","metadata":{"flashloan":{"amount":"',
+            LibString.toString(amountIn),
+            '","liquidityProvider":"',
+            LibString.toHexString(account),
+            '","protocolAdapter":"',
+            COW_SWAPPER_HEX_STRING,
+            '","receiver":"',
+            COW_SWAPPER_HEX_STRING,
+            '","token":"',
+            LibString.toHexString(tokenIn),
+            '"},"hooks":{"pre":[{"callData":"',
+            LibString.toHexString(beforeSwapCallData),
+            '","gasLimit":"80000","target":"',
+            COW_SWAPPER_HEX_STRING,
+            '"}],"version":"0.2.0"}},"version":"1.11.0"}'
         );
     }
 }

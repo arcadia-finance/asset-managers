@@ -164,6 +164,9 @@ contract FlashLoanAndCallBack_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         // And: Account has sufficient tokenIn balance.
         depositErc20InAccount(account, ERC20Mock(address(order.sellToken)), order.sellAmount);
 
+        // And: TokenIn is approved.
+        cowSwapper.approveToken(address(order.sellToken));
+
         // And: Clearing price is better than order demand.
         buyClearingPrice = bound(buyClearingPrice, order.buyAmount + 1, type(uint160).max);
         // And: Slippage is positive

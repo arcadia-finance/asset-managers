@@ -547,7 +547,7 @@ contract Close_CloserUniswapV4_Fuzz_Test is CloserUniswapV4_Fuzz_Test {
         uint256 debt
     ) public {
         // Given: Create token1 and add to Arcadia.
-        token1 = new ERC20Mock("TokenB", "TOKB", 0);
+        token1 = new ERC20Mock("TokenB", "TOKB", 18);
         addAssetToArcadia(address(token1), int256(1e18));
 
         // And: Create single ETH oracle and use it for both weth9 (erc20AM) and address(0) (nativeTokenAM).
@@ -671,9 +671,8 @@ contract Close_CloserUniswapV4_Fuzz_Test is CloserUniswapV4_Fuzz_Test {
             vm.stopPrank();
         }
 
-        // And: Debt is bounded by the collateral value to ensure account is healthy.
-        uint256 collateralValue = account.getCollateralValue();
-        debt = bound(debt, 1, collateralValue > 1 ? collateralValue - 1 : 1);
+        // And: Position has debt.
+        debt = bound(debt, 1, 1e8);
         lendingPoolMock.setDebt(address(account), debt);
 
         // When: Calling close().

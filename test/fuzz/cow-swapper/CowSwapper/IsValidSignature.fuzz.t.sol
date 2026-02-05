@@ -25,13 +25,18 @@ contract IsValidSignature_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
     //////////////////////////////////////////////////////////////*/
 
     function testFuzz_Revert_isValidSignature_InvalidOrderHash(
+        address account_,
         address caller,
         bytes32 orderHash,
         bytes32 messageHash,
         bytes32 orderHash_,
         bytes calldata signature
     ) public {
-        // Given: The orderHash is not correct.
+        // Given: Account is set.
+        vm.assume(account_ != address(0));
+        cowSwapper.setAccount(account_);
+
+        // And: The orderHash is not correct.
         vm.assume(orderHash != orderHash_);
 
         // And: Transient state is set.
@@ -46,12 +51,17 @@ contract IsValidSignature_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
     }
 
     function testFuzz_Revert_isValidSignature_InvalidSignatureLength(
+        address account_,
         address caller,
         bytes32 orderHash,
         bytes32 messageHash,
         bytes calldata invalidSignature
     ) public {
-        // Given: Invalid signature length.
+        // Given: Account is set.
+        vm.assume(account_ != address(0));
+        cowSwapper.setAccount(account_);
+
+        // And: Invalid signature length.
         vm.assume(invalidSignature.length != 65 && invalidSignature.length != 64);
 
         // And: Transient state is set.
@@ -66,6 +76,7 @@ contract IsValidSignature_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
     }
 
     function testFuzz_Revert_isValidSignature_InvalidSignatureLength(
+        address account_,
         address caller,
         bytes32 orderHash,
         bytes32 messageHash,
@@ -73,7 +84,11 @@ contract IsValidSignature_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         bytes32 s,
         bytes1 invalidV
     ) public {
-        // Given: Invalid signature.
+        // Given: Account is set.
+        vm.assume(account_ != address(0));
+        cowSwapper.setAccount(account_);
+
+        // And: Invalid signature.
         vm.assume(invalidV != bytes1(uint8(27)) && invalidV != bytes1(uint8(28)));
         bytes memory invalidSignature = new bytes(65);
         assembly {
@@ -94,6 +109,7 @@ contract IsValidSignature_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
     }
 
     function testFuzz_Revert_isValidSignature_InvalidSigner(
+        address account_,
         address caller,
         address accountOwner,
         address initiator,
@@ -101,7 +117,11 @@ contract IsValidSignature_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         bytes32 messageHash,
         uint256 signerPrivateKey
     ) public {
-        // Given: Valid signer.
+        // Given: Account is set.
+        vm.assume(account_ != address(0));
+        cowSwapper.setAccount(account_);
+
+        // And: Valid signer.
         signerPrivateKey = givenValidPrivatekey(signerPrivateKey);
 
         // And: Signer is not the initiator or the account owner.
@@ -123,14 +143,33 @@ contract IsValidSignature_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         cowSwapper.isValidSignature(orderHash, signature);
     }
 
+    function testFuzz_Success_isValidSignature_NoAccountSet(address caller, bytes32 orderHash, bytes memory signature)
+        public
+    {
+        // Given: No Account is set.
+        cowSwapper.setAccount(address(0));
+
+        // When: Caller calls isValidSignature.
+        vm.prank(caller);
+        bytes4 magicValue = cowSwapper.isValidSignature(orderHash, signature);
+
+        // Then: Magic value is returned.
+        assertEq(magicValue, bytes4(0x1626ba7e));
+    }
+
     function testFuzz_Success_isValidSignature_AccountOwner(
+        address account_,
         address caller,
         address initiator,
         bytes32 orderHash,
         bytes32 messageHash,
         uint256 accountOwnerPrivateKey
     ) public {
-        // Given: Valid accountOwner.
+        // Given: Account is set.
+        vm.assume(account_ != address(0));
+        cowSwapper.setAccount(account_);
+
+        // And: Valid accountOwner.
         accountOwnerPrivateKey = givenValidPrivatekey(accountOwnerPrivateKey);
         address accountOwner = vm.addr(accountOwnerPrivateKey);
 
@@ -151,13 +190,18 @@ contract IsValidSignature_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
     }
 
     function testFuzz_Success_isValidSignature_Initiator(
+        address account_,
         address caller,
         address accountOwner,
         bytes32 orderHash,
         bytes32 messageHash,
         uint256 initiatorPrivateKey
     ) public {
-        // Given: Valid initiator.
+        // Given: Account is set.
+        vm.assume(account_ != address(0));
+        cowSwapper.setAccount(account_);
+
+        // And: Valid initiator.
         initiatorPrivateKey = givenValidPrivatekey(initiatorPrivateKey);
         address initiator = vm.addr(initiatorPrivateKey);
 
