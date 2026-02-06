@@ -4,7 +4,7 @@
  */
 pragma solidity ^0.8.0;
 
-import { HookMock } from "../../../../utils/mocks/HookMock.sol";
+import { RebalancerHookMock } from "../../../../utils/mocks/RebalancerHookMock.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
 import { Rebalancer_Fuzz_Test } from "./_Rebalancer.fuzz.t.sol";
 import { RouterMock } from "../../../../utils/mocks/RouterMock.sol";
@@ -23,7 +23,7 @@ contract SwapViaRouter_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
                             VARIABLES
     /////////////////////////////////////////////////////////////// */
 
-    HookMock internal strategyHook;
+    RebalancerHookMock internal strategyHook;
     RouterMock internal routerMock;
 
     /* ///////////////////////////////////////////////////////////////

@@ -311,6 +311,43 @@ abstract contract UniswapV4 is AbstractBase {
     }
 
     /* ///////////////////////////////////////////////////////////////
+                    DECREASE LIQUIDITY LOGIC
+    /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Decreases liquidity of the Liquidity Position.
+     * @param balances The balances of the underlying tokens.
+     * param positionManager The contract address of the Position Manager.
+     * @param position A struct with position and pool related variables.
+     * @param liquidity The amount of liquidity to decrease.
+     * @dev Must update the balances and delta liquidity after the decrease.
+     */
+    function _decreaseLiquidity(uint256[] memory balances, address, PositionState memory position, uint128 liquidity)
+        internal
+        virtual
+        override
+    {
+        // Cache the currencies.
+        Currency currency0 = Currency.wrap(position.tokens[0]);
+        Currency currency1 = Currency.wrap(position.tokens[1]);
+
+        // Generate calldata to burn the position and collect the underlying assets.
+        bytes memory actions = new bytes(2);
+        actions[0] = bytes1(uint8(Actions.DECREASE_LIQUIDITY));
+        actions[1] = bytes1(uint8(Actions.TAKE_PAIR));
+        bytes[] memory params = new bytes[](2);
+        params[0] = abi.encode(position.id, liquidity, 0, 0, "");
+        params[1] = abi.encode(currency0, currency1, address(this));
+
+        bytes memory decreaseLiquidityParams = abi.encode(actions, params);
+        POSITION_MANAGER.modifyLiquidities(decreaseLiquidityParams, block.timestamp);
+
+        // Update the balances, token0 might be native ETH.
+        balances[0] = currency0.balanceOfSelf();
+        balances[1] = ERC20(position.tokens[1]).balanceOf(address(this));
+    }
+
+    /* ///////////////////////////////////////////////////////////////
                              SWAP LOGIC
     /////////////////////////////////////////////////////////////// */
 
@@ -492,7 +529,7 @@ abstract contract UniswapV4 is AbstractBase {
     /////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Swaps one token for another to rebalance the Liquidity Position.
+     * @notice Increases liquidity of the Liquidity Position.
      * @param balances The balances of the underlying tokens.
      * param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.

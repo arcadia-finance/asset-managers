@@ -56,7 +56,7 @@ contract Skim_MerklOperatorBase_Fuzz_Test is MerklOperatorBase_Fuzz_Test {
         vm.prank(users.owner);
         merklOperator.transferOwnership(address(revertingReceiver));
 
-        // And: meklOperator has a native token balance.
+        // And: merklOperator has a native token balance.
         uint256 balancePre = address(revertingReceiver).balance;
         amount = bound(amount, 0, type(uint256).max - balancePre);
         vm.deal(address(revertingReceiver), amount);
@@ -69,7 +69,7 @@ contract Skim_MerklOperatorBase_Fuzz_Test is MerklOperatorBase_Fuzz_Test {
     }
 
     function testFuzz_Success_skim_Ether(uint256 amount) public {
-        // Given: meklOperator has a native token balance.
+        // Given: merklOperator has a native token balance.
         uint256 balancePre = users.owner.balance;
         amount = bound(amount, 0, type(uint256).max - balancePre);
         vm.deal(address(merklOperator), amount);
@@ -86,7 +86,7 @@ contract Skim_MerklOperatorBase_Fuzz_Test is MerklOperatorBase_Fuzz_Test {
     }
 
     function testFuzz_Success_skim_ERC20(uint256 amount) public {
-        // Given: meklOperator has an ERC20 balance.
+        // Given: merklOperator has an ERC20 balance.
         deal(address(token0), address(merklOperator), amount, true);
 
         // When: Calling skim.
