@@ -5,9 +5,9 @@
 pragma solidity ^0.8.0;
 
 import { AbstractBase } from "../../../../../src/cl-managers/base/AbstractBase.sol";
+import { Compounder_Fuzz_Test } from "./_Compounder.fuzz.t.sol";
 import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
-import { Compounder_Fuzz_Test } from "./_Compounder.fuzz.t.sol";
 import { UniswapV3Fixture } from "../../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";
 
 /**

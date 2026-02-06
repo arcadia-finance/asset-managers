@@ -80,6 +80,7 @@ abstract contract Closer is IActionBase, AbstractBase, Guardian {
 
     error InvalidAccountVersion();
     error InvalidInitiator();
+    error InvalidNumeraire();
     error InvalidPositionManager();
     error InvalidValue();
     error NotAnAccount();
@@ -173,7 +174,7 @@ abstract contract Closer is IActionBase, AbstractBase, Guardian {
     }
 
     /* ///////////////////////////////////////////////////////////////
-                             CLAIMING LOGIC
+                             CLOSING LOGIC
     /////////////////////////////////////////////////////////////// */
 
     /**
@@ -191,11 +192,15 @@ abstract contract Closer is IActionBase, AbstractBase, Guardian {
         if (!isPositionManager(initiatorParams.positionManager)) revert InvalidPositionManager();
 
         // Validate initiatorParams.
-        // No need to check length arrays, as it is checked in _claim() on Distributor.
         if (initiatorParams.claimFee > accountInfo[account_].maxClaimFee) revert InvalidValue();
-        if (initiatorParams.maxRepayAmount < initiatorParams.withdrawAmount) revert InvalidValue();
+        if (initiatorParams.withdrawAmount > initiatorParams.maxRepayAmount) revert InvalidValue();
 
-        address numeraire = IAccount(account_).numeraire();
+        // If numeraire has to be withdrawn from the account, a numeraire must have been set.
+        address numeraire;
+        if (initiatorParams.maxRepayAmount > 0) {
+            numeraire = IAccount(account_).numeraire();
+            if (numeraire == address(0)) revert InvalidNumeraire();
+        }
 
         // Encode data for the flash-action.
         bytes memory actionData = ArcadiaLogic._encodeAction(
@@ -222,7 +227,12 @@ abstract contract Closer is IActionBase, AbstractBase, Guardian {
      * @dev The Liquidity Position is already transferred to this contract before executeAction() is called.
      * @dev When rebalancing we will burn the current Liquidity Position and mint a new one with a new tokenId.
      */
-    function executeAction(bytes calldata actionTargetData) external override returns (ActionData memory depositData) {
+    function executeAction(bytes calldata actionTargetData)
+        external
+        virtual
+        override
+        returns (ActionData memory depositData)
+    {
         // Caller should be the Account, provided as input in rebalance().
         if (msg.sender != account) revert OnlyAccount();
 
@@ -236,25 +246,27 @@ abstract contract Closer is IActionBase, AbstractBase, Guardian {
 
         // If debt has to be repaid, get the index of the numeraire in the position tokens.
         uint256 numeraireIndex;
-        if (initiatorParams.maxRepayAmount > 0) numeraireIndex = _getIndex(position.tokens, numeraire);
+        if (initiatorParams.maxRepayAmount > 0) {
+            (position.tokens, numeraireIndex) = _getIndex(position.tokens, numeraire);
+        }
 
         uint256[] memory balances = new uint256[](position.tokens.length);
-        // If no maxRepayAmount is 0, withdrawAmount is also zero (enforced in "close()").
-        balances[numeraireIndex] = initiatorParams.withdrawAmount;
+        // withdrawAmount can only be non zero if maxRepayAmount is non zero (enforced in "close()").
+        if (initiatorParams.withdrawAmount > 0) balances[numeraireIndex] = initiatorParams.withdrawAmount;
         uint256[] memory fees = new uint256[](balances.length);
-
-        // ToDo: Do we need to check if the pool is balanced when decreasing liquidity?
 
         // Claim pending yields and update balances.
         _claim(balances, fees, positionManager, position, initiatorParams.claimFee);
 
-        // If the position is staked, unstake it.
-        _unstake(balances, positionManager, position);
-
-        // Decrease liquidity or fully burn, and update balances.
+        // Decrease liquidity or fully burn position, and update balances.
         if (initiatorParams.liquidity > 0) {
+            // If the position is staked, unstake it.
+            _unstake(balances, positionManager, position);
+
             if (initiatorParams.liquidity < position.liquidity) {
                 _decreaseLiquidity(balances, positionManager, position, initiatorParams.liquidity);
+                // If the position was staked, stake it.
+                _stake(balances, positionManager, position);
             } else {
                 _burn(balances, positionManager, position);
                 position.id = 0;
@@ -274,31 +286,45 @@ abstract contract Closer is IActionBase, AbstractBase, Guardian {
         emit Close(msg.sender, positionManager, initiatorParams.id);
     }
 
-    function _getIndex(address[] memory tokens, address token) internal pure returns (uint256 index) {
+    /**
+     * @notice Finds the index of a token in an array, or appends it if not found.
+     * @param tokens The array of token addresses to search.
+     * @param token The token address to find or add.
+     * @return tokens_ The array of tokens, potentially with the new token appended.
+     * @return index The index of the token in the array.
+     * @dev If the token is not found, a new array is created with the token appended at the end.
+     */
+    function _getIndex(address[] memory tokens, address token) internal pure returns (address[] memory, uint256) {
         uint256 length = tokens.length;
 
-        index = length;
+        // Search for the token in the tokens array.
         for (uint256 i; i < length; i++) {
             if (token == tokens[i]) {
-                index = i;
-                break;
+                return (tokens, i);
             }
         }
-        // If token is not in tokens, append it to the list.
-        if (index == length) {
-            address[] memory tokens_ = new address[](length + 1);
-            for (uint256 j; j < length; j++) {
-                tokens_[j] = tokens[j];
-            }
-            tokens_[index] = token;
-            tokens = tokens_;
+
+        // If token is not in tokens, append it to the array.
+        address[] memory tokens_ = new address[](length + 1);
+        for (uint256 j; j < length; j++) {
+            tokens_[j] = tokens[j];
         }
+        tokens_[length] = token;
+        return (tokens_, length);
     }
 
     /* ///////////////////////////////////////////////////////////////
                             REPAY LOGIC
     /////////////////////////////////////////////////////////////// */
 
+    /**
+     * @notice Repays debt to the lending pool.
+     * @param balances The balances of the underlying tokens.
+     * @param fees The fees of the underlying tokens to be paid to the initiator.
+     * @param numeraire The contract address of the numeraire token.
+     * @param index The index of the numeraire in the balances array.
+     * @param maxRepayAmount The maximum amount of numeraire to repay.
+     */
     function _repayDebt(
         uint256[] memory balances,
         uint256[] memory fees,
@@ -314,7 +340,7 @@ abstract contract Closer is IActionBase, AbstractBase, Guardian {
         uint256 debt = lendingPool.maxWithdraw(msg.sender);
 
         // The amount repaid is the minimum of the debt, the maxRepayAmount and the available balance on the closer.
-        uint256 amount = min3(maxRepayAmount, debt, balances[index] - fees[index]);
+        uint256 amount = _min3(maxRepayAmount, debt, balances[index] - fees[index]);
 
         ERC20(numeraire).safeApproveWithRetry(address(lendingPool), amount);
         lendingPool.repay(amount, msg.sender);
@@ -322,7 +348,14 @@ abstract contract Closer is IActionBase, AbstractBase, Guardian {
         balances[index] -= amount;
     }
 
-    function min3(uint256 a, uint256 b, uint256 c) internal pure returns (uint256 m) {
+    /**
+     * @notice Returns the minimum of three uint256 values.
+     * @param a The first value.
+     * @param b The second value.
+     * @param c The third value.
+     * @return m The minimum value among a, b, and c.
+     */
+    function _min3(uint256 a, uint256 b, uint256 c) internal pure returns (uint256 m) {
         assembly {
             m := a
             if lt(b, m) { m := b }
