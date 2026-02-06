@@ -136,7 +136,7 @@ abstract contract AbstractBase {
      * @param positionManager The contract address of the Position Manager.
      * @param position A struct with position and pool related variables.
      * @param liquidity The amount of liquidity to decrease.
-     * @dev Must update the balances and delta liquidity after the increase.
+     * @dev Must update the balances and delta liquidity after the decrease.
      */
     function _decreaseLiquidity(
         uint256[] memory balances,
