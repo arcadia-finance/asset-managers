@@ -671,7 +671,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
     ) public {
         // Given: Aero is an underlying token of the position.
         token1 = ERC20Mock(AERO);
-        (token0, token1) = (token0 < token1) ? (token0, token1) : (token1, token0);
+        (token0, token1) = (address(token0) < address(token1)) ? (token0, token1) : (token1, token0);
         stdstore.target(address(registry)).sig(registry.inRegistry.selector).with_key(AERO).checked_write(false);
 
         // And: A valid position in range (has both tokens).
@@ -951,7 +951,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
     ) public {
         // Given: Aero is an underlying token of the position.
         token1 = ERC20Mock(AERO);
-        (token0, token1) = (token0 < token1) ? (token0, token1) : (token1, token0);
+        (token0, token1) = (address(token0) < address(token1)) ? (token0, token1) : (token1, token0);
         stdstore.target(address(registry)).sig(registry.inRegistry.selector).with_key(AERO).checked_write(false);
 
         // And: A valid position in range (has both tokens).
