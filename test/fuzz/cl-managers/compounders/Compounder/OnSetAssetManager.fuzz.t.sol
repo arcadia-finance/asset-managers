@@ -34,7 +34,7 @@ contract OnSetAssetManager_Compounder_Fuzz_Test is Compounder_Fuzz_Test {
         vm.assume(account_ != address(0));
         compounder.setAccount(account_);
 
-        // When: calling rebalance
+        // When: calling onSetAssetManager
         // Then: it should revert
         vm.prank(caller);
         vm.expectRevert(Compounder.Reentered.selector);
@@ -51,7 +51,7 @@ contract OnSetAssetManager_Compounder_Fuzz_Test is Compounder_Fuzz_Test {
         // Given: account is not an Arcadia Account
         vm.assume(account_ != address(account));
 
-        // When: calling rebalance
+        // When: calling onSetAssetManager
         // Then: it should revert
         vm.prank(caller);
         vm.expectRevert(Compounder.NotAnAccount.selector);
