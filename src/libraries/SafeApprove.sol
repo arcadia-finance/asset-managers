@@ -2,7 +2,7 @@
  * https://github.com/Vectorized/solady/blob/main/src/utils/SafeTransferLib.sol
  * SPDX-License-Identifier: MIT
  */
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.34;
 
 import { ERC20 } from "../../lib/accounts-v2/lib/solmate/src/tokens/ERC20.sol";
 
@@ -19,8 +19,7 @@ library SafeApprove {
      * Reverts upon failure.
      */
     function safeApproveWithRetry(ERC20 token, address to, uint256 amount) internal {
-        /// @solidity memory-safe-assembly
-        assembly {
+        assembly ("memory-safe") {
             mstore(0x14, to) // Store the `to` argument.
             mstore(0x34, amount) // Store the `amount` argument.
             mstore(0x00, 0x095ea7b3000000000000000000000000) // `approve(address,uint256)`.

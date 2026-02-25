@@ -94,7 +94,7 @@ abstract contract Slipstream_Fuzz_Test is
         // Create tokens.
         token0 = new ERC20Mock("TokenA", "TOKA", 0);
         token1 = new ERC20Mock("TokenB", "TOKB", 0);
-        (token0, token1) = (token0 < token1) ? (token0, token1) : (token1, token0);
+        (token0, token1) = (address(token0) < address(token1)) ? (token0, token1) : (token1, token0);
 
         // Deploy test contract.
         base = new SlipstreamExtension(
