@@ -313,9 +313,6 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
         if (accountToInitiator[IAccount(account_).owner()][account_] != msg.sender) revert InvalidInitiator();
         if (!isPositionManager(initiatorParams.positionManager)) revert InvalidPositionManager();
 
-        // Store Account address, used to validate the caller of the executeAction() callback and serves as a reentrancy guard.
-        account = account_;
-
         // If leftovers have to be withdrawn from account, get token0 and token1.
         address token0;
         address token1;

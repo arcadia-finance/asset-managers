@@ -16,9 +16,9 @@ struct PositionState {
     int24 tickSpacing;
     // The current tick of the pool.
     int24 tickCurrent;
-    // The lower tick of the position.
-    int24 tickUpper;
     // The upper tick of the position.
+    int24 tickUpper;
+    // The lower tick of the position.
     int24 tickLower;
     // The liquidity of the position.
     uint128 liquidity;
