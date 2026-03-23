@@ -284,7 +284,9 @@ abstract contract CowSwapper_Fuzz_Test is Fuzz_Test, BalancerV2Fixture, CowSwapF
         view
         returns (bytes memory sig)
     {
-        bytes32 messageHash = keccak256(abi.encode(account_, swapFee, order.hash(orderHook.DOMAIN_SEPARATOR())));
+        bytes32 messageHash =
+        // forge-lint: disable-next-line(unsafe-typecast)
+        cowSwapper.getMessageHash(account_, uint64(swapFee), order.hash(orderHook.DOMAIN_SEPARATOR()));
         sig = getSignature(messageHash, privateKey);
     }
 
