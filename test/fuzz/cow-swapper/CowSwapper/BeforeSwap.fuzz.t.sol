@@ -95,7 +95,7 @@ contract BeforeSwap_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         assertEq(cowSwapper.getOrderHash(), order.hash(orderHook.DOMAIN_SEPARATOR()));
         assertEq(
             cowSwapper.getMessageHash(),
-            keccak256(abi.encode(address(account), swapFee, order.hash(orderHook.DOMAIN_SEPARATOR())))
+            cowSwapper.getMessageHash(address(account), swapFee, order.hash(orderHook.DOMAIN_SEPARATOR()))
         );
     }
 }
