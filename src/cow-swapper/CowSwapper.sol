@@ -421,7 +421,7 @@ contract CowSwapper is IActionBase, EIP712, Guardian {
         // Store transient state.
         swapFee = swapFee_;
         orderHash = orderHash_;
-        messageHash = _hashTypedData(keccak256(abi.encode(SWAP_ORDER_TYPEHASH, account_, swapFee_, orderHash_)));
+        messageHash = getMessageHash(account_, swapFee_, orderHash_);
     }
 
     /* ///////////////////////////////////////////////////////////////
