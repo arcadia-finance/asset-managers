@@ -30,7 +30,7 @@ contract CowSwapper is IActionBase, EIP712, Guardian {
     ////////////////////////////////////////////////////////////// */
 
     // The version of the CowSwapper.
-    string public constant VERSION = "1.1.0";
+    string public constant VERSION = "1.1.1";
 
     // The EIP-1271 magic value.
     bytes4 internal constant MAGIC_VALUE = 0x1626ba7e;
@@ -97,6 +97,9 @@ contract CowSwapper is IActionBase, EIP712, Guardian {
     // The amount of tokenIn to swap (sellAmount).
     uint256 internal transient amountIn;
 
+    // The balance of tokenIn held just before the settlement, used to detect if the swap already happened.
+    uint256 internal transient balanceBefore;
+
     // The order hash.
     bytes32 internal transient orderHash;
     // The message hash.
@@ -119,6 +122,7 @@ contract CowSwapper is IActionBase, EIP712, Guardian {
     error OnlyHooksTrampoline();
     error OnlyFlashLoanRouter();
     error Reentered();
+    error SwapAlreadyExecuted();
 
     /* //////////////////////////////////////////////////////////////
                                 EVENTS
@@ -352,7 +356,8 @@ contract CowSwapper is IActionBase, EIP712, Guardian {
 
         // Cache the balance of tokenIn before the swap.
         address tokenIn_ = tokenIn;
-        uint256 balanceBefore = IERC20(tokenIn_).balanceOf(address(this));
+        uint256 balanceBefore_ = IERC20(tokenIn_).balanceOf(address(this));
+        balanceBefore = balanceBefore_;
 
         // Callback to flash loan router, this will settle the swap.
         FLASH_LOAN_ROUTER.borrowerCallBack(callBackData);
@@ -360,7 +365,7 @@ contract CowSwapper is IActionBase, EIP712, Guardian {
         // Verify that "isValidSignature()" was called.
         // A malicious solver could modify the EIP-1271 signature, skipping the check that the orderHash is correct.
         // If isValidSignature() would be skipped, tokenIn would not be transferred from this contract to the vault relayer.
-        if (IERC20(tokenIn_).balanceOf(address(this)) != balanceBefore - amountIn) {
+        if (IERC20(tokenIn_).balanceOf(address(this)) != balanceBefore_ - amountIn) {
             revert MissingSignatureVerification();
         }
 
@@ -406,6 +411,11 @@ contract CowSwapper is IActionBase, EIP712, Guardian {
     function beforeSwap(bytes calldata initiatorData) external {
         // Caller must be the Hooks Trampoline.
         if (msg.sender != HOOKS_TRAMPOLINE) revert OnlyHooksTrampoline();
+
+        // The swap parameters may only be set before the swap, so the sell token must still be fully present.
+        // Once it has been pulled the parameters are final and may not be changed. A re-supplied tokenIn balance
+        // is detected by the "balanceBefore_ - amountIn" check in executeAction().
+        if (IERC20(tokenIn).balanceOf(address(this)) != balanceBefore) revert SwapAlreadyExecuted();
 
         // Cache variables.
         address account_ = account;

@@ -47,6 +47,14 @@ contract CowSwapperExtension is CowSwapper {
         return messageHash;
     }
 
+    function getBalanceBefore() external view returns (uint256) {
+        return balanceBefore;
+    }
+
+    function setBalanceBefore(uint256 balanceBefore_) external {
+        balanceBefore = balanceBefore_;
+    }
+
     function setAccount(address account_) external {
         account = account_;
     }
