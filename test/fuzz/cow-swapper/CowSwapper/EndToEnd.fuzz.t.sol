@@ -623,6 +623,70 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         flashLoanRouter.flashLoanAndSettle(loans, settlementCallData);
     }
 
+    function testFuzz_Revert_EndToEnd_TokenInReturnedAfterSwap(
+        uint256 initiatorPrivateKey,
+        uint64 swapFee,
+        GPv2Order.Data memory order
+    ) public {
+        // Given: Valid initiator, swap fee and order.
+        initiatorPrivateKey = givenValidPrivatekey(initiatorPrivateKey);
+        address initiator = vm.addr(initiatorPrivateKey);
+        swapFee = uint64(bound(swapFee, 0, MAX_FEE));
+        givenValidOrder(swapFee, order);
+
+        // And: Cow swapper is set as asset manager with initiator.
+        setCowSwapper(initiator);
+
+        // And: Account has sufficient tokenIn balance and tokenIn is approved.
+        depositErc20InAccount(account, ERC20Mock(address(order.sellToken)), order.sellAmount);
+        cowSwapper.approveToken(address(order.sellToken));
+
+        // And: Router can execute the swap.
+        deal(address(order.buyToken), address(routerMock), order.buyAmount, true);
+
+        // And: The settlement is funded so it can return amountIn of tokenIn to the cow swapper mid-flow.
+        deal(address(token0), address(settlement), order.sellAmount, true);
+
+        // And: Valid EIP-1271 signature.
+        bytes memory signature =
+            abi.encodePacked(address(cowSwapper), getSignature(address(account), swapFee, order, initiatorPrivateKey));
+
+        Loan.Data[] memory loans = new Loan.Data[](1);
+        loans[0] = Loan.Data({
+            amount: order.sellAmount,
+            borrower: IBorrower(address(cowSwapper)),
+            lender: address(account),
+            token: IERC20(address(order.sellToken))
+        });
+
+        // And: The post-swap phase returns amountIn of tokenIn to the cow swapper, then runs a late beforeSwap.
+        bytes memory settlementCallData;
+        {
+            (
+                address[] memory tokens,
+                uint256[] memory clearingPrices,
+                ICowSettlement.Trade[] memory trades,
+                ICowSettlement.Interaction[][3] memory interactions
+            ) = getSettlementData(swapFee, order, signature);
+
+            bytes memory lateHookData = abi.encodePacked(address(token0), uint112(1), order.validTo, uint64(0));
+            interactions[2] = new ICowSettlement.Interaction[](2);
+            interactions[2][0] = ICowSettlement.Interaction({
+                target: address(token0),
+                value: 0,
+                callData: abi.encodeCall(token0.transfer, (address(cowSwapper), order.sellAmount))
+            });
+            interactions[2][1] = getBeforeSwapHookInteraction(lateHookData);
+            settlementCallData = abi.encodeCall(ICowSettlement.settle, (tokens, clearingPrices, trades, interactions));
+        }
+
+        // When: The solver calls the flash loan router.
+        // Then: the returned tokenIn leaves a surplus that the executeAction balance check rejects.
+        vm.prank(solver);
+        vm.expectRevert(CowSwapper.MissingSignatureVerification.selector);
+        flashLoanRouter.flashLoanAndSettle(loans, settlementCallData);
+    }
+
     function testFuzz_Success_EndToEnd_Initiator(
         uint256 initiatorPrivateKey,
         uint64 swapFee,
@@ -760,5 +824,84 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
 
         // And: Positive slippage can be pocketed by solver.
         assertEq(order.buyToken.balanceOf(address(settlement)), buyAmount - buyClearingPrice);
+    }
+
+    function testFuzz_Success_EndToEnd_BeforeSwapAfterSwapHasNoEffect(
+        uint256 initiatorPrivateKey,
+        uint64 swapFee,
+        GPv2Order.Data memory order,
+        uint256 buyClearingPrice,
+        uint256 buyAmount
+    ) public {
+        // Given: Valid initiator, swap fee and order.
+        initiatorPrivateKey = givenValidPrivatekey(initiatorPrivateKey);
+        address initiator = vm.addr(initiatorPrivateKey);
+        swapFee = uint64(bound(swapFee, 0, MAX_FEE));
+        givenValidOrder(swapFee, order);
+
+        // And: Cow swapper is set as asset manager with initiator.
+        setCowSwapper(initiator);
+
+        // And: Account has sufficient tokenIn balance and tokenIn is approved.
+        depositErc20InAccount(account, ERC20Mock(address(order.sellToken)), order.sellAmount);
+        cowSwapper.approveToken(address(order.sellToken));
+
+        // And: Clearing price is better than order demand with positive slippage.
+        buyClearingPrice = bound(buyClearingPrice, order.buyAmount + 1, type(uint160).max);
+        buyAmount = bound(buyAmount, buyClearingPrice, type(uint160).max);
+        deal(address(order.buyToken), address(routerMock), buyAmount, true);
+
+        // And: Valid EIP-1271 signature.
+        bytes memory signature =
+            abi.encodePacked(address(cowSwapper), getSignature(address(account), swapFee, order, initiatorPrivateKey));
+
+        Loan.Data[] memory loans = new Loan.Data[](1);
+        loans[0] = Loan.Data({
+            amount: order.sellAmount,
+            borrower: IBorrower(address(cowSwapper)),
+            lender: address(account),
+            token: IERC20(address(order.sellToken))
+        });
+
+        // And: An extra beforeSwap() (setting tokenOut to token0) is included in both the intra (interactions[1])
+        // and post (interactions[2]) phases, both of which run after the sell token is pulled.
+        bytes memory settlementCallData;
+        {
+            (
+                address[] memory tokens,
+                uint256[] memory clearingPrices,
+                ICowSettlement.Trade[] memory trades,
+                ICowSettlement.Interaction[][3] memory interactions
+            ) = getSettlementData(swapFee, order, signature, buyClearingPrice, buyAmount);
+            bytes memory lateHookData = abi.encodePacked(address(token0), uint112(1), order.validTo, uint64(0));
+            ICowSettlement.Interaction memory lateHook = getBeforeSwapHookInteraction(lateHookData);
+
+            // Prepend the extra beforeSwap to the intra phase, keeping the existing swap interactions after it.
+            ICowSettlement.Interaction[] memory intraInteractions =
+                new ICowSettlement.Interaction[](interactions[1].length + 1);
+            intraInteractions[0] = lateHook;
+            for (uint256 i = 0; i < interactions[1].length; ++i) {
+                intraInteractions[i + 1] = interactions[1][i];
+            }
+            interactions[1] = intraInteractions;
+
+            interactions[2] = new ICowSettlement.Interaction[](1);
+            interactions[2][0] = lateHook;
+            settlementCallData = abi.encodeCall(ICowSettlement.settle, (tokens, clearingPrices, trades, interactions));
+        }
+
+        // When: The solver calls the flash loan router.
+        vm.prank(solver);
+        flashLoanRouter.flashLoanAndSettle(loans, settlementCallData);
+
+        // Then: the extra beforeSwap calls have no effect (the trampoline ignores their reverts), so the result
+        // is the normal one.
+        assertEq(cowSwapper.getAccount(), address(0));
+        uint256 fee = buyClearingPrice * swapFee / 1e18;
+        assertEq(order.buyToken.balanceOf(address(account)), buyClearingPrice - fee);
+        assertEq(order.buyToken.balanceOf(initiator), fee);
+        // And: the cow swapper holds no leftover tokens.
+        assertEq(order.buyToken.balanceOf(address(cowSwapper)), 0);
+        assertEq(token0.balanceOf(address(cowSwapper)), 0);
     }
 }

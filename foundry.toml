@@ -30,6 +30,7 @@ unchecked_cheatcode_artifacts = true
 # - 5574: Contract code size exceeds 24576 bytes
 ignored_error_codes = [2394, 2424, 3860, 4591, 5574, 8429]
 ignored_warnings_from = [
+    "lib/accounts-v2/lib/slipstream/contracts/gauge/interfaces/ICLPool.sol",
     "lib/accounts-v2/lib/slipstream/contracts/libraries/EnumerableSet.sol",
     "lib/cowprotocol/",
     "lib/flash-loan-router/",
@@ -44,6 +45,7 @@ exclude_lints = [
 ignore = [
     "**/merkl/**/*",
     "**/merkl-operator/**/*",
+    "**/CompilePragma7Dot6.t.sol",
 ]
 
 [profile.lite]

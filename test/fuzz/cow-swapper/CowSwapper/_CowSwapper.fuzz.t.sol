@@ -228,19 +228,8 @@ abstract contract CowSwapper_Fuzz_Test is Fuzz_Test, BalancerV2Fixture, CowSwapF
         });
 
         // And: BeforeSwap is called in pre swap hook.
-        {
-            HooksTrampoline.Hook[] memory hooks = new HooksTrampoline.Hook[](1);
-            bytes memory initiatorData =
-                abi.encodePacked(order.buyToken, uint112(order.buyAmount), order.validTo, swapFee);
-            hooks[0] = HooksTrampoline.Hook({
-                target: address(cowSwapper),
-                callData: abi.encodeCall(cowSwapper.beforeSwap, (initiatorData)),
-                gasLimit: 80_000
-            });
-            interactions[0][1] = ICowSettlement.Interaction({
-                target: address(hooksTrampoline), value: 0, callData: abi.encodeCall(hooksTrampoline.execute, (hooks))
-            });
-        }
+        bytes memory initiatorData = abi.encodePacked(order.buyToken, uint112(order.buyAmount), order.validTo, swapFee);
+        interactions[0][1] = getBeforeSwapHookInteraction(initiatorData);
 
         // Swap interactions.
         interactions[1] = new ICowSettlement.Interaction[](2);
@@ -258,6 +247,22 @@ abstract contract CowSwapper_Fuzz_Test is Fuzz_Test, BalancerV2Fixture, CowSwapF
         });
 
         // No Post Swap interactions.
+    }
+
+    function getBeforeSwapHookInteraction(bytes memory initiatorData)
+        internal
+        view
+        returns (ICowSettlement.Interaction memory interaction)
+    {
+        HooksTrampoline.Hook[] memory hooks = new HooksTrampoline.Hook[](1);
+        hooks[0] = HooksTrampoline.Hook({
+            target: address(cowSwapper),
+            callData: abi.encodeCall(cowSwapper.beforeSwap, (initiatorData)),
+            gasLimit: 80_000
+        });
+        interaction = ICowSettlement.Interaction({
+            target: address(hooksTrampoline), value: 0, callData: abi.encodeCall(hooksTrampoline.execute, (hooks))
+        });
     }
 
     function getLoansWithSettlement(Loan.Data[] calldata loans, bytes calldata settlementCallData)
