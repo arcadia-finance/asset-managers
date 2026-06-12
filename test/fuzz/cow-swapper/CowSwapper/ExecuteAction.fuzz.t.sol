@@ -952,7 +952,11 @@ contract ExecuteAction_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         givenValidOrder(swapFee, order);
 
         // And: Cow swapper is set as asset manager with initiator.
+        // Initiator must not be a contract holding buyToken during the settlement.
         vm.assume(initiator != address(0));
+        vm.assume(initiator != address(settlement));
+        vm.assume(initiator != address(cowSwapper));
+        vm.assume(initiator != address(account));
         setCowSwapper(initiator);
 
         // And: Cow Swapper has balance sellToken.
