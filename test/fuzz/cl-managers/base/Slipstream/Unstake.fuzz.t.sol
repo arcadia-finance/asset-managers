@@ -83,7 +83,8 @@ contract Unstake_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         setPositionState(position);
 
         // And : An initial rewardGrowthGlobalX128.
-        stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+        stdstore.target(address(poolCl))
+            .sig(poolCl.rewardGrowthGlobalX128.selector)
             .checked_write(rewardGrowthGlobalX128Last);
 
         // Create staked position.
@@ -108,7 +109,8 @@ contract Unstake_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         vm.warp(block.timestamp + 1);
         deal(AERO, address(gauge), type(uint256).max, true);
         stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-        stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+        stdstore.target(address(poolCl))
+            .sig(poolCl.rewardGrowthGlobalX128.selector)
             .checked_write(rewardGrowthGlobalX128Current);
 
         // When: Calling unstake.
@@ -159,7 +161,8 @@ contract Unstake_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         setPositionState(position);
 
         // And : An initial rewardGrowthGlobalX128.
-        stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+        stdstore.target(address(poolCl))
+            .sig(poolCl.rewardGrowthGlobalX128.selector)
             .checked_write(rewardGrowthGlobalX128Last);
 
         // Create staked position.
@@ -202,7 +205,8 @@ contract Unstake_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         vm.warp(block.timestamp + 1);
         deal(AERO, address(gauge), rewards, true);
         stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-        stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+        stdstore.target(address(poolCl))
+            .sig(poolCl.rewardGrowthGlobalX128.selector)
             .checked_write(rewardGrowthGlobalX128Current);
 
         // When: Calling unstake.
@@ -233,7 +237,8 @@ contract Unstake_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         setPositionState(position);
 
         // And : An initial rewardGrowthGlobalX128.
-        stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+        stdstore.target(address(poolCl))
+            .sig(poolCl.rewardGrowthGlobalX128.selector)
             .checked_write(rewardGrowthGlobalX128Last);
 
         // Create staked position.
@@ -258,7 +263,8 @@ contract Unstake_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         vm.warp(block.timestamp + 1);
         deal(AERO, address(gauge), type(uint256).max, true);
         stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-        stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+        stdstore.target(address(poolCl))
+            .sig(poolCl.rewardGrowthGlobalX128.selector)
             .checked_write(rewardGrowthGlobalX128Current);
 
         // When: Calling unstake.
@@ -309,7 +315,8 @@ contract Unstake_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         setPositionState(position);
 
         // And : An initial rewardGrowthGlobalX128.
-        stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+        stdstore.target(address(poolCl))
+            .sig(poolCl.rewardGrowthGlobalX128.selector)
             .checked_write(rewardGrowthGlobalX128Last);
 
         // Create staked position.
@@ -352,7 +359,8 @@ contract Unstake_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         vm.warp(block.timestamp + 1);
         deal(AERO, address(gauge), rewards, true);
         stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-        stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+        stdstore.target(address(poolCl))
+            .sig(poolCl.rewardGrowthGlobalX128.selector)
             .checked_write(rewardGrowthGlobalX128Current);
 
         // When: Calling unstake.

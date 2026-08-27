@@ -117,7 +117,7 @@ contract FlashLoanAndCallBack_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         // Then: it should revert
         vm.prank(address(flashLoanRouter));
         if (!isPrecompile(account_)) {
-            vm.expectRevert(abi.encodePacked("call to non-contract address ", vm.toString(account_)));
+            vm.expectRevert(bytes(""));
         } else {
             vm.expectRevert(bytes(""));
         }

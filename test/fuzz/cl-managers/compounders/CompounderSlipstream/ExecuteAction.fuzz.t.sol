@@ -581,7 +581,8 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), type(uint256).max, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+            stdstore.target(address(poolCl))
+                .sig(poolCl.rewardGrowthGlobalX128.selector)
                 .checked_write(rewardGrowthGlobalX128Current);
         }
 
@@ -721,7 +722,8 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), rewards, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+            stdstore.target(address(poolCl))
+                .sig(poolCl.rewardGrowthGlobalX128.selector)
                 .checked_write(rewardGrowthGlobalX128Current);
         }
 
@@ -863,7 +865,8 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), type(uint256).max, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+            stdstore.target(address(poolCl))
+                .sig(poolCl.rewardGrowthGlobalX128.selector)
                 .checked_write(rewardGrowthGlobalX128Current);
         }
 
@@ -1001,7 +1004,8 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), rewards, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+            stdstore.target(address(poolCl))
+                .sig(poolCl.rewardGrowthGlobalX128.selector)
                 .checked_write(rewardGrowthGlobalX128Current);
         }
 

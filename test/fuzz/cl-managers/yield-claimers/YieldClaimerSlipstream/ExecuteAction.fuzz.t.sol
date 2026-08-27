@@ -270,7 +270,8 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), type(uint256).max, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+            stdstore.target(address(poolCl))
+                .sig(poolCl.rewardGrowthGlobalX128.selector)
                 .checked_write(rewardGrowthGlobalX128Current);
         }
         rewards = stakedSlipstreamAM.rewardOf(position.id);
@@ -368,7 +369,8 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), type(uint256).max, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+            stdstore.target(address(poolCl))
+                .sig(poolCl.rewardGrowthGlobalX128.selector)
                 .checked_write(rewardGrowthGlobalX128Current);
         }
         rewards = stakedSlipstreamAM.rewardOf(position.id);
@@ -452,7 +454,8 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), type(uint256).max, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+            stdstore.target(address(poolCl))
+                .sig(poolCl.rewardGrowthGlobalX128.selector)
                 .checked_write(rewardGrowthGlobalX128Current);
         }
         rewards = wrappedStakedSlipstream.rewardOf(position.id);
@@ -552,7 +555,8 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), type(uint256).max, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+            stdstore.target(address(poolCl))
+                .sig(poolCl.rewardGrowthGlobalX128.selector)
                 .checked_write(rewardGrowthGlobalX128Current);
         }
         rewards = wrappedStakedSlipstream.rewardOf(position.id);

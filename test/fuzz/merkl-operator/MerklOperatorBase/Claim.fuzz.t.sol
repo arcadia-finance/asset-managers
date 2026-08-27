@@ -62,7 +62,7 @@ contract Claim_MerklOperatorBase_Fuzz_Test is MerklOperatorBase_Fuzz_Test {
         // Then : it should revert
         vm.prank(caller);
         if (account_.code.length == 0 && !isPrecompile(account_)) {
-            vm.expectRevert(abi.encodePacked("call to non-contract address ", vm.toString(account_)));
+            vm.expectRevert(bytes(""));
         } else {
             vm.expectRevert(bytes(""));
         }

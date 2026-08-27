@@ -87,7 +87,7 @@ contract Compound_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstream_Fuz
         // Then : it should revert
         vm.prank(caller);
         if (account_.code.length == 0 && !isPrecompile(account_)) {
-            vm.expectRevert(abi.encodePacked("call to non-contract address ", vm.toString(account_)));
+            vm.expectRevert(bytes(""));
         } else {
             vm.expectRevert(bytes(""));
         }
@@ -399,7 +399,8 @@ contract Compound_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstream_Fuz
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), type(uint256).max, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+            stdstore.target(address(poolCl))
+                .sig(poolCl.rewardGrowthGlobalX128.selector)
                 .checked_write(rewardGrowthGlobalX128Current);
         }
         rewards = stakedSlipstreamAM.rewardOf(position.id);
@@ -503,7 +504,8 @@ contract Compound_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstream_Fuz
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), type(uint256).max, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+            stdstore.target(address(poolCl))
+                .sig(poolCl.rewardGrowthGlobalX128.selector)
                 .checked_write(rewardGrowthGlobalX128Current);
         }
         rewards = stakedSlipstreamAM.rewardOf(position.id);
@@ -605,7 +607,8 @@ contract Compound_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstream_Fuz
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), type(uint256).max, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+            stdstore.target(address(poolCl))
+                .sig(poolCl.rewardGrowthGlobalX128.selector)
                 .checked_write(rewardGrowthGlobalX128Current);
         }
         rewards = wrappedStakedSlipstream.rewardOf(position.id);
@@ -701,7 +704,8 @@ contract Compound_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstream_Fuz
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), type(uint256).max, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+            stdstore.target(address(poolCl))
+                .sig(poolCl.rewardGrowthGlobalX128.selector)
                 .checked_write(rewardGrowthGlobalX128Current);
         }
         rewards = wrappedStakedSlipstream.rewardOf(position.id);
