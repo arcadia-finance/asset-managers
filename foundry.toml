@@ -7,6 +7,14 @@ optimizer = true
 optimizer_runs = 200
 fuzz = { runs = 50, max_test_rejects = 100_000_000}
 no_match_path = "**/{script/}*"
+dynamic_test_linking = false
+isolate = false
+compilation_restrictions = [
+    { paths = "lib/accounts-v2/lib/slipstream/contracts/**", version = "=0.7.6" },
+    { paths = "lib/accounts-v2/lib/v3-core/contracts/**", version = "=0.7.6" },
+    { paths = "lib/accounts-v2/lib/v3-periphery/contracts/**", version = "=0.7.6" },
+    { paths = "lib/accounts-v2/lib/swap-router-contracts/contracts/**", version = "=0.7.6" },
+]
 remappings = [
     "lib/accounts-v2/lib/openzeppelin-contracts-upgradeable-v4.9:@openzeppelin/=lib/accounts-v2/lib/openzeppelin-contracts-v4.9/",
     "lib/accounts-v2/lib/merkl-contracts:@openzeppelin/contracts/=lib/accounts-v2/lib/openzeppelin-contracts-v4.9/contracts/",
@@ -16,6 +24,12 @@ remappings = [
     "lib/accounts-v2/lib/swap-router-contracts:@openzeppelin/=lib/accounts-v2/lib/openzeppelin-contracts-v3.4/",
     "lib/accounts-v2/lib/v4-periphery:@openzeppelin/=lib/accounts-v2/lib/v4-periphery/lib/v4-core/lib/openzeppelin-contracts/",
     "lib/accounts-v2/lib/v4-periphery/lib/v4-core:@openzeppelin/=lib/accounts-v2/lib/v4-periphery/lib/v4-core/lib/openzeppelin-contracts/",
+    "@uniswap/v2-core/contracts=lib/accounts-v2/test/utils/fixtures/swap-router-02",
+    "@uniswap/v3-core/contracts/=lib/accounts-v2/lib/v3-core/contracts/",
+    "@uniswap/v3-periphery/contracts/=lib/accounts-v2/lib/v3-periphery/contracts/",
+    "@uniswap/v4-core/=lib/accounts-v2/lib/v4-periphery/lib/v4-core/",
+    "contracts/=lib/accounts-v2/lib/slipstream/contracts",
+    "solmate/=lib/accounts-v2/lib/solmate/",
 ]
 fs_permissions = [{ access = "read", path = "./out"}, { access = "write", path = "./script/out"}]
 unchecked_cheatcode_artifacts = true
