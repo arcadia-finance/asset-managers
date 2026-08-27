@@ -24,7 +24,7 @@ contract BeforeSwap_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Revert_executeAction_OnlyHooksTrampoline(address caller, bytes calldata initiatorData) public {
+    function testFuzz_Revert_beforeSwap_OnlyHooksTrampoline(address caller, bytes calldata initiatorData) public {
         // Given : Caller is not the hooks trampoline.
         vm.assume(caller != address(hooksTrampoline));
 
@@ -51,7 +51,7 @@ contract BeforeSwap_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         cowSwapper.beforeSwap(initiatorData);
     }
 
-    function testFuzz_Revert_executeAction_InvalidSwapFee(
+    function testFuzz_Revert_beforeSwap_InvalidSwapFee(
         address initiator,
         uint64 maxSwapFee,
         uint64 swapFee,
@@ -79,7 +79,7 @@ contract BeforeSwap_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         cowSwapper.beforeSwap(abi.encodePacked(order.buyToken, uint112(order.buyAmount), order.validTo, swapFee));
     }
 
-    function testFuzz_Success_executeAction(
+    function testFuzz_Success_beforeSwap(
         address initiator,
         uint64 maxSwapFee,
         uint64 swapFee,
