@@ -149,7 +149,7 @@ contract Sign is Test {
         (,, bytes32 orderHash) = ORDER_HOOK.getInitiatorParams(address(ACCOUNT), tokenIn, amountIn, initiatorData);
         emit log_named_bytes32("orderHash", orderHash);
 
-        bytes32 messageHash = keccak256(abi.encode(address(ACCOUNT), SWAP_FEE, orderHash));
+        bytes32 messageHash = CowSwapper(COW_SWAPPER).getMessageHash(address(ACCOUNT), SWAP_FEE, orderHash);
         emit log_named_bytes32("messageHash", messageHash);
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(accountOwner, messageHash);

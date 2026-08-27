@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.34;
 
 import { GPv2Order, IERC20 } from "../../../lib/cowprotocol/src/contracts/libraries/GPv2Order.sol";
 import { ICowSwapper } from "../interfaces/ICowSwapper.sol";

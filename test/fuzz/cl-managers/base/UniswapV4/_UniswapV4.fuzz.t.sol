@@ -101,7 +101,7 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         // Create tokens.
         token0 = new ERC20Mock("TokenA", "TOKA", 0);
         token1 = new ERC20Mock("TokenB", "TOKB", 0);
-        (token0, token1) = (token0 < token1) ? (token0, token1) : (token1, token0);
+        (token0, token1) = (address(token0) < address(token1)) ? (token0, token1) : (token1, token0);
 
         addAssetsToArcadia(sqrtPrice);
 

@@ -88,7 +88,7 @@ contract GetPositionState_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         // Given: Aero is an underlying token of the position.
         token0 = new ERC20Mock{ salt: salt }("TokenA", "TOKA", 0);
         token1 = ERC20Mock(AERO);
-        (token0, token1) = (token0 < token1) ? (token0, token1) : (token1, token0);
+        (token0, token1) = (address(token0) < address(token1)) ? (token0, token1) : (token1, token0);
         stdstore.target(address(registry)).sig(registry.inRegistry.selector).with_key(AERO).checked_write(false);
 
         // And: A valid position.
@@ -152,7 +152,7 @@ contract GetPositionState_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         // Given: Aero is an underlying token of the position.
         token0 = new ERC20Mock{ salt: salt }("TokenA", "TOKA", 0);
         token1 = ERC20Mock(AERO);
-        (token0, token1) = (token0 < token1) ? (token0, token1) : (token1, token0);
+        (token0, token1) = (address(token0) < address(token1)) ? (token0, token1) : (token1, token0);
         stdstore.target(address(registry)).sig(registry.inRegistry.selector).with_key(AERO).checked_write(false);
 
         // And: A valid position.

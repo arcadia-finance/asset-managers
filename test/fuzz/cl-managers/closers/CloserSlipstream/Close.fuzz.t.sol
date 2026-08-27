@@ -335,7 +335,8 @@ contract Close_CloserSlipstream_Fuzz_Test is CloserSlipstream_Fuzz_Test {
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), type(uint256).max, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+            stdstore.target(address(poolCl))
+                .sig(poolCl.rewardGrowthGlobalX128.selector)
                 .checked_write(rewardGrowthGlobalX128Current);
         }
 
@@ -455,7 +456,14 @@ contract Close_CloserSlipstream_Fuzz_Test is CloserSlipstream_Fuzz_Test {
 
         // And: Debt is bounded by the collateral value to ensure account is healthy.
         uint256 collateralValue = account.getCollateralValue();
-        debt = bound(debt, 1, collateralValue > 1 ? collateralValue - 1 : 1);
+        vm.assume(collateralValue > 1);
+        // And: Debt is repayable, so the Account is healthy again after the position is closed.
+        vm.assume(initiatorParams.maxRepayAmount > 0);
+        debt = bound(
+            debt,
+            1,
+            collateralValue - 1 < initiatorParams.maxRepayAmount ? collateralValue - 1 : initiatorParams.maxRepayAmount
+        );
         lendingPoolMock.setDebt(address(account), debt);
 
         // When: Calling close().
@@ -558,7 +566,8 @@ contract Close_CloserSlipstream_Fuzz_Test is CloserSlipstream_Fuzz_Test {
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), type(uint256).max, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+            stdstore.target(address(poolCl))
+                .sig(poolCl.rewardGrowthGlobalX128.selector)
                 .checked_write(rewardGrowthGlobalX128Current);
         }
 
@@ -588,7 +597,14 @@ contract Close_CloserSlipstream_Fuzz_Test is CloserSlipstream_Fuzz_Test {
 
         // And: Debt is bounded by the collateral value to ensure account is healthy.
         uint256 collateralValue = account.getCollateralValue();
-        debt = bound(debt, 1, collateralValue > 1 ? collateralValue - 1 : 1);
+        vm.assume(collateralValue > 1);
+        // And: Debt is repayable, so the Account is healthy again after the position is closed.
+        vm.assume(initiatorParams.maxRepayAmount > 0);
+        debt = bound(
+            debt,
+            1,
+            collateralValue - 1 < initiatorParams.maxRepayAmount ? collateralValue - 1 : initiatorParams.maxRepayAmount
+        );
         lendingPoolMock.setDebt(address(account), debt);
 
         // When: Calling close().
@@ -661,7 +677,8 @@ contract Close_CloserSlipstream_Fuzz_Test is CloserSlipstream_Fuzz_Test {
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), type(uint256).max, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+            stdstore.target(address(poolCl))
+                .sig(poolCl.rewardGrowthGlobalX128.selector)
                 .checked_write(rewardGrowthGlobalX128Current);
         }
 
