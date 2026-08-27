@@ -826,6 +826,79 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         assertEq(order.buyToken.balanceOf(address(settlement)), buyAmount - buyClearingPrice);
     }
 
+    function testFuzz_Success_EndToEnd_SecondBeforeSwapInPrePhaseIsIdempotent(
+        uint256 initiatorPrivateKey,
+        uint64 swapFee,
+        GPv2Order.Data memory order,
+        uint256 buyClearingPrice,
+        uint256 buyAmount
+    ) public {
+        // Given: Valid initiator, swap fee and order.
+        initiatorPrivateKey = givenValidPrivatekey(initiatorPrivateKey);
+        address initiator = vm.addr(initiatorPrivateKey);
+        swapFee = uint64(bound(swapFee, 0, MAX_FEE));
+        givenValidOrder(swapFee, order);
+
+        // And: Cow swapper is set as asset manager with initiator.
+        setCowSwapper(initiator);
+
+        // And: Account has sufficient tokenIn balance and tokenIn is approved.
+        depositErc20InAccount(account, ERC20Mock(address(order.sellToken)), order.sellAmount);
+        cowSwapper.approveToken(address(order.sellToken));
+
+        // And: Clearing price is better than order demand with positive slippage.
+        buyClearingPrice = bound(buyClearingPrice, order.buyAmount + 1, type(uint160).max);
+        buyAmount = bound(buyAmount, buyClearingPrice, type(uint160).max);
+        deal(address(order.buyToken), address(routerMock), buyAmount, true);
+
+        // And: Valid EIP-1271 signature.
+        bytes memory signature =
+            abi.encodePacked(address(cowSwapper), getSignature(address(account), swapFee, order, initiatorPrivateKey));
+
+        Loan.Data[] memory loans = new Loan.Data[](1);
+        loans[0] = Loan.Data({
+            amount: order.sellAmount,
+            borrower: IBorrower(address(cowSwapper)),
+            lender: address(account),
+            token: IERC20(address(order.sellToken))
+        });
+
+        // And: The identical beforeSwap() is included a second time in the pre phase (interactions[0]),
+        // which runs before the sell token is pulled, so the guard must let it through.
+        bytes memory settlementCallData;
+        {
+            (
+                address[] memory tokens,
+                uint256[] memory clearingPrices,
+                ICowSettlement.Trade[] memory trades,
+                ICowSettlement.Interaction[][3] memory interactions
+            ) = getSettlementData(swapFee, order, signature, buyClearingPrice, buyAmount);
+
+            // Append a duplicate of the legitimate hook, which is the last entry of the pre phase.
+            ICowSettlement.Interaction[] memory preInteractions =
+                new ICowSettlement.Interaction[](interactions[0].length + 1);
+            for (uint256 i = 0; i < interactions[0].length; ++i) {
+                preInteractions[i] = interactions[0][i];
+            }
+            preInteractions[interactions[0].length] = interactions[0][interactions[0].length - 1];
+            interactions[0] = preInteractions;
+            settlementCallData = abi.encodeCall(ICowSettlement.settle, (tokens, clearingPrices, trades, interactions));
+        }
+
+        // When: The solver calls the flash loan router.
+        vm.prank(solver);
+        flashLoanRouter.flashLoanAndSettle(loans, settlementCallData);
+
+        // Then: the second beforeSwap is a no-op and the result is the normal one.
+        assertEq(cowSwapper.getAccount(), address(0));
+        uint256 fee = buyClearingPrice * swapFee / 1e18;
+        assertEq(order.buyToken.balanceOf(address(account)), buyClearingPrice - fee);
+        assertEq(order.buyToken.balanceOf(initiator), fee);
+
+        // And: the cow swapper holds no leftover tokens.
+        assertEq(order.buyToken.balanceOf(address(cowSwapper)), 0);
+    }
+
     function testFuzz_Success_EndToEnd_BeforeSwapAfterSwapHasNoEffect(
         uint256 initiatorPrivateKey,
         uint64 swapFee,
