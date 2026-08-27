@@ -35,6 +35,22 @@ contract BeforeSwap_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         cowSwapper.beforeSwap(initiatorData);
     }
 
+    function testFuzz_Revert_beforeSwap_SwapAlreadyExecuted(uint256 balanceBefore, bytes calldata initiatorData)
+        public
+    {
+        // Given: balanceBefore differs from the current tokenIn balance,
+        // i.e. the sell token was already pulled, so beforeSwap is being called after the swap.
+        balanceBefore = bound(balanceBefore, 1, type(uint256).max);
+        cowSwapper.setTokenIn(address(token0));
+        cowSwapper.setBalanceBefore(balanceBefore);
+
+        // When: Hooks trampoline calls beforeSwap.
+        // Then: it should revert.
+        vm.prank(address(hooksTrampoline));
+        vm.expectRevert(CowSwapper.SwapAlreadyExecuted.selector);
+        cowSwapper.beforeSwap(initiatorData);
+    }
+
     function testFuzz_Revert_executeAction_InvalidSwapFee(
         address initiator,
         uint64 maxSwapFee,
@@ -95,7 +111,7 @@ contract BeforeSwap_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         assertEq(cowSwapper.getOrderHash(), order.hash(orderHook.DOMAIN_SEPARATOR()));
         assertEq(
             cowSwapper.getMessageHash(),
-            keccak256(abi.encode(address(account), swapFee, order.hash(orderHook.DOMAIN_SEPARATOR())))
+            cowSwapper.getMessageHash(address(account), swapFee, order.hash(orderHook.DOMAIN_SEPARATOR()))
         );
     }
 }

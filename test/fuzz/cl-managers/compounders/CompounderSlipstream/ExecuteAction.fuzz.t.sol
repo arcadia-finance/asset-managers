@@ -581,7 +581,8 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), type(uint256).max, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+            stdstore.target(address(poolCl))
+                .sig(poolCl.rewardGrowthGlobalX128.selector)
                 .checked_write(rewardGrowthGlobalX128Current);
         }
 
@@ -671,7 +672,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
     ) public {
         // Given: Aero is an underlying token of the position.
         token1 = ERC20Mock(AERO);
-        (token0, token1) = (token0 < token1) ? (token0, token1) : (token1, token0);
+        (token0, token1) = (address(token0) < address(token1)) ? (token0, token1) : (token1, token0);
         stdstore.target(address(registry)).sig(registry.inRegistry.selector).with_key(AERO).checked_write(false);
 
         // And: A valid position in range (has both tokens).
@@ -721,7 +722,8 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), rewards, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+            stdstore.target(address(poolCl))
+                .sig(poolCl.rewardGrowthGlobalX128.selector)
                 .checked_write(rewardGrowthGlobalX128Current);
         }
 
@@ -863,7 +865,8 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), type(uint256).max, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+            stdstore.target(address(poolCl))
+                .sig(poolCl.rewardGrowthGlobalX128.selector)
                 .checked_write(rewardGrowthGlobalX128Current);
         }
 
@@ -951,7 +954,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
     ) public {
         // Given: Aero is an underlying token of the position.
         token1 = ERC20Mock(AERO);
-        (token0, token1) = (token0 < token1) ? (token0, token1) : (token1, token0);
+        (token0, token1) = (address(token0) < address(token1)) ? (token0, token1) : (token1, token0);
         stdstore.target(address(registry)).sig(registry.inRegistry.selector).with_key(AERO).checked_write(false);
 
         // And: A valid position in range (has both tokens).
@@ -1001,7 +1004,8 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), rewards, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+            stdstore.target(address(poolCl))
+                .sig(poolCl.rewardGrowthGlobalX128.selector)
                 .checked_write(rewardGrowthGlobalX128Current);
         }
 

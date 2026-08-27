@@ -2,11 +2,12 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.34;
 
 import { ActionData, IActionBase } from "../../lib/accounts-v2/src/interfaces/IActionBase.sol";
 import { ArcadiaLogic } from "./libraries/ArcadiaLogic.sol";
 import { ECDSA } from "../../lib/accounts-v2/lib/solady/src/utils/ECDSA.sol";
+import { EIP712 } from "../../lib/accounts-v2/lib/solady/src/utils/EIP712.sol";
 import { FixedPointMathLib } from "../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
 import { Guardian } from "../guardian/Guardian.sol";
 import { IAccount } from "../interfaces/IAccount.sol";
@@ -21,7 +22,7 @@ import { SafeTransferLib } from "../../lib/accounts-v2/lib/solady/src/utils/Safe
  * @title CoW Swapper for Arcadia Accounts.
  * @author Pragma Labs
  */
-contract CowSwapper is IActionBase, Guardian {
+contract CowSwapper is IActionBase, EIP712, Guardian {
     using FixedPointMathLib for uint256;
     using SafeTransferLib for address;
     /* //////////////////////////////////////////////////////////////
@@ -29,10 +30,14 @@ contract CowSwapper is IActionBase, Guardian {
     ////////////////////////////////////////////////////////////// */
 
     // The version of the CowSwapper.
-    string public constant VERSION = "1.0.0";
+    string public constant VERSION = "1.1.1";
 
     // The EIP-1271 magic value.
     bytes4 internal constant MAGIC_VALUE = 0x1626ba7e;
+
+    // The EIP-712 typehash for SwapOrder.
+    bytes32 internal constant SWAP_ORDER_TYPEHASH =
+        keccak256("SwapOrder(address account,uint64 swapFee,bytes32 orderHash)");
 
     // The contract address of the Arcadia Factory.
     IArcadiaFactory public immutable ARCADIA_FACTORY;
@@ -92,6 +97,9 @@ contract CowSwapper is IActionBase, Guardian {
     // The amount of tokenIn to swap (sellAmount).
     uint256 internal transient amountIn;
 
+    // The balance of tokenIn held just before the settlement, used to detect if the swap already happened.
+    uint256 internal transient balanceBefore;
+
     // The order hash.
     bytes32 internal transient orderHash;
     // The message hash.
@@ -114,6 +122,7 @@ contract CowSwapper is IActionBase, Guardian {
     error OnlyHooksTrampoline();
     error OnlyFlashLoanRouter();
     error Reentered();
+    error SwapAlreadyExecuted();
 
     /* //////////////////////////////////////////////////////////////
                                 EVENTS
@@ -347,7 +356,8 @@ contract CowSwapper is IActionBase, Guardian {
 
         // Cache the balance of tokenIn before the swap.
         address tokenIn_ = tokenIn;
-        uint256 balanceBefore = IERC20(tokenIn_).balanceOf(address(this));
+        uint256 balanceBefore_ = IERC20(tokenIn_).balanceOf(address(this));
+        balanceBefore = balanceBefore_;
 
         // Callback to flash loan router, this will settle the swap.
         FLASH_LOAN_ROUTER.borrowerCallBack(callBackData);
@@ -355,7 +365,7 @@ contract CowSwapper is IActionBase, Guardian {
         // Verify that "isValidSignature()" was called.
         // A malicious solver could modify the EIP-1271 signature, skipping the check that the orderHash is correct.
         // If isValidSignature() would be skipped, tokenIn would not be transferred from this contract to the vault relayer.
-        if (IERC20(tokenIn_).balanceOf(address(this)) != balanceBefore - amountIn) {
+        if (IERC20(tokenIn_).balanceOf(address(this)) != balanceBefore_ - amountIn) {
             revert MissingSignatureVerification();
         }
 
@@ -402,6 +412,11 @@ contract CowSwapper is IActionBase, Guardian {
         // Caller must be the Hooks Trampoline.
         if (msg.sender != HOOKS_TRAMPOLINE) revert OnlyHooksTrampoline();
 
+        // The swap parameters may only be set before the swap, so the sell token must still be fully present.
+        // Once it has been pulled the parameters are final and may not be changed. A re-supplied tokenIn balance
+        // is detected by the "balanceBefore_ - amountIn" check in executeAction().
+        if (IERC20(tokenIn).balanceOf(address(this)) != balanceBefore) revert SwapAlreadyExecuted();
+
         // Cache variables.
         address account_ = account;
 
@@ -416,12 +431,55 @@ contract CowSwapper is IActionBase, Guardian {
         // Store transient state.
         swapFee = swapFee_;
         orderHash = orderHash_;
-        messageHash = keccak256(abi.encode(account_, swapFee_, orderHash_));
+        messageHash = getMessageHash(account_, swapFee_, orderHash_);
     }
 
     /* ///////////////////////////////////////////////////////////////
                           EIP-1271 LOGIC
     /////////////////////////////////////////////////////////////// */
+
+    /**
+     * @notice Returns the EIP-712 domain name and version.
+     * @return name The domain name of the contract.
+     * @return version The domain version of the contract.
+     */
+    function _domainNameAndVersion() internal pure override returns (string memory name, string memory version) {
+        name = "CowSwapper";
+        version = VERSION;
+    }
+
+    /**
+     * @notice Returns the EIP-712 message hash for a swap order.
+     * @param account_ The contract address of the Arcadia Account.
+     * @param swapFee_ The fee charged on the amountOut by the initiator, with 18 decimals precision.
+     * @param orderHash_ The CoW Swap order hash.
+     * @return messageHash_ The EIP-712 message hash to be signed by the initiator or account owner.
+     */
+    function getMessageHash(address account_, uint64 swapFee_, bytes32 orderHash_)
+        public
+        view
+        returns (bytes32 messageHash_)
+    {
+        messageHash_ = _hashTypedData(keccak256(abi.encode(SWAP_ORDER_TYPEHASH, account_, swapFee_, orderHash_)));
+    }
+
+    /**
+     * @notice Returns the EIP-712 message hash for a swap order, computing the order hash from raw inputs.
+     * @param account_ The contract address of the Arcadia Account.
+     * @param tokenIn_ The contract address of the token to swap from.
+     * @param amountIn_ The amount of tokenIn to swap.
+     * @param initiatorData The encoded initiator parameters.
+     * @return messageHash_ The EIP-712 message hash to be signed by the initiator or account owner.
+     */
+    function getMessageHash(address account_, address tokenIn_, uint256 amountIn_, bytes calldata initiatorData)
+        external
+        view
+        returns (bytes32 messageHash_)
+    {
+        (uint64 swapFee_,, bytes32 orderHash_) =
+            IOrderHook(accountInfo[account_].orderHook).getInitiatorParams(account_, tokenIn_, amountIn_, initiatorData);
+        messageHash_ = getMessageHash(account_, swapFee_, orderHash_);
+    }
 
     /**
      * @notice Verifies EIP-1271 signature.

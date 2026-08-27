@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.34;
 
 import { AbstractBase } from "../base/AbstractBase.sol";
 import { ActionData, IActionBase } from "../../../lib/accounts-v2/src/interfaces/IActionBase.sol";
@@ -312,9 +312,6 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
         // If the initiator is set, account_ is an actual Arcadia Account.
         if (accountToInitiator[IAccount(account_).owner()][account_] != msg.sender) revert InvalidInitiator();
         if (!isPositionManager(initiatorParams.positionManager)) revert InvalidPositionManager();
-
-        // Store Account address, used to validate the caller of the executeAction() callback and serves as a reentrancy guard.
-        account = account_;
 
         // If leftovers have to be withdrawn from account, get token0 and token1.
         address token0;

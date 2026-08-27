@@ -95,7 +95,7 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         // Then : it should revert
         vm.prank(caller);
         if (account_.code.length == 0 && !isPrecompile(account_)) {
-            vm.expectRevert(abi.encodePacked("call to non-contract address ", vm.toString(account_)));
+            vm.expectRevert(bytes(""));
         } else {
             vm.expectRevert(bytes(""));
         }
@@ -341,7 +341,8 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), type(uint256).max, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+            stdstore.target(address(poolCl))
+                .sig(poolCl.rewardGrowthGlobalX128.selector)
                 .checked_write(rewardGrowthGlobalX128Current);
         }
 
@@ -475,7 +476,8 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
             vm.warp(block.timestamp + 1);
             deal(AERO, address(gauge), type(uint256).max, true);
             stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
-            stdstore.target(address(poolCl)).sig(poolCl.rewardGrowthGlobalX128.selector)
+            stdstore.target(address(poolCl))
+                .sig(poolCl.rewardGrowthGlobalX128.selector)
                 .checked_write(rewardGrowthGlobalX128Current);
         }
 

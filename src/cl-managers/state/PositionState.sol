@@ -2,7 +2,7 @@
  * Created by Pragma Labs
  * SPDX-License-Identifier: BUSL-1.1
  */
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.34;
 
 // A struct with the position and pool state.
 struct PositionState {
@@ -16,9 +16,9 @@ struct PositionState {
     int24 tickSpacing;
     // The current tick of the pool.
     int24 tickCurrent;
-    // The lower tick of the position.
-    int24 tickUpper;
     // The upper tick of the position.
+    int24 tickUpper;
+    // The lower tick of the position.
     int24 tickLower;
     // The liquidity of the position.
     uint128 liquidity;

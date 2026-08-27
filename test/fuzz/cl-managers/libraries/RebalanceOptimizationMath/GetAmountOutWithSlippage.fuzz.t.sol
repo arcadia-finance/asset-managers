@@ -164,7 +164,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is
         // Mint usable liquidity to use the quoter.
         token0 = new ERC20Mock("TokenA", "TOKA", 0);
         token1 = new ERC20Mock("TokenB", "TOKB", 0);
-        (token0, token1) = (token0 < token1) ? (token0, token1) : (token1, token0);
+        (token0, token1) = (address(token0) < address(token1)) ? (token0, token1) : (token1, token0);
         {
             IUniswapV3PoolExtension pool =
                 createPoolUniV3(address(token0), address(token1), POOL_FEE, sqrtPriceOld, 300);
