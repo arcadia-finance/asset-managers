@@ -13,6 +13,7 @@ import { MerklOperatorBase_Fuzz_Test } from "./_MerklOperatorBase.fuzz.t.sol";
 /**
  * @notice Fuzz tests for the function "claim" of contract "MerklOperatorBase".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract Claim_MerklOperatorBase_Fuzz_Test is MerklOperatorBase_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP

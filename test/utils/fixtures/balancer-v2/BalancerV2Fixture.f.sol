@@ -6,6 +6,7 @@ pragma solidity ^0.8.0;
 
 import { Test } from "../../../../lib/accounts-v2/lib/forge-std/src/Test.sol";
 
+// forge-lint: disable-next-item(encode-packed-collision)
 contract BalancerV2Fixture is Test {
     /*//////////////////////////////////////////////////////////////////////////
                                    CONTRACTS

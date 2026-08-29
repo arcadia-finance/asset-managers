@@ -40,6 +40,7 @@ contract Claim_UniswapV3_Fuzz_Test is UniswapV3_Fuzz_Test {
         setPositionState(position);
 
         // And: claimFee is below 100%.
+        // forge-lint: disable-next-item(unsafe-typecast)
         claimFee = uint64(bound(claimFee, 0, 1e18));
 
         // And: Base has balances.

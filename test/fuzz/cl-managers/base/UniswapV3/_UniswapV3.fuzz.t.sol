@@ -35,6 +35,7 @@ import { Utils } from "../../../../../lib/accounts-v2/test/utils/Utils.sol";
 /**
  * @notice Common logic needed by all "UniswapV3" fuzz tests.
  */
+// forge-lint: disable-next-item(divide-before-multiply,encode-packed-collision,unsafe-typecast)
 abstract contract UniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, UniswapV3AMFixture, SwapRouter02Fixture {
     /*////////////////////////////////////////////////////////////////
                             CONSTANTS

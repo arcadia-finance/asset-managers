@@ -136,9 +136,11 @@ contract MerklOperator is Guardian, ReentrancyGuard {
         bytes calldata metaData_
     ) external nonReentrant {
         if (!ARCADIA_FACTORY.isAccount(account)) revert NotAnAccount();
+        // forge-lint: disable-next-item(reentrancy-no-eth)
         address accountOwner = IAccount(account).owner();
         if (msg.sender != accountOwner) revert OnlyAccountOwner();
         // Block Account versions without cross account reentrancy guard.
+        // forge-lint: disable-next-item(reentrancy-no-eth)
         if (IAccount(account).ACCOUNT_VERSION() < 3) revert InvalidAccountVersion();
 
         _setAccountInfo(account, accountOwner, initiator, rewardRecipient, maxClaimFee, metaData_);
@@ -184,6 +186,7 @@ contract MerklOperator is Guardian, ReentrancyGuard {
      */
     function claim(address account, InitiatorParams calldata initiatorParams) external whenNotPaused nonReentrant {
         // If the initiator is set, account is an actual Arcadia Account.
+        // forge-lint: disable-next-item(reentrancy-no-eth)
         if (accountToInitiator[IAccount(account).owner()][account] != msg.sender) revert InvalidInitiator();
 
         // Validate initiatorParams.
@@ -209,6 +212,7 @@ contract MerklOperator is Guardian, ReentrancyGuard {
         }
 
         // Claim Merkl rewards.
+        // forge-lint: disable-next-item(reentrancy-no-eth)
         MERKL_DISTRIBUTOR.claim(users, initiatorParams.tokens, initiatorParams.amounts, initiatorParams.proofs);
 
         // Transfer rewards to recipient and fees to initiator.
@@ -228,12 +232,14 @@ contract MerklOperator is Guardian, ReentrancyGuard {
 
             // Send the reward to the rewardRecipient.
             if (reward > 0) {
+                // forge-lint: disable-next-item(solmate-safe-transfer-lib)
                 ERC20(token).safeTransfer(rewardRecipient, reward);
                 emit YieldTransferred(account, rewardRecipient, token, reward);
             }
 
             // Transfer Initiator fees to the initiator.
             if (fee > 0) {
+                // forge-lint: disable-next-item(solmate-safe-transfer-lib)
                 ERC20(token).safeTransfer(msg.sender, fee);
                 emit FeePaid(account, msg.sender, token, fee);
             }
@@ -250,9 +256,11 @@ contract MerklOperator is Guardian, ReentrancyGuard {
      */
     function skim(address token) external onlyOwner whenNotPaused nonReentrant {
         if (token == address(0)) {
+            // forge-lint: disable-next-item(reentrancy-eth)
             (bool success, bytes memory result) = payable(msg.sender).call{ value: address(this).balance }("");
             require(success, string(result));
         } else {
+            // forge-lint: disable-next-item(solmate-safe-transfer-lib)
             ERC20(token).safeTransfer(msg.sender, ERC20(token).balanceOf(address(this)));
         }
     }

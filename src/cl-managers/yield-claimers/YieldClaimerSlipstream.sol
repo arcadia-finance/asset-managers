@@ -61,5 +61,6 @@ contract YieldClaimerSlipstream is YieldClaimer, Slipstream {
      * param positionManager The contract address of the Position Manager.
      * param position A struct with position and pool related variables.
      */
+    // forge-lint: disable-next-item(empty-block)
     function _stake(uint256[] memory, address, PositionState memory) internal override(AbstractBase, Slipstream) { }
 }

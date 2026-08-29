@@ -11,6 +11,7 @@ import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4
 /**
  * @notice Fuzz tests for the function "_getPositionState" of contract "UniswapV4".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract GetPositionState_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP

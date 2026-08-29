@@ -13,6 +13,7 @@ import {
 /**
  * @notice Fuzz tests for the function "_swapViaPool" of contract "UniswapV3".
  */
+// forge-lint: disable-next-item(divide-before-multiply,unsafe-typecast)
 contract SwapViaPool_UniswapV3_Fuzz_Test is UniswapV3_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP

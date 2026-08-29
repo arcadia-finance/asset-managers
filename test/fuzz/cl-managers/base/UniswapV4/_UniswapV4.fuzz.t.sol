@@ -31,6 +31,7 @@ import {
 /**
  * @notice Common logic needed by all "UniswapV4" fuzz tests.
  */
+// forge-lint: disable-next-item(divide-before-multiply,unsafe-typecast)
 abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
     /*////////////////////////////////////////////////////////////////
                             CONSTANTS

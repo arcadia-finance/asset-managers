@@ -13,6 +13,7 @@ import { PositionState } from "../../../../../src/cl-managers/state/PositionStat
 /**
  * @notice Fuzz tests for the function "_executeAction" of contract "YieldClaimerUniswapV3".
  */
+// forge-lint: disable-next-item(divide-before-multiply,unsafe-typecast)
 contract ExecuteAction_YieldClaimerUniswapV3_Fuzz_Test is YieldClaimerUniswapV3_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP

@@ -11,6 +11,7 @@ import { FixedPointMathLib } from "../../../../../lib/accounts-v2/lib/solmate/sr
 /**
  * @notice Fuzz tests for the function "onSetAssetManager" of contract "Compounder".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract OnSetAssetManager_Compounder_Fuzz_Test is Compounder_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP

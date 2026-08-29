@@ -187,6 +187,7 @@ abstract contract YieldClaimer is IActionBase, AbstractBase, Guardian {
         account = account_;
 
         // If the initiator is set, account_ is an actual Arcadia Account.
+        // forge-lint: disable-next-item(reentrancy-no-eth)
         if (accountToInitiator[IAccount(account_).owner()][account_] != msg.sender) revert InvalidInitiator();
         if (!isPositionManager(initiatorParams.positionManager)) revert InvalidPositionManager();
 
@@ -202,6 +203,7 @@ abstract contract YieldClaimer is IActionBase, AbstractBase, Guardian {
         );
 
         // Call flashAction() with this contract as actionTarget.
+        // forge-lint: disable-next-item(reentrancy-no-eth)
         IAccount(account_).flashAction(address(this), actionData);
 
         // Reset account.
@@ -293,6 +295,7 @@ abstract contract YieldClaimer is IActionBase, AbstractBase, Guardian {
                     count++;
                 } else {
                     // Else, send the yield to the fee recipient.
+                    // forge-lint: disable-next-item(solmate-safe-transfer-lib)
                     ERC20(token).safeTransfer(recipient, amount);
                     balances[i] = 0;
                 }
@@ -303,6 +306,7 @@ abstract contract YieldClaimer is IActionBase, AbstractBase, Guardian {
             }
 
             // Transfer Initiator fees to the initiator.
+            // forge-lint: disable-next-item(solmate-safe-transfer-lib)
             if (fees[i] > 0) ERC20(token).safeTransfer(initiator, fees[i]);
             emit FeePaid(msg.sender, initiator, token, fees[i]);
 
@@ -325,6 +329,7 @@ abstract contract YieldClaimer is IActionBase, AbstractBase, Guardian {
             (bool success, bytes memory result) = payable(msg.sender).call{ value: address(this).balance }("");
             require(success, string(result));
         } else {
+            // forge-lint: disable-next-item(solmate-safe-transfer-lib)
             ERC20(token).safeTransfer(msg.sender, ERC20(token).balanceOf(address(this)));
         }
     }

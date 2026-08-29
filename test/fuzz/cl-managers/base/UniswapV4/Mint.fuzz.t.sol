@@ -14,6 +14,7 @@ import { UniswapHelpers } from "../../../../utils/uniswap-v3/UniswapHelpers.sol"
 /**
  * @notice Fuzz tests for the function "_mint" of contract "UniswapV4".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract Mint_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP

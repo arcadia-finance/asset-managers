@@ -24,7 +24,7 @@ import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4
 /**
  * @notice Fuzz tests for the function "_executeAction" of contract "CompounderSlipstream".
  */
-// forge-lint: disable-next-item(unsafe-typecast)
+// forge-lint: disable-next-item(divide-before-multiply,unsafe-typecast)
 contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fuzz_Test {
     using stdStorage for StdStorage;
     /*////////////////////////////////////////////////////////////////

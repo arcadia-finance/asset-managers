@@ -14,6 +14,7 @@ import { StdStorage, stdStorage } from "../../../../lib/accounts-v2/lib/forge-st
 /**
  * @notice Fuzz tests for the function "setAccountInfo" of contract "CowSwapper".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract SetAccountInfo_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
     using stdStorage for StdStorage;
     /* ///////////////////////////////////////////////////////////////

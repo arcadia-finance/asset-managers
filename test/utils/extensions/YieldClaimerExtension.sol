@@ -7,6 +7,7 @@ pragma solidity ^0.8.0;
 import { PositionState } from "../../../src/cl-managers/state/PositionState.sol";
 import { YieldClaimer } from "../../../src/cl-managers/yield-claimers/YieldClaimer.sol";
 
+// forge-lint: disable-next-item(empty-block)
 contract YieldClaimerExtension is YieldClaimer {
     constructor(address owner_, address arcadiaFactory) YieldClaimer(owner_, arcadiaFactory) { }
 

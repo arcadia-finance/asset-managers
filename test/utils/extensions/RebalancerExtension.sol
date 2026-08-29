@@ -7,6 +7,7 @@ pragma solidity ^0.8.0;
 import { PositionState } from "../../../src/cl-managers/state/PositionState.sol";
 import { Rebalancer } from "../../../src/cl-managers/rebalancers/Rebalancer.sol";
 
+// forge-lint: disable-next-item(empty-block)
 contract RebalancerExtension is Rebalancer {
     constructor(address owner_, address arcadiaFactory, address routerTrampoline)
         Rebalancer(owner_, arcadiaFactory, routerTrampoline)

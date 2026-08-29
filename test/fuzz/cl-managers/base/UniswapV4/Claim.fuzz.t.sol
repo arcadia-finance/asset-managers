@@ -13,6 +13,7 @@ import { UniswapV4_Fuzz_Test } from "./_UniswapV4.fuzz.t.sol";
 /**
  * @notice Fuzz tests for the function "_claim" of contract "UniswapV4".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract Claim_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
@@ -104,6 +105,7 @@ contract Claim_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
         balances[1] = balance1;
         vm.deal(address(base), balance0);
         vm.prank(address(base));
+        // forge-lint: disable-next-item(arbitrary-send-eth)
         IWETH(address(weth9)).deposit{ value: balance0 }();
         deal(address(token1), address(base), balance1, true);
 

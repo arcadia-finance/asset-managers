@@ -137,6 +137,7 @@ contract Sign is Test {
             amountOut = amountOut * (1e6 - SLIPPAGE) / 1e6;
         }
 
+        // forge-lint: disable-next-item(unsafe-typecast)
         uint32 validTo = uint32(block.timestamp + 1 hours);
 
         uint256 accountOwner = vm.envUint("PRIVATE_KEY_ACCOUNT_OWNER");

@@ -20,7 +20,7 @@ import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4
 /**
  * @notice Fuzz tests for the function "_executeAction" of contract "RebalancerUniswapV4".
  */
-// forge-lint: disable-next-item(unsafe-typecast)
+// forge-lint: disable-next-item(arbitrary-send-eth,divide-before-multiply,unsafe-typecast)
 contract ExecuteAction_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
     /*////////////////////////////////////////////////////////////////
                             VARIABLES

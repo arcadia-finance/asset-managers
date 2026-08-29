@@ -15,6 +15,7 @@ import { UniswapV3Fixture } from "../../../../../lib/accounts-v2/test/utils/fixt
 /**
  * @notice Fuzz tests for the function "_approveAndTransfer" of contract "Rebalancer".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract ApproveAndTransfer_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP

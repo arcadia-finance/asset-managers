@@ -34,9 +34,11 @@ contract GetAmount1OutFromAmount0In_SwapMath_Fuzz_Test is RebalanceOptimizationM
         fee = bound(fee, 0, 1e6);
 
         // And: sqrtPriceOld is within boundaries and smaller than type(uint128).max.
+        // forge-lint: disable-next-item(unsafe-typecast)
         sqrtPriceOld = uint160(bound(sqrtPriceOld, TickMath.MIN_SQRT_PRICE, TickMath.MIN_SQRT_PRICE));
 
         // And: amountOut without slippage would not overflow.
+        // forge-lint: disable-next-item(divide-before-multiply)
         amount0 =
             bound(amount0, 0, type(uint256).max / FixedPoint96.Q96 * sqrtPriceOld / FixedPoint96.Q96 * sqrtPriceOld);
 

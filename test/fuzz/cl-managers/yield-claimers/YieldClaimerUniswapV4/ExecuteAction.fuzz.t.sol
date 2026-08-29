@@ -14,6 +14,7 @@ import { YieldClaimerUniswapV4_Fuzz_Test } from "./_YieldClaimerUniswapV4.fuzz.t
 /**
  * @notice Fuzz tests for the function "_executeAction" of contract "YieldClaimerUniswapV4".
  */
+// forge-lint: disable-next-item(divide-before-multiply,unsafe-typecast)
 contract ExecuteAction_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP

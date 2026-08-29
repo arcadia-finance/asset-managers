@@ -143,6 +143,7 @@ library RebalanceOptimizationMath {
             // We could as well use the geometric average, but empirically we found no difference in conversion speed,
             // and the geometric average is more expensive to calculate.
             // Unchecked + unsafe cast: sqrtPriceNew0 and sqrtPriceNew1 are always smaller than type(uint160).max.
+            // forge-lint: disable-next-item(unsafe-typecast)
             sqrtPriceNew = zeroToOne
                 ? uint160(FixedPointMathLib.unsafeDiv(sqrtPriceNew0 + sqrtPriceNew1, 2))
                 : uint160(FixedPointMathLib.unsafeDivUp(sqrtPriceNew0 + sqrtPriceNew1, 2));

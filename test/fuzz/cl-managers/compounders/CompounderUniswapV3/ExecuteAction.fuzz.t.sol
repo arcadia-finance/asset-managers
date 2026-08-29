@@ -18,7 +18,7 @@ import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4
 /**
  * @notice Fuzz tests for the function "_executeAction" of contract "CompounderUniswapV3".
  */
-// forge-lint: disable-next-item(unsafe-typecast)
+// forge-lint: disable-next-item(divide-before-multiply,unsafe-typecast)
 contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz_Test {
     /*////////////////////////////////////////////////////////////////
                             VARIABLES

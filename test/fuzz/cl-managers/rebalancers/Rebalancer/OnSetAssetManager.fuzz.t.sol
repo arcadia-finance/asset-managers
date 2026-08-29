@@ -12,6 +12,7 @@ import { Rebalancer_Fuzz_Test } from "./_Rebalancer.fuzz.t.sol";
 /**
  * @notice Fuzz tests for the function "onSetAssetManager" of contract "Rebalancer".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract OnSetAssetManager_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               TEST CONTRACTS

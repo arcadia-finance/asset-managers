@@ -153,6 +153,7 @@ contract FlashLoanAndCallBack_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         address initiator = vm.addr(initiatorPrivateKey);
 
         // And: Valid swap fee.
+        // forge-lint: disable-next-item(unsafe-typecast)
         swapFee = uint64(bound(swapFee, 0, MAX_FEE));
 
         // And: Valid order.

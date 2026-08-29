@@ -15,6 +15,7 @@ contract Constructor_Compounder_Fuzz_Test is Compounder_Fuzz_Test {
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
+    // forge-lint: disable-next-item(empty-block)
     function setUp() public override { }
 
     /*//////////////////////////////////////////////////////////////

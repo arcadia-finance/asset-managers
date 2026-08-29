@@ -297,6 +297,7 @@ contract CowSwapper is IActionBase, EIP712, Guardian {
 
         // If the Initiator is non zero, we know account_ is an actual Arcadia Account,
         // and the initiator is set by its current owner.
+        // forge-lint: disable-next-item(reentrancy-no-eth)
         address accountOwner_ = IAccount(account_).owner();
         address initiator_ = ownerToAccountToInitiator[accountOwner_][account_];
         if (initiator_ == address(0)) revert InvalidInitiator();
@@ -311,6 +312,7 @@ contract CowSwapper is IActionBase, EIP712, Guardian {
         bytes memory actionData = ArcadiaLogic._encodeAction(tokenIn_, amountIn_, callBackData);
 
         // Call flashAction() with this contract as actionTarget.
+        // forge-lint: disable-next-item(reentrancy-no-eth)
         IAccount(account_).flashAction(address(this), actionData);
 
         // Reset account.
@@ -323,6 +325,7 @@ contract CowSwapper is IActionBase, EIP712, Guardian {
      * @param target The address to approve as spender (unused).
      * @param amount The amount to approve (unused).
      */
+    // forge-lint: disable-next-item(empty-block)
     function approve(address token, address target, uint256 amount) external { }
 
     /**
@@ -365,6 +368,7 @@ contract CowSwapper is IActionBase, EIP712, Guardian {
         // Verify that "isValidSignature()" was called.
         // A malicious solver could modify the EIP-1271 signature, skipping the check that the orderHash is correct.
         // If isValidSignature() would be skipped, tokenIn would not be transferred from this contract to the vault relayer.
+        // forge-lint: disable-next-item(incorrect-strict-equality)
         if (IERC20(tokenIn_).balanceOf(address(this)) != balanceBefore_ - amountIn) {
             revert MissingSignatureVerification();
         }
@@ -415,6 +419,7 @@ contract CowSwapper is IActionBase, EIP712, Guardian {
         // The swap parameters may only be set before the swap, so the sell token must still be fully present.
         // Once it has been pulled the parameters are final and may not be changed. A re-supplied tokenIn balance
         // is detected by the "balanceBefore_ - amountIn" check in executeAction().
+        // forge-lint: disable-next-item(incorrect-strict-equality)
         if (IERC20(tokenIn).balanceOf(address(this)) != balanceBefore) revert SwapAlreadyExecuted();
 
         // Cache variables.

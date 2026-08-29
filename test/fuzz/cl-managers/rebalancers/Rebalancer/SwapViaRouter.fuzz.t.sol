@@ -14,6 +14,7 @@ import { UniswapHelpers } from "../../../../utils/uniswap-v3/UniswapHelpers.sol"
 /**
  * @notice Fuzz tests for the function "_swapViaRouter" of contract "Rebalancer".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract SwapViaRouter_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     /*////////////////////////////////////////////////////////////////
                             CONSTANTS

@@ -12,6 +12,7 @@ import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4
 /**
  * @notice Fuzz tests for the function "_approximateSqrtPriceNew" of contract "RebalanceOptimizationMath".
  */
+// forge-lint: disable-next-item(divide-before-multiply,unsafe-typecast)
 contract ApproximateSqrtPriceNew_SwapMath_Fuzz_Test is RebalanceOptimizationMath_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP

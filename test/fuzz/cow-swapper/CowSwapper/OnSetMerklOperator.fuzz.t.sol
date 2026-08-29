@@ -10,6 +10,7 @@ import { CowSwapper_Fuzz_Test } from "./_CowSwapper.fuzz.t.sol";
 /**
  * @notice Fuzz tests for the function "onSetAssetManager" of contract "CowSwapper".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract OnSetCowSwapper_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP

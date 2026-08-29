@@ -14,6 +14,7 @@ import { UniswapHelpers } from "../../../../utils/uniswap-v3/UniswapHelpers.sol"
 /**
  * @notice Fuzz tests for the function "_mint" of contract "Slipstream".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract Mint_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP

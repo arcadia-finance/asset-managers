@@ -156,6 +156,7 @@ contract Rebalance_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         );
 
         // And: Fees are valid.
+        // forge-lint: disable-next-item(unsafe-typecast)
         initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0.001 * 1e18, MAX_FEE));
         initiatorParams.swapFee = initiatorParams.claimFee;
 

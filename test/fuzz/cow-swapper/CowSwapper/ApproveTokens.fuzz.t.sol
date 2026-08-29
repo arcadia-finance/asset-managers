@@ -11,6 +11,7 @@ import { ERC20Mock } from "../../../../lib/accounts-v2/test/utils/mocks/tokens/E
 /**
  * @notice Fuzz tests for the function "approveTokens" of contract "CowSwapper".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract ApproveTokens_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP

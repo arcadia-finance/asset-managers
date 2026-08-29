@@ -10,6 +10,7 @@ import { YieldClaimer_Fuzz_Test } from "./_YieldClaimer.fuzz.t.sol";
 /**
  * @notice Fuzz tests for the function "_executeAction" of contract "YieldClaimer".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract ExecuteAction_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP

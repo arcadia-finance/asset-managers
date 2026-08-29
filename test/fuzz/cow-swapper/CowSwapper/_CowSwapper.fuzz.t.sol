@@ -22,6 +22,7 @@ import { WETH9Fixture } from "../../../../lib/accounts-v2/test/utils/fixtures/we
 /**
  * @notice Common logic needed by all "CowSwapper" fuzz tests.
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 abstract contract CowSwapper_Fuzz_Test is Fuzz_Test, BalancerV2Fixture, CowSwapFixture, WETH9Fixture {
     using GPv2Order for GPv2Order.Data;
     using LoansWithSettlement for bytes;

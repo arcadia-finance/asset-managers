@@ -13,6 +13,7 @@ import {
 /**
  * @notice Fuzz tests for the function "_swapViaPool" of contract "Slipstream".
  */
+// forge-lint: disable-next-item(divide-before-multiply,unsafe-typecast)
 contract SwapViaPool_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP

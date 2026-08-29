@@ -21,6 +21,7 @@ import { StdStorage, stdStorage } from "../../../../../lib/accounts-v2/lib/forge
 /**
  * @notice Fuzz tests for the function "rebalance" of contract "RebalancerSlipstream".
  */
+// forge-lint: disable-next-item(divide-before-multiply,unsafe-typecast)
 contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
     using stdStorage for StdStorage;
     /*////////////////////////////////////////////////////////////////

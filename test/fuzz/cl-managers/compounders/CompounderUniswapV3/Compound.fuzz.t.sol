@@ -15,6 +15,7 @@ import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4
 /**
  * @notice Fuzz tests for the function "compound" of contract "CompounderUniswapV3".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract Compound_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
@@ -168,6 +169,7 @@ contract Compound_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz_Test
         liquidityPool = uint128(bound(liquidityPool, 1e25, 1e30));
         setPoolState(liquidityPool, position);
         position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
+        // forge-lint: disable-next-item(divide-before-multiply)
         position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
         position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
         position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);

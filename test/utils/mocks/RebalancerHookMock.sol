@@ -7,6 +7,7 @@ pragma solidity ^0.8.0;
 import { PositionState } from "../../../src/cl-managers/state/PositionState.sol";
 import { StrategyHook } from "../../../src/cl-managers/rebalancers/periphery/StrategyHook.sol";
 
+// forge-lint: disable-next-item(empty-block)
 contract RebalancerHookMock is StrategyHook {
     function setStrategy(address account, bytes calldata strategyData) external override { }
     function beforeRebalance(

@@ -76,6 +76,7 @@ contract Unstake_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
         // And: Base has WETH balance.
         vm.deal(address(base), wethBalance);
         vm.prank(address(base));
+        // forge-lint: disable-next-item(arbitrary-send-eth)
         IWETH(address(weth9)).deposit{ value: wethBalance }();
 
         // And: Base has balances.

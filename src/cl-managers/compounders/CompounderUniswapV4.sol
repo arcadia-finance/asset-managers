@@ -93,6 +93,7 @@ contract CompounderUniswapV4 is Compounder, UniswapV4 {
         }
 
         // Send tokens to the Router Trampoline.
+        // forge-lint: disable-next-item(solmate-safe-transfer-lib)
         ERC20(tokenIn).safeTransfer(address(ROUTER_TRAMPOLINE), amountIn);
 
         // Execute swap.

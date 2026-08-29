@@ -15,6 +15,7 @@ contract Constructor_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstream_
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
+    // forge-lint: disable-next-item(empty-block)
     function setUp() public override { }
 
     /*//////////////////////////////////////////////////////////////
