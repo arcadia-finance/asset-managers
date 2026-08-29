@@ -11,6 +11,7 @@ import { GPv2Order } from "../../../../lib/cowprotocol/src/contracts/libraries/G
 /**
  * @notice Fuzz tests for the function "beforeSwap" of contract "CowSwapper".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract BeforeSwap_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
     using GPv2Order for GPv2Order.Data;
     /* ///////////////////////////////////////////////////////////////

@@ -17,6 +17,7 @@ import { MaliciousSolver } from "../../../utils/mocks/MaliciousSolver.sol";
 /**
  * @notice Fuzz tests for the function "executeAction" of contract "CowSwapper".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract ExecuteAction_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
     using LibString for string;
     using LoansWithSettlement for bytes;

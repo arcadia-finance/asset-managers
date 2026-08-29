@@ -17,6 +17,7 @@ import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4
 /**
  * @notice Fuzz tests for the function "compound" of contract "CompounderUniswapV4".
  */
+// forge-lint: disable-next-item(divide-before-multiply,unsafe-typecast)
 contract Rebalance_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
@@ -324,6 +325,7 @@ contract Rebalance_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz_Tes
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, users.accountOwner, position.id);
         vm.deal(users.accountOwner, initiatorParams.amount0);
         vm.prank(users.accountOwner);
+        // forge-lint: disable-next-item(arbitrary-send-eth)
         IWETH(address(weth9)).deposit{ value: initiatorParams.amount0 }();
         deal(address(token1), users.accountOwner, initiatorParams.amount1, true);
         {

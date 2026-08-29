@@ -68,6 +68,7 @@ contract HooksTrampoline {
                     revertByWastingGas();
                 }
 
+                // forge-lint: disable-next-item(return-bomb)
                 (bool success,) = hook.target.call{ gas: hook.gasLimit }(hook.callData);
 
                 // In order to prevent custom hooks from DoS-ing settlements, we

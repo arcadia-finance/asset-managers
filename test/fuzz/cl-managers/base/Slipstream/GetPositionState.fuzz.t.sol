@@ -13,6 +13,7 @@ import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4
 /**
  * @notice Fuzz tests for the function "_getPositionState" of contract "Slipstream".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract GetPositionState_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
     using stdStorage for StdStorage;
     /* ///////////////////////////////////////////////////////////////

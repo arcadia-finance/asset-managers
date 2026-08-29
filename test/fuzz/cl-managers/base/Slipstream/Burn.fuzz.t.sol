@@ -56,6 +56,7 @@ contract Burn_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         balances = base.burn(balances, positionManager, position);
 
         // Then: It should return the correct balances.
+        // forge-lint: disable-next-item(unsafe-typecast)
         (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
             uint160(position.sqrtPrice),
             TickMath.getSqrtPriceAtTick(position.tickLower),

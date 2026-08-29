@@ -14,6 +14,7 @@ import { StdStorage, stdStorage } from "../../../../lib/accounts-v2/lib/forge-st
 /**
  * @notice Fuzz tests for the function "setAccountInfo" of contract "MerklOperator".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract SetAccountInfo_MerklOperator_Fuzz_Test is MerklOperator_Fuzz_Test {
     using stdStorage for StdStorage;
     /* ///////////////////////////////////////////////////////////////

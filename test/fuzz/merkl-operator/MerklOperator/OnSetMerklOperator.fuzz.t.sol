@@ -10,6 +10,7 @@ import { MerklOperator_Fuzz_Test } from "./_MerklOperator.fuzz.t.sol";
 /**
  * @notice Fuzz tests for the function "onSetMerklOperator" of contract "MerklOperator".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract OnSetMerklOperator_MerklOperator_Fuzz_Test is MerklOperator_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP

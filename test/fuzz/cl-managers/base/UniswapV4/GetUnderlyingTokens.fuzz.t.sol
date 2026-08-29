@@ -11,6 +11,7 @@ import { UniswapV4_Fuzz_Test } from "./_UniswapV4.fuzz.t.sol";
 /**
  * @notice Fuzz tests for the function "_getUnderlyingTokens" of contract "UniswapV4".
  */
+// forge-lint: disable-next-item(divide-before-multiply,unsafe-typecast)
 contract GetUnderlyingTokens_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP

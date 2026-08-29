@@ -32,6 +32,7 @@ import {
 /**
  * @notice Common logic needed by all "Slipstream" fuzz tests.
  */
+// forge-lint: disable-next-item(divide-before-multiply,reentrancy-no-eth,unsafe-typecast)
 abstract contract Slipstream_Fuzz_Test is
     Fuzz_Test,
     SlipstreamFixture,

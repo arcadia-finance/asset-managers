@@ -16,6 +16,7 @@ import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4
 /**
  * @notice Fuzz tests for the function "_approximateOptimalSwapAmounts" of contract "RebalanceOptimizationMath".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract ApproximateOptimalSwapAmounts_SwapMath_Fuzz_Test is RebalanceOptimizationMath_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP

@@ -15,6 +15,7 @@ contract Constructor_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fuzz
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
+    // forge-lint: disable-next-item(empty-block)
     function setUp() public override { }
 
     /*//////////////////////////////////////////////////////////////

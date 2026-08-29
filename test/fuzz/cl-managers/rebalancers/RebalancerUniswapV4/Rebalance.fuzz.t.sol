@@ -16,6 +16,7 @@ import { RebalancerUniswapV4_Fuzz_Test } from "./_RebalancerUniswapV4.fuzz.t.sol
 /**
  * @notice Fuzz tests for the function "rebalance" of contract "RebalancerUniswapV4".
  */
+// forge-lint: disable-next-item(divide-before-multiply,unsafe-typecast)
 contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Test {
     /*////////////////////////////////////////////////////////////////
                             VARIABLES
@@ -378,6 +379,7 @@ contract Rebalance_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz_Tes
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, users.accountOwner, position.id);
         vm.deal(users.accountOwner, initiatorParams.amountIn0);
         vm.prank(users.accountOwner);
+        // forge-lint: disable-next-item(arbitrary-send-eth)
         IWETH(address(weth9)).deposit{ value: initiatorParams.amountIn0 }();
         deal(address(token1), users.accountOwner, initiatorParams.amountIn1, true);
         {

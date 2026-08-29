@@ -38,6 +38,7 @@ contract GetPositionState_UniswapV3_Fuzz_Test is UniswapV3_Fuzz_Test {
         assertEq(position_.id, position.id);
         assertEq(position_.fee, POOL_FEE);
         assertEq(position_.tickSpacing, poolUniswap.tickSpacing());
+        // forge-lint: disable-next-item(unsafe-typecast)
         assertEq(position_.tickCurrent, TickMath.getTickAtSqrtPrice(uint160(position.sqrtPrice)));
         assertEq(position_.tickLower, position.tickLower);
         assertEq(position_.tickUpper, position.tickUpper);

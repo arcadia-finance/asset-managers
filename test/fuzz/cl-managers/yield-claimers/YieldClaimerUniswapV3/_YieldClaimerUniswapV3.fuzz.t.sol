@@ -33,6 +33,7 @@ abstract contract YieldClaimerUniswapV3_Fuzz_Test is UniswapV3_Fuzz_Test {
 
         // Overwrite code hash of the UniswapV3Pool.
         bytes memory args = abi.encode();
+        // forge-lint: disable-next-item(encode-packed-collision)
         bytes memory bytecode = abi.encodePacked(vm.getCode("UniswapV3PoolExtension.sol"), args);
         bytes32 poolExtensionInitCodeHash = keccak256(bytecode);
 

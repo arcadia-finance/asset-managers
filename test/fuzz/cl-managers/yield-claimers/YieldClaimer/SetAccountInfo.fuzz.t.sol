@@ -14,6 +14,7 @@ import { StdStorage, stdStorage } from "../../../../../lib/accounts-v2/lib/forge
 /**
  * @notice Fuzz tests for the function "setAccountInfo" of contract "YieldClaimer".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract SetAccountInfo_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
     using stdStorage for StdStorage;
     /* ///////////////////////////////////////////////////////////////

@@ -14,6 +14,7 @@ import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4
 /**
  * @notice Fuzz tests for the function "_getRebalanceParams" of contract "RebalanceLogic".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test {
     /*////////////////////////////////////////////////////////////////
                             CONSTANTS
@@ -340,6 +341,7 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
         {
             uint256 denominator = 1e18 - targetRatio * fee / 1e18;
             amountInWithFee = (currentRatio - targetRatio) * totalValueInToken1 / denominator;
+            // forge-lint: disable-next-item(divide-before-multiply)
             uint256 amountInitiatorFee_ = amountInWithFee * testVars.initiatorFee / 1e18;
             assertEq(rebalanceParams.amountInitiatorFee, amountInitiatorFee_);
         }

@@ -15,6 +15,7 @@ contract Constructor_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz_T
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
+    // forge-lint: disable-next-item(empty-block)
     function setUp() public override { }
 
     /*//////////////////////////////////////////////////////////////

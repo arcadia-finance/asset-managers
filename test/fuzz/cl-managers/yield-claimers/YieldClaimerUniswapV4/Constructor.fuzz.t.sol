@@ -15,6 +15,7 @@ contract Constructor_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fu
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
+    // forge-lint: disable-next-item(empty-block)
     function setUp() public override { }
 
     /*//////////////////////////////////////////////////////////////

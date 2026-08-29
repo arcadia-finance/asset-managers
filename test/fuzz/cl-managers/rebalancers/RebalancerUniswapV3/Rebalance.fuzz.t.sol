@@ -14,6 +14,7 @@ import { RebalancerUniswapV3_Fuzz_Test } from "./_RebalancerUniswapV3.fuzz.t.sol
 /**
  * @notice Fuzz tests for the function "rebalance" of contract "RebalancerUniswapV3".
  */
+// forge-lint: disable-next-item(divide-before-multiply,unsafe-typecast)
 contract Rebalance_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Test {
     /*////////////////////////////////////////////////////////////////
                             VARIABLES

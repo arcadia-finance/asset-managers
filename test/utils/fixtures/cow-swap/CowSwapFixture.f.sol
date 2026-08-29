@@ -59,6 +59,7 @@ contract CowSwapFixture is Test {
             abi.encode(manager),
             hex"00000000000000000000000000000000000000000000000000000000"
         );
+        // forge-lint: disable-next-item(encode-packed-collision)
         bytes memory bytecode =
             abi.encodePacked(CREATION_CODE_PROXY, abi.encode(address(implementation_), manager), data);
         (bool success, bytes memory value) = address(CREATE2).call{ value: 0 }(bytecode);

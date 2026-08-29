@@ -14,6 +14,7 @@ import { stdError } from "../../../../../lib/accounts-v2/lib/forge-std/src/StdEr
 /**
  * @notice Fuzz tests for the function "_swapViaRouter" of contract "CompounderUniswapV4".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract SwapViaRouter_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz_Test {
     /*////////////////////////////////////////////////////////////////
                             CONSTANTS
@@ -222,6 +223,7 @@ contract SwapViaRouter_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
         // And: Router mock has balanceOut.
         vm.deal(address(routerMock), amountOut);
         vm.prank(address(routerMock));
+        // forge-lint: disable-next-item(arbitrary-send-eth)
         IWETH(address(weth9)).deposit{ value: amountOut }();
 
         // When: Calling swapViaRouter.

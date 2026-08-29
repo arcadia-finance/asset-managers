@@ -9,6 +9,7 @@ import { PositionState } from "../../../src/cl-managers/state/PositionState.sol"
 import { StrategyHook } from "../../../src/cl-managers/rebalancers/periphery/StrategyHook.sol";
 import { TickMath } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
+// forge-lint: disable-next-item(divide-before-multiply)
 contract DefaultRebalancerHook is StrategyHook {
     using FixedPointMathLib for uint256;
     /* //////////////////////////////////////////////////////////////
@@ -149,5 +150,6 @@ contract DefaultRebalancerHook is StrategyHook {
      * param newPosition The state of the new position.
      * param strategyData Encoded data containing strategy parameters.
      */
+    // forge-lint: disable-next-item(empty-block)
     function afterRebalance(address, address, uint256, PositionState memory, bytes memory) external override { }
 }

@@ -12,6 +12,7 @@ import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4
 /**
  * @notice Fuzz tests for the function "_getAmount0OutFromAmount1In" of contract "RebalanceOptimizationMath".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract GetAmount0OutFromAmount1In_SwapMath_Fuzz_Test is RebalanceOptimizationMath_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
@@ -41,6 +42,7 @@ contract GetAmount0OutFromAmount1In_SwapMath_Fuzz_Test is RebalanceOptimizationM
 
         // And: amountOut without slippage would not overflow.
         if (sqrtPriceOld > FixedPoint96.Q96) {
+            // forge-lint: disable-next-item(divide-before-multiply)
             amount1 = uint128(
                 bound(amount1, 0, type(uint256).max / sqrtPriceOld * FixedPoint96.Q96 / sqrtPriceOld * FixedPoint96.Q96)
             );

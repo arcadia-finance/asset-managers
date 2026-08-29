@@ -11,6 +11,7 @@ import { stdError } from "../../../../lib/accounts-v2/lib/forge-std/src/StdError
 /**
  * @notice Fuzz tests for the function "execute" of contract "RouterTrampoline".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract Execute_RouterTrampoline_Fuzz_Test is RouterTrampoline_Fuzz_Test {
     /*////////////////////////////////////////////////////////////////
                             VARIABLES

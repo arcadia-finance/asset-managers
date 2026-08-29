@@ -25,6 +25,7 @@ import { UniswapHelpers } from "../../../../utils/uniswap-v3/UniswapHelpers.sol"
 /**
  * @notice Fuzz tests for the function "_getAmountOutWithSlippage" of contract "RebalanceOptimizationMath".
  */
+// forge-lint: disable-next-item(divide-before-multiply)
 contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is
     RebalanceOptimizationMath_Fuzz_Test,
     UniswapV3Fixture,

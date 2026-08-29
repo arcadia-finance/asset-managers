@@ -19,6 +19,7 @@ import { YieldClaimerSlipstream_Fuzz_Test } from "./_YieldClaimerSlipstream.fuzz
 /**
  * @notice Fuzz tests for the function "_executeAction" of contract "YieldClaimerSlipstream".
  */
+// forge-lint: disable-next-item(divide-before-multiply,unsafe-typecast)
 contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstream_Fuzz_Test {
     using stdStorage for StdStorage;
     /* ///////////////////////////////////////////////////////////////

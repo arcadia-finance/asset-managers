@@ -7,7 +7,6 @@ optimizer = true
 optimizer_runs = 200
 fuzz = { runs = 50, max_test_rejects = 100_000_000}
 no_match_path = "**/{script/}*"
-dynamic_test_linking = false
 isolate = false
 compilation_restrictions = [
     { paths = "lib/accounts-v2/lib/slipstream/contracts/**", version = "=0.7.6" },
@@ -32,7 +31,6 @@ remappings = [
     "solmate/=lib/accounts-v2/lib/solmate/",
 ]
 fs_permissions = [{ access = "read", path = "./out"}, { access = "write", path = "./script/out"}]
-unchecked_cheatcode_artifacts = true
 # Transient storage composability warning (known safe pattern in v4-core):
 # - 2394: transient storage cleared at end of call
 # Solmate deprecation warnings (used in deployed contracts via accounts-v2):
@@ -53,7 +51,14 @@ ignored_warnings_from = [
 [lint]
 exclude_lints = [
     "asm-keccak256",
+    "calls-loop",
+    "missing-events-access-control",
+    "missing-zero-check",
+    "reentrancy-events",
+    "require-revert-in-loop",
+    "uninitialized-local",
     "unsafe-cheatcode",
+    "unused-return",
     "unwrapped-modifier-logic",
 ]
 ignore = [

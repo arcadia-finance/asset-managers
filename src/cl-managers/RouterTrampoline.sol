@@ -40,13 +40,16 @@ contract RouterTrampoline is ReentrancyGuard {
         ERC20(tokenIn).safeApproveWithRetry(router, amountIn);
 
         // Execute swap.
+        // forge-lint: disable-next-item(reentrancy-no-eth)
         (bool success, bytes memory result) = router.call(callData);
         require(success, string(result));
 
         // Transfer the tokens back to the caller.
         balanceIn = ERC20(tokenIn).balanceOf(address(this));
         balanceOut = ERC20(tokenOut).balanceOf(address(this));
+        // forge-lint: disable-next-item(solmate-safe-transfer-lib)
         if (balanceIn > 0) ERC20(tokenIn).safeTransfer(msg.sender, balanceIn);
+        // forge-lint: disable-next-item(solmate-safe-transfer-lib)
         if (balanceOut > 0) ERC20(tokenOut).safeTransfer(msg.sender, balanceOut);
     }
 }

@@ -218,7 +218,9 @@ abstract contract UniswapV4 is AbstractBase {
 
         // Generate calldata to collect fees (decrease liquidity with liquidityDelta = 0).
         bytes memory actions = new bytes(2);
+        // forge-lint: disable-next-item(unsafe-typecast)
         actions[0] = bytes1(uint8(Actions.DECREASE_LIQUIDITY));
+        // forge-lint: disable-next-item(unsafe-typecast)
         actions[1] = bytes1(uint8(Actions.TAKE_PAIR));
         bytes[] memory params = new bytes[](2);
         params[0] = abi.encode(position.id, 0, 0, 0, "");
@@ -296,7 +298,9 @@ abstract contract UniswapV4 is AbstractBase {
 
         // Generate calldata to burn the position and collect the underlying assets.
         bytes memory actions = new bytes(2);
+        // forge-lint: disable-next-item(unsafe-typecast)
         actions[0] = bytes1(uint8(Actions.BURN_POSITION));
+        // forge-lint: disable-next-item(unsafe-typecast)
         actions[1] = bytes1(uint8(Actions.TAKE_PAIR));
         bytes[] memory params = new bytes[](2);
         params[0] = abi.encode(position.id, 0, 0, "");
@@ -333,7 +337,9 @@ abstract contract UniswapV4 is AbstractBase {
 
         // Generate calldata to burn the position and collect the underlying assets.
         bytes memory actions = new bytes(2);
+        // forge-lint: disable-next-item(unsafe-typecast)
         actions[0] = bytes1(uint8(Actions.DECREASE_LIQUIDITY));
+        // forge-lint: disable-next-item(unsafe-typecast)
         actions[1] = bytes1(uint8(Actions.TAKE_PAIR));
         bytes[] memory params = new bytes[](2);
         params[0] = abi.encode(position.id, liquidity, 0, 0, "");
@@ -423,10 +429,11 @@ abstract contract UniswapV4 is AbstractBase {
         if (delta.amount0() < 0) {
             POOL_MANAGER.sync(currency0);
             if (currency0.isAddressZero()) {
+                // forge-lint: disable-next-item(unsafe-typecast)
                 POOL_MANAGER.settle{ value: uint128(-delta.amount0()) }();
             } else {
                 // Transfer is properly handled by Currency library.
-                // forge-lint: disable-next-line(erc20-unchecked-transfer)
+                // forge-lint: disable-next-item(erc20-unchecked-transfer,unsafe-typecast)
                 currency0.transfer(address(POOL_MANAGER), uint128(-delta.amount0()));
                 POOL_MANAGER.settle();
             }
@@ -434,16 +441,18 @@ abstract contract UniswapV4 is AbstractBase {
         if (delta.amount1() < 0) {
             POOL_MANAGER.sync(currency1);
             // Transfer is properly handled by Currency library.
-            // forge-lint: disable-next-line(erc20-unchecked-transfer)
+            // forge-lint: disable-next-item(erc20-unchecked-transfer,unsafe-typecast)
             currency1.transfer(address(POOL_MANAGER), uint128(-delta.amount1()));
             POOL_MANAGER.settle();
         }
 
         // Withdraw tokens that the Pool Manager owes.
         if (delta.amount0() > 0) {
+            // forge-lint: disable-next-item(unsafe-typecast)
             POOL_MANAGER.take(currency0, (address(this)), uint128(delta.amount0()));
         }
         if (delta.amount1() > 0) {
+            // forge-lint: disable-next-item(unsafe-typecast)
             POOL_MANAGER.take(currency1, address(this), uint128(delta.amount1()));
         }
     }
@@ -478,6 +487,7 @@ abstract contract UniswapV4 is AbstractBase {
         position.id = POSITION_MANAGER.nextTokenId();
 
         // Calculate liquidity to be added.
+        // forge-lint: disable-next-item(unsafe-typecast)
         position.liquidity = LiquidityAmounts.getLiquidityForAmounts(
             uint160(position.sqrtPrice),
             TickMath.getSqrtPriceAtTick(position.tickLower),
@@ -497,8 +507,11 @@ abstract contract UniswapV4 is AbstractBase {
 
         // Generate calldata to mint new position.
         bytes memory actions = new bytes(3);
+        // forge-lint: disable-next-item(unsafe-typecast)
         actions[0] = bytes1(uint8(Actions.MINT_POSITION));
+        // forge-lint: disable-next-item(unsafe-typecast)
         actions[1] = bytes1(uint8(Actions.SETTLE_PAIR));
+        // forge-lint: disable-next-item(unsafe-typecast)
         actions[2] = bytes1(uint8(Actions.SWEEP));
         bytes[] memory params = new bytes[](3);
         params[0] = abi.encode(
@@ -551,6 +564,7 @@ abstract contract UniswapV4 is AbstractBase {
         _checkAndApprovePermit2(position.tokens[1]);
 
         // Calculate liquidity to be added.
+        // forge-lint: disable-next-item(unsafe-typecast)
         position.liquidity = LiquidityAmounts.getLiquidityForAmounts(
             uint160(position.sqrtPrice),
             TickMath.getSqrtPriceAtTick(position.tickLower),
@@ -565,8 +579,11 @@ abstract contract UniswapV4 is AbstractBase {
 
         // Generate calldata to mint new position.
         bytes memory actions = new bytes(3);
+        // forge-lint: disable-next-item(unsafe-typecast)
         actions[0] = bytes1(uint8(Actions.INCREASE_LIQUIDITY));
+        // forge-lint: disable-next-item(unsafe-typecast)
         actions[1] = bytes1(uint8(Actions.SETTLE_PAIR));
+        // forge-lint: disable-next-item(unsafe-typecast)
         actions[2] = bytes1(uint8(Actions.SWEEP));
         bytes[] memory params = new bytes[](3);
         params[0] = abi.encode(position.id, position.liquidity, type(uint128).max, type(uint128).max, "");
@@ -591,6 +608,8 @@ abstract contract UniswapV4 is AbstractBase {
      * @notice Ensures that the Permit2 contract has sufficient approval to spend a given token.
      * @param token The contract address of the token.
      */
+    // The approval flag is set before the external calls, so re-entry is a no-op.
+    // forge-lint: disable-next-item(reentrancy-no-eth)
     function _checkAndApprovePermit2(address token) internal {
         if (!approved[token]) {
             approved[token] = true;

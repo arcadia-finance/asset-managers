@@ -305,8 +305,10 @@ abstract contract UniswapV3 is AbstractBase {
 
         // forge-lint: disable-next-item(unsafe-typecast)
         if (amount0Delta > 0) {
+            // forge-lint: disable-next-item(solmate-safe-transfer-lib)
             ERC20(token0).safeTransfer(msg.sender, uint256(amount0Delta));
         } else if (amount1Delta > 0) {
+            // forge-lint: disable-next-item(solmate-safe-transfer-lib)
             ERC20(token1).safeTransfer(msg.sender, uint256(amount1Delta));
         }
     }

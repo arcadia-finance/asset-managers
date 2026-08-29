@@ -13,6 +13,7 @@ import { UniswapHelpers } from "../../../../utils/uniswap-v3/UniswapHelpers.sol"
 /**
  * @notice Fuzz tests for the function "_swapViaRouter" of contract "Compounder".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract SwapViaRouter_Compounder_Fuzz_Test is Compounder_Fuzz_Test {
     /*////////////////////////////////////////////////////////////////
                             VARIABLES

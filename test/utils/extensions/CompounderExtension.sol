@@ -7,6 +7,7 @@ pragma solidity ^0.8.0;
 import { Compounder } from "../../../src/cl-managers/compounders/Compounder.sol";
 import { PositionState } from "../../../src/cl-managers/state/PositionState.sol";
 
+// forge-lint: disable-next-item(empty-block)
 contract CompounderExtension is Compounder {
     constructor(address owner_, address arcadiaFactory, address routerTrampoline)
         Compounder(owner_, arcadiaFactory, routerTrampoline)

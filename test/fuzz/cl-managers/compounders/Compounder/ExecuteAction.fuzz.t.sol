@@ -10,6 +10,7 @@ import { Compounder_Fuzz_Test } from "./_Compounder.fuzz.t.sol";
 /**
  * @notice Fuzz tests for the function "_executeAction" of contract "Compounder".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract ExecuteAction_Compounder_Fuzz_Test is Compounder_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP

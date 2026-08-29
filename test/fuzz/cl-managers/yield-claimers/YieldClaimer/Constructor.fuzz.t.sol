@@ -15,6 +15,7 @@ contract Constructor_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
+    // forge-lint: disable-next-item(empty-block)
     function setUp() public override { }
 
     /*//////////////////////////////////////////////////////////////

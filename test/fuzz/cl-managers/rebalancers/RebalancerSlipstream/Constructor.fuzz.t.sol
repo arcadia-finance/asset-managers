@@ -15,6 +15,7 @@ contract Constructor_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz
                               SETUP
     /////////////////////////////////////////////////////////////// */
 
+    // forge-lint: disable-next-item(empty-block)
     function setUp() public override { }
 
     /*//////////////////////////////////////////////////////////////

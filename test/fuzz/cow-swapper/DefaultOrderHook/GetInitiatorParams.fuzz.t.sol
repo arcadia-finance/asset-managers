@@ -10,6 +10,7 @@ import { GPv2Order } from "../../../../lib/cowprotocol/src/contracts/libraries/G
 /**
  * @notice Fuzz tests for the function "getInitiatorParams" of contract "DefaultOrderHook".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract GetInitiatorParams_DefaultOrderHook_Fuzz_Test is DefaultOrderHook_Fuzz_Test {
     using GPv2Order for GPv2Order.Data;
     /* ///////////////////////////////////////////////////////////////
