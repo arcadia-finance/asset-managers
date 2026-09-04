@@ -109,18 +109,17 @@ contract ApproximateSqrtPriceNew_SwapMath_Fuzz_Test is RebalanceOptimizationMath
         vm.assume(FullMath.mulDiv(numerator1, sqrtPriceOld, denominator) < type(uint160).max);
 
         // And: amountIn without slippage would not result in an amountOut that would overflow.
-        if (sqrtPriceOld > FixedPoint96.Q96) {
-            amountIn = uint128(
-                bound(
-                    amountIn, 0, type(uint256).max / sqrtPriceOld * FixedPoint96.Q96 / sqrtPriceOld * FixedPoint96.Q96
-                )
-            );
-        }
-
         // And the final sqrtPriceNew is smaller than a uint160 (requirement for getNextSqrtPriceFromAmount1RoundingDown).
+        uint256 maxAmountIn = FullMath.mulDiv(type(uint160).max - sqrtPriceOld - 1, usableLiquidity, FixedPoint96.Q96);
+        if (sqrtPriceOld > FixedPoint96.Q96) {
+            uint256 maxAmountInAmountOut =
+                type(uint256).max / sqrtPriceOld * FixedPoint96.Q96 / sqrtPriceOld * FixedPoint96.Q96;
+            if (maxAmountInAmountOut < maxAmountIn) maxAmountIn = maxAmountInAmountOut;
+        }
+        if (maxAmountIn > type(uint128).max) maxAmountIn = type(uint128).max;
+        amountIn = uint128(bound(amountIn, 0, maxAmountIn));
+
         uint256 quotient = FullMath.mulDiv(amountIn, FixedPoint96.Q96, usableLiquidity);
-        vm.assume(sqrtPriceOld < type(uint256).max - quotient);
-        vm.assume(sqrtPriceOld + quotient < type(uint160).max);
 
         // When: Calling _approximateSqrtPriceNew().
         // Then: It does not revert.

@@ -90,7 +90,7 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         // forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: position has fees.
-        feeSeed = uint256(bound(feeSeed, 0, type(uint48).max));
+        feeSeed = bound(feeSeed, 0, type(uint48).max);
         generateFees(feeSeed, feeSeed);
         (uint256 fee0, uint256 fee1) = getFeeAmountsCL(position.id);
 
@@ -188,7 +188,7 @@ contract ExecuteAction_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstrea
         // forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: position has fees.
-        feeSeed = uint256(bound(feeSeed, 0, type(uint48).max));
+        feeSeed = bound(feeSeed, 0, type(uint48).max);
         generateFees(feeSeed, feeSeed);
         (uint256 fee0, uint256 fee1) = getFeeAmountsCL(position.id);
 

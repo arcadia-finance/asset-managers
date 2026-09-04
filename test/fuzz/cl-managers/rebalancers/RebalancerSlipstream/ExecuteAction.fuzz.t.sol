@@ -678,7 +678,7 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
             uint128(bound(initiatorParams.amountOut1, 0, (amount1 + initiatorParams.amountIn1) / 2));
 
         // And: Position has fees.
-        feeSeed = uint256(bound(feeSeed, 0, type(uint56).max));
+        feeSeed = bound(feeSeed, 0, type(uint56).max);
         generateFees(feeSeed, feeSeed);
 
         // And: account is set.
@@ -804,7 +804,7 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
             uint128(bound(initiatorParams.amountOut1, 0, (amount1 + initiatorParams.amountIn1) / 2));
 
         // And: Position has fees.
-        feeSeed = uint256(bound(feeSeed, 0, type(uint56).max));
+        feeSeed = bound(feeSeed, 0, type(uint56).max);
         generateFees(feeSeed, feeSeed);
 
         // And: account is set.
@@ -1507,7 +1507,7 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
         deal(address(token1), address(rebalancer), initiatorParams.amountIn1, true);
 
         // And: Position has fees.
-        feeSeed = uint256(bound(feeSeed, 0, type(uint56).max));
+        feeSeed = bound(feeSeed, 0, type(uint56).max);
         generateFees(feeSeed, feeSeed);
 
         // And: account is set.
@@ -1635,7 +1635,7 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
         deal(address(token1), address(rebalancer), initiatorParams.amountIn1, true);
 
         // And: Position has fees.
-        feeSeed = uint256(bound(feeSeed, 0, type(uint56).max));
+        feeSeed = bound(feeSeed, 0, type(uint56).max);
         generateFees(feeSeed, feeSeed);
 
         // And: account is set.

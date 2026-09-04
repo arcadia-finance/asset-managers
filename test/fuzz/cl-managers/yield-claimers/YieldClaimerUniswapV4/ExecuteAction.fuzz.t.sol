@@ -81,7 +81,7 @@ contract ExecuteAction_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(yieldClaimer), position.id);
 
         // And: position has fees.
-        feeSeed = uint256(bound(feeSeed, 0, type(uint48).max));
+        feeSeed = bound(feeSeed, 0, type(uint48).max);
         generateFees(feeSeed, feeSeed);
         (uint256 fee0, uint256 fee1) = getFeeAmountsV4(position.id);
 
@@ -175,7 +175,7 @@ contract ExecuteAction_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(yieldClaimer), position.id);
 
         // And: position has fees.
-        feeSeed = uint256(bound(feeSeed, 0, type(uint48).max));
+        feeSeed = bound(feeSeed, 0, type(uint48).max);
         generateFees(feeSeed, feeSeed);
         (uint256 fee0, uint256 fee1) = getFeeAmountsV4(position.id);
 
@@ -245,7 +245,7 @@ contract ExecuteAction_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(yieldClaimer), position.id);
 
         // And: position has fees.
-        feeSeed = uint256(bound(feeSeed, 0, type(uint48).max));
+        feeSeed = bound(feeSeed, 0, type(uint48).max);
         generateFees(feeSeed, feeSeed);
         (uint256 fee0, uint256 fee1) = getFeeAmountsV4(position.id);
 
@@ -340,7 +340,7 @@ contract ExecuteAction_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_
         ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, address(yieldClaimer), position.id);
 
         // And: position has fees.
-        feeSeed = uint256(bound(feeSeed, 0, type(uint48).max));
+        feeSeed = bound(feeSeed, 0, type(uint48).max);
         generateFees(feeSeed, feeSeed);
         (uint256 fee0, uint256 fee1) = getFeeAmountsV4(position.id);
 

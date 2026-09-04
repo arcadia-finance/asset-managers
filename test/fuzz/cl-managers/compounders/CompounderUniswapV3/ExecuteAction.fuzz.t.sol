@@ -218,7 +218,7 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
         deal(address(token1), address(compounder), initiatorParams.amount1, true);
 
         // And: position has fees.
-        feeSeed = uint256(bound(feeSeed, type(uint8).max, type(uint48).max));
+        feeSeed = bound(feeSeed, type(uint8).max, type(uint48).max);
         generateFees(feeSeed, feeSeed);
 
         // And: account is set.
@@ -433,7 +433,7 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
         deal(address(token1), address(compounder), initiatorParams.amount1, true);
 
         // And: position has fees.
-        feeSeed = uint256(bound(feeSeed, type(uint8).max, type(uint48).max));
+        feeSeed = bound(feeSeed, type(uint8).max, type(uint48).max);
         generateFees(feeSeed, feeSeed);
 
         // And: account is set.
