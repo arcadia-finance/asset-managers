@@ -61,7 +61,7 @@ contract ExecuteAction_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         // And: maxSwapFee is smaller or equal to 1e18.
         maxSwapFee = uint64(bound(maxSwapFee, 0, 1e18));
 
-        // And info is set.
+        // And: info is set.
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account),
@@ -101,7 +101,7 @@ contract ExecuteAction_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
         // And: maxSwapFee is smaller or equal to 1e18.
         maxSwapFee = uint64(bound(maxSwapFee, 0, 1e18));
 
-        // And info is set.
+        // And: info is set.
         vm.prank(account.owner());
         rebalancer.setAccountInfo(
             address(account),

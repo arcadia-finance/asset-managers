@@ -11,6 +11,7 @@ import { YieldClaimer_Fuzz_Test } from "./_YieldClaimer.fuzz.t.sol";
 /**
  * @notice Fuzz tests for the function "claim" of contract "YieldClaimer".
  */
+// forge-lint: disable-next-item(unsafe-typecast)
 contract Claim_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
@@ -67,7 +68,7 @@ contract Claim_YieldClaimer_Fuzz_Test is YieldClaimer_Fuzz_Test {
         vm.assume(account_.code.length == 0);
 
         // And: Account is not a precompile.
-        vm.assume(account_ > address(20));
+        account_ = address(uint160(bound(uint160(account_), 21, type(uint160).max)));
 
         // And: Account is not the console.
         vm.assume(account_ != address(0x000000000000000000636F6e736F6c652e6c6f67));

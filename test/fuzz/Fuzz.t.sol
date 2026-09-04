@@ -22,7 +22,9 @@ abstract contract Fuzz_Test is Base_AssetManagers_Test, ArcadiaAccountsFixture {
     uint160 internal constant BOUND_SQRT_PRICE_UPPER = type(uint120).max;
     // forge-lint: disable-start(mixed-case-variable)
     int24 internal BOUND_TICK_UPPER = TickMath.getTickAtSqrtRatio(BOUND_SQRT_PRICE_UPPER);
+    // forge-lint: disable-next-item(function-init-state)
     int24 internal BOUND_TICK_LOWER = -BOUND_TICK_UPPER;
+    // forge-lint: disable-next-item(function-init-state)
     uint160 internal BOUND_SQRT_PRICE_LOWER = TickMath.getSqrtRatioAtTick(BOUND_TICK_LOWER);
     // forge-lint: disable-end(mixed-case-variable)
 

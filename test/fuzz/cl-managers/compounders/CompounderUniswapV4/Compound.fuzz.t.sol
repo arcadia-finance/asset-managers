@@ -74,7 +74,7 @@ contract Rebalance_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz_Tes
         vm.assume(account_.code.length == 0);
 
         // And: Account is not a precompile.
-        vm.assume(account_ > address(20));
+        account_ = address(uint160(bound(uint160(account_), 21, type(uint160).max)));
 
         // And: Account is not the console.
         vm.assume(account_ != address(0x000000000000000000636F6e736F6c652e6c6f67));
@@ -196,7 +196,7 @@ contract Rebalance_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz_Tes
         initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: Position has fees.
-        feeSeed = uint256(bound(feeSeed, type(uint8).max, type(uint48).max));
+        feeSeed = bound(feeSeed, type(uint8).max, type(uint48).max);
         generateFees(feeSeed, feeSeed);
 
         // And: Limited leftovers.
@@ -312,7 +312,7 @@ contract Rebalance_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz_Tes
         initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: Position has fees.
-        feeSeed = uint256(bound(feeSeed, type(uint8).max, type(uint48).max));
+        feeSeed = bound(feeSeed, type(uint8).max, type(uint48).max);
         generateFees(feeSeed, feeSeed);
 
         // And: Limited leftovers.

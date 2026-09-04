@@ -9,6 +9,7 @@ import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/util
 import { FullMath } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { TickMath } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
+// forge-lint: disable-next-item(custom-errors)
 library CLMath {
     using FixedPointMathLib for uint256;
     /* //////////////////////////////////////////////////////////////
