@@ -75,7 +75,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
         // And: maxSwapFee is smaller or equal to 1e18.
         maxSwapFee = uint64(bound(maxSwapFee, 0, 1e18));
 
-        // And info is set.
+        // And: info is set.
         vm.prank(account.owner());
         compounder.setAccountInfo(
             address(account), initiator, maxClaimFee, maxSwapFee, MAX_TOLERANCE, MIN_LIQUIDITY_RATIO, ""
@@ -107,7 +107,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
         // And: maxSwapFee is smaller or equal to 1e18.
         maxSwapFee = uint64(bound(maxSwapFee, 0, 1e18));
 
-        // And info is set.
+        // And: info is set.
         vm.prank(account.owner());
         compounder.setAccountInfo(
             address(account), initiator, maxClaimFee, maxSwapFee, MAX_TOLERANCE, MIN_LIQUIDITY_RATIO, ""

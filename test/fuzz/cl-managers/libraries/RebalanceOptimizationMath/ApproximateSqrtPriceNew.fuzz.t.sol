@@ -58,7 +58,7 @@ contract ApproximateSqrtPriceNew_SwapMath_Fuzz_Test is RebalanceOptimizationMath
         // And: usableLiquidity is greater than 0.
         usableLiquidity = uint128(bound(usableLiquidity, 1, type(uint128).max));
 
-        // sqrtPriceOld is greater than quotient (requirement for getNextSqrtPriceFromAmount1RoundingUp).
+        // sqrtPriceOld is greater than quotient.
         vm.assume(uint256(amountOut) * FixedPoint96.Q96 / sqrtPriceOld <= type(uint128).max);
         usableLiquidity =
             uint128(bound(usableLiquidity, uint256(amountOut) * FixedPoint96.Q96 / sqrtPriceOld, type(uint128).max));
@@ -95,21 +95,21 @@ contract ApproximateSqrtPriceNew_SwapMath_Fuzz_Test is RebalanceOptimizationMath
             bound(amountOut, 0, type(uint256).max / FixedPoint96.Q96 * sqrtPriceOld / FixedPoint96.Q96 * sqrtPriceOld)
         );
 
-        // And: Product does not overflow (requirement for getNextSqrtPriceFromAmount0RoundingUp).
+        // And: Product does not overflow.
         amountOut = uint128(bound(amountOut, 0, type(uint256).max / sqrtPriceOld));
         uint256 product = uint256(amountOut) * sqrtPriceOld;
 
-        // And: Denominator does not underflow (requirement for getNextSqrtPriceFromAmount0RoundingUp).
+        // And: Denominator does not underflow.
         usableLiquidity = uint128(bound(usableLiquidity, product / FixedPoint96.Q96, type(uint128).max));
 
-        // And the final sqrtPriceNew is smaller than a uint160 (requirement for getNextSqrtPriceFromAmount0RoundingUp).
+        // And: sqrtPriceNew fits in a uint160.
         uint256 numerator1 = uint256(usableLiquidity) * FixedPoint96.Q96;
         vm.assume(numerator1 > product);
         uint256 denominator = numerator1 - product;
         vm.assume(FullMath.mulDiv(numerator1, sqrtPriceOld, denominator) < type(uint160).max);
 
         // And: amountIn without slippage would not result in an amountOut that would overflow.
-        // And the final sqrtPriceNew is smaller than a uint160 (requirement for getNextSqrtPriceFromAmount1RoundingDown).
+        // And: sqrtPriceNew fits in a uint160.
         uint256 maxAmountIn = FullMath.mulDiv(type(uint160).max - sqrtPriceOld - 1, usableLiquidity, FixedPoint96.Q96);
         if (sqrtPriceOld > FixedPoint96.Q96) {
             uint256 maxAmountInAmountOut =
