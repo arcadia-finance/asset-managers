@@ -94,16 +94,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is
                 bound(amount0, 0, type(uint120).max / FixedPoint96.Q96 * sqrtPriceOld / FixedPoint96.Q96 * sqrtPriceOld)
             );
             // And: total value in token1 is not close to zero.
-            {
-                uint256 maxAmount1 = type(uint128).max;
-                if (sqrtPriceOld > FixedPoint96.Q96) {
-                    maxAmount1 = type(uint120).max / sqrtPriceOld * FixedPoint96.Q96 / sqrtPriceOld * FixedPoint96.Q96;
-                }
-                uint256 minAmount1 = cLMath.getSpotValue(sqrtPriceOld, true, amount0);
-                minAmount1 = minAmount1 > 1e6 ? 0 : 1e6 + 1 - minAmount1;
-                vm.assume(minAmount1 <= maxAmount1);
-                amount1 = uint128(bound(amount1, minAmount1, maxAmount1));
-            }
+            amount1 = givenValidAmount1(amount1, amount0, sqrtPriceOld);
 
             // And: we start from an estimation based on the slippage free swap.
             (zeroToOne, amountIn, amountOut) = cLMath.getSwapParams(
@@ -237,6 +228,21 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is
         } else {
             assertGe(liquidityWithSlippage, liquidityWithoutSlippage);
         }
+    }
+
+    // forge-lint: disable-next-item(unsafe-typecast)
+    function givenValidAmount1(uint128 amount1, uint128 amount0, uint160 sqrtPriceOld)
+        internal
+        view
+        returns (uint128 amount1_)
+    {
+        uint256 maxAmount1 = sqrtPriceOld > FixedPoint96.Q96
+            ? type(uint120).max / sqrtPriceOld * FixedPoint96.Q96 / sqrtPriceOld * FixedPoint96.Q96
+            : type(uint128).max;
+        uint256 minAmount1 = cLMath.getSpotValue(sqrtPriceOld, true, amount0);
+        minAmount1 = minAmount1 > 1e6 ? 0 : 1e6 + 1 - minAmount1;
+        vm.assume(minAmount1 <= maxAmount1);
+        amount1_ = uint128(bound(amount1, minAmount1, maxAmount1));
     }
 
     function getLiquidityAfterSwap(
