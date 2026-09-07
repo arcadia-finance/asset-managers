@@ -119,8 +119,6 @@ contract ApproximateSqrtPriceNew_SwapMath_Fuzz_Test is RebalanceOptimizationMath
         if (maxAmountIn > type(uint128).max) maxAmountIn = type(uint128).max;
         amountIn = uint128(bound(amountIn, 0, maxAmountIn));
 
-        uint256 quotient = FullMath.mulDiv(amountIn, FixedPoint96.Q96, usableLiquidity);
-
         // When: Calling _approximateSqrtPriceNew().
         // Then: It does not revert.
         uint256 sqrtPriceNew = optimizationMath.approximateSqrtPriceNew(
