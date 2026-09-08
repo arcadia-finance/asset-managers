@@ -19,6 +19,7 @@ library LiquidityAmounts {
      *  @return y The passed value, downcasted to uint128
      */
     function toUint128(uint256 x) internal pure returns (uint128 y) {
+        // forge-lint: disable-next-line(custom-errors)
         require((y = uint128(x)) == x);
     }
 

@@ -144,7 +144,10 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
                 rewardGrowthInsideX128 = rewardGrowthGlobalX128Current - rewardGrowthGlobalX128Last;
             }
             rewards = FullMath.mulDiv(rewardGrowthInsideX128, position.liquidity, FixedPoint128.Q128);
-            if (claimFee > 0) vm.assume(rewards < type(uint256).max / claimFee);
+            if (rewards > 0) {
+                uint256 maxClaimFee = type(uint256).max / rewards;
+                claimFee = uint64(bound(claimFee, 0, maxClaimFee < 1e18 ? maxClaimFee : 1e18));
+            }
         }
 
         // When: Calling claim.
@@ -218,7 +221,10 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
                 rewardGrowthInsideX128 = rewardGrowthGlobalX128Current - rewardGrowthGlobalX128Last;
             }
             rewards = FullMath.mulDiv(rewardGrowthInsideX128, position.liquidity, FixedPoint128.Q128);
-            if (claimFee > 0) vm.assume(rewards < type(uint256).max / claimFee);
+            if (rewards > 0) {
+                uint256 maxClaimFee = type(uint256).max / rewards;
+                claimFee = uint64(bound(claimFee, 0, maxClaimFee < 1e18 ? maxClaimFee : 1e18));
+            }
         }
         if (address(token0) == AERO) {
             balance0 = uint64(bound(balance0, 0, type(uint256).max - rewards));
@@ -321,7 +327,10 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
                 rewardGrowthInsideX128 = rewardGrowthGlobalX128Current - rewardGrowthGlobalX128Last;
             }
             rewards = FullMath.mulDiv(rewardGrowthInsideX128, position.liquidity, FixedPoint128.Q128);
-            if (claimFee > 0) vm.assume(rewards < type(uint256).max / claimFee);
+            if (rewards > 0) {
+                uint256 maxClaimFee = type(uint256).max / rewards;
+                claimFee = uint64(bound(claimFee, 0, maxClaimFee < 1e18 ? maxClaimFee : 1e18));
+            }
         }
 
         // When: Calling claim.
@@ -395,7 +404,10 @@ contract Claim_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
                 rewardGrowthInsideX128 = rewardGrowthGlobalX128Current - rewardGrowthGlobalX128Last;
             }
             rewards = FullMath.mulDiv(rewardGrowthInsideX128, position.liquidity, FixedPoint128.Q128);
-            if (claimFee > 0) vm.assume(rewards < type(uint256).max / claimFee);
+            if (rewards > 0) {
+                uint256 maxClaimFee = type(uint256).max / rewards;
+                claimFee = uint64(bound(claimFee, 0, maxClaimFee < 1e18 ? maxClaimFee : 1e18));
+            }
         }
         if (address(token0) == AERO) {
             balance0 = uint64(bound(balance0, 0, type(uint256).max - rewards));

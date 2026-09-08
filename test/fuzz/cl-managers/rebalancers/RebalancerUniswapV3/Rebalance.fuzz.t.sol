@@ -72,14 +72,14 @@ contract Rebalance_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Tes
         Rebalancer.InitiatorParams memory initiatorParams,
         address caller
     ) public {
-        // Given: Account is not an Arcadia Account.
+        // Given: Account is not a precompile.
+        account_ = address(uint160(bound(uint160(account_), 21, type(uint160).max)));
+
+        // And: Account is not an Arcadia Account.
         vm.assume(!factory.isAccount(account_));
 
         // And: account_ has no owner() function.
         vm.assume(account_.code.length == 0);
-
-        // And: Account is not a precompile.
-        vm.assume(account_ > address(20));
 
         // And: Account is not the console.
         vm.assume(account_ != address(0x000000000000000000636F6e736F6c652e6c6f67));
@@ -235,7 +235,7 @@ contract Rebalance_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_Tes
         initiatorParams.strategyData = abi.encode(tickLower, tickUpper);
 
         // And: position has fees.
-        feeSeed = uint256(bound(feeSeed, 0, type(uint56).max));
+        feeSeed = bound(feeSeed, 0, type(uint56).max);
         generateFees(feeSeed, feeSeed);
 
         // And: Limited leftovers.

@@ -36,6 +36,7 @@ abstract contract Guardian is Owned {
     /**
      * @dev Only guardians can call functions with this modifier.
      */
+    // forge-lint: disable-next-item(modifier-used-only-once)
     modifier onlyGuardian() {
         _onlyGuardian();
         _;

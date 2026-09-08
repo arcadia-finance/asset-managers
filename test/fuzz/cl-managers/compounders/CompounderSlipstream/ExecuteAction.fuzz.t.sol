@@ -75,7 +75,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
         // And: maxSwapFee is smaller or equal to 1e18.
         maxSwapFee = uint64(bound(maxSwapFee, 0, 1e18));
 
-        // And info is set.
+        // And: info is set.
         vm.prank(account.owner());
         compounder.setAccountInfo(
             address(account), initiator, maxClaimFee, maxSwapFee, MAX_TOLERANCE, MIN_LIQUIDITY_RATIO, ""
@@ -107,7 +107,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
         // And: maxSwapFee is smaller or equal to 1e18.
         maxSwapFee = uint64(bound(maxSwapFee, 0, 1e18));
 
-        // And info is set.
+        // And: info is set.
         vm.prank(account.owner());
         compounder.setAccountInfo(
             address(account), initiator, maxClaimFee, maxSwapFee, MAX_TOLERANCE, MIN_LIQUIDITY_RATIO, ""
@@ -234,7 +234,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
         deal(address(token1), address(compounder), initiatorParams.amount1, true);
 
         // And: position has fees.
-        feeSeed = uint256(bound(feeSeed, type(uint8).max, type(uint48).max));
+        feeSeed = bound(feeSeed, type(uint8).max, type(uint48).max);
         generateFees(feeSeed, feeSeed);
 
         // And: account is set.
@@ -448,7 +448,7 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
         deal(address(token1), address(compounder), initiatorParams.amount1, true);
 
         // And: position has fees.
-        feeSeed = uint256(bound(feeSeed, type(uint8).max, type(uint48).max));
+        feeSeed = bound(feeSeed, type(uint8).max, type(uint48).max);
         generateFees(feeSeed, feeSeed);
 
         // And: account is set.
@@ -569,8 +569,9 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
 
         // And: Compounder has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1e18));
-        initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, 0, 1e18));
-        vm.assume(initiatorParams.amount0 + initiatorParams.amount1 > type(uint8).max);
+        uint256 minAmount1 =
+            initiatorParams.amount0 > type(uint8).max ? 0 : uint256(type(uint8).max) + 1 - initiatorParams.amount0;
+        initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, minAmount1, 1e18));
         deal(address(token0), address(compounder), initiatorParams.amount0, true);
         deal(address(token1), address(compounder), initiatorParams.amount1, true);
 
@@ -710,8 +711,9 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
 
         // And: Compounder has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1e18));
-        initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, 0, 1e18));
-        vm.assume(initiatorParams.amount0 + initiatorParams.amount1 > type(uint8).max);
+        uint256 minAmount1 =
+            initiatorParams.amount0 > type(uint8).max ? 0 : uint256(type(uint8).max) + 1 - initiatorParams.amount0;
+        initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, minAmount1, 1e18));
         deal(address(token0), address(compounder), initiatorParams.amount0, true);
         deal(address(token1), address(compounder), initiatorParams.amount1, true);
 
@@ -853,8 +855,9 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
 
         // And: Compounder has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1e18));
-        initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, 0, 1e18));
-        vm.assume(initiatorParams.amount0 + initiatorParams.amount1 > type(uint8).max);
+        uint256 minAmount1 =
+            initiatorParams.amount0 > type(uint8).max ? 0 : uint256(type(uint8).max) + 1 - initiatorParams.amount0;
+        initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, minAmount1, 1e18));
         deal(address(token0), address(compounder), initiatorParams.amount0, true);
         deal(address(token1), address(compounder), initiatorParams.amount1, true);
 
@@ -992,8 +995,9 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
 
         // And: Compounder has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1e18));
-        initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, 0, 1e18));
-        vm.assume(initiatorParams.amount0 + initiatorParams.amount1 > type(uint8).max);
+        uint256 minAmount1 =
+            initiatorParams.amount0 > type(uint8).max ? 0 : uint256(type(uint8).max) + 1 - initiatorParams.amount0;
+        initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, minAmount1, 1e18));
         deal(address(token0), address(compounder), initiatorParams.amount0, true);
         deal(address(token1), address(compounder), initiatorParams.amount1, true);
 

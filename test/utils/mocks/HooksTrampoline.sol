@@ -30,6 +30,7 @@ contract HooksTrampoline {
     /// @dev Modifier that ensures that the `msg.sender` is the CoW Protocol
     /// settlement contract. Methods with this modifier are guaranteed to only
     /// be called as part of a CoW Protocol settlement.
+    // forge-lint: disable-next-item(modifier-used-only-once)
     modifier onlySettlement() {
         if (msg.sender != settlement) {
             revert NotASettlement();
