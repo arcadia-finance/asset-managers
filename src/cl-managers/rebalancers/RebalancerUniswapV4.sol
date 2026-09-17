@@ -22,7 +22,7 @@ import { UniswapV4 } from "../base/UniswapV4.sol";
  * @dev The contract guarantees a limited slippage with each rebalance by enforcing a minimum amount of liquidity that must be added,
  * based on a hypothetical optimal swap through the pool itself without slippage.
  * This protects the Account owners from incompetent or malicious initiators who route swaps poorly, or try to skim off liquidity from the position.
- * @dev The rebalancer must not be used for Pools of native ETH - WETH.
+ * @dev The rebalancer must not be used for Pools of native ETH - WRAPPED_NATIVE.
  */
 contract RebalancerUniswapV4 is Rebalancer, UniswapV4 {
     using SafeTransferLib for ERC20;
@@ -31,7 +31,7 @@ contract RebalancerUniswapV4 is Rebalancer, UniswapV4 {
     ////////////////////////////////////////////////////////////// */
 
     // The version of the Asset Manager.
-    string public constant VERSION = "2.1.1";
+    string public constant VERSION = "2.1.2";
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -44,7 +44,7 @@ contract RebalancerUniswapV4 is Rebalancer, UniswapV4 {
      * @param positionManager The contract address of the Uniswap v4 Position Manager.
      * @param permit2 The contract address of Permit2.
      * @param poolManager The contract address of the Uniswap v4 Pool Manager.
-     * @param weth The contract address of WETH.
+     * @param wrappedNative The contract address of WRAPPED_NATIVE.
      */
     constructor(
         address owner_,
@@ -53,8 +53,8 @@ contract RebalancerUniswapV4 is Rebalancer, UniswapV4 {
         address positionManager,
         address permit2,
         address poolManager,
-        address weth
-    ) Rebalancer(owner_, arcadiaFactory, routerTrampoline) UniswapV4(positionManager, permit2, poolManager, weth) { }
+        address wrappedNative
+    ) Rebalancer(owner_, arcadiaFactory, routerTrampoline) UniswapV4(positionManager, permit2, poolManager, wrappedNative) { }
 
     /* ///////////////////////////////////////////////////////////////
                              SWAP LOGIC
@@ -86,10 +86,10 @@ contract RebalancerUniswapV4 is Rebalancer, UniswapV4 {
         bool isNative = position.tokens[0] == address(0);
         if (isNative) {
             if (zeroToOne) {
-                tokenIn = WETH;
-                IWETH(WETH).deposit{ value: amountIn }();
+                tokenIn = WRAPPED_NATIVE;
+                IWETH(WRAPPED_NATIVE).deposit{ value: amountIn }();
             } else {
-                tokenOut = WETH;
+                tokenOut = WRAPPED_NATIVE;
             }
         }
 
@@ -103,7 +103,7 @@ contract RebalancerUniswapV4 is Rebalancer, UniswapV4 {
         // Handle pools with native ETH.
         if (isNative) {
             uint256 wethBalance = zeroToOne ? balanceIn : balanceOut;
-            if (wethBalance > 0) IWETH(WETH).withdraw(wethBalance);
+            if (wethBalance > 0) IWETH(WRAPPED_NATIVE).withdraw(wethBalance);
         }
 
         // Update the balances.

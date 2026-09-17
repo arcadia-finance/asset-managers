@@ -46,8 +46,8 @@ abstract contract UniswapV4 is AbstractBase {
     // The Uniswap V4 PoolManager contract.
     IPoolManager internal immutable POOL_MANAGER;
 
-    // The contract address of WETH.
-    address internal immutable WETH;
+    // The wrapped native token.
+    address internal immutable WRAPPED_NATIVE;
 
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
@@ -71,13 +71,13 @@ abstract contract UniswapV4 is AbstractBase {
      * @param positionManager The contract address of the Uniswap v4 Position Manager.
      * @param permit2 The contract address of Permit2.
      * @param poolManager The contract address of the Uniswap v4 Pool Manager.
-     * @param weth The contract address of WETH.
+     * @param wrappedNative The contract address of WRAPPED_NATIVE.
      */
-    constructor(address positionManager, address permit2, address poolManager, address weth) {
+    constructor(address positionManager, address permit2, address poolManager, address wrappedNative) {
         POSITION_MANAGER = IPositionManagerV4(positionManager);
         PERMIT_2 = IPermit2(permit2);
         POOL_MANAGER = IPoolManager(poolManager);
-        WETH = weth;
+        WRAPPED_NATIVE = wrappedNative;
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -116,9 +116,9 @@ abstract contract UniswapV4 is AbstractBase {
 
         // If token0 is in native ETH, we need to withdraw wrapped eth from the Account.
         if (token0 == address(0)) {
-            // Implementation cannot be used for pools of native eth and weth.
-            if (token1 == WETH) revert InvalidPool();
-            token0 = WETH;
+            // Implementation cannot be used for pools of native eth and wrappedNative.
+            if (token1 == WRAPPED_NATIVE) revert InvalidPool();
+            token0 = WRAPPED_NATIVE;
         }
     }
 
@@ -258,8 +258,8 @@ abstract contract UniswapV4 is AbstractBase {
     function _stake(uint256[] memory balances, address, PositionState memory position) internal virtual override {
         // If token0 is in native ETH, wrap it.
         if (position.tokens[0] == address(0)) {
-            position.tokens[0] = WETH;
-            IWETH(payable(WETH)).deposit{ value: balances[0] }();
+            position.tokens[0] = WRAPPED_NATIVE;
+            IWETH(payable(WRAPPED_NATIVE)).deposit{ value: balances[0] }();
         }
     }
 
@@ -270,11 +270,11 @@ abstract contract UniswapV4 is AbstractBase {
      * @param position A struct with position and pool related variables.
      */
     function _unstake(uint256[] memory balances, address, PositionState memory position) internal virtual override {
-        // If token0 is in native ETH, and weth was withdrawn from the account, unwrap it.
+        // If token0 is in native ETH, and wrappedNative was withdrawn from the account, unwrap it.
         if (position.tokens[0] == address(0)) {
-            uint256 wethBalance = ERC20(WETH).balanceOf(address(this));
+            uint256 wethBalance = ERC20(WRAPPED_NATIVE).balanceOf(address(this));
             if (wethBalance > 0) {
-                IWETH(WETH).withdraw(wethBalance);
+                IWETH(WRAPPED_NATIVE).withdraw(wethBalance);
                 balances[0] += wethBalance;
             }
         }
