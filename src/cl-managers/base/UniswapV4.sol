@@ -272,10 +272,10 @@ abstract contract UniswapV4 is AbstractBase {
     function _unstake(uint256[] memory balances, address, PositionState memory position) internal virtual override {
         // If token0 is in native ETH, and wrappedNative was withdrawn from the account, unwrap it.
         if (position.tokens[0] == address(0)) {
-            uint256 wethBalance = ERC20(WRAPPED_NATIVE).balanceOf(address(this));
-            if (wethBalance > 0) {
-                IWETH(WRAPPED_NATIVE).withdraw(wethBalance);
-                balances[0] += wethBalance;
+            uint256 wrappedNativeBalance = ERC20(WRAPPED_NATIVE).balanceOf(address(this));
+            if (wrappedNativeBalance > 0) {
+                IWETH(WRAPPED_NATIVE).withdraw(wrappedNativeBalance);
+                balances[0] += wrappedNativeBalance;
             }
         }
     }

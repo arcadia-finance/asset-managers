@@ -53,7 +53,10 @@ contract CompounderUniswapV4 is Compounder, UniswapV4 {
         address permit2,
         address poolManager,
         address wrappedNative
-    ) Compounder(owner_, arcadiaFactory, routerTrampoline) UniswapV4(positionManager, permit2, poolManager, wrappedNative) { }
+    )
+        Compounder(owner_, arcadiaFactory, routerTrampoline)
+        UniswapV4(positionManager, permit2, poolManager, wrappedNative)
+    { }
 
     /* ///////////////////////////////////////////////////////////////
                              SWAP LOGIC
@@ -101,8 +104,8 @@ contract CompounderUniswapV4 is Compounder, UniswapV4 {
 
         // Handle pools with native ETH.
         if (isNative) {
-            uint256 wethBalance = zeroToOne ? balanceIn : balanceOut;
-            if (wethBalance > 0) IWETH(WRAPPED_NATIVE).withdraw(wethBalance);
+            uint256 wrappedNativeBalance = zeroToOne ? balanceIn : balanceOut;
+            if (wrappedNativeBalance > 0) IWETH(WRAPPED_NATIVE).withdraw(wrappedNativeBalance);
         }
 
         // Update the balances.

@@ -8,8 +8,8 @@ import { PositionState } from "../../../src/cl-managers/state/PositionState.sol"
 import { UniswapV4 } from "../../../src/cl-managers/base/UniswapV4.sol";
 
 contract UniswapV4Extension is UniswapV4 {
-    constructor(address positionManager, address permit2, address poolManager, address weth)
-        UniswapV4(positionManager, permit2, poolManager, weth)
+    constructor(address positionManager, address permit2, address poolManager, address wrappedNative)
+        UniswapV4(positionManager, permit2, poolManager, wrappedNative)
     { }
 
     function getUnderlyingTokens(address positionManager, uint256 id) external view returns (address, address) {

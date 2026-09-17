@@ -133,7 +133,7 @@ contract Claim_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
         assertEq(balances[0], address(base).balance);
         assertEq(balances[1], token1.balanceOf(address(base)));
 
-        // balance0 is in weth and should not be taken into account for native eth!!!
+        // balance0 is in the wrapped native token and should not be taken into account for native eth!!!
         assertEq(balance0, weth9.balanceOf(address(base)));
 
         assertEq(fees[0], fee0_ * claimFee / 1e18);

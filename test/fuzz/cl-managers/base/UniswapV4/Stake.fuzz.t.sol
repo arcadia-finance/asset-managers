@@ -102,7 +102,7 @@ contract Stake_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
 
         assertEq(0, address(base).balance);
 
-        // And: token0 is weth.
+        // And: token0 is the wrapped native token.
         assertEq(position_.tokens[0], address(weth9));
     }
 }

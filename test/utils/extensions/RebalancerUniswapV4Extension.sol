@@ -15,8 +15,12 @@ contract RebalancerUniswapV4Extension is RebalancerUniswapV4 {
         address positionManager,
         address permit2,
         address poolManager,
-        address weth
-    ) RebalancerUniswapV4(owner_, arcadiaFactory, routerTrampoline, positionManager, permit2, poolManager, weth) { }
+        address wrappedNative
+    )
+        RebalancerUniswapV4(
+            owner_, arcadiaFactory, routerTrampoline, positionManager, permit2, poolManager, wrappedNative
+        )
+    { }
 
     function getUnderlyingTokens(address positionManager, uint256 id) external view returns (address, address) {
         return _getUnderlyingTokens(positionManager, id);
