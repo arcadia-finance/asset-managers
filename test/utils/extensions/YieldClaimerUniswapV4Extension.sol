@@ -14,8 +14,8 @@ contract YieldClaimerUniswapV4Extension is YieldClaimerUniswapV4 {
         address positionManager,
         address permit2,
         address poolManager,
-        address weth
-    ) YieldClaimerUniswapV4(owner_, arcadiaFactory, positionManager, permit2, poolManager, weth) { }
+        address wrappedNative
+    ) YieldClaimerUniswapV4(owner_, arcadiaFactory, positionManager, permit2, poolManager, wrappedNative) { }
 
     function getUnderlyingTokens(address positionManager, uint256 id) external view returns (address, address) {
         return _getUnderlyingTokens(positionManager, id);

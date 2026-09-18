@@ -15,8 +15,12 @@ contract CompounderUniswapV4Extension is CompounderUniswapV4 {
         address positionManager,
         address permit2,
         address poolManager,
-        address weth
-    ) CompounderUniswapV4(owner_, arcadiaFactory, routerTrampoline, positionManager, permit2, poolManager, weth) { }
+        address wrappedNative
+    )
+        CompounderUniswapV4(
+            owner_, arcadiaFactory, routerTrampoline, positionManager, permit2, poolManager, wrappedNative
+        )
+    { }
 
     function getUnderlyingTokens(address positionManager, uint256 id) external view returns (address, address) {
         return _getUnderlyingTokens(positionManager, id);

@@ -30,7 +30,7 @@ contract CompounderUniswapV4 is Compounder, UniswapV4 {
     ////////////////////////////////////////////////////////////// */
 
     // The version of the Asset Manager.
-    string public constant VERSION = "2.1.0";
+    string public constant VERSION = "2.1.1";
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -43,7 +43,7 @@ contract CompounderUniswapV4 is Compounder, UniswapV4 {
      * @param positionManager The contract address of the Uniswap v4 Position Manager.
      * @param permit2 The contract address of Permit2.
      * @param poolManager The contract address of the Uniswap v4 Pool Manager.
-     * @param weth The contract address of WETH.
+     * @param wrappedNative The contract address of WRAPPED_NATIVE.
      */
     constructor(
         address owner_,
@@ -52,8 +52,11 @@ contract CompounderUniswapV4 is Compounder, UniswapV4 {
         address positionManager,
         address permit2,
         address poolManager,
-        address weth
-    ) Compounder(owner_, arcadiaFactory, routerTrampoline) UniswapV4(positionManager, permit2, poolManager, weth) { }
+        address wrappedNative
+    )
+        Compounder(owner_, arcadiaFactory, routerTrampoline)
+        UniswapV4(positionManager, permit2, poolManager, wrappedNative)
+    { }
 
     /* ///////////////////////////////////////////////////////////////
                              SWAP LOGIC
@@ -85,10 +88,10 @@ contract CompounderUniswapV4 is Compounder, UniswapV4 {
         bool isNative = position.tokens[0] == address(0);
         if (isNative) {
             if (zeroToOne) {
-                tokenIn = WETH;
-                IWETH(WETH).deposit{ value: amountIn }();
+                tokenIn = WRAPPED_NATIVE;
+                IWETH(WRAPPED_NATIVE).deposit{ value: amountIn }();
             } else {
-                tokenOut = WETH;
+                tokenOut = WRAPPED_NATIVE;
             }
         }
 
@@ -101,8 +104,8 @@ contract CompounderUniswapV4 is Compounder, UniswapV4 {
 
         // Handle pools with native ETH.
         if (isNative) {
-            uint256 wethBalance = zeroToOne ? balanceIn : balanceOut;
-            if (wethBalance > 0) IWETH(WETH).withdraw(wethBalance);
+            uint256 wrappedNativeBalance = zeroToOne ? balanceIn : balanceOut;
+            if (wrappedNativeBalance > 0) IWETH(WRAPPED_NATIVE).withdraw(wrappedNativeBalance);
         }
 
         // Update the balances.

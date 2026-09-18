@@ -65,7 +65,7 @@ contract Unstake_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
         PositionState memory position,
         uint64 balance0,
         uint64 balance1,
-        uint64 wethBalance
+        uint64 wrappedNativeBalance
     ) public {
         // Given: A valid position.
         liquidityPool = givenValidPoolState(liquidityPool, position);
@@ -74,10 +74,10 @@ contract Unstake_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
         setPositionState(position);
 
         // And: Base has WETH balance.
-        vm.deal(address(base), wethBalance);
+        vm.deal(address(base), wrappedNativeBalance);
         vm.prank(address(base));
         // forge-lint: disable-next-item(arbitrary-send-eth)
-        IWETH(address(weth9)).deposit{ value: wethBalance }();
+        IWETH(address(weth9)).deposit{ value: wrappedNativeBalance }();
 
         // And: Base has balances.
         uint256[] memory balances = new uint256[](2);
@@ -95,7 +95,7 @@ contract Unstake_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
         balances = base.unstake(balances, positionManager, position);
 
         // Then: It should return the correct balances.
-        assertEq(balances[0], uint256(balance0) + wethBalance);
+        assertEq(balances[0], uint256(balance0) + wrappedNativeBalance);
         assertEq(balances[1], balance1);
         assertEq(balances[0], address(base).balance);
         assertEq(balances[1], token1.balanceOf(address(base)));
