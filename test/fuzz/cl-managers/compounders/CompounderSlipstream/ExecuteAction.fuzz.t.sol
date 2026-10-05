@@ -8,6 +8,7 @@ import { ActionData } from "../../../../../lib/accounts-v2/src/interfaces/IActio
 import { Compounder } from "../../../../../src/cl-managers/compounders/Compounder.sol";
 import { CompounderSlipstream_Fuzz_Test } from "./_CompounderSlipstream.fuzz.t.sol";
 import { DefaultRebalancerHook } from "../../../../utils/mocks/DefaultRebalancerHook.sol";
+import { ERC20 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC20.sol";
 import { ERC20Mock } from "../../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
 import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
 import {
@@ -24,7 +25,7 @@ import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4
 /**
  * @notice Fuzz tests for the function "_executeAction" of contract "CompounderSlipstream".
  */
-// forge-lint: disable-next-item(divide-before-multiply,unsafe-typecast)
+// forge-lint: disable-next-item(divide-before-multiply,erc20-unchecked-transfer,unsafe-typecast)
 contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fuzz_Test {
     using stdStorage for StdStorage;
     /*////////////////////////////////////////////////////////////////
@@ -222,10 +223,8 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
-        // forge-lint: disable-start(erc20-unchecked-transfer)
         ERC721(address(slipstreamPositionManager))
             .transferFrom(users.liquidityProvider, address(compounder), position.id);
-        // forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Compounder has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1e18));
@@ -323,10 +322,8 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
-        // forge-lint: disable-start(erc20-unchecked-transfer)
         ERC721(address(slipstreamPositionManager))
             .transferFrom(users.liquidityProvider, address(compounder), position.id);
-        // forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Compounder has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1e18));
@@ -436,10 +433,8 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
-        // forge-lint: disable-start(erc20-unchecked-transfer)
         ERC721(address(slipstreamPositionManager))
             .transferFrom(users.liquidityProvider, address(compounder), position.id);
-        // forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Compounder has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1e18));
@@ -564,7 +559,6 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
-        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(stakedSlipstreamAM)).transferFrom(users.liquidityProvider, address(compounder), position.id);
 
         // And: Compounder has balances.
@@ -706,7 +700,6 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
-        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(stakedSlipstreamAM)).transferFrom(users.liquidityProvider, address(compounder), position.id);
 
         // And: Compounder has balances.
@@ -812,6 +805,111 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
         assertEq(depositData.assetTypes[0], 2);
     }
 
+    function testFuzz_Success_executeAction_StakedSlipstream_ClaimOnly(
+        uint128 liquidityPool,
+        PositionState memory position,
+        uint256 rewards,
+        Compounder.InitiatorParams memory initiatorParams,
+        address initiator,
+        uint256 tolerance
+    ) public {
+        // Given: A valid position in range (has both tokens).
+        liquidityPool = givenValidPoolState(liquidityPool, position);
+        liquidityPool = uint128(bound(liquidityPool, 1e20, 1e25));
+        setPoolState(liquidityPool, position, true);
+        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
+        position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
+        position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
+        position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
+        position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
+        setPositionState(position);
+        initiatorParams.positionManager = address(stakedSlipstreamAM);
+        initiatorParams.id = uint96(position.id);
+
+        // And: The position is staked.
+        vm.startPrank(users.liquidityProvider);
+        slipstreamPositionManager.approve(address(stakedSlipstreamAM), position.id);
+        stakedSlipstreamAM.mint(position.id);
+        vm.stopPrank();
+
+        // And: The initiator does not hold the reward token.
+        vm.assume(initiator != address(compounder));
+        vm.assume(initiator != address(gauge));
+
+        // And: Account info is set.
+        tolerance = bound(tolerance, 0.001 * 1e18, MAX_TOLERANCE);
+        vm.prank(account.owner());
+        compounder.setAccountInfo(address(account), initiator, MAX_FEE, MAX_FEE, tolerance, MIN_LIQUIDITY_RATIO, "");
+
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
+        initiatorParams.swapFee = initiatorParams.claimFee;
+
+        // And: The Compounder owns the position.
+        vm.prank(users.liquidityProvider);
+        ERC721(address(stakedSlipstreamAM)).transferFrom(users.liquidityProvider, address(compounder), position.id);
+
+        // And: Compounder has no balances.
+        initiatorParams.amount0 = 0;
+        initiatorParams.amount1 = 0;
+
+        // And: Position earned rewards.
+        rewards = bound(rewards, 1e3, type(uint64).max);
+        {
+            uint256 rewardGrowthGlobalX128Current = FullMath.mulDiv(rewards, FixedPoint128.Q128, position.liquidity);
+            vm.warp(block.timestamp + 1);
+            deal(AERO, address(gauge), type(uint256).max, true);
+            stdstore.target(address(poolCl)).sig(poolCl.rewardReserve.selector).checked_write(type(uint256).max);
+            stdstore.target(address(poolCl))
+                .sig(poolCl.rewardGrowthGlobalX128.selector)
+                .checked_write(rewardGrowthGlobalX128Current);
+        }
+        rewards = stakedSlipstreamAM.rewardOf(position.id);
+
+        // And: account is set.
+        compounder.setAccount(address(account));
+
+        // And: The pool is balanced.
+        {
+            (uint160 sqrtPrice,,,,,) = poolCl.slot0();
+            initiatorParams.trustedSqrtPrice = sqrtPrice;
+        }
+
+        // When: Calling executeAction().
+        // Then: It should emit the correct event.
+        bytes memory actionTargetData = abi.encode(initiator, initiatorParams);
+        vm.prank(address(account));
+        vm.expectEmit();
+        emit Compounder.Compound(address(account), address(stakedSlipstreamAM), position.id);
+        ActionData memory depositData = compounder.executeAction(actionTargetData);
+
+        // And: It should return the position and the rewards net of the claimFee.
+        uint256 fee = rewards * initiatorParams.claimFee / 1e18;
+        assertEq(depositData.assets.length, 2);
+        assertEq(depositData.assets[0], address(stakedSlipstreamAM));
+        assertEq(depositData.assetIds[0], position.id);
+        assertEq(depositData.assetAmounts[0], 1);
+        assertEq(depositData.assetTypes[0], 2);
+        assertEq(depositData.assets[1], AERO);
+        assertEq(depositData.assetIds[1], 0);
+        assertEq(depositData.assetAmounts[1], rewards - fee);
+        assertEq(depositData.assetTypes[1], 1);
+
+        // And: The Account is approved for the position and the rewards net of the claimFee.
+        assertEq(ERC721(address(stakedSlipstreamAM)).getApproved(position.id), address(account));
+        assertEq(ERC20(AERO).balanceOf(address(compounder)), rewards - fee);
+        assertEq(ERC20(AERO).allowance(address(compounder), address(account)), rewards - fee);
+
+        // And: The initiator received the claimFee share of the rewards.
+        assertEq(ERC20(AERO).balanceOf(initiator), fee);
+
+        // And: The position is staked again, with unchanged liquidity.
+        assertEq(ERC721(address(stakedSlipstreamAM)).ownerOf(position.id), address(compounder));
+        assertEq(ERC721(address(slipstreamPositionManager)).ownerOf(position.id), address(gauge));
+        (,,,,,,, uint128 liquidity,,,,) = slipstreamPositionManager.positions(position.id);
+        assertEq(liquidity, position.liquidity);
+    }
+
     function testFuzz_Success_executeAction_WrappedStakedSlipstream_RewardTokenNotToken0Or1(
         uint128 liquidityPool,
         PositionState memory position,
@@ -850,7 +948,6 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
-        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(wrappedStakedSlipstream)).transferFrom(users.liquidityProvider, address(compounder), position.id);
 
         // And: Compounder has balances.
@@ -990,7 +1087,6 @@ contract ExecuteAction_CompounderSlipstream_Fuzz_Test is CompounderSlipstream_Fu
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
-        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         ERC721(address(wrappedStakedSlipstream)).transferFrom(users.liquidityProvider, address(compounder), position.id);
 
         // And: Compounder has balances.

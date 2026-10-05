@@ -31,7 +31,7 @@ contract RebalancerUniswapV4 is Rebalancer, UniswapV4 {
     ////////////////////////////////////////////////////////////// */
 
     // The version of the Asset Manager.
-    string public constant VERSION = "2.1.2";
+    string public constant VERSION = "2.2.0";
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR

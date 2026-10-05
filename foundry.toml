@@ -97,3 +97,19 @@ fuzz = { runs = 2_000, max_test_rejects = 1_000_000_000}
 
 [profile.ci]
 fuzz = { runs = 200, max_test_rejects = 100_000_000}
+
+[profile.coverage]
+additional_compiler_profiles = [{ name = "optimized", optimizer = true, optimizer_runs = 200 }]
+compilation_restrictions = [
+    { paths = "lib/accounts-v2/lib/slipstream/contracts/**", version = "=0.7.6" },
+    { paths = "lib/accounts-v2/lib/v3-core/contracts/**", version = "=0.7.6" },
+    { paths = "lib/accounts-v2/lib/v3-periphery/contracts/**", version = "=0.7.6" },
+    { paths = "lib/accounts-v2/lib/swap-router-contracts/contracts/**", version = "=0.7.6" },
+    { paths = "lib/accounts-v2/lib/merkl-contracts/contracts/DistributionCreator.sol", min_optimizer_runs = 200 },
+    { paths = "lib/accounts-v2/lib/slipstream/contracts/gauge/CLGauge.sol", min_optimizer_runs = 200 },
+    { paths = "lib/accounts-v2/src/asset-modules/Slipstream/SlipstreamAM.sol", min_optimizer_runs = 200 },
+    { paths = "lib/accounts-v2/src/asset-modules/Slipstream/StakedSlipstreamAM.sol", min_optimizer_runs = 200 },
+    { paths = "lib/accounts-v2/src/asset-modules/UniswapV3/UniswapV3AM.sol", min_optimizer_runs = 200 },
+    { paths = "src/cl-managers/base/Slipstream.sol", min_optimizer_runs = 200 },
+    { paths = "src/cl-managers/base/UniswapV3.sol", min_optimizer_runs = 200 },
+]

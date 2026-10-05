@@ -30,7 +30,7 @@ contract CompounderUniswapV4 is Compounder, UniswapV4 {
     ////////////////////////////////////////////////////////////// */
 
     // The version of the Asset Manager.
-    string public constant VERSION = "2.1.1";
+    string public constant VERSION = "2.2.0";
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR

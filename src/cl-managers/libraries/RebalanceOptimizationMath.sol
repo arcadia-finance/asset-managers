@@ -4,22 +4,36 @@
  */
 pragma solidity ^0.8.34;
 
-import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solmate/src/utils/FixedPointMathLib.sol";
-import { LiquidityAmounts } from "./LiquidityAmounts.sol";
+import { FixedPointMathLib } from "../../../lib/accounts-v2/lib/solady/src/utils/FixedPointMathLib.sol";
+import { QuadraticMath } from "./QuadraticMath.sol";
 import { SqrtPriceMath } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/SqrtPriceMath.sol";
 
+// forge-lint: disable-next-item(unsafe-typecast,boolean-cst,divide-before-multiply,cyclomatic-complexity)
 library RebalanceOptimizationMath {
     using FixedPointMathLib for uint256;
 
-    // The minimal relative difference between liquidity0 and liquidity1, with 18 decimals precision.
-    uint256 internal constant CONVERGENCE_THRESHOLD = 1e6;
+    /* //////////////////////////////////////////////////////////////
+                               CONSTANTS
+    ////////////////////////////////////////////////////////////// */
 
-    // The maximal number of iterations to find the optimal swap parameters.
-    uint256 internal constant MAX_ITERATIONS = 100;
+    // The maximal balance relative to the liquidity of the pool, with 192 binary precision.
+    uint256 internal constant MAX_NORMALIZED = 1 << 252;
+
+    // The binary precision of the coefficients.
+    uint256 internal constant Q192 = 1 << 192;
+
+    /* //////////////////////////////////////////////////////////////
+                                ERRORS
+    ////////////////////////////////////////////////////////////// */
+
+    error Overflow();
+
+    /* //////////////////////////////////////////////////////////////
+                              SWAP LOGIC
+    ////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Iteratively calculates the amountOut for a swap through the pool itself, that maximizes the amount of liquidity that is added.
-     * The calculations take both fees and slippage into account, but assume constant liquidity.
+     * @notice Analytically calculates the amountOut for a swap through the pool itself, that maximizes the amount of liquidity that is added.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param fee The fee of the pool, with 6 decimals precision.
      * @param usableLiquidity The amount of active liquidity in the pool, at the current tick.
@@ -28,22 +42,9 @@ library RebalanceOptimizationMath {
      * @param sqrtRatioUpper The square root price of the upper tick of the liquidity position, with 96 binary precision.
      * @param amount0 The balance of token0 before the swap.
      * @param amount1 The balance of token1 before the swap.
-     * @param amountIn An approximation of the amount of tokenIn, based on the optimal swap through the pool itself without slippage.
-     * @param amountOut An approximation of the amount of tokenOut, based on the optimal swap through the pool itself without slippage.
      * @return amountOut The amount of tokenOut.
-     * @dev The optimal amountIn and amountOut are defined as the amounts that maximize the amount of liquidity that can be added to the position.
-     * This means that there are no leftovers of either token0 or token1,
-     * and liquidity0 (calculated via getLiquidityForAmount0) will be exactly equal to liquidity1 (calculated via getLiquidityForAmount1).
-     * @dev The optimal amountIn and amountOut depend on the sqrtPrice of the pool via the liquidity calculations,
-     * but the sqrtPrice in turn depends on the amountIn and amountOut via the swap calculations.
-     * Since both are highly non-linear, this problem is (according to our understanding) not analytically solvable.
-     * Therefore we use an iterative approach to find the optimal swap parameters.
-     * The stop criterion is defined when the relative difference between liquidity0 and liquidity1 is below the convergence threshold.
-     * @dev Convergence is not guaranteed, worst case or the transaction reverts, or a non-optimal swap is performed,
-     * But then minLiquidity enforces that either enough liquidity is minted or the transaction will revert.
-     * @dev We assume constant active liquidity when calculating the swap parameters.
-     * For illiquid pools, or positions that are large relatively to the pool liquidity, this might result in reverting rebalances.
-     * But since a minimum amount of liquidity is enforced, should not lead to loss of principal.
+     * @dev The calculations take both fees and slippage into account, but assume constant liquidity across the swap.
+     * @dev Requires sqrtPriceOld above the lower tick for zeroToOne and below the upper tick otherwise.
      */
     function _getAmountOutWithSlippage(
         bool zeroToOne,
@@ -53,100 +54,112 @@ library RebalanceOptimizationMath {
         uint160 sqrtRatioLower,
         uint160 sqrtRatioUpper,
         uint256 amount0,
-        uint256 amount1,
-        uint256 amountIn,
-        uint256 amountOut
-    ) internal pure returns (uint256) {
-        uint160 sqrtPriceNew;
-        bool stopCondition;
-        // We iteratively solve for sqrtPrice, amountOut and amountIn, so that the maximal amount of liquidity can be added to the position.
-        for (uint256 i = 0; i < MAX_ITERATIONS; ++i) {
-            // Find a better approximation for sqrtPrice, given the best approximations for the optimal amountIn and amountOut.
-            sqrtPriceNew = _approximateSqrtPriceNew(zeroToOne, fee, usableLiquidity, sqrtPriceOld, amountIn, amountOut);
-
-            // If the position is out of range, we can calculate the exact solution.
-            if (sqrtPriceNew >= sqrtRatioUpper) {
-                // New position is out of range and fully in token 1.
-                // Rebalance to a single-sided liquidity position in token 1.
-                // We ignore one edge case: Swapping token0 to token1 decreases the sqrtPrice,
-                // hence a swap for a position that is just out of range might become in range due to slippage.
-                // This might lead to a suboptimal rebalance, which worst case results in too little liquidity and the rebalance reverts.
-                return _getAmount1OutFromAmount0In(fee, usableLiquidity, sqrtPriceOld, amount0);
-            } else if (sqrtPriceNew <= sqrtRatioLower) {
-                // New position is out of range and fully in token 0.
-                // Rebalance to a single-sided liquidity position in token 0.
-                // We ignore one edge case: Swapping token1 to token0 increases the sqrtPrice,
-                // hence a swap for a position that is just out of range might become in range due to slippage.
-                // This might lead to a suboptimal rebalance, which worst case results in too little liquidity and the rebalance reverts.
-                return _getAmount0OutFromAmount1In(fee, usableLiquidity, sqrtPriceOld, amount1);
-            }
-
-            // If the position is not out of range, calculate the amountIn and amountOut, given the new approximated sqrtPrice.
-            (amountIn, amountOut) = _getSwapParamsExact(zeroToOne, fee, usableLiquidity, sqrtPriceOld, sqrtPriceNew);
-
-            // Given the new approximated sqrtPriceNew and its swap amounts,
-            // calculate a better approximation for the optimal amountIn and amountOut, that would maximize the liquidity provided
-            // (no leftovers of either token0 or token1).
-            (stopCondition, amountIn, amountOut) = _approximateOptimalSwapAmounts(
-                zeroToOne, sqrtRatioLower, sqrtRatioUpper, amount0, amount1, amountIn, amountOut, sqrtPriceNew
+        uint256 amount1
+    ) internal pure returns (uint256 amountOut) {
+        amountOut = zeroToOne
+            ? _getAmount1OutWithSlippage(
+                fee, usableLiquidity, sqrtPriceOld, sqrtRatioLower, sqrtRatioUpper, amount0, amount1
+            )
+            : _getAmount0OutWithSlippage(
+                fee, usableLiquidity, sqrtPriceOld, sqrtRatioLower, sqrtRatioUpper, amount0, amount1
             );
-
-            // Check if stop condition of iteration is met:
-            // The relative difference between liquidity0 and liquidity1 is below the convergence threshold.
-            if (stopCondition) return amountOut;
-            // If not, we do an extra iteration with our better approximated amountIn and amountOut.
-        }
-        // If solution did not converge within MAX_ITERATIONS steps, we use the amountOut of the last iteration step.
-        return amountOut;
     }
 
     /**
-     * @notice Approximates the SqrtPrice after the swap, given an approximation for the amountIn and amountOut that maximize liquidity added.
-     * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
+     * @notice Calculates the amountOut of token1 for a swap of token0, that maximizes the amount of liquidity that is added.
      * @param fee The fee of the pool, with 6 decimals precision.
      * @param usableLiquidity The amount of active liquidity in the pool, at the current tick.
-     * @param sqrtPriceOld The SqrtPrice before the swap.
-     * @param amountIn An approximation of the amount of tokenIn, that maximize liquidity added.
-     * @param amountOut An approximation of the amount of tokenOut, that maximize liquidity added.
-     * @return sqrtPriceNew The approximation of the SqrtPrice after the swap.
+     * @param sqrtPriceOld The square root of the pool price (token1/token0) before the swap, with 96 binary precision.
+     * @param sqrtRatioLower The square root price of the lower tick of the liquidity position, with 96 binary precision.
+     * @param sqrtRatioUpper The square root price of the upper tick of the liquidity position, with 96 binary precision.
+     * @param amount0 The balance of token0 before the swap.
+     * @param amount1 The balance of token1 before the swap.
+     * @return amountOut The amount of token1.
      */
-    function _approximateSqrtPriceNew(
-        bool zeroToOne,
+    function _getAmount1OutWithSlippage(
         uint256 fee,
         uint128 usableLiquidity,
         uint160 sqrtPriceOld,
-        uint256 amountIn,
-        uint256 amountOut
-    ) internal pure returns (uint160 sqrtPriceNew) {
-        unchecked {
-            // Calculate the exact sqrtPriceNew for both amountIn and amountOut.
-            // Both solutions will be different, but they will converge with every iteration closer to the same solution.
-            uint256 amountInLessFee = amountIn.mulDivDown(1e6 - fee, 1e6);
-            uint256 sqrtPriceNew0;
-            uint256 sqrtPriceNew1;
-            if (zeroToOne) {
-                sqrtPriceNew0 = SqrtPriceMath.getNextSqrtPriceFromAmount0RoundingUp(
-                    sqrtPriceOld, usableLiquidity, amountInLessFee, true
-                );
-                sqrtPriceNew1 = SqrtPriceMath.getNextSqrtPriceFromAmount1RoundingDown(
-                    sqrtPriceOld, usableLiquidity, amountOut, false
-                );
-            } else {
-                sqrtPriceNew0 = SqrtPriceMath.getNextSqrtPriceFromAmount0RoundingUp(
-                    sqrtPriceOld, usableLiquidity, amountOut, false
-                );
-                sqrtPriceNew1 = SqrtPriceMath.getNextSqrtPriceFromAmount1RoundingDown(
-                    sqrtPriceOld, usableLiquidity, amountInLessFee, true
-                );
+        uint160 sqrtRatioLower,
+        uint160 sqrtRatioUpper,
+        uint256 amount0,
+        uint256 amount1
+    ) internal pure returns (uint256 amountOut) {
+        // If the price is above the range, we sell all token0, unless that brings the price back into the range.
+        if (sqrtPriceOld > sqrtRatioUpper) {
+            uint256 amountInToBound;
+            unchecked {
+                amountInToBound = SqrtPriceMath.getAmount0Delta(sqrtRatioUpper, sqrtPriceOld, usableLiquidity, true)
+                    .mulDivUp(1e6, 1e6 - fee);
             }
-            // Calculate the new best approximation as the arithmetic average of both solutions (rounded towards current price).
-            // We could as well use the geometric average, but empirically we found no difference in conversion speed,
-            // and the geometric average is more expensive to calculate.
-            // Unchecked + unsafe cast: sqrtPriceNew0 and sqrtPriceNew1 are always smaller than type(uint160).max.
-            // forge-lint: disable-next-item(unsafe-typecast)
-            sqrtPriceNew = zeroToOne
-                ? uint160(FixedPointMathLib.unsafeDiv(sqrtPriceNew0 + sqrtPriceNew1, 2))
-                : uint160(FixedPointMathLib.unsafeDivUp(sqrtPriceNew0 + sqrtPriceNew1, 2));
+            if (amount0 < amountInToBound) {
+                return _getAmount1OutFromAmount0In(fee, usableLiquidity, sqrtPriceOld, amount0);
+            }
+            // The price re-enters the range: we move it to the upper tick and solve the rest from there.
+            amountOut = SqrtPriceMath.getAmount1Delta(sqrtRatioUpper, sqrtPriceOld, usableLiquidity, false);
+            unchecked {
+                amount0 -= amountInToBound;
+            }
+            amount1 += amountOut;
+            sqrtPriceOld = sqrtRatioUpper;
+        }
+
+        // Calculate the new sqrtPrice at which liquidity0 equals liquidity1, rounded toward sqrtPriceOld.
+        uint160 sqrtPriceNew =
+            _getSqrtPrice(true, fee, usableLiquidity, sqrtPriceOld, sqrtRatioLower, sqrtRatioUpper, amount0, amount1);
+
+        // Calculate the largest amountOut that reaches that sqrtPrice.
+        unchecked {
+            amountOut += SqrtPriceMath.getAmount1Delta(sqrtPriceNew, sqrtPriceOld, usableLiquidity, false);
+        }
+    }
+
+    /**
+     * @notice Calculates the amountOut of token0 for a swap of token1, that maximizes the amount of liquidity that is added.
+     * @param fee The fee of the pool, with 6 decimals precision.
+     * @param usableLiquidity The amount of active liquidity in the pool, at the current tick.
+     * @param sqrtPriceOld The square root of the pool price (token1/token0) before the swap, with 96 binary precision.
+     * @param sqrtRatioLower The square root price of the lower tick of the liquidity position, with 96 binary precision.
+     * @param sqrtRatioUpper The square root price of the upper tick of the liquidity position, with 96 binary precision.
+     * @param amount0 The balance of token0 before the swap.
+     * @param amount1 The balance of token1 before the swap.
+     * @return amountOut The amount of token0.
+     */
+    function _getAmount0OutWithSlippage(
+        uint256 fee,
+        uint128 usableLiquidity,
+        uint160 sqrtPriceOld,
+        uint160 sqrtRatioLower,
+        uint160 sqrtRatioUpper,
+        uint256 amount0,
+        uint256 amount1
+    ) internal pure returns (uint256 amountOut) {
+        // If the price is below the range, we sell all token1, unless that brings the price back into the range.
+        if (sqrtPriceOld < sqrtRatioLower) {
+            uint256 amountInToBound;
+            unchecked {
+                amountInToBound = SqrtPriceMath.getAmount1Delta(sqrtPriceOld, sqrtRatioLower, usableLiquidity, true)
+                    .mulDivUp(1e6, 1e6 - fee);
+            }
+            if (amount1 < amountInToBound) {
+                return _getAmount0OutFromAmount1In(fee, usableLiquidity, sqrtPriceOld, amount1);
+            }
+            // The price re-enters the range: we move it to the lower tick and solve the rest from there.
+            amountOut = SqrtPriceMath.getAmount0Delta(sqrtPriceOld, sqrtRatioLower, usableLiquidity, false);
+            amount0 += amountOut;
+            unchecked {
+                amount1 -= amountInToBound;
+            }
+            sqrtPriceOld = sqrtRatioLower;
+        }
+
+        // Calculate the new sqrtPrice at which liquidity0 equals liquidity1, rounded toward sqrtPriceOld.
+        uint160 sqrtPriceNew =
+            _getSqrtPrice(false, fee, usableLiquidity, sqrtPriceOld, sqrtRatioLower, sqrtRatioUpper, amount0, amount1);
+
+        // Calculate the largest amountOut that reaches that sqrtPrice.
+        unchecked {
+            amountOut += SqrtPriceMath.getAmount0Delta(sqrtPriceOld, sqrtPriceNew, usableLiquidity, false);
         }
     }
 
@@ -157,7 +170,7 @@ library RebalanceOptimizationMath {
      * @param sqrtPriceOld The SqrtPrice before the swap.
      * @param amount0 The balance of token0 before the swap.
      * @return amountOut The amount of token1 that is swapped to.
-     * @dev The calculations take both fees and slippage into account, but assume constant liquidity.
+     * @dev The net amountIn is rounded down, so the swap never costs more than amount0.
      */
     function _getAmount1OutFromAmount0In(uint256 fee, uint128 usableLiquidity, uint160 sqrtPriceOld, uint256 amount0)
         internal
@@ -165,7 +178,7 @@ library RebalanceOptimizationMath {
         returns (uint256 amountOut)
     {
         unchecked {
-            uint256 amountInLessFee = amount0.mulDivUp(1e6 - fee, 1e6);
+            uint256 amountInLessFee = amount0.mulDiv(1e6 - fee, 1e6);
             uint160 sqrtPriceNew = SqrtPriceMath.getNextSqrtPriceFromAmount0RoundingUp(
                 sqrtPriceOld, usableLiquidity, amountInLessFee, true
             );
@@ -180,7 +193,7 @@ library RebalanceOptimizationMath {
      * @param sqrtPriceOld The SqrtPrice before the swap.
      * @param amount1 The balance of token1 before the swap.
      * @return amountOut The amount of token0 that is swapped to.
-     * @dev The calculations take both fees and slippage into account, but assume constant liquidity.
+     * @dev The net amountIn is rounded down, so the swap never costs more than amount1.
      */
     function _getAmount0OutFromAmount1In(uint256 fee, uint128 usableLiquidity, uint160 sqrtPriceOld, uint256 amount1)
         internal
@@ -188,7 +201,7 @@ library RebalanceOptimizationMath {
         returns (uint256 amountOut)
     {
         unchecked {
-            uint256 amountInLessFee = amount1.mulDivUp(1e6 - fee, 1e6);
+            uint256 amountInLessFee = amount1.mulDiv(1e6 - fee, 1e6);
             uint160 sqrtPriceNew = SqrtPriceMath.getNextSqrtPriceFromAmount1RoundingDown(
                 sqrtPriceOld, usableLiquidity, amountInLessFee, true
             );
@@ -196,113 +209,175 @@ library RebalanceOptimizationMath {
         }
     }
 
+    /* //////////////////////////////////////////////////////////////
+                           SQRT PRICE LOGIC
+    ////////////////////////////////////////////////////////////// */
+
     /**
-     * @notice Calculates the amountIn and amountOut of token0, for a given SqrtPrice after the swap.
+     * @notice Calculates the new sqrtPrice after the swap that maximizes the amount of liquidity that is added.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param fee The fee of the pool, with 6 decimals precision.
      * @param usableLiquidity The amount of active liquidity in the pool, at the current tick.
-     * @param sqrtPriceOld The SqrtPrice before the swap.
-     * @param sqrtPriceNew The SqrtPrice after the swap.
-     * @return amountIn The amount of tokenIn.
-     * @return amountOut The amount of tokenOut.
-     * @dev The calculations take both fees and slippage into account, but assume constant liquidity.
+     * @param sqrtPriceOld The square root of the pool price (token1/token0) before the swap, with 96 binary precision.
+     * @param sqrtRatioLower The square root price of the lower tick of the liquidity position, with 96 binary precision.
+     * @param sqrtRatioUpper The square root price of the upper tick of the liquidity position, with 96 binary precision.
+     * @param amount0 The balance of token0 before the swap.
+     * @param amount1 The balance of token1 before the swap.
+     * @return sqrtPriceNew The sqrtPrice at which liquidity0 equals liquidity1, rounded toward sqrtPriceOld, with 96 binary precision.
+     * @dev The price at which liquidity0 and liquidity1 are equal is found as follows:
+     *  1) Both are rational functions of the square root price after the swap, s:
+     *     L0 = b0 * s * Pu / (Pu − s)
+     *     L1 = b1 / (s − Pl)
+     *     With Pl and Pu the square root prices of the position range, and b0 and b1 the balances after the swap.
+     *  2) The swap itself ties b0 and b1 to s through the pool equations, with a0 and a1 the balances before the
+     *     swap, s0 the square root price before the swap, L the active liquidity and κ = 1 / (1 − fee):
+     *     zeroToOne: b0 = a0 − κ * L * (1/s − 1/s0) and b1 = a1 + L * (s0 − s)
+     *     oneToZero: b0 = a0 + L * (1/s0 − 1/s) and b1 = a1 − κ * L * (s − s0)
+     *  3) Plugging 2) into 1) and equating clears both denominators and leaves a quadratic in s, so the price is a
+     *     root of:
+     *     A * s² + B * s + C = 0
+     *  4) The coefficients of 3) reach 2^288, so the quadratic is solved in quantities normalized by s0 and L:
+     *     p = Pl / s0, 1/q = s0 / Pu, α0 = a0 * s0 / L, α1 = a1 / (L * s0)
+     *     and in the relative price move δ = |s − s0| / s0 rather than in s itself, since s ≈ s0 whenever the
+     *     slippage is small and computing s first would cause a loss of precision on the move.
      */
-    function _getSwapParamsExact(
+    function _getSqrtPrice(
         bool zeroToOne,
         uint256 fee,
-        uint128 usableLiquidity,
-        uint160 sqrtPriceOld,
-        uint160 sqrtPriceNew
-    ) internal pure returns (uint256 amountIn, uint256 amountOut) {
-        unchecked {
-            if (zeroToOne) {
-                uint256 amountInLessFee =
-                    SqrtPriceMath.getAmount0Delta(sqrtPriceNew, sqrtPriceOld, usableLiquidity, true);
-                amountIn = amountInLessFee.mulDivUp(1e6, 1e6 - fee);
-                amountOut = SqrtPriceMath.getAmount1Delta(sqrtPriceNew, sqrtPriceOld, usableLiquidity, false);
-            } else {
-                uint256 amountInLessFee =
-                    SqrtPriceMath.getAmount1Delta(sqrtPriceOld, sqrtPriceNew, usableLiquidity, true);
-                amountIn = amountInLessFee.mulDivUp(1e6, 1e6 - fee);
-                amountOut = SqrtPriceMath.getAmount0Delta(sqrtPriceOld, sqrtPriceNew, usableLiquidity, false);
+        uint256 usableLiquidity,
+        uint256 sqrtPriceOld,
+        uint256 sqrtRatioLower,
+        uint256 sqrtRatioUpper,
+        uint256 amount0,
+        uint256 amount1
+    ) internal pure returns (uint160 sqrtPriceNew) {
+        (int256 quadraticCoefficient, int256 linearCoefficient, int256 constantCoefficient) = _getQuadraticCoefficients(
+            zeroToOne, fee, usableLiquidity, sqrtPriceOld, sqrtRatioLower, sqrtRatioUpper, amount0, amount1
+        );
+        uint256 sqrtPriceDelta;
+        if (zeroToOne) {
+            // If liquidity1 already equals or exceeds liquidity0 at the start, we do not swap.
+            if (constantCoefficient <= 0) return uint160(sqrtPriceOld);
+            unchecked {
+                sqrtPriceDelta = QuadraticMath._getRoot(quadraticCoefficient, linearCoefficient, constantCoefficient);
+                // Round the sqrtPrice move down.
+                sqrtPriceNew = uint160(sqrtPriceOld - sqrtPriceOld.fullMulDivN(sqrtPriceDelta, 192));
+            }
+        } else {
+            // If liquidity0 already equals or exceeds liquidity1 at the start, we do not swap.
+            if (constantCoefficient >= 0) return uint160(sqrtPriceOld);
+            unchecked {
+                sqrtPriceDelta = QuadraticMath._getRoot(-quadraticCoefficient, linearCoefficient, -constantCoefficient);
+                // Round the sqrtPrice move down.
+                sqrtPriceNew = uint160(sqrtPriceOld + sqrtPriceOld.fullMulDivN(sqrtPriceDelta, 192));
             }
         }
     }
 
     /**
-     * @notice Approximates the amountIn and amountOut that maximize liquidity added,
-     * given an approximation for the SqrtPrice after the swap and an approximation of the balances of token0 and token1 after the swap.
+     * @notice Calculates the quadratic in the relative move of the sqrtPrice, cleared of its denominators.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
+     * @param fee The fee of the pool, with 6 decimals precision.
+     * @param usableLiquidity The amount of active liquidity in the pool, at the current tick.
+     * @param sqrtPriceOld The square root of the pool price (token1/token0) before the swap, with 96 binary precision.
      * @param sqrtRatioLower The square root price of the lower tick of the liquidity position, with 96 binary precision.
      * @param sqrtRatioUpper The square root price of the upper tick of the liquidity position, with 96 binary precision.
      * @param amount0 The balance of token0 before the swap.
      * @param amount1 The balance of token1 before the swap.
-     * @param amountIn An approximation of the amount of tokenIn, used to calculate the approximated balances after the swap.
-     * @param amountOut An approximation of the amount of tokenOut, used to calculate the approximated balances after the swap.
-     * @param sqrtPrice An approximation of the SqrtPrice after the swap.
-     * @return converged Bool indicating if the stop criterion of iteration is met.
-     * @return amountIn_ The new approximation of the amount of tokenIn that maximize liquidity added.
-     * @return amountOut_ The new approximation of the amount of amountOut that maximize liquidity added.
+     * @return quadraticCoefficient The quadratic coefficient, with 192 binary precision.
+     * @return linearCoefficient The linear coefficient, with 192 binary precision.
+     * @return constantCoefficient The constant coefficient, with 192 binary precision.
+     * @dev zeroToOne: (α0 * m − κ * δ) * (m − p) = (α1 + δ) * (1 − m/q) with m = 1 − δ expands to A * δ² − B * δ + C = 0,
+     *     A = α0 + κ − 1/q and B = α0 + (α0 + κ)(1 − p) + α1/q + (1 − 1/q)
+     * @dev oneToZero: (α0 * m + δ) * (m − p) = (α1 − κ * δ) * (1 − m/q) with m = 1 + δ expands to A * δ² + B * δ + C = 0,
+     *     A = α0 + 1 − κ/q and B = α0 + (α0 + 1)(1 − p) + α1/q + κ(1 − 1/q)
+     * @dev In both, C = α0 * (1 − p) − α1 * (1 − 1/q).
      */
-    function _approximateOptimalSwapAmounts(
+    function _getQuadraticCoefficients(
         bool zeroToOne,
-        uint160 sqrtRatioLower,
-        uint160 sqrtRatioUpper,
+        uint256 fee,
+        uint256 usableLiquidity,
+        uint256 sqrtPriceOld,
+        uint256 sqrtRatioLower,
+        uint256 sqrtRatioUpper,
         uint256 amount0,
-        uint256 amount1,
-        uint256 amountIn,
-        uint256 amountOut,
-        uint160 sqrtPrice
-    ) internal pure returns (bool, uint256, uint256) {
+        uint256 amount1
+    ) internal pure returns (int256 quadraticCoefficient, int256 linearCoefficient, int256 constantCoefficient) {
+        (
+            uint256 amount0Normalized,
+            uint256 amount1Normalized,
+            uint256 sqrtRatioLowerNormalized,
+            uint256 sqrtRatioUpperInverseNormalized
+        ) = _getNormalizedParameters(usableLiquidity, sqrtPriceOld, sqrtRatioLower, sqrtRatioUpper, amount0, amount1);
+
         unchecked {
-            // Calculate the liquidity for the given approximated sqrtPrice and the approximated balances of token0 and token1 after the swap.
-            uint256 liquidity0;
-            uint256 liquidity1;
+            // C = α0 * (1 − p) − α1 * (1 − 1/q), with 1 − p and 1 − 1/q from the exact differences s0 − Pl, Pu − s0
+            constantCoefficient = int256(
+                amount0Normalized.fullMulDivUnchecked(sqrtPriceOld - sqrtRatioLower, sqrtPriceOld)
+            ) - int256(amount1Normalized.fullMulDivUnchecked(sqrtRatioUpper - sqrtPriceOld, sqrtRatioUpper)); // 192 binary precision.
+
+            // The ratio of the gross to the net amountIn: κ = 1 / (1 − fee)
+            uint256 feeFactor = (1e6 << 192) / (1e6 - fee); // 192 binary precision.
             if (zeroToOne) {
-                liquidity0 = LiquidityAmounts.getLiquidityForAmount0(
-                    sqrtPrice, sqrtRatioUpper, amount0 > amountIn ? amount0 - amountIn : 0
-                );
-                liquidity1 = LiquidityAmounts.getLiquidityForAmount1(sqrtRatioLower, sqrtPrice, amount1 + amountOut);
+                quadraticCoefficient = int256(amount0Normalized + feeFactor) - int256(sqrtRatioUpperInverseNormalized);
+                linearCoefficient = 2 * quadraticCoefficient
+                    + int256((amount1Normalized + Q192).fullMulDivN(sqrtRatioUpperInverseNormalized, 192) + Q192)
+                    - int256((amount0Normalized + feeFactor).fullMulDivN(sqrtRatioLowerNormalized, 192) + feeFactor);
             } else {
-                liquidity0 = LiquidityAmounts.getLiquidityForAmount0(sqrtPrice, sqrtRatioUpper, amount0 + amountOut);
-                liquidity1 = LiquidityAmounts.getLiquidityForAmount1(
-                    sqrtRatioLower, sqrtPrice, amount1 > amountIn ? amount1 - amountIn : 0
-                );
+                quadraticCoefficient =
+                    int256(amount0Normalized + Q192) - int256(sqrtRatioUpperInverseNormalized * 1e6 / (1e6 - fee));
+                linearCoefficient = 2 * quadraticCoefficient
+                    + int256(
+                        (amount1Normalized + feeFactor).fullMulDivN(sqrtRatioUpperInverseNormalized, 192) + feeFactor
+                    ) - int256((amount0Normalized + Q192).fullMulDivN(sqrtRatioLowerNormalized, 192) + Q192);
             }
-
-            // Calculate the relative difference of liquidity0 and liquidity1.
-            uint256 relDiff = 1e18
-                - (liquidity0 < liquidity1
-                        ? liquidity0.mulDivDown(1e18, liquidity1)
-                        : liquidity1.mulDivDown(1e18, liquidity0));
-            // In the optimal solution liquidity0 equals liquidity1,
-            // and there are no leftovers for token0 or token1 after minting the liquidity.
-            // Hence the relative distance between liquidity0 and liquidity1
-            // is a good estimator how close we are to the optimal solution.
-            bool converged = relDiff < CONVERGENCE_THRESHOLD;
-
-            // The new approximated liquidity is the minimum of liquidity0 and liquidity1.
-            // Calculate the new approximated amountIn or amountOut,
-            // for which this liquidity would be the optimal solution.
-            if (liquidity0 < liquidity1) {
-                uint256 amount1New = SqrtPriceMath.getAmount1Delta(
-                    sqrtRatioLower, sqrtPrice, LiquidityAmounts.toUint128(liquidity0), true
-                );
-                zeroToOne
-                    // Since amountOut can't be negative, we use 90% of the previous amountOut as a fallback.
-                    ? amountOut = amount1New > amount1 ? amount1New - amount1 : amountOut.mulDivDown(9, 10)
-                    : amountIn = amount1 - amount1New;
-            } else {
-                uint256 amount0New = SqrtPriceMath.getAmount0Delta(
-                    sqrtPrice, sqrtRatioUpper, LiquidityAmounts.toUint128(liquidity1), true
-                );
-                zeroToOne
-                    ? amountIn = amount0 - amount0New
-                    // Since amountOut can't be negative, we use 90% of the previous amountOut as a fallback.
-                    : amountOut = amount0New > amount0 ? amount0New - amount0 : amountOut.mulDivDown(9, 10);
-            }
-
-            return (converged, amountIn, amountOut);
         }
+    }
+
+    /**
+     * @notice Expresses the swap and position parameters as the dimensionless quantities the quadratic is written in.
+     * @param usableLiquidity The amount of active liquidity in the pool, at the current tick.
+     * @param sqrtPriceOld The square root of the pool price (token1/token0) before the swap, with 96 binary precision.
+     * @param sqrtRatioLower The square root price of the lower tick of the liquidity position, with 96 binary precision.
+     * @param sqrtRatioUpper The square root price of the upper tick of the liquidity position, with 96 binary precision.
+     * @param amount0 The balance of token0 before the swap.
+     * @param amount1 The balance of token1 before the swap.
+     * @return amount0Normalized The balance of token0 relative to the liquidity of the pool, with 192 binary precision.
+     * @return amount1Normalized The balance of token1 relative to the liquidity of the pool, with 192 binary precision.
+     * @return sqrtRatioLowerNormalized The lower square root price relative to sqrtPriceOld, with 192 binary precision.
+     * @return sqrtRatioUpperInverseNormalized The reciprocal of the upper square root price relative to sqrtPriceOld, with 192 binary precision.
+     */
+    function _getNormalizedParameters(
+        uint256 usableLiquidity,
+        uint256 sqrtPriceOld,
+        uint256 sqrtRatioLower,
+        uint256 sqrtRatioUpper,
+        uint256 amount0,
+        uint256 amount1
+    )
+        internal
+        pure
+        returns (
+            uint256 amount0Normalized,
+            uint256 amount1Normalized,
+            uint256 sqrtRatioLowerNormalized,
+            uint256 sqrtRatioUpperInverseNormalized
+        )
+    {
+        unchecked {
+            // The range bounds relative to the price before the swap: p = Pl / s0 and 1/q = s0 / Pu,
+            // each as ⌊n * 2^192 / d⌋ = ⌊n * 2^96 / d⌋ * 2^96 + ⌊(n * 2^96 mod d) * 2^96 / d⌋
+            uint256 numerator = sqrtRatioLower << 96;
+            sqrtRatioLowerNormalized =
+                ((numerator / sqrtPriceOld) << 96) + (((numerator % sqrtPriceOld) << 96) / sqrtPriceOld); // 192 binary precision.
+            numerator = sqrtPriceOld << 96;
+            sqrtRatioUpperInverseNormalized =
+                ((numerator / sqrtRatioUpper) << 96) + (((numerator % sqrtRatioUpper) << 96) / sqrtRatioUpper); // 192 binary precision.
+        }
+
+        // Both balances in units of the pool liquidity, dividing by L before s0: α0 = a0 * s0 / L, α1 = a1 / (L * s0)
+        amount0Normalized = amount0.fullMulDiv(sqrtPriceOld << 96, usableLiquidity); // 192 binary precision.
+        amount1Normalized = amount1.fullMulDiv(1 << 128, usableLiquidity).fullMulDiv(1 << 160, sqrtPriceOld); // 192 binary precision.
+        if (amount0Normalized > MAX_NORMALIZED || amount1Normalized > MAX_NORMALIZED) revert Overflow();
     }
 }

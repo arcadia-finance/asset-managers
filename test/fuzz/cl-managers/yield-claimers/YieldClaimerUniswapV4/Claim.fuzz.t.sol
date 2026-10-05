@@ -128,7 +128,7 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         factory.safeTransferFrom(users.accountOwner, newOwner, address(account));
         vm.startPrank(newOwner);
         account.setAssetManagers(assetManagers, statuses, new bytes[](1));
-        vm.warp(block.timestamp + 10 minutes);
+        vm.warp(vm.getBlockTimestamp() + 10 minutes);
         factory.safeTransferFrom(newOwner, users.accountOwner, address(account));
         vm.stopPrank();
 

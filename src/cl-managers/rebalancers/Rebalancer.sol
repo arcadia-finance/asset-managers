@@ -549,9 +549,7 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
                 cache.sqrtRatioLower,
                 cache.sqrtRatioUpper,
                 amount0,
-                amount1,
-                rebalanceParams.amountIn,
-                rebalanceParams.amountOut
+                amount1
             );
             // Don't do swaps with zero amount.
             if (amountOut == 0) return;

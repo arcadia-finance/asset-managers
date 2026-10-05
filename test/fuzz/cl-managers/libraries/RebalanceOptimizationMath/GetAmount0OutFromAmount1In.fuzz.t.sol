@@ -25,44 +25,49 @@ contract GetAmount0OutFromAmount1In_SwapMath_Fuzz_Test is RebalanceOptimizationM
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_getAmount0OutFromAmount1In(
-        uint256 fee,
-        uint128 usableLiquidity,
-        uint160 sqrtPriceOld,
-        uint128 amount1
-    ) public view {
-        // Given: fee is smaller than 1e6 (invariant).
-        fee = bound(fee, 0, 1e6);
+    function testFuzz_Success_getAmount0OutFromAmount1In(SwapParams memory params) public view {
+        // Given: A oneToZero swap.
+        params.zeroToOne = false;
+
+        // And: fee is smaller than 1e6 (invariant).
+        params.fee = bound(params.fee, 0, 1e6 - 1);
 
         // And: usableLiquidity is not near zero.
-        usableLiquidity = uint128(bound(usableLiquidity, 1e18, type(uint128).max));
+        params.usableLiquidity = uint128(bound(params.usableLiquidity, 1e18, type(uint128).max));
 
-        // And: sqrtPriceOld is within boundaries and smaller than type(uint128).max.
-        sqrtPriceOld = uint160(bound(sqrtPriceOld, TickMath.MIN_SQRT_PRICE, TickMath.MIN_SQRT_PRICE));
+        // And: sqrtPriceOld is within boundaries.
+        params.sqrtPriceOld = uint160(bound(params.sqrtPriceOld, TickMath.MIN_SQRT_PRICE, TickMath.MAX_SQRT_PRICE));
 
-        // And: amountOut without slippage would not overflow.
-        if (sqrtPriceOld > FixedPoint96.Q96) {
-            // forge-lint: disable-next-item(divide-before-multiply)
-            amount1 = uint128(
-                bound(amount1, 0, type(uint256).max / sqrtPriceOld * FixedPoint96.Q96 / sqrtPriceOld * FixedPoint96.Q96)
-            );
-        }
+        // And: amount1 fits in a uint128.
+        params.amount1 = bound(params.amount1, 0, type(uint128).max);
 
-        uint256 amountInLessFee = amount1 * (1e6 - fee) / 1e6;
+        // And: The new sqrtPrice fits in a uint160.
+        uint256 amountInLessFee = params.amount1 * (1e6 - params.fee) / 1e6;
         uint256 quotient =
             (amountInLessFee <= type(uint160).max
-                ? (amountInLessFee << FixedPoint96.RESOLUTION) / usableLiquidity
-                : FullMath.mulDiv(amountInLessFee, FixedPoint96.Q96, usableLiquidity));
-        uint256 sqrtPriceNew = sqrtPriceOld + quotient;
-        vm.assume(sqrtPriceNew < type(uint160).max);
+                ? (amountInLessFee << FixedPoint96.RESOLUTION) / params.usableLiquidity
+                : FullMath.mulDiv(amountInLessFee, FixedPoint96.Q96, params.usableLiquidity));
+        vm.assume(params.sqrtPriceOld + quotient < type(uint160).max);
 
         // When: calling _getAmount0OutFromAmount1In().
         // Then: it does not revert.
-        uint256 amountOut = optimizationMath.getAmount0OutFromAmount1In(fee, usableLiquidity, sqrtPriceOld, amount1);
+        uint256 amountOut = optimizationMath.getAmount0OutFromAmount1In(
+            params.fee, params.usableLiquidity, params.sqrtPriceOld, params.amount1
+        );
 
-        // And: amountOut is always smaller or equal than result without slippage.
-        uint256 amountOutWithoutSlippage = FullMath.mulDiv(amount1, FixedPoint96.Q96, sqrtPriceOld);
-        amountOutWithoutSlippage = FullMath.mulDiv(amountOutWithoutSlippage, FixedPoint96.Q96, sqrtPriceOld);
+        // And: amountOut is the amountOut of the pool for amount1 less the fee, rounded down.
+        assertEq(amountOut, getAmountOutForAmountIn(params, params.amount1));
+
+        // And: amountOut is always smaller or equal than result without slippage, amount1 * 2^192 / sqrtPriceOld² rounded down.
+        uint256 partialQuotient = FullMath.mulDiv(params.amount1, 1 << 96, params.sqrtPriceOld);
+        uint256 carry = (mulmod(params.amount1, 1 << 96, params.sqrtPriceOld) << 96) / params.sqrtPriceOld;
+        carry += mulmod(partialQuotient, 1 << 96, params.sqrtPriceOld);
+        uint256 amountOutWithoutSlippage =
+            FullMath.mulDiv(partialQuotient, 1 << 96, params.sqrtPriceOld) + carry / params.sqrtPriceOld;
         assertLe(amountOut, amountOutWithoutSlippage);
+
+        // And: The amountIn of the pool for amountOut is smaller or equal than amount1.
+        (, uint256 amountIn) = getAmountInForAmountOut(params, amountOut);
+        assertLe(amountIn, params.amount1);
     }
 }

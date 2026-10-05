@@ -341,46 +341,49 @@ abstract contract Compounder is IActionBase, AbstractBase, Guardian {
         // If the position is staked, unstake it.
         _unstake(balances, positionManager, position);
 
-        // Get the rebalance parameters, based on a hypothetical swap through the pool itself without slippage.
-        RebalanceParams memory rebalanceParams = RebalanceLogic._getRebalanceParams(
-            accountInfo_.minLiquidityRatio,
-            position.fee,
-            initiatorParams.swapFee,
-            position.sqrtPrice,
-            cache.sqrtRatioLower,
-            cache.sqrtRatioUpper,
-            balances[0] - fees[0],
-            balances[1] - fees[1]
-        );
-        if (rebalanceParams.zeroToOne) fees[0] += rebalanceParams.amountInitiatorFee;
-        else fees[1] += rebalanceParams.amountInitiatorFee;
+        // Only increase the liquidity if there is token0 or token1 to add.
+        if (balances[0] > fees[0] || balances[1] > fees[1]) {
+            // Get the rebalance parameters, based on a hypothetical swap through the pool itself without slippage.
+            RebalanceParams memory rebalanceParams = RebalanceLogic._getRebalanceParams(
+                accountInfo_.minLiquidityRatio,
+                position.fee,
+                initiatorParams.swapFee,
+                position.sqrtPrice,
+                cache.sqrtRatioLower,
+                cache.sqrtRatioUpper,
+                balances[0] - fees[0],
+                balances[1] - fees[1]
+            );
+            if (rebalanceParams.zeroToOne) fees[0] += rebalanceParams.amountInitiatorFee;
+            else fees[1] += rebalanceParams.amountInitiatorFee;
 
-        // Do the swap to rebalance the position.
-        // This can be done either directly through the pool, or via a router with custom swap data.
-        // For swaps directly through the pool, if slippage is bigger than calculated, the transaction will not immediately revert,
-        // but excess slippage will be subtracted from the initiatorFee.
-        // For swaps via a router, tokenOut should be the limiting factor when increasing liquidity.
-        // Update balances after the swap.
-        _swap(balances, fees, initiatorParams, position, rebalanceParams, cache);
+            // Do the swap to rebalance the position.
+            // This can be done either directly through the pool, or via a router with custom swap data.
+            // For swaps directly through the pool, if slippage is bigger than calculated, the transaction will not immediately revert,
+            // but excess slippage will be subtracted from the initiatorFee.
+            // For swaps via a router, tokenOut should be the limiting factor when increasing liquidity.
+            // Update balances after the swap.
+            _swap(balances, fees, initiatorParams, position, rebalanceParams, cache);
 
-        // Check that the pool is still balanced after the swap.
-        // Since the swap went potentially through the pool itself (but does not have to),
-        // the sqrtPrice might have moved and brought the pool out of balance.
-        position.sqrtPrice = _getSqrtPrice(position);
-        if (!isPoolBalanced(position.sqrtPrice, cache)) revert UnbalancedPool();
+            // Check that the pool is still balanced after the swap.
+            // Since the swap went potentially through the pool itself (but does not have to),
+            // the sqrtPrice might have moved and brought the pool out of balance.
+            position.sqrtPrice = _getSqrtPrice(position);
+            if (!isPoolBalanced(position.sqrtPrice, cache)) revert UnbalancedPool();
 
-        // As explained before _swap(), tokenOut should be the limiting factor when increasing liquidity
-        // therefore we only subtract the initiator fee from the amountOut, not from the amountIn.
-        // Increase liquidity, update balances and delta liquidity.
-        (uint256 amount0Desired, uint256 amount1Desired) =
-            rebalanceParams.zeroToOne ? (balances[0], balances[1] - fees[1]) : (balances[0] - fees[0], balances[1]);
-        // Increase liquidity, update balances and liquidity
-        _increaseLiquidity(balances, positionManager, position, amount0Desired, amount1Desired);
+            // As explained before _swap(), tokenOut should be the limiting factor when increasing liquidity
+            // therefore we only subtract the initiator fee from the amountOut, not from the amountIn.
+            // Increase liquidity, update balances and delta liquidity.
+            (uint256 amount0Desired, uint256 amount1Desired) =
+                rebalanceParams.zeroToOne ? (balances[0], balances[1] - fees[1]) : (balances[0] - fees[0], balances[1]);
+            // Increase liquidity, update balances and liquidity
+            _increaseLiquidity(balances, positionManager, position, amount0Desired, amount1Desired);
 
-        // Check that the actual liquidity of the position is above the minimum threshold.
-        // This prevents loss of principal of the liquidity position due to slippage,
-        // or malicious initiators who remove liquidity during a custom swap.
-        if (position.liquidity < rebalanceParams.minLiquidity) revert InsufficientLiquidity();
+            // Check that the actual liquidity of the position is above the minimum threshold.
+            // This prevents loss of principal of the liquidity position due to slippage,
+            // or malicious initiators who remove liquidity during a custom swap.
+            if (position.liquidity < rebalanceParams.minLiquidity) revert InsufficientLiquidity();
+        }
 
         // If the position was staked, stake it.
         _stake(balances, positionManager, position);
@@ -475,9 +478,7 @@ abstract contract Compounder is IActionBase, AbstractBase, Guardian {
                 cache.sqrtRatioLower,
                 cache.sqrtRatioUpper,
                 balances[0] - fees[0],
-                balances[1] - fees[1],
-                rebalanceParams.amountIn,
-                rebalanceParams.amountOut
+                balances[1] - fees[1]
             );
             // Don't do swaps with zero amount.
             if (amountOut == 0) return;
