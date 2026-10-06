@@ -9,7 +9,6 @@ import { FixedPointMathLib } from "../../../../../lib/accounts-v2/lib/solady/src
 import { FullMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { Fuzz_Test } from "../../../Fuzz.t.sol";
 import { LiquidityAmounts } from "../../../../../src/cl-managers/libraries/LiquidityAmounts.sol";
-import { RebalanceOptimizationMath } from "../../../../../src/cl-managers/libraries/RebalanceOptimizationMath.sol";
 import {
     RebalanceOptimizationMathExtension
 } from "../../../../utils/extensions/RebalanceOptimizationMathExtension.sol";
@@ -83,6 +82,12 @@ abstract contract RebalanceOptimizationMath_Fuzz_Test is Fuzz_Test {
             params.sqrtPriceOld =
                 uint160(bound(params.sqrtPriceOld, TickMath.MIN_SQRT_PRICE, params.sqrtRatioLower - 1));
         }
+    }
+
+    function givenValidSwapParamsOnBound(SwapParams memory params, bool zeroToOne) internal pure {
+        params.zeroToOne = zeroToOne;
+        givenValidRange(params, TickMath.MIN_TICK, TickMath.MAX_TICK);
+        params.sqrtPriceOld = zeroToOne ? params.sqrtRatioUpper : params.sqrtRatioLower;
     }
 
     function givenAmountOutToBoundAtMost(SwapParams memory params, uint256 maxAmountOut) internal pure {
@@ -249,14 +254,10 @@ abstract contract RebalanceOptimizationMath_Fuzz_Test is Fuzz_Test {
         pure
         returns (uint256 minAmount0, uint256 maxAmount0, uint256 minAmount1, uint256 maxAmount1)
     {
-        minAmount0 = FullMath.mulDivRoundingUp(
-            RebalanceOptimizationMath.MAX_NORMALIZED + 1, usableLiquidity, sqrtPrice << 96
-        );
+        minAmount0 = FullMath.mulDivRoundingUp((1 << 252) + 1, usableLiquidity, sqrtPrice << 96);
         maxAmount0 = FullMath.mulDiv(type(uint256).max, usableLiquidity, sqrtPrice << 96);
         minAmount1 = FullMath.mulDivRoundingUp(
-            FullMath.mulDivRoundingUp(RebalanceOptimizationMath.MAX_NORMALIZED + 1, sqrtPrice, 1 << 160),
-            usableLiquidity,
-            1 << 128
+            FullMath.mulDivRoundingUp((1 << 252) + 1, sqrtPrice, 1 << 160), usableLiquidity, 1 << 128
         );
         maxAmount1 = FullMath.mulDiv(FullMath.mulDiv(type(uint256).max, sqrtPrice, 1 << 160), usableLiquidity, 1 << 128);
     }
@@ -389,7 +390,7 @@ abstract contract RebalanceOptimizationMath_Fuzz_Test is Fuzz_Test {
         returns (bool valid, uint256 liquidity, uint256 liquidityOut)
     {
         (uint160 sqrtPrice, uint256 amountIn) = getAmountInForAmountOut(params, amountOut);
-        valid = amountIn <= (params.zeroToOne ? params.amount0 : params.amount1) + 2
+        valid = amountIn <= (params.zeroToOne ? params.amount0 : params.amount1)
             && (params.zeroToOne ? sqrtPrice >= params.sqrtRatioLower : sqrtPrice <= params.sqrtRatioUpper);
         (uint256 balance0, uint256 balance1) = params.zeroToOne
             ? (FixedPointMathLib.zeroFloorSub(params.amount0, amountIn), params.amount1 + amountOut)
@@ -485,33 +486,18 @@ abstract contract RebalanceOptimizationMath_Fuzz_Test is Fuzz_Test {
         tolerance += 1;
     }
 
-    function getSafetyBounds(SwapParams memory params)
-        internal
-        pure
-        returns (uint256 sqrtPriceLimit, uint256 maxAmountIn)
-    {
-        uint256 extra;
+    function getSafetyBounds(SwapParams memory params) internal pure returns (uint256 sqrtPriceLimit) {
         if (params.zeroToOne) {
             uint256 sqrtPriceStart =
                 params.sqrtPriceOld < params.sqrtRatioUpper ? params.sqrtPriceOld : params.sqrtRatioUpper;
-            uint256 precision = ((sqrtPriceStart - params.sqrtRatioLower) << 50) + sqrtPriceStart;
-            uint256 overshoot = precision >> 145;
+            uint256 overshoot = (((sqrtPriceStart - params.sqrtRatioLower) << 50) + sqrtPriceStart) >> 145;
             sqrtPriceLimit = params.sqrtRatioLower > overshoot ? params.sqrtRatioLower - overshoot : 1;
-            extra = mulDivRoundingUpSaturating(uint256(params.usableLiquidity) << 15, precision, sqrtPriceLimit);
-            if (extra < type(uint256).max) extra = FullMath.mulDivRoundingUp(extra, 1, sqrtPriceLimit);
-            maxAmountIn = params.amount0;
         } else {
             uint256 sqrtPriceStart =
                 params.sqrtPriceOld > params.sqrtRatioLower ? params.sqrtPriceOld : params.sqrtRatioLower;
-            uint256 precision = ((params.sqrtRatioUpper - sqrtPriceStart) << 50) + sqrtPriceStart;
-            sqrtPriceLimit = params.sqrtRatioUpper + (precision >> 145);
-            extra = FullMath.mulDivRoundingUp(params.usableLiquidity, precision, 1 << 177);
-            maxAmountIn = params.amount1;
+            sqrtPriceLimit =
+                params.sqrtRatioUpper + ((((params.sqrtRatioUpper - sqrtPriceStart) << 50) + sqrtPriceStart) >> 145);
         }
-        uint256 margin = extra > type(uint256).max - (1 << 64)
-            ? type(uint256).max
-            : mulDivRoundingUpSaturating(extra + (1 << 64), 1e6, (1e6 - params.fee) << 64);
-        maxAmountIn = margin > type(uint256).max - maxAmountIn ? type(uint256).max : maxAmountIn + margin;
     }
 
     function getPrecisionTolerance(SwapParams memory params, uint256 optimalLiquidity, uint160 optimalSqrtPrice)

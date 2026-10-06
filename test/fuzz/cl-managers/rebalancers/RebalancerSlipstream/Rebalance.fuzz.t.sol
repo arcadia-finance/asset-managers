@@ -13,15 +13,20 @@ import {
 } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
 import { FullMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { Guardian } from "../../../../../src/guardian/Guardian.sol";
+import { LiquidityAmounts } from "../../../../../src/cl-managers/libraries/LiquidityAmounts.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
 import { Rebalancer } from "../../../../../src/cl-managers/rebalancers/Rebalancer.sol";
 import { RebalancerSlipstream_Fuzz_Test } from "./_RebalancerSlipstream.fuzz.t.sol";
+import {
+    SqrtPriceMath
+} from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/SqrtPriceMath.sol";
 import { StdStorage, stdStorage } from "../../../../../lib/accounts-v2/lib/forge-std/src/Test.sol";
+import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
 /**
  * @notice Fuzz tests for the function "rebalance" of contract "RebalancerSlipstream".
  */
-// forge-lint: disable-next-item(divide-before-multiply,unsafe-typecast)
+// forge-lint: disable-next-item(divide-before-multiply,erc20-unchecked-transfer,unsafe-typecast)
 contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_Test {
     using stdStorage for StdStorage;
     /*////////////////////////////////////////////////////////////////
@@ -305,6 +310,278 @@ contract Rebalance_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fuzz_T
         // And: Account balances should be correct.
         assertGe(token0.balanceOf(address(account)), initiatorParams.amountOut0);
         assertGe(token1.balanceOf(address(account)), initiatorParams.amountOut1);
+    }
+
+    function testFuzz_Success_rebalance_Slipstream_PriceOnLowerTick(
+        uint128 liquidityPool,
+        Rebalancer.InitiatorParams memory initiatorParams,
+        PositionState memory position,
+        address initiator,
+        uint256 tolerance
+    ) public {
+        // Given: A pool with its price exactly on a tick.
+        liquidityPool = uint128(bound(liquidityPool, 1e18, 1e24));
+        position.tickSpacing = TICK_SPACING;
+        position.tickCurrent = int24(bound(position.tickCurrent, -200_000, 200_000));
+        position.sqrtPrice = TickMath.getSqrtPriceAtTick(position.tickCurrent);
+
+        // And: The pool fee of the tick spacing is set.
+        position.fee = uint24(bound(position.fee, 100, 10_000));
+        stdstore.target(address(cLFactory))
+            .sig("tickSpacingToFee(int24)")
+            .with_key(uint256(int256(TICK_SPACING)))
+            .checked_write(uint256(position.fee));
+
+        // And: The old and the new position have their lower tick on the pool price.
+        position.tickLower = position.tickCurrent;
+        position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent + 1, position.tickCurrent + 20_000));
+        initiatorParams.strategyData = abi.encode(position.tickLower, position.tickUpper);
+
+        // And: The Rebalancer receives a small token1 balance from the Account.
+        initiatorParams.amountIn0 = 0;
+        initiatorParams.amountIn1 = uint128(bound(initiatorParams.amountIn1, 1, 1e8));
+
+        // And: The position liquidity times the token1 balance is at most the pool liquidity.
+        uint256 maxLiquidity = liquidityPool / initiatorParams.amountIn1;
+
+        // And: The position holds enough token0 to mint the minimum liquidity without a swap.
+        {
+            uint160 sqrtRatioUpper = TickMath.getSqrtPriceAtTick(position.tickUpper);
+            uint256 minAmount0 = 1e18 / (1e18 - MIN_LIQUIDITY_RATIO)
+                * (FullMath.mulDivRoundingUp(
+                        initiatorParams.amountIn1, 1 << 192, position.sqrtPrice * position.sqrtPrice
+                    )
+                    + FullMath.mulDivRoundingUp(1, 1 << 96, position.sqrtPrice));
+            uint256 minLiquidity =
+                LiquidityAmounts.getLiquidityForAmount0(uint160(position.sqrtPrice), sqrtRatioUpper, minAmount0);
+            vm.assume(minLiquidity <= maxLiquidity);
+            position.liquidity = uint128(bound(position.liquidity, minLiquidity, maxLiquidity));
+            setPoolState(liquidityPool, position, false);
+            setPositionState(position);
+            vm.assume(
+                SqrtPriceMath.getAmount0Delta(uint160(position.sqrtPrice), sqrtRatioUpper, position.liquidity, false)
+                    >= minAmount0
+            );
+        }
+        initiatorParams.positionManager = address(slipstreamPositionManager);
+        initiatorParams.oldId = uint96(position.id);
+
+        // And: Slipstream is allowed.
+        deploySlipstreamAM();
+
+        // And: Rebalancer is allowed as Asset Manager
+        {
+            address[] memory assetManagers = new address[](1);
+            assetManagers[0] = address(rebalancer);
+            bool[] memory statuses = new bool[](1);
+            statuses[0] = true;
+            vm.prank(users.accountOwner);
+            account.setAssetManagers(assetManagers, statuses, new bytes[](1));
+        }
+
+        // And: Account info is set.
+        tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
+        vm.prank(account.owner());
+        rebalancer.setAccountInfo(
+            address(account),
+            initiator,
+            MAX_FEE,
+            MAX_FEE,
+            tolerance,
+            MIN_LIQUIDITY_RATIO,
+            address(strategyHook),
+            abi.encode(address(token0), address(token1), ""),
+            ""
+        );
+
+        // And: The initiator charges no swap fee.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
+        initiatorParams.swapFee = 0;
+
+        // And: Nothing is withdrawn to the Account.
+        initiatorParams.amountOut0 = 0;
+        initiatorParams.amountOut1 = 0;
+
+        // And: Account owns the position and the token1 balance.
+        vm.prank(users.liquidityProvider);
+        ERC721(address(slipstreamPositionManager))
+            .transferFrom(users.liquidityProvider, users.accountOwner, position.id);
+        deal(address(token1), users.accountOwner, initiatorParams.amountIn1, true);
+        {
+            address[] memory assets_ = new address[](2);
+            uint256[] memory assetIds_ = new uint256[](2);
+            uint256[] memory assetAmounts_ = new uint256[](2);
+
+            assets_[0] = address(slipstreamPositionManager);
+            assetIds_[0] = position.id;
+            assetAmounts_[0] = 1;
+
+            assets_[1] = address(token1);
+            assetAmounts_[1] = initiatorParams.amountIn1;
+
+            vm.startPrank(users.accountOwner);
+            ERC721(address(slipstreamPositionManager)).approve(address(account), position.id);
+            token1.approve(address(account), initiatorParams.amountIn1);
+            account.deposit(assets_, assetIds_, assetAmounts_);
+            vm.stopPrank();
+        }
+
+        // And: The pool is balanced.
+        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
+
+        // And: The token1 balance of the pool is known.
+        uint256 poolBalance1 = token1.balanceOf(address(poolCl));
+
+        // When: Calling rebalance().
+        initiatorParams.swapData = "";
+        vm.prank(initiator);
+        rebalancer.rebalance(address(account), initiatorParams);
+
+        // Then: New position should be deposited back into the account.
+        assertEq(ERC721(address(slipstreamPositionManager)).ownerOf(position.id + 1), address(account));
+
+        // And: The new position has liquidity.
+        (,,,,,,, uint128 liquidity,,,,) = slipstreamPositionManager.positions(position.id + 1);
+        assertGt(liquidity, 0);
+
+        // And: The pool received at most the token1 balance of the Rebalancer.
+        assertLe(token1.balanceOf(address(poolCl)) - poolBalance1, initiatorParams.amountIn1);
+    }
+
+    function testFuzz_Success_rebalance_Slipstream_PriceOnUpperTick(
+        uint128 liquidityPool,
+        Rebalancer.InitiatorParams memory initiatorParams,
+        PositionState memory position,
+        address initiator,
+        uint256 tolerance
+    ) public {
+        // Given: A pool with its price exactly on a tick.
+        liquidityPool = uint128(bound(liquidityPool, 1e18, 1e24));
+        position.tickSpacing = TICK_SPACING;
+        position.tickCurrent = int24(bound(position.tickCurrent, -200_000, 200_000));
+        position.sqrtPrice = TickMath.getSqrtPriceAtTick(position.tickCurrent);
+
+        // And: The pool fee of the tick spacing is set.
+        position.fee = uint24(bound(position.fee, 100, 10_000));
+        stdstore.target(address(cLFactory))
+            .sig("tickSpacingToFee(int24)")
+            .with_key(uint256(int256(TICK_SPACING)))
+            .checked_write(uint256(position.fee));
+
+        // And: The old and the new position have their upper tick on the pool price.
+        position.tickUpper = position.tickCurrent;
+        position.tickLower = int24(bound(position.tickLower, position.tickCurrent - 20_000, position.tickCurrent - 1));
+        initiatorParams.strategyData = abi.encode(position.tickLower, position.tickUpper);
+
+        // And: The Rebalancer receives a small token0 balance from the Account.
+        initiatorParams.amountIn0 = uint128(bound(initiatorParams.amountIn0, 1, 1e8));
+        initiatorParams.amountIn1 = 0;
+
+        // And: The position liquidity times the token0 balance is at most the pool liquidity.
+        uint256 maxLiquidity = liquidityPool / initiatorParams.amountIn0;
+
+        // And: The position holds enough token1 to mint the minimum liquidity without a swap.
+        {
+            uint160 sqrtRatioLower = TickMath.getSqrtPriceAtTick(position.tickLower);
+            uint256 minAmount1 = 1e18 / (1e18 - MIN_LIQUIDITY_RATIO)
+                * (FullMath.mulDivRoundingUp(
+                        initiatorParams.amountIn0, position.sqrtPrice * position.sqrtPrice, 1 << 192
+                    )
+                    + FullMath.mulDivRoundingUp(position.sqrtPrice, 1, 1 << 96));
+            uint256 minLiquidity =
+                LiquidityAmounts.getLiquidityForAmount1(sqrtRatioLower, uint160(position.sqrtPrice), minAmount1);
+            vm.assume(minLiquidity <= maxLiquidity);
+            position.liquidity = uint128(bound(position.liquidity, minLiquidity, maxLiquidity));
+            setPoolState(liquidityPool, position, false);
+            setPositionState(position);
+            vm.assume(
+                SqrtPriceMath.getAmount1Delta(sqrtRatioLower, uint160(position.sqrtPrice), position.liquidity, false)
+                    >= minAmount1
+            );
+        }
+        initiatorParams.positionManager = address(slipstreamPositionManager);
+        initiatorParams.oldId = uint96(position.id);
+
+        // And: Slipstream is allowed.
+        deploySlipstreamAM();
+
+        // And: Rebalancer is allowed as Asset Manager
+        {
+            address[] memory assetManagers = new address[](1);
+            assetManagers[0] = address(rebalancer);
+            bool[] memory statuses = new bool[](1);
+            statuses[0] = true;
+            vm.prank(users.accountOwner);
+            account.setAssetManagers(assetManagers, statuses, new bytes[](1));
+        }
+
+        // And: Account info is set.
+        tolerance = bound(tolerance, 0.01 * 1e18, MAX_TOLERANCE);
+        vm.prank(account.owner());
+        rebalancer.setAccountInfo(
+            address(account),
+            initiator,
+            MAX_FEE,
+            MAX_FEE,
+            tolerance,
+            MIN_LIQUIDITY_RATIO,
+            address(strategyHook),
+            abi.encode(address(token0), address(token1), ""),
+            ""
+        );
+
+        // And: The initiator charges no swap fee.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
+        initiatorParams.swapFee = 0;
+
+        // And: Nothing is withdrawn to the Account.
+        initiatorParams.amountOut0 = 0;
+        initiatorParams.amountOut1 = 0;
+
+        // And: Account owns the position and the token0 balance.
+        vm.prank(users.liquidityProvider);
+        ERC721(address(slipstreamPositionManager))
+            .transferFrom(users.liquidityProvider, users.accountOwner, position.id);
+        deal(address(token0), users.accountOwner, initiatorParams.amountIn0, true);
+        {
+            address[] memory assets_ = new address[](2);
+            uint256[] memory assetIds_ = new uint256[](2);
+            uint256[] memory assetAmounts_ = new uint256[](2);
+
+            assets_[0] = address(slipstreamPositionManager);
+            assetIds_[0] = position.id;
+            assetAmounts_[0] = 1;
+
+            assets_[1] = address(token0);
+            assetAmounts_[1] = initiatorParams.amountIn0;
+
+            vm.startPrank(users.accountOwner);
+            ERC721(address(slipstreamPositionManager)).approve(address(account), position.id);
+            token0.approve(address(account), initiatorParams.amountIn0);
+            account.deposit(assets_, assetIds_, assetAmounts_);
+            vm.stopPrank();
+        }
+
+        // And: The pool is balanced.
+        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
+
+        // And: The token0 balance of the pool is known.
+        uint256 poolBalance0 = token0.balanceOf(address(poolCl));
+
+        // When: Calling rebalance().
+        initiatorParams.swapData = "";
+        vm.prank(initiator);
+        rebalancer.rebalance(address(account), initiatorParams);
+
+        // Then: New position should be deposited back into the account.
+        assertEq(ERC721(address(slipstreamPositionManager)).ownerOf(position.id + 1), address(account));
+
+        // And: The new position has liquidity.
+        (,,,,,,, uint128 liquidity,,,,) = slipstreamPositionManager.positions(position.id + 1);
+        assertGt(liquidity, 0);
+
+        // And: The pool received at most the token0 balance of the Rebalancer.
+        assertLe(token0.balanceOf(address(poolCl)) - poolBalance0, initiatorParams.amountIn0);
     }
 
     function testFuzz_Success_rebalance_StakedSlipstream(

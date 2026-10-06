@@ -8,16 +8,20 @@ import { Compounder } from "../../../../../src/cl-managers/compounders/Compounde
 import { CompounderUniswapV4_Fuzz_Test } from "./_CompounderUniswapV4.fuzz.t.sol";
 import { ERC20 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC20.sol";
 import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
+import { FullMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { Guardian } from "../../../../../src/guardian/Guardian.sol";
 import { IWETH } from "../../../../../src/cl-managers/interfaces/IWETH.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
 import { RebalanceLogic, RebalanceParams } from "../../../../../src/cl-managers/libraries/RebalanceLogic.sol";
+import {
+    SqrtPriceMath
+} from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/SqrtPriceMath.sol";
 import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
 /**
  * @notice Fuzz tests for the function "compound" of contract "CompounderUniswapV4".
  */
-// forge-lint: disable-next-item(divide-before-multiply,unsafe-typecast)
+// forge-lint: disable-next-item(divide-before-multiply,erc20-unchecked-transfer,unsafe-typecast)
 contract Rebalance_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
@@ -270,6 +274,239 @@ contract Rebalance_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz_Tes
 
         // Then: New position should be deposited back into the account.
         assertEq(ERC721(address(positionManagerV4)).ownerOf(position.id), address(account));
+
+        // And: The liquidity of the position increased.
+        assertGt(positionManagerV4.getPositionLiquidity(position.id), position.liquidity);
+    }
+
+    function testFuzz_Success_compound_NotNative_PriceOnLowerTick(
+        uint128 liquidityPool,
+        PositionState memory position,
+        Compounder.InitiatorParams memory initiatorParams,
+        address initiator,
+        uint256 tolerance
+    ) public {
+        // Given: A pool without hook and with its price exactly on a tick.
+        liquidityPool = uint128(bound(liquidityPool, 1e18, 1e24));
+        position.pool = address(0);
+        position.fee = uint24(bound(position.fee, 100, 10_000));
+        position.tickSpacing = TICK_SPACING;
+        position.tickCurrent = int24(bound(position.tickCurrent, -200_000, 200_000));
+        position.sqrtPrice = TickMath.getSqrtPriceAtTick(position.tickCurrent);
+        setPoolState(liquidityPool, position, false);
+
+        // And: A position with its lower tick on the pool price.
+        position.tickLower = position.tickCurrent;
+        position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent + 1, position.tickCurrent + 20_000));
+        position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
+        setPositionState(position);
+        initiatorParams.positionManager = address(positionManagerV4);
+        initiatorParams.id = uint96(position.id);
+
+        // And: The Compounder receives a small token1 balance from the Account.
+        initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, 1, 1e8));
+
+        // And: The liquidity of the token0 balance times the token1 balance is at most the pool liquidity.
+        uint256 maxAmount0 = SqrtPriceMath.getAmount0Delta(
+            uint160(position.sqrtPrice),
+            TickMath.getSqrtPriceAtTick(position.tickUpper),
+            uint128(liquidityPool / initiatorParams.amount1),
+            false
+        );
+
+        // And: The Compounder receives enough token0 from the Account to mint the minimum liquidity without a swap.
+        {
+            uint256 minAmount0 = 1e18 / (1e18 - MIN_LIQUIDITY_RATIO)
+                * (FullMath.mulDivRoundingUp(initiatorParams.amount1, 1 << 192, position.sqrtPrice * position.sqrtPrice)
+                    + FullMath.mulDivRoundingUp(1, 1 << 96, position.sqrtPrice));
+            vm.assume(minAmount0 <= maxAmount0);
+            initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, minAmount0, maxAmount0));
+        }
+
+        // And: uniV4 is allowed.
+        deployUniswapV4AM();
+
+        // And: Compounder is allowed as Asset Manager
+        {
+            address[] memory assetManagers = new address[](1);
+            assetManagers[0] = address(compounder);
+            bool[] memory statuses = new bool[](1);
+            statuses[0] = true;
+            vm.prank(users.accountOwner);
+            account.setAssetManagers(assetManagers, statuses, new bytes[](1));
+        }
+
+        // And: Account info is set.
+        tolerance = bound(tolerance, 0.001 * 1e18, MAX_TOLERANCE);
+        vm.prank(account.owner());
+        compounder.setAccountInfo(address(account), initiator, MAX_FEE, MAX_FEE, tolerance, MIN_LIQUIDITY_RATIO, "");
+
+        // And: The initiator charges no swap fee.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
+        initiatorParams.swapFee = 0;
+
+        // And: Account owns the position and the token balances.
+        vm.prank(users.liquidityProvider);
+        ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, users.accountOwner, position.id);
+        deal(address(token0), users.accountOwner, initiatorParams.amount0, true);
+        deal(address(token1), users.accountOwner, initiatorParams.amount1, true);
+        {
+            address[] memory assets_ = new address[](3);
+            uint256[] memory assetIds_ = new uint256[](3);
+            uint256[] memory assetAmounts_ = new uint256[](3);
+
+            assets_[0] = address(positionManagerV4);
+            assetIds_[0] = position.id;
+            assetAmounts_[0] = 1;
+
+            assets_[1] = address(token0);
+            assetAmounts_[1] = initiatorParams.amount0;
+
+            assets_[2] = address(token1);
+            assetAmounts_[2] = initiatorParams.amount1;
+
+            vm.startPrank(users.accountOwner);
+            ERC721(address(positionManagerV4)).approve(address(account), position.id);
+            token0.approve(address(account), initiatorParams.amount0);
+            token1.approve(address(account), initiatorParams.amount1);
+            account.deposit(assets_, assetIds_, assetAmounts_);
+            vm.stopPrank();
+        }
+
+        // And: The pool is balanced.
+        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
+
+        // And: The token1 balance of the pool manager is known.
+        uint256 poolManagerBalance1 = token1.balanceOf(address(poolManager));
+
+        // When: Calling compound().
+        initiatorParams.swapData = "";
+        vm.prank(initiator);
+        compounder.compound(address(account), initiatorParams);
+
+        // Then: The position should be deposited back into the account.
+        assertEq(ERC721(address(positionManagerV4)).ownerOf(position.id), address(account));
+
+        // And: The liquidity of the position increased.
+        assertGt(positionManagerV4.getPositionLiquidity(position.id), position.liquidity);
+
+        // And: The pool received at most the token1 balance of the Compounder.
+        assertLe(token1.balanceOf(address(poolManager)) - poolManagerBalance1, initiatorParams.amount1);
+    }
+
+    function testFuzz_Success_compound_NotNative_PriceOnUpperTick(
+        uint128 liquidityPool,
+        PositionState memory position,
+        Compounder.InitiatorParams memory initiatorParams,
+        address initiator,
+        uint256 tolerance
+    ) public {
+        // Given: A pool without hook and with its price exactly on a tick.
+        liquidityPool = uint128(bound(liquidityPool, 1e18, 1e24));
+        position.pool = address(0);
+        position.fee = uint24(bound(position.fee, 100, 10_000));
+        position.tickSpacing = TICK_SPACING;
+        position.tickCurrent = int24(bound(position.tickCurrent, -200_000, 200_000));
+        position.sqrtPrice = TickMath.getSqrtPriceAtTick(position.tickCurrent);
+        setPoolState(liquidityPool, position, false);
+
+        // And: A position with its upper tick on the pool price.
+        position.tickUpper = position.tickCurrent;
+        position.tickLower = int24(bound(position.tickLower, position.tickCurrent - 20_000, position.tickCurrent - 1));
+        position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
+        setPositionState(position);
+        initiatorParams.positionManager = address(positionManagerV4);
+        initiatorParams.id = uint96(position.id);
+
+        // And: The Compounder receives a small token0 balance from the Account.
+        initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 1, 1e8));
+
+        // And: The liquidity of the token1 balance times the token0 balance is at most the pool liquidity.
+        uint256 maxAmount1 = SqrtPriceMath.getAmount1Delta(
+            TickMath.getSqrtPriceAtTick(position.tickLower),
+            uint160(position.sqrtPrice),
+            uint128(liquidityPool / initiatorParams.amount0),
+            false
+        );
+
+        // And: The Compounder receives enough token1 from the Account to mint the minimum liquidity without a swap.
+        {
+            uint256 minAmount1 = 1e18 / (1e18 - MIN_LIQUIDITY_RATIO)
+                * (FullMath.mulDivRoundingUp(initiatorParams.amount0, position.sqrtPrice * position.sqrtPrice, 1 << 192)
+                    + FullMath.mulDivRoundingUp(position.sqrtPrice, 1, 1 << 96));
+            vm.assume(minAmount1 <= maxAmount1);
+            initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, minAmount1, maxAmount1));
+        }
+
+        // And: uniV4 is allowed.
+        deployUniswapV4AM();
+
+        // And: Compounder is allowed as Asset Manager
+        {
+            address[] memory assetManagers = new address[](1);
+            assetManagers[0] = address(compounder);
+            bool[] memory statuses = new bool[](1);
+            statuses[0] = true;
+            vm.prank(users.accountOwner);
+            account.setAssetManagers(assetManagers, statuses, new bytes[](1));
+        }
+
+        // And: Account info is set.
+        tolerance = bound(tolerance, 0.001 * 1e18, MAX_TOLERANCE);
+        vm.prank(account.owner());
+        compounder.setAccountInfo(address(account), initiator, MAX_FEE, MAX_FEE, tolerance, MIN_LIQUIDITY_RATIO, "");
+
+        // And: The initiator charges no swap fee.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
+        initiatorParams.swapFee = 0;
+
+        // And: Account owns the position and the token balances.
+        vm.prank(users.liquidityProvider);
+        ERC721(address(positionManagerV4)).transferFrom(users.liquidityProvider, users.accountOwner, position.id);
+        deal(address(token0), users.accountOwner, initiatorParams.amount0, true);
+        deal(address(token1), users.accountOwner, initiatorParams.amount1, true);
+        {
+            address[] memory assets_ = new address[](3);
+            uint256[] memory assetIds_ = new uint256[](3);
+            uint256[] memory assetAmounts_ = new uint256[](3);
+
+            assets_[0] = address(positionManagerV4);
+            assetIds_[0] = position.id;
+            assetAmounts_[0] = 1;
+
+            assets_[1] = address(token0);
+            assetAmounts_[1] = initiatorParams.amount0;
+
+            assets_[2] = address(token1);
+            assetAmounts_[2] = initiatorParams.amount1;
+
+            vm.startPrank(users.accountOwner);
+            ERC721(address(positionManagerV4)).approve(address(account), position.id);
+            token0.approve(address(account), initiatorParams.amount0);
+            token1.approve(address(account), initiatorParams.amount1);
+            account.deposit(assets_, assetIds_, assetAmounts_);
+            vm.stopPrank();
+        }
+
+        // And: The pool is balanced.
+        initiatorParams.trustedSqrtPrice = position.sqrtPrice;
+
+        // And: The token0 balance of the pool manager is known.
+        uint256 poolManagerBalance0 = token0.balanceOf(address(poolManager));
+
+        // When: Calling compound().
+        initiatorParams.swapData = "";
+        vm.prank(initiator);
+        compounder.compound(address(account), initiatorParams);
+
+        // Then: The position should be deposited back into the account.
+        assertEq(ERC721(address(positionManagerV4)).ownerOf(position.id), address(account));
+
+        // And: The liquidity of the position increased.
+        assertGt(positionManagerV4.getPositionLiquidity(position.id), position.liquidity);
+
+        // And: The pool received at most the token0 balance of the Compounder.
+        assertLe(token0.balanceOf(address(poolManager)) - poolManagerBalance0, initiatorParams.amount0);
     }
 
     function testFuzz_Success_compound_IsNative(
@@ -389,5 +626,8 @@ contract Rebalance_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz_Tes
 
         // Then: New position should be deposited back into the account.
         assertEq(ERC721(address(positionManagerV4)).ownerOf(position.id), address(account));
+
+        // And: The liquidity of the position increased.
+        assertGt(positionManagerV4.getPositionLiquidity(position.id), position.liquidity);
     }
 }

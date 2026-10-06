@@ -578,17 +578,20 @@ abstract contract UniswapV4 is AbstractBase {
         Currency currency1 = Currency.wrap(position.tokens[1]);
 
         // Generate calldata to mint new position.
-        bytes memory actions = new bytes(3);
+        bytes memory actions = new bytes(4);
         // forge-lint: disable-next-item(unsafe-typecast)
         actions[0] = bytes1(uint8(Actions.INCREASE_LIQUIDITY));
         // forge-lint: disable-next-item(unsafe-typecast)
-        actions[1] = bytes1(uint8(Actions.SETTLE_PAIR));
+        actions[1] = bytes1(uint8(Actions.CLOSE_CURRENCY));
         // forge-lint: disable-next-item(unsafe-typecast)
-        actions[2] = bytes1(uint8(Actions.SWEEP));
-        bytes[] memory params = new bytes[](3);
+        actions[2] = bytes1(uint8(Actions.CLOSE_CURRENCY));
+        // forge-lint: disable-next-item(unsafe-typecast)
+        actions[3] = bytes1(uint8(Actions.SWEEP));
+        bytes[] memory params = new bytes[](4);
         params[0] = abi.encode(position.id, position.liquidity, type(uint128).max, type(uint128).max, "");
-        params[1] = abi.encode(currency0, currency1);
-        params[2] = abi.encode(currency0, address(this));
+        params[1] = abi.encode(currency0);
+        params[2] = abi.encode(currency1);
+        params[3] = abi.encode(currency0, address(this));
 
         // Mint the new position.
         uint256 ethValue = isNative ? amount0Desired : 0;

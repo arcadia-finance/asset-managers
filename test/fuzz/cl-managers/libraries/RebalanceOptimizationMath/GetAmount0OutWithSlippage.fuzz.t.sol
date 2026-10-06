@@ -126,12 +126,37 @@ contract GetAmount0OutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMa
         assertGe(amountOut, amountOutToBound);
 
         // And: The pool price after the swap is not above the upper tick by more than ⌊Δk⌋ units of sqrtPrice.
-        (uint256 sqrtPriceLimit, uint256 maxAmountIn) = getSafetyBounds(params);
         (uint160 sqrtPriceNew, uint256 amountIn) = getAmountInForAmountOut(params, amountOut);
-        assertLe(sqrtPriceNew, sqrtPriceLimit);
+        assertLe(sqrtPriceNew, getSafetyBounds(params));
 
-        // And: The swap costs at most ⌈κ·(1 + ν_s·Δk)⌉ wei more than amount1.
-        assertLe(amountIn, maxAmountIn);
+        // And: The swap costs at most amount1, and leaves at least one wei of it when it moves past the lower tick.
+        assertLe(amountIn, amountOut > amountOutToBound ? params.amount1 - 1 : params.amount1);
+    }
+
+    function testFuzz_Success_getAmount0OutWithSlippage_BelowRange_DustAfterMove(SwapParams memory params) public view {
+        // Given: A position with sqrtPriceOld below the lower tick.
+        givenValidSwapParamsOutOfRange(params, false);
+
+        // And: The amountOut to move the price to the lower tick does not exceed the largest normalized amount0 there.
+        (uint256 maxAmount0, uint256 maxAmount1) = getMaxAmounts(params.usableLiquidity, params.sqrtRatioLower);
+        givenAmountOutToBoundAtMost(params, maxAmount0);
+
+        // And: amount1 exceeds the amountIn to move the price to the lower tick by at most two wei.
+        // And: The normalized balances at the lower tick do not exceed MAX_NORMALIZED.
+        vm.assume(maxAmount1 > 0);
+        (uint256 amountInToBound, uint256 amountOutToBound) = getSwapToBound(params);
+        params.amount0 = bound(params.amount0, 0, maxAmount0 - amountOutToBound);
+        params.amount1 = amountInToBound + bound(params.amount1, 1, FixedPointMathLib.min(2, maxAmount1));
+
+        // When: Calling _getAmount0OutWithSlippage().
+        uint256 amountOut = getAmount0OutWithSlippage(params);
+
+        // Then: amountOut includes the amountOut of the swap to the lower tick.
+        assertGe(amountOut, amountOutToBound);
+
+        // And: The swap costs at most amount1, and leaves at least one wei of it when it moves past the lower tick.
+        (, uint256 amountIn) = getAmountInForAmountOut(params, amountOut);
+        assertLe(amountIn, amountOut > amountOutToBound ? params.amount1 - 1 : params.amount1);
     }
 
     function testFuzz_Success_getAmount0OutWithSlippage_BelowRange_NearOptimal(SwapParams memory params) public view {
@@ -166,6 +191,50 @@ contract GetAmount0OutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMa
         assertGe(liquidity + tolerance, optimalLiquidity);
     }
 
+    function testFuzz_Success_getAmount0OutWithSlippage_OnLowerTick(SwapParams memory params) public view {
+        // Given: A position with sqrtPriceOld on the lower tick.
+        givenValidSwapParamsOnBound(params, false);
+
+        // And: The balances are at most 2^60 times the pool liquidity and below 2^128.
+        (uint256 maxAmount0, uint256 maxAmount1) = getMaxAmounts(params.usableLiquidity, params.sqrtPriceOld);
+        params.amount0 = bound(params.amount0, 0, FixedPointMathLib.min(maxAmount0, type(uint128).max));
+        params.amount1 = bound(params.amount1, 0, FixedPointMathLib.min(maxAmount1, type(uint128).max));
+
+        // When: Calling _getAmount0OutWithSlippage().
+        uint256 amountOut = getAmount0OutWithSlippage(params);
+
+        // Then: The pool price after the swap is not below sqrtPriceOld and not above the upper tick by more than ⌊Δk⌋ units of sqrtPrice.
+        (uint160 sqrtPriceNew, uint256 amountIn) = getAmountInForAmountOut(params, amountOut);
+        assertGe(sqrtPriceNew, params.sqrtPriceOld);
+        assertLe(sqrtPriceNew, getSafetyBounds(params));
+
+        // And: The swap leaves at least one wei of amount1 when it swaps.
+        assertLe(amountIn, FixedPointMathLib.zeroFloorSub(params.amount1, 1));
+    }
+
+    function testFuzz_Success_getAmount0OutWithSlippage_OnLowerTick_NearOptimal(SwapParams memory params) public view {
+        // Given: A position with sqrtPriceOld on the lower tick.
+        givenValidSwapParamsOnBound(params, false);
+
+        // And: The balances are at most 2^60 times the pool liquidity and below 2^128, and amount0 fits a position liquidity below 2^128.
+        (uint256 maxAmount0, uint256 maxAmount1) = getMaxAmounts(params.usableLiquidity, params.sqrtPriceOld);
+        maxAmount0 = FixedPointMathLib.min(
+            maxAmount0,
+            LiquidityAmounts.getAmount0ForLiquidity(params.sqrtRatioLower, params.sqrtRatioUpper, type(uint128).max)
+        );
+        params.amount0 = bound(params.amount0, 0, FixedPointMathLib.min(maxAmount0, type(uint128).max));
+        params.amount1 = bound(params.amount1, 0, FixedPointMathLib.min(maxAmount1, type(uint128).max));
+
+        // When: Calling _getAmount0OutWithSlippage().
+        uint256 amountOut = getAmount0OutWithSlippage(params);
+
+        // Then: The liquidity after the swap plus the rounding and precision tolerances is at least the liquidity of the optimum.
+        (uint256 optimalLiquidity, uint160 optimalSqrtPrice) = getOptimalLiquidity(params);
+        (uint256 liquidity, uint256 tolerance) = getLiquidityAndTolerance(params, amountOut);
+        tolerance += getPrecisionTolerance(params, optimalLiquidity, optimalSqrtPrice);
+        assertGe(liquidity + tolerance, optimalLiquidity);
+    }
+
     function testFuzz_Success_getAmount0OutWithSlippage_InRange(SwapParams memory params) public view {
         // Given: A position in range.
         givenValidSwapParams(params, false);
@@ -177,13 +246,12 @@ contract GetAmount0OutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMa
         uint256 amountOut = getAmount0OutWithSlippage(params);
 
         // Then: The pool price after the swap is not below sqrtPriceOld and not above the upper tick by more than ⌊Δk⌋ units of sqrtPrice.
-        (uint256 sqrtPriceLimit, uint256 maxAmountIn) = getSafetyBounds(params);
         (uint160 sqrtPriceNew, uint256 amountIn) = getAmountInForAmountOut(params, amountOut);
         assertGe(sqrtPriceNew, params.sqrtPriceOld);
-        assertLe(sqrtPriceNew, sqrtPriceLimit);
+        assertLe(sqrtPriceNew, getSafetyBounds(params));
 
-        // And: The swap costs at most ⌈κ·(1 + ν_s·Δk)⌉ wei more than amount1.
-        assertLe(amountIn, maxAmountIn);
+        // And: The swap leaves at least one wei of amount1 when it swaps.
+        assertLe(amountIn, FixedPointMathLib.zeroFloorSub(params.amount1, 1));
     }
 
     function testFuzz_Success_getAmount0OutWithSlippage_InRange_SubUnitMove(SwapParams memory params) public view {

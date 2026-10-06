@@ -66,6 +66,34 @@ contract RebalanceOptimizationMathExtension {
         amountOut = RebalanceOptimizationMath._getAmount0OutFromAmount1In(fee, usableLiquidity, sqrtPriceOld, amount1);
     }
 
+    function capAmount1Out(
+        uint256 fee,
+        uint128 usableLiquidity,
+        uint160 sqrtPriceOld,
+        uint160 sqrtRatioUpper,
+        uint160 sqrtPriceNew,
+        uint256 amount0,
+        uint256 amountOut
+    ) external pure returns (uint256 amountOutCapped) {
+        amountOutCapped = RebalanceOptimizationMath._capAmount1Out(
+            fee, usableLiquidity, sqrtPriceOld, sqrtRatioUpper, sqrtPriceNew, amount0, amountOut
+        );
+    }
+
+    function capAmount0Out(
+        uint256 fee,
+        uint128 usableLiquidity,
+        uint160 sqrtPriceOld,
+        uint160 sqrtRatioLower,
+        uint160 sqrtPriceNew,
+        uint256 amount1,
+        uint256 amountOut
+    ) external pure returns (uint256 amountOutCapped) {
+        amountOutCapped = RebalanceOptimizationMath._capAmount0Out(
+            fee, usableLiquidity, sqrtPriceOld, sqrtRatioLower, sqrtPriceNew, amount1, amountOut
+        );
+    }
+
     function getSqrtPrice(
         bool zeroToOne,
         uint256 fee,

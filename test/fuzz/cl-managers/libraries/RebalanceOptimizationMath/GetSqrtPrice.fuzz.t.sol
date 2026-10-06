@@ -62,7 +62,7 @@ contract GetSqrtPrice_SwapMath_Fuzz_Test is RebalanceOptimizationMath_Fuzz_Test 
         uint160 sqrtPriceNew = getSqrtPrice(params);
 
         // Then: sqrtPriceNew is not above sqrtPriceOld and not below the lower tick by more than ⌊Δk⌋ units of sqrtPrice.
-        (uint256 sqrtPriceLimit,) = getSafetyBounds(params);
+        uint256 sqrtPriceLimit = getSafetyBounds(params);
         assertLe(sqrtPriceNew, params.sqrtPriceOld);
         assertGe(sqrtPriceNew, sqrtPriceLimit);
 
@@ -118,7 +118,7 @@ contract GetSqrtPrice_SwapMath_Fuzz_Test is RebalanceOptimizationMath_Fuzz_Test 
         uint160 sqrtPriceNew = getSqrtPrice(params);
 
         // Then: sqrtPriceNew is not below sqrtPriceOld and not above the upper tick by more than ⌊Δk⌋ units of sqrtPrice.
-        (uint256 sqrtPriceLimit,) = getSafetyBounds(params);
+        uint256 sqrtPriceLimit = getSafetyBounds(params);
         assertGe(sqrtPriceNew, params.sqrtPriceOld);
         assertLe(sqrtPriceNew, sqrtPriceLimit);
 

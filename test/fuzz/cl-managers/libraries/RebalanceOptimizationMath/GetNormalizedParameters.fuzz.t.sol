@@ -218,7 +218,7 @@ contract GetNormalizedParameters_SwapMath_Fuzz_Test is RebalanceOptimizationMath
         (uint256 amount0Normalized,,,) = getNormalizedParameters(params);
 
         // Then: amount0Normalized equals MAX_NORMALIZED.
-        assertEq(amount0Normalized, RebalanceOptimizationMath.MAX_NORMALIZED);
+        assertEq(amount0Normalized, 1 << 252);
     }
 
     function testFuzz_Success_getNormalizedParameters_Amount1AtMaxNormalized(SwapParams memory params) public view {
@@ -240,6 +240,6 @@ contract GetNormalizedParameters_SwapMath_Fuzz_Test is RebalanceOptimizationMath
         (, uint256 amount1Normalized,,) = getNormalizedParameters(params);
 
         // Then: amount1Normalized equals MAX_NORMALIZED.
-        assertEq(amount1Normalized, RebalanceOptimizationMath.MAX_NORMALIZED);
+        assertEq(amount1Normalized, 1 << 252);
     }
 }
