@@ -9,8 +9,8 @@ import { Rebalancer } from "../../../src/cl-managers/rebalancers/Rebalancer.sol"
 
 // forge-lint: disable-next-item(empty-block)
 contract RebalancerExtension is Rebalancer {
-    constructor(address owner_, address arcadiaFactory, address routerTrampoline)
-        Rebalancer(owner_, arcadiaFactory, routerTrampoline)
+    constructor(address owner_, address guardian_, address arcadiaFactory, address routerTrampoline)
+        Rebalancer(owner_, guardian_, arcadiaFactory, routerTrampoline)
     { }
 
     function isPositionManager(address positionManager) public view override returns (bool) { }

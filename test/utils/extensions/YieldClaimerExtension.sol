@@ -9,7 +9,9 @@ import { YieldClaimer } from "../../../src/cl-managers/yield-claimers/YieldClaim
 
 // forge-lint: disable-next-item(empty-block)
 contract YieldClaimerExtension is YieldClaimer {
-    constructor(address owner_, address arcadiaFactory) YieldClaimer(owner_, arcadiaFactory) { }
+    constructor(address owner_, address guardian_, address arcadiaFactory)
+        YieldClaimer(owner_, guardian_, arcadiaFactory)
+    { }
 
     function isPositionManager(address positionManager) public view override returns (bool) { }
 

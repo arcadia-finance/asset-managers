@@ -21,11 +21,22 @@ contract Constructor_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz_T
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_Constructor(address owner_, address arcadiaFactory, address routerTrampoline_) public {
+    function testFuzz_Success_Constructor(
+        address owner_,
+        address guardian_,
+        address arcadiaFactory,
+        address routerTrampoline_
+    ) public {
         RebalancerUniswapV3Extension rebalancer_ = new RebalancerUniswapV3Extension(
-            owner_, arcadiaFactory, routerTrampoline_, address(nonfungiblePositionManager), address(uniswapV3Factory)
+            owner_,
+            guardian_,
+            arcadiaFactory,
+            routerTrampoline_,
+            address(nonfungiblePositionManager),
+            address(uniswapV3Factory)
         );
 
         assertEq(rebalancer_.owner(), owner_);
+        assertEq(rebalancer_.guardian(), guardian_);
     }
 }

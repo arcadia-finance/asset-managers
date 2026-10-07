@@ -38,6 +38,7 @@ contract CompounderUniswapV4 is Compounder, UniswapV4 {
 
     /**
      * @param owner_ The address of the Owner.
+     * @param guardian_ The address of the Guardian.
      * @param arcadiaFactory The contract address of the Arcadia Factory.
      * @param routerTrampoline The contract address of the Router Trampoline.
      * @param positionManager The contract address of the Uniswap v4 Position Manager.
@@ -47,6 +48,7 @@ contract CompounderUniswapV4 is Compounder, UniswapV4 {
      */
     constructor(
         address owner_,
+        address guardian_,
         address arcadiaFactory,
         address routerTrampoline,
         address positionManager,
@@ -54,7 +56,7 @@ contract CompounderUniswapV4 is Compounder, UniswapV4 {
         address poolManager,
         address wrappedNative
     )
-        Compounder(owner_, arcadiaFactory, routerTrampoline)
+        Compounder(owner_, guardian_, arcadiaFactory, routerTrampoline)
         UniswapV4(positionManager, permit2, poolManager, wrappedNative)
     { }
 

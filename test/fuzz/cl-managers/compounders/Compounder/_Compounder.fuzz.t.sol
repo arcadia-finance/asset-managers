@@ -66,7 +66,7 @@ abstract contract Compounder_Fuzz_Test is Fuzz_Test, UniswapV3Fixture {
         routerTrampoline = new RouterTrampoline();
 
         // Deploy test contract.
-        compounder = new CompounderExtension(users.owner, address(factory), address(routerTrampoline));
+        compounder = new CompounderExtension(users.owner, users.guardian, address(factory), address(routerTrampoline));
     }
 
     /*////////////////////////////////////////////////////////////////

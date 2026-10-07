@@ -10,6 +10,7 @@ import { RebalancerUniswapV4 } from "../../../src/cl-managers/rebalancers/Rebala
 contract RebalancerUniswapV4Extension is RebalancerUniswapV4 {
     constructor(
         address owner_,
+        address guardian_,
         address arcadiaFactory,
         address routerTrampoline,
         address positionManager,
@@ -18,7 +19,7 @@ contract RebalancerUniswapV4Extension is RebalancerUniswapV4 {
         address wrappedNative
     )
         RebalancerUniswapV4(
-            owner_, arcadiaFactory, routerTrampoline, positionManager, permit2, poolManager, wrappedNative
+            owner_, guardian_, arcadiaFactory, routerTrampoline, positionManager, permit2, poolManager, wrappedNative
         )
     { }
 

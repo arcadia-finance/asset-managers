@@ -21,9 +21,15 @@ contract Constructor_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_Constructor(address owner_, address arcadiaFactory, address routerTrampoline_) public {
-        RebalancerExtension rebalancer_ = new RebalancerExtension(owner_, arcadiaFactory, routerTrampoline_);
+    function testFuzz_Success_Constructor(
+        address owner_,
+        address guardian_,
+        address arcadiaFactory,
+        address routerTrampoline_
+    ) public {
+        RebalancerExtension rebalancer_ = new RebalancerExtension(owner_, guardian_, arcadiaFactory, routerTrampoline_);
 
         assertEq(rebalancer_.owner(), owner_);
+        assertEq(rebalancer_.guardian(), guardian_);
     }
 }

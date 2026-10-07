@@ -21,9 +21,15 @@ contract Constructor_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz_T
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_Constructor(address owner_, address arcadiaFactory, address routerTrampoline_) public {
+    function testFuzz_Success_Constructor(
+        address owner_,
+        address guardian_,
+        address arcadiaFactory,
+        address routerTrampoline_
+    ) public {
         CompounderUniswapV4Extension compounder_ = new CompounderUniswapV4Extension(
             owner_,
+            guardian_,
             arcadiaFactory,
             routerTrampoline_,
             address(positionManagerV4),
@@ -33,5 +39,6 @@ contract Constructor_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz_T
         );
 
         assertEq(compounder_.owner(), owner_);
+        assertEq(compounder_.guardian(), guardian_);
     }
 }

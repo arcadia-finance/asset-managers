@@ -66,7 +66,7 @@ abstract contract Rebalancer_Fuzz_Test is Fuzz_Test, UniswapV3Fixture {
         routerTrampoline = new RouterTrampoline();
 
         // Deploy test contract.
-        rebalancer = new RebalancerExtension(users.owner, address(factory), address(routerTrampoline));
+        rebalancer = new RebalancerExtension(users.owner, users.guardian, address(factory), address(routerTrampoline));
     }
 
     /*////////////////////////////////////////////////////////////////

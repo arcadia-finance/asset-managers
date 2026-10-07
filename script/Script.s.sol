@@ -25,7 +25,7 @@ contract Deploy is Test {
         require(vm.addr(sender) == DEPLOYER, "Wrong Deployer.");
 
         vm.startBroadcast(sender);
-        CowSwapper cowSwapper = new CowSwapper(DEPLOYER, FACTORY, FLASH_LOAN_ROUTER, HOOKS_TRAMPOLINE);
+        CowSwapper cowSwapper = new CowSwapper(DEPLOYER, DEPLOYER, FACTORY, FLASH_LOAN_ROUTER, HOOKS_TRAMPOLINE);
         new DefaultOrderHook(address(cowSwapper));
         vm.stopBroadcast();
     }

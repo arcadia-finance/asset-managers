@@ -7,5 +7,5 @@ pragma solidity ^0.8.0;
 import { Guardian } from "../../../src/guardian/Guardian.sol";
 
 contract GuardianExtension is Guardian {
-    constructor(address owner_) Guardian(owner_) { }
+    constructor(address owner_, address guardian_) Guardian(owner_, guardian_) { }
 }

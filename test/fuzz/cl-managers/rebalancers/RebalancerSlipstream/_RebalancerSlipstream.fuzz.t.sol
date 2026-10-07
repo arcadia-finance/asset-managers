@@ -37,6 +37,7 @@ abstract contract RebalancerSlipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         // Deploy test contract.
         rebalancer = new RebalancerSlipstreamExtension(
             users.owner,
+            users.guardian,
             address(factory),
             address(routerTrampoline),
             address(slipstreamPositionManager),

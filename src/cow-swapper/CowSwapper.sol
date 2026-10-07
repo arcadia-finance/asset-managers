@@ -137,13 +137,18 @@ contract CowSwapper is IActionBase, EIP712, Guardian {
 
     /**
      * @param owner_ The address of the Owner.
+     * @param guardian_ The address of the Guardian.
      * @param arcadiaFactory The contract address of the Arcadia Factory.
      * @param flashLoanRouter The contract address of the flash-loan router.
      * @param hooksTrampoline The contract address of the hooks trampoline.
      */
-    constructor(address owner_, address arcadiaFactory, address flashLoanRouter, address hooksTrampoline)
-        Guardian(owner_)
-    {
+    constructor(
+        address owner_,
+        address guardian_,
+        address arcadiaFactory,
+        address flashLoanRouter,
+        address hooksTrampoline
+    ) Guardian(owner_, guardian_) {
         ARCADIA_FACTORY = IArcadiaFactory(arcadiaFactory);
         FLASH_LOAN_ROUTER = IFlashLoanRouter(flashLoanRouter);
         COW_SETTLEMENT = IGPv2Settlement(address(FLASH_LOAN_ROUTER.settlementContract()));

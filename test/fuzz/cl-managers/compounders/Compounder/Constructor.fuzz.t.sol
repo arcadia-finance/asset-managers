@@ -21,9 +21,15 @@ contract Constructor_Compounder_Fuzz_Test is Compounder_Fuzz_Test {
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_Constructor(address owner_, address arcadiaFactory, address routerTrampoline_) public {
-        CompounderExtension compounder_ = new CompounderExtension(owner_, arcadiaFactory, routerTrampoline_);
+    function testFuzz_Success_Constructor(
+        address owner_,
+        address guardian_,
+        address arcadiaFactory,
+        address routerTrampoline_
+    ) public {
+        CompounderExtension compounder_ = new CompounderExtension(owner_, guardian_, arcadiaFactory, routerTrampoline_);
 
         assertEq(compounder_.owner(), owner_);
+        assertEq(compounder_.guardian(), guardian_);
     }
 }

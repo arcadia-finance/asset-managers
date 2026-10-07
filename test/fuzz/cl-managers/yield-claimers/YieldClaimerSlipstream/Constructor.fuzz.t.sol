@@ -21,9 +21,10 @@ contract Constructor_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstream_
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_Constructor(address owner_, address arcadiaFactory) public {
+    function testFuzz_Success_Constructor(address owner_, address guardian_, address arcadiaFactory) public {
         YieldClaimerSlipstreamExtension yieldClaimer_ = new YieldClaimerSlipstreamExtension(
             owner_,
+            guardian_,
             arcadiaFactory,
             address(slipstreamPositionManager),
             address(cLFactory),
@@ -34,5 +35,6 @@ contract Constructor_YieldClaimerSlipstream_Fuzz_Test is YieldClaimerSlipstream_
         );
 
         assertEq(yieldClaimer_.owner(), owner_);
+        assertEq(yieldClaimer_.guardian(), guardian_);
     }
 }
