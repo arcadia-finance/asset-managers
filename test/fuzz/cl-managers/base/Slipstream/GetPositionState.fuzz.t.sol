@@ -40,7 +40,7 @@ contract GetPositionState_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         // Then: It should return the correct position.
         assertEq(position_.pool, address(poolCl));
         assertEq(position_.id, position.id);
-        assertEq(position_.fee, poolCl.fee());
+        assertEq(position_.poolFee, 0);
         assertEq(position_.tickSpacing, TICK_SPACING);
         assertEq(position_.tickCurrent, TickMath.getTickAtSqrtPrice(uint160(position.sqrtPrice)));
         assertEq(position_.tickLower, position.tickLower);
@@ -68,7 +68,7 @@ contract GetPositionState_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         // Then: It should return the correct position.
         assertEq(position_.pool, address(poolCl));
         assertEq(position_.id, position.id);
-        assertEq(position_.fee, poolCl.fee());
+        assertEq(position_.poolFee, 0);
         assertEq(position_.tickSpacing, TICK_SPACING);
         assertEq(position_.tickCurrent, TickMath.getTickAtSqrtPrice(uint160(position.sqrtPrice)));
         assertEq(position_.tickLower, position.tickLower);
@@ -104,7 +104,7 @@ contract GetPositionState_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         // Then: It should return the correct position.
         assertEq(position_.pool, address(poolCl));
         assertEq(position_.id, position.id);
-        assertEq(position_.fee, poolCl.fee());
+        assertEq(position_.poolFee, 0);
         assertEq(position_.tickSpacing, TICK_SPACING);
         assertEq(position_.tickCurrent, TickMath.getTickAtSqrtPrice(uint160(position.sqrtPrice)));
         assertEq(position_.tickLower, position.tickLower);
@@ -132,7 +132,7 @@ contract GetPositionState_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         // Then: It should return the correct position.
         assertEq(position_.pool, address(poolCl));
         assertEq(position_.id, position.id);
-        assertEq(position_.fee, poolCl.fee());
+        assertEq(position_.poolFee, 0);
         assertEq(position_.tickSpacing, TICK_SPACING);
         assertEq(position_.tickCurrent, TickMath.getTickAtSqrtPrice(uint160(position.sqrtPrice)));
         assertEq(position_.tickLower, position.tickLower);
@@ -168,7 +168,7 @@ contract GetPositionState_Slipstream_Fuzz_Test is Slipstream_Fuzz_Test {
         // Then: It should return the correct position.
         assertEq(position_.pool, address(poolCl));
         assertEq(position_.id, position.id);
-        assertEq(position_.fee, poolCl.fee());
+        assertEq(position_.poolFee, 0);
         assertEq(position_.tickSpacing, TICK_SPACING);
         assertEq(position_.tickCurrent, TickMath.getTickAtSqrtPrice(uint160(position.sqrtPrice)));
         assertEq(position_.tickLower, position.tickLower);

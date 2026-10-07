@@ -24,7 +24,7 @@ contract GetRoot_QuadraticMath_Fuzz_Test is QuadraticMath_Fuzz_Test {
                               TESTS
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Success_getRoot_ZeroQuadraticCoefficient(uint256 b, uint256 c) public view {
-        // Given: The linear coefficient is at least the range width of one tick and at most 2^254.
+        // Given: A linear coefficient between the width of one tick and 2^254.
         b = bound(b, 1 << 177, 1 << 254);
 
         // And: The constant coefficient is positive, at most 2^252 and 2^60 times b.
@@ -38,13 +38,13 @@ contract GetRoot_QuadraticMath_Fuzz_Test is QuadraticMath_Fuzz_Test {
     }
 
     function testFuzz_Success_getRoot_NonNegativeQuadraticCoefficient(uint256 a, uint256 b, uint256 c) public view {
-        // Given: The linear coefficient is at least the range width of one tick and at most 2^254.
+        // Given: A linear coefficient between the width of one tick and 2^254.
         b = bound(b, 1 << 177, 1 << 254);
 
-        // And: The quadratic coefficient is nonnegative, at most 2^15 times the linear coefficient and at most 2^253.
+        // And: A nonnegative quadratic coefficient, at most 2^15 * b and 2^253.
         a = bound(a, 0, b < 1 << 238 ? b << 15 : 1 << 253);
 
-        // And: The constant coefficient is positive, below b / 2, with 4ac at most b² * (1 − 2^-62).
+        // And: A positive constant below b / 2, with 4ac at most b² * (1 − 2^-62).
         {
             uint256 maxC = b >> 1;
             if (a > b >> 1) {
@@ -65,13 +65,13 @@ contract GetRoot_QuadraticMath_Fuzz_Test is QuadraticMath_Fuzz_Test {
     }
 
     function testFuzz_Success_getRoot_NegativeQuadraticCoefficient(uint256 a, uint256 b, uint256 c) public view {
-        // Given: The linear coefficient is at least the range width of one tick and at most 2^254.
+        // Given: A linear coefficient between the width of one tick and 2^254.
         b = bound(b, 1 << 177, 1 << 254);
 
-        // And: The quadratic coefficient is negative, |a| at most 2^15 times the linear coefficient and at most 2^253.
+        // And: A negative quadratic coefficient, |a| at most 2^15 * b and 2^253.
         a = bound(a, 1, b < 1 << 238 ? b << 15 : 1 << 253);
 
-        // And: The constant coefficient is positive, at most 2^252 and 2^60 times b, with |4ac / b²| at most 2^62.
+        // And: A positive constant at most 2^252 and 2^60 * b, |4ac / b²| at most 2^62.
         {
             uint256 maxC = b < 1 << 192 ? b << 60 : 1 << 252;
             if (a > b) {
@@ -102,7 +102,7 @@ contract GetRoot_QuadraticMath_Fuzz_Test is QuadraticMath_Fuzz_Test {
         // And: The constant coefficient is half the linear coefficient.
         uint256 c = b >> 1;
 
-        // And: The quadratic coefficient is negative, with √(b² − 4ac) / b exactly 1 + 2 * increment / 2^96.
+        // And: A negative a with √(b² − 4ac) / b exactly 1 + increment / 2^95.
         increment = bound(increment, 1, 1 << 93);
         uint256 a = ((increment << 96) + increment * increment) << (exponent - 191);
 

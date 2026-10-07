@@ -28,14 +28,15 @@ contract Burn_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Success_burn_NotNative(
         uint128 liquidityPool,
+        uint24 protocolFee,
         address positionManager,
         PositionState memory position,
         uint64 balance0,
         uint64 balance1
     ) public {
         // Given: A valid position.
-        liquidityPool = givenValidPoolState(liquidityPool, position);
-        setPoolState(liquidityPool, position, false);
+        (liquidityPool, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
+        setPoolState(liquidityPool, position, protocolFee, false);
         givenValidPositionState(position);
         setPositionState(position);
 
@@ -69,14 +70,15 @@ contract Burn_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
 
     function testFuzz_Success_burn_IsNative(
         uint128 liquidityPool,
+        uint24 protocolFee,
         address positionManager,
         PositionState memory position,
         uint64 balance0,
         uint64 balance1
     ) public {
         // Given: A valid position.
-        liquidityPool = givenValidPoolState(liquidityPool, position);
-        setPoolState(liquidityPool, position, true);
+        (liquidityPool, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
+        setPoolState(liquidityPool, position, protocolFee, true);
         givenValidPositionState(position);
         setPositionState(position);
 

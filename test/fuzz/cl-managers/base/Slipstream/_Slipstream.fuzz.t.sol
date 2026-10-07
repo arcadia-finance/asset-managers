@@ -19,12 +19,14 @@ import {
     ICLSwapRouter
 } from "../../../../../lib/accounts-v2/test/utils/fixtures/slipstream/interfaces/ICLSwapRouter.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
-import { SlipstreamExtension } from "../../../../utils/extensions/SlipstreamExtension.sol";
-import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
-import { UniswapHelpers } from "../../../../utils/uniswap-v3/UniswapHelpers.sol";
 import { SlipstreamAMExtension } from "../../../../../lib/accounts-v2/test/utils/extensions/SlipstreamAMExtension.sol";
+import { SlipstreamExtension } from "../../../../utils/extensions/SlipstreamExtension.sol";
 import { SlipstreamFixture } from "../../../../../lib/accounts-v2/test/utils/fixtures/slipstream/Slipstream.f.sol";
 import { StakedSlipstreamAM } from "../../../../../lib/accounts-v2/src/asset-modules/Slipstream/StakedSlipstreamAM.sol";
+import { StdStorage, stdStorage } from "../../../../../lib/accounts-v2/lib/forge-std/src/Test.sol";
+import { SwapFeeModuleMock } from "../../../../utils/mocks/SwapFeeModuleMock.sol";
+import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
+import { UniswapHelpers } from "../../../../utils/uniswap-v3/UniswapHelpers.sol";
 import {
     WrappedStakedSlipstreamFixture
 } from "../../../../../lib/accounts-v2/test/utils/fixtures/slipstream/WrappedStakedSlipstream.f.sol";
@@ -39,11 +41,14 @@ abstract contract Slipstream_Fuzz_Test is
     WrappedStakedSlipstreamFixture,
     CLSwapRouterFixture
 {
+    using stdStorage for StdStorage;
+
     /*////////////////////////////////////////////////////////////////
                             CONSTANTS
     /////////////////////////////////////////////////////////////// */
 
     int24 internal constant TICK_SPACING = 1;
+    uint24 internal constant MAX_POOL_FEE = 100_000;
 
     uint256 internal constant MAX_TOLERANCE = 0.02 * 1e18;
     uint64 internal constant MAX_FEE = 0.01 * 1e18;
@@ -61,6 +66,7 @@ abstract contract Slipstream_Fuzz_Test is
     // forge-lint: disable-next-line(mixed-case-variable)
     StakedSlipstreamAM internal stakedSlipstreamAM;
     ICLGauge internal gauge;
+    SwapFeeModuleMock internal swapFeeModule;
 
     /*////////////////////////////////////////////////////////////////
                             TEST CONTRACTS
@@ -85,6 +91,8 @@ abstract contract Slipstream_Fuzz_Test is
         SlipstreamFixture.setUp();
         deployAerodromePeriphery();
         deploySlipstream();
+        swapFeeModule = new SwapFeeModuleMock();
+        stdstore.target(address(cLFactory)).sig("swapFeeModule()").checked_write(address(swapFeeModule));
         deployCLGaugeFactory();
         CLSwapRouterFixture.deploySwapRouter(address(cLFactory), address(weth9));
 
@@ -161,13 +169,14 @@ abstract contract Slipstream_Fuzz_Test is
         position.sqrtPrice = uint160(position.sqrtPrice);
         position.tickCurrent = TickMath.getTickAtSqrtPrice(uint160(position.sqrtPrice));
         position.tickSpacing = TICK_SPACING;
+        position.poolFee = uint24(bound(position.poolFee, 1, MAX_POOL_FEE));
     }
 
     function setPoolState(uint128 liquidityPool, PositionState memory position, bool staked) internal {
         // Create pool.
         initSlipstream(uint160(position.sqrtPrice), liquidityPool, position.tickSpacing);
         position.pool = address(poolCl);
-        position.fee = poolCl.fee();
+        swapFeeModule.setFee(address(poolCl), position.poolFee);
 
         if (staked) {
             position.tokens = new address[](3);

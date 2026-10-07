@@ -128,14 +128,15 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
 
     function testFuzz_Revert_executeAction_UnbalancedPoolBeforeSwap(
         uint128 liquidityPool,
+        uint24 protocolFee,
         Compounder.InitiatorParams memory initiatorParams,
         PositionState memory position,
         address initiator,
         uint256 tolerance
     ) public {
         // Given: A valid position.
-        liquidityPool = givenValidPoolState(liquidityPool, position);
-        setPoolState(liquidityPool, position, false);
+        (liquidityPool, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
+        setPoolState(liquidityPool, position, protocolFee, false);
         givenValidPositionState(position);
         setPositionState(position);
         initiatorParams.positionManager = address(positionManagerV4);
@@ -161,7 +162,7 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
 
         // And: The pool is unbalanced.
         {
-            (, uint256 lowerSqrtPriceDeviation,,,) = compounder.accountInfo(address(account));
+            (,,, uint256 lowerSqrtPriceDeviation,) = compounder.accountInfo(address(account));
             initiatorParams.trustedSqrtPrice = bound(
                 initiatorParams.trustedSqrtPrice,
                 position.sqrtPrice * 1e18 / lowerSqrtPriceDeviation + lowerSqrtPriceDeviation,
@@ -179,6 +180,7 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
 
     function testFuzz_Revert_executeAction_UnbalancedPoolAfterSwap(
         uint128 liquidityPool,
+        uint24 protocolFee,
         PositionState memory position,
         uint256 feeSeed,
         Compounder.InitiatorParams memory initiatorParams,
@@ -186,9 +188,9 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
         uint256 tolerance
     ) public {
         // Given: A valid position in range (has both tokens).
-        givenValidPoolState(liquidityPool, position);
+        (, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
         liquidityPool = uint128(bound(liquidityPool, 1e20, 1e25));
-        setPoolState(liquidityPool, position, false);
+        setPoolState(liquidityPool, position, protocolFee, false);
         position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
         position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
         position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
@@ -241,7 +243,7 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
 
             rebalanceParams = RebalanceLogic._getRebalanceParams(
                 1e18,
-                poolKey.fee,
+                getAmmFee(),
                 initiatorParams.swapFee,
                 initiatorParams.trustedSqrtPrice,
                 TickMath.getSqrtPriceAtTick(position.tickLower),
@@ -257,7 +259,7 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
 
         // And: The pool is unbalanced after the swap.
         {
-            (, uint256 lowerSqrtPriceDeviation,,,) = compounder.accountInfo(address(account));
+            (,,, uint256 lowerSqrtPriceDeviation,) = compounder.accountInfo(address(account));
             uint256 lowerBoundSqrtPrice = initiatorParams.trustedSqrtPrice * lowerSqrtPriceDeviation / 1e18;
             vm.assume(TickMath.MIN_SQRT_PRICE < lowerBoundSqrtPrice);
             uint256 newSqrtPrice = bound(position.sqrtPrice, TickMath.MIN_SQRT_PRICE, lowerBoundSqrtPrice);
@@ -283,15 +285,16 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
 
     function testFuzz_Revert_executeAction_InsufficientLiquidity(
         uint128 liquidityPool,
+        uint24 protocolFee,
         PositionState memory position,
         Compounder.InitiatorParams memory initiatorParams,
         address initiator,
         uint256 tolerance
     ) public {
         // Given: A valid position in range (has both tokens).
-        givenValidPoolState(liquidityPool, position);
+        (, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
         liquidityPool = uint128(bound(liquidityPool, 1e20, 1e25));
-        setPoolState(liquidityPool, position, false);
+        setPoolState(liquidityPool, position, protocolFee, false);
         position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
         position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
         position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
@@ -340,7 +343,7 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
 
             rebalanceParams = RebalanceLogic._getRebalanceParams(
                 1e18,
-                poolKey.fee,
+                getAmmFee(),
                 initiatorParams.swapFee,
                 initiatorParams.trustedSqrtPrice,
                 TickMath.getSqrtPriceAtTick(position.tickLower),
@@ -391,6 +394,7 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
 
     function testFuzz_Success_executeAction_NotNative(
         uint128 liquidityPool,
+        uint24 protocolFee,
         PositionState memory position,
         uint256 feeSeed,
         Compounder.InitiatorParams memory initiatorParams,
@@ -398,9 +402,9 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
         uint256 tolerance
     ) public {
         // Given: A valid position in range (has both tokens).
-        givenValidPoolState(liquidityPool, position);
+        (, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
         liquidityPool = uint128(bound(liquidityPool, 1e20, 1e25));
-        setPoolState(liquidityPool, position, false);
+        setPoolState(liquidityPool, position, protocolFee, false);
         position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
         position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
         position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
@@ -453,7 +457,7 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
 
             rebalanceParams = RebalanceLogic._getRebalanceParams(
                 1e18,
-                poolKey.fee,
+                getAmmFee(),
                 initiatorParams.swapFee,
                 initiatorParams.trustedSqrtPrice,
                 TickMath.getSqrtPriceAtTick(position.tickLower),
@@ -513,15 +517,16 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
 
     function testFuzz_Success_executeAction_NotNative_Token1WithoutFees(
         uint128 liquidityPool,
+        uint24 protocolFee,
         PositionState memory position,
         Compounder.InitiatorParams memory initiatorParams,
         address initiator,
         uint256 tolerance
     ) public {
         // Given: A valid position in range (has both tokens).
-        givenValidPoolState(liquidityPool, position);
+        (, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
         liquidityPool = uint128(bound(liquidityPool, 1e20, 1e25));
-        setPoolState(liquidityPool, position, false);
+        setPoolState(liquidityPool, position, protocolFee, false);
         position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
         position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
         position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
@@ -547,7 +552,7 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
         // And: The initiator is not the Compounder.
         vm.assume(initiator != address(compounder));
 
-        // And: Compounder has token1 worth at least 1e8 token0, no token0 and the position has no fees.
+        // And: Compounder has only token1, worth at least 1e8 token0, and no fees.
         {
             uint256 minAmount1 = FullMath.mulDivRoundingUp(1e8, position.sqrtPrice * position.sqrtPrice, 1 << 192);
             vm.assume(minAmount1 <= 1e18);
@@ -568,7 +573,7 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
         // And: liquidity is not 0.
         RebalanceParams memory rebalanceParams = RebalanceLogic._getRebalanceParams(
             1e18,
-            poolKey.fee,
+            getAmmFee(),
             initiatorParams.swapFee,
             initiatorParams.trustedSqrtPrice,
             TickMath.getSqrtPriceAtTick(position.tickLower),
@@ -617,15 +622,16 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
 
     function testFuzz_Success_executeAction_NotNative_ZeroAmountOut(
         uint128 liquidityPool,
+        uint24 protocolFee,
         PositionState memory position,
         Compounder.InitiatorParams memory initiatorParams,
         address initiator,
         uint256 tolerance
     ) public {
         // Given: A valid position with the pool price exactly on its lower tick.
-        liquidityPool = givenValidPoolState(liquidityPool, position);
+        (liquidityPool, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
         position.sqrtPrice = TickMath.getSqrtPriceAtTick(position.tickCurrent);
-        setPoolState(liquidityPool, position, false);
+        setPoolState(liquidityPool, position, protocolFee, false);
         position.tickLower = position.tickCurrent;
         position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent + 1, BOUND_TICK_UPPER));
         position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
@@ -650,10 +656,10 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
         vm.assume(initiator != address(compounder));
         vm.assume(initiator != address(poolManager));
 
-        // And: Compounder has token1 that, after keeping one wei, cannot move the pool price by one unit.
+        // And: Compounder has too little token1 to move the pool price.
         initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, 1, 1 + ((liquidityPool - 1) >> 96)));
 
-        // And: Compounder has enough token0 to add the minimum liquidity without a swap and the position has no fees.
+        // And: Compounder has enough token0 for the minimum liquidity, and no fees.
         {
             uint256 minAmount0 = 1e18 / (1e18 - MIN_LIQUIDITY_RATIO)
                 * (FullMath.mulDivRoundingUp(initiatorParams.amount1, 1 << 192, position.sqrtPrice * position.sqrtPrice)
@@ -716,15 +722,16 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
 
     function testFuzz_Success_executeAction_NotNative_ClaimOnly(
         uint128 liquidityPool,
+        uint24 protocolFee,
         PositionState memory position,
         Compounder.InitiatorParams memory initiatorParams,
         address initiator,
         uint256 tolerance
     ) public {
         // Given: A valid position in range (has both tokens).
-        givenValidPoolState(liquidityPool, position);
+        (, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
         liquidityPool = uint128(bound(liquidityPool, 1e20, 1e25));
-        setPoolState(liquidityPool, position, false);
+        setPoolState(liquidityPool, position, protocolFee, false);
         position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
         position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
         position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
@@ -795,6 +802,7 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
 
     function testFuzz_Success_executeAction_NotNative_ClaimOnly_FullClaimFee(
         uint128 liquidityPool,
+        uint24 protocolFee,
         PositionState memory position,
         uint256 feeSeed,
         Compounder.InitiatorParams memory initiatorParams,
@@ -802,9 +810,9 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
         uint256 tolerance
     ) public {
         // Given: A valid position in range (has both tokens).
-        givenValidPoolState(liquidityPool, position);
+        (, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
         liquidityPool = uint128(bound(liquidityPool, 1e20, 1e25));
-        setPoolState(liquidityPool, position, false);
+        setPoolState(liquidityPool, position, protocolFee, false);
         position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
         position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
         position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
@@ -884,6 +892,7 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
 
     function testFuzz_Success_executeAction_IsNative(
         uint128 liquidityPool,
+        uint24 protocolFee,
         PositionState memory position,
         uint256 feeSeed,
         Compounder.InitiatorParams memory initiatorParams,
@@ -891,9 +900,9 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
         uint256 tolerance
     ) public {
         // Given: A valid position in range (has both tokens).
-        givenValidPoolState(liquidityPool, position);
+        (, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
         liquidityPool = uint128(bound(liquidityPool, 1e20, 1e25));
-        setPoolState(liquidityPool, position, true);
+        setPoolState(liquidityPool, position, protocolFee, true);
         position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
         position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
         position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
@@ -948,7 +957,7 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
 
             rebalanceParams = RebalanceLogic._getRebalanceParams(
                 1e18,
-                poolKey.fee,
+                getAmmFee(),
                 initiatorParams.swapFee,
                 initiatorParams.trustedSqrtPrice,
                 TickMath.getSqrtPriceAtTick(position.tickLower),
@@ -1006,19 +1015,23 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
 
         // And: The liquidity of the position increased.
         assertGt(positionManagerV4.getPositionLiquidity(position.id), position.liquidity);
+
+        // And: The PositionManager holds no ETH.
+        assertEq(address(positionManagerV4).balance, 0);
     }
 
     function testFuzz_Success_executeAction_IsNative_WrappedNativeWithoutFees(
         uint128 liquidityPool,
+        uint24 protocolFee,
         PositionState memory position,
         Compounder.InitiatorParams memory initiatorParams,
         address initiator,
         uint256 tolerance
     ) public {
         // Given: A valid position in range (has both tokens).
-        givenValidPoolState(liquidityPool, position);
+        (, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
         liquidityPool = uint128(bound(liquidityPool, 1e20, 1e25));
-        setPoolState(liquidityPool, position, true);
+        setPoolState(liquidityPool, position, protocolFee, true);
         position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
         position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
         position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
@@ -1044,7 +1057,7 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
         // And: The initiator is not the Compounder.
         vm.assume(initiator != address(compounder));
 
-        // And: Compounder has wrapped native worth at least 1e8 token1, no token1 and the position has no fees.
+        // And: Compounder has only wrapped native worth at least 1e8 token1, no fees.
         {
             uint256 minAmount0 = FullMath.mulDivRoundingUp(1e8, 1 << 192, position.sqrtPrice * position.sqrtPrice);
             vm.assume(minAmount0 <= 1e18);
@@ -1067,7 +1080,7 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
         // And: liquidity is not 0.
         RebalanceParams memory rebalanceParams = RebalanceLogic._getRebalanceParams(
             1e18,
-            poolKey.fee,
+            getAmmFee(),
             initiatorParams.swapFee,
             initiatorParams.trustedSqrtPrice,
             TickMath.getSqrtPriceAtTick(position.tickLower),
@@ -1117,19 +1130,23 @@ contract ExecuteAction_CompounderUniswapV4_Fuzz_Test is CompounderUniswapV4_Fuzz
             depositData.assets.length > 1 && depositData.assets[1] == address(weth9) ? depositData.assetAmounts[1] : 0;
         assertEq(weth9.balanceOf(address(compounder)), wrappedNativeReturned);
         assertEq(ERC20(address(weth9)).allowance(address(compounder), address(account)), wrappedNativeReturned);
+
+        // And: The PositionManager holds no ETH.
+        assertEq(address(positionManagerV4).balance, 0);
     }
 
     function testFuzz_Success_executeAction_IsNative_ClaimOnly(
         uint128 liquidityPool,
+        uint24 protocolFee,
         PositionState memory position,
         Compounder.InitiatorParams memory initiatorParams,
         address initiator,
         uint256 tolerance
     ) public {
         // Given: A valid position in range (has both tokens).
-        givenValidPoolState(liquidityPool, position);
+        (, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
         liquidityPool = uint128(bound(liquidityPool, 1e20, 1e25));
-        setPoolState(liquidityPool, position, true);
+        setPoolState(liquidityPool, position, protocolFee, true);
         position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
         position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
         position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));

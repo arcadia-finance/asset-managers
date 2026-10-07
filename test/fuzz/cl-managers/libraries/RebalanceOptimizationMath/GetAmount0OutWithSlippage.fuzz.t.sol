@@ -32,7 +32,7 @@ contract GetAmount0OutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMa
         // Given: A position in range.
         givenValidSwapParams(params, false);
 
-        // And: The balances are at most 2^60 times the pool liquidity, with liquidity1 at least liquidity0.
+        // And: Balances of at most 2^60 L, with liquidity1 at least liquidity0.
         givenValidBalances(params, false);
 
         // And: usableLiquidity is zero.
@@ -84,7 +84,7 @@ contract GetAmount0OutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMa
         // Given: A position with sqrtPriceOld below the lower tick.
         givenValidSwapParamsOutOfRange(params, false);
 
-        // And: The amountOut to move the price to the lower tick does not exceed the largest normalized amount0 there.
+        // And: The amountOut to the lower tick stays within the normalization.
         (uint256 maxAmount0,) = getMaxAmounts(params.usableLiquidity, params.sqrtRatioLower);
         givenAmountOutToBoundAtMost(params, maxAmount0);
 
@@ -109,7 +109,7 @@ contract GetAmount0OutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMa
         // Given: A position with sqrtPriceOld below the lower tick.
         givenValidSwapParamsOutOfRange(params, false);
 
-        // And: The amountOut to move the price to the lower tick does not exceed the largest normalized amount0 there.
+        // And: The amountOut to the lower tick stays within the normalization.
         (uint256 maxAmount0, uint256 maxAmount1) = getMaxAmounts(params.usableLiquidity, params.sqrtRatioLower);
         givenAmountOutToBoundAtMost(params, maxAmount0);
 
@@ -125,11 +125,11 @@ contract GetAmount0OutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMa
         // Then: amountOut includes the amountOut of the swap to the lower tick.
         assertGe(amountOut, amountOutToBound);
 
-        // And: The pool price after the swap is not above the upper tick by more than ⌊Δk⌋ units of sqrtPrice.
+        // And: The new price exceeds the upper tick by at most ⌊Δk⌋ units.
         (uint160 sqrtPriceNew, uint256 amountIn) = getAmountInForAmountOut(params, amountOut);
         assertLe(sqrtPriceNew, getSafetyBounds(params));
 
-        // And: The swap costs at most amount1, and leaves at least one wei of it when it moves past the lower tick.
+        // And: The swap costs at most amount1, and less than it past the lower tick.
         assertLe(amountIn, amountOut > amountOutToBound ? params.amount1 - 1 : params.amount1);
     }
 
@@ -137,11 +137,11 @@ contract GetAmount0OutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMa
         // Given: A position with sqrtPriceOld below the lower tick.
         givenValidSwapParamsOutOfRange(params, false);
 
-        // And: The amountOut to move the price to the lower tick does not exceed the largest normalized amount0 there.
+        // And: The amountOut to the lower tick stays within the normalization.
         (uint256 maxAmount0, uint256 maxAmount1) = getMaxAmounts(params.usableLiquidity, params.sqrtRatioLower);
         givenAmountOutToBoundAtMost(params, maxAmount0);
 
-        // And: amount1 exceeds the amountIn to move the price to the lower tick by at most two wei.
+        // And: amount1 is at most two wei above the amountIn to the lower tick.
         // And: The normalized balances at the lower tick do not exceed MAX_NORMALIZED.
         vm.assume(maxAmount1 > 0);
         (uint256 amountInToBound, uint256 amountOutToBound) = getSwapToBound(params);
@@ -154,7 +154,7 @@ contract GetAmount0OutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMa
         // Then: amountOut includes the amountOut of the swap to the lower tick.
         assertGe(amountOut, amountOutToBound);
 
-        // And: The swap costs at most amount1, and leaves at least one wei of it when it moves past the lower tick.
+        // And: The swap costs at most amount1, and less than it past the lower tick.
         (, uint256 amountIn) = getAmountInForAmountOut(params, amountOut);
         assertLe(amountIn, amountOut > amountOutToBound ? params.amount1 - 1 : params.amount1);
     }
@@ -163,7 +163,7 @@ contract GetAmount0OutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMa
         // Given: A position with sqrtPriceOld below the lower tick.
         givenValidSwapParamsOutOfRange(params, false);
 
-        // And: The amountOut to move the price to the lower tick fits a position liquidity below 2^128 and the largest normalized amount0 there.
+        // And: The amountOut to the lower tick fits the limits of the solver.
         (uint256 maxAmount0, uint256 maxAmount1) = getMaxAmounts(params.usableLiquidity, params.sqrtRatioLower);
         {
             uint256 maxPositionAmount0 = LiquidityAmounts.getAmount0ForLiquidity(
@@ -174,7 +174,7 @@ contract GetAmount0OutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMa
         givenAmountOutToBoundAtMost(params, maxAmount0);
 
         // And: amount1 is at least the amountIn to move the price to the lower tick.
-        // And: The balances at the lower tick are at most 2^60 times the pool liquidity, and amount0 fits a position liquidity below 2^128.
+        // And: Balances at the lower tick within the limits of the solver.
         {
             (uint256 amountInToBound, uint256 amountOutToBound) = getSwapToBound(params);
             params.amount0 = bound(params.amount0, 0, maxAmount0 - amountOutToBound);
@@ -184,10 +184,10 @@ contract GetAmount0OutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMa
         // When: Calling _getAmount0OutWithSlippage().
         uint256 amountOut = getAmount0OutWithSlippage(params);
 
-        // Then: The liquidity after the swap plus twice the rounding tolerance and the precision tolerance is at least the liquidity of the optimum.
-        (uint256 optimalLiquidity, uint160 optimalSqrtPrice) = getOptimalLiquidity(params);
+        // Then: The liquidity is within the tolerances of the optimum.
+        uint256 optimalLiquidity = getOptimalLiquidity(params);
         (uint256 liquidity, uint256 tolerance) = getLiquidityAndTolerance(params, amountOut);
-        tolerance = 2 * tolerance + getPrecisionTolerance(params, optimalLiquidity, optimalSqrtPrice);
+        tolerance = 2 * tolerance + getPrecisionTolerance(params, optimalLiquidity, getCrossingSqrtPrice(params));
         assertGe(liquidity + tolerance, optimalLiquidity);
     }
 
@@ -203,7 +203,7 @@ contract GetAmount0OutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMa
         // When: Calling _getAmount0OutWithSlippage().
         uint256 amountOut = getAmount0OutWithSlippage(params);
 
-        // Then: The pool price after the swap is not below sqrtPriceOld and not above the upper tick by more than ⌊Δk⌋ units of sqrtPrice.
+        // Then: The new price is between sqrtPriceOld and the upper tick plus ⌊Δk⌋.
         (uint160 sqrtPriceNew, uint256 amountIn) = getAmountInForAmountOut(params, amountOut);
         assertGe(sqrtPriceNew, params.sqrtPriceOld);
         assertLe(sqrtPriceNew, getSafetyBounds(params));
@@ -216,7 +216,7 @@ contract GetAmount0OutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMa
         // Given: A position with sqrtPriceOld on the lower tick.
         givenValidSwapParamsOnBound(params, false);
 
-        // And: The balances are at most 2^60 times the pool liquidity and below 2^128, and amount0 fits a position liquidity below 2^128.
+        // And: Balances within the limits of the solver.
         (uint256 maxAmount0, uint256 maxAmount1) = getMaxAmounts(params.usableLiquidity, params.sqrtPriceOld);
         maxAmount0 = FixedPointMathLib.min(
             maxAmount0,
@@ -228,10 +228,10 @@ contract GetAmount0OutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMa
         // When: Calling _getAmount0OutWithSlippage().
         uint256 amountOut = getAmount0OutWithSlippage(params);
 
-        // Then: The liquidity after the swap plus the rounding and precision tolerances is at least the liquidity of the optimum.
-        (uint256 optimalLiquidity, uint160 optimalSqrtPrice) = getOptimalLiquidity(params);
+        // Then: The liquidity is within the tolerances of the optimum.
+        uint256 optimalLiquidity = getOptimalLiquidity(params);
         (uint256 liquidity, uint256 tolerance) = getLiquidityAndTolerance(params, amountOut);
-        tolerance += getPrecisionTolerance(params, optimalLiquidity, optimalSqrtPrice);
+        tolerance += getPrecisionTolerance(params, optimalLiquidity, getCrossingSqrtPrice(params));
         assertGe(liquidity + tolerance, optimalLiquidity);
     }
 
@@ -239,13 +239,13 @@ contract GetAmount0OutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMa
         // Given: A position in range.
         givenValidSwapParams(params, false);
 
-        // And: The balances are at most 2^60 times the pool liquidity, with liquidity1 at least liquidity0.
+        // And: Balances of at most 2^60 L, with liquidity1 at least liquidity0.
         givenValidBalances(params, false);
 
         // When: Calling _getAmount0OutWithSlippage().
         uint256 amountOut = getAmount0OutWithSlippage(params);
 
-        // Then: The pool price after the swap is not below sqrtPriceOld and not above the upper tick by more than ⌊Δk⌋ units of sqrtPrice.
+        // Then: The new price is between sqrtPriceOld and the upper tick plus ⌊Δk⌋.
         (uint160 sqrtPriceNew, uint256 amountIn) = getAmountInForAmountOut(params, amountOut);
         assertGe(sqrtPriceNew, params.sqrtPriceOld);
         assertLe(sqrtPriceNew, getSafetyBounds(params));
@@ -273,7 +273,7 @@ contract GetAmount0OutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMa
         // When: Calling _getAmount0OutWithSlippage().
         uint256 amountOut = getAmount0OutWithSlippage(params);
 
-        // Then: amountOut is at most that of ⌊1/2 + Δk⌋ units of sqrtPrice, zero inside the precision domain.
+        // Then: amountOut is at most that of ⌊1/2 + Δk⌋ units of sqrtPrice.
         uint256 maxMove = ((1 << 144) + (1 << 49) + uint256(params.sqrtPriceOld)) >> 145;
         assertLe(
             amountOut,
@@ -302,7 +302,7 @@ contract GetAmount0OutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMa
         // Given: A position in range.
         givenValidSwapParams(params, false);
 
-        // And: The balances are at most 2^60 times the pool liquidity, with liquidity1 at least liquidity0.
+        // And: Balances of at most 2^60 L, with liquidity1 at least liquidity0.
         givenValidBalances(params, false);
 
         // And: liquidity1 exceeds liquidity0.
@@ -313,10 +313,10 @@ contract GetAmount0OutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMa
         // When: Calling _getAmount0OutWithSlippage().
         uint256 amountOut = getAmount0OutWithSlippage(params);
 
-        // Then: The liquidity after the swap plus the rounding and precision tolerances is at least the liquidity of the optimum.
-        (uint256 optimalLiquidity, uint160 optimalSqrtPrice) = getOptimalLiquidity(params);
+        // Then: The liquidity is within the tolerances of the optimum.
+        uint256 optimalLiquidity = getOptimalLiquidity(params);
         (uint256 liquidity, uint256 tolerance) = getLiquidityAndTolerance(params, amountOut);
-        tolerance += getPrecisionTolerance(params, optimalLiquidity, optimalSqrtPrice);
+        tolerance += getPrecisionTolerance(params, optimalLiquidity, getCrossingSqrtPrice(params));
         assertGe(liquidity + tolerance, optimalLiquidity);
     }
 }

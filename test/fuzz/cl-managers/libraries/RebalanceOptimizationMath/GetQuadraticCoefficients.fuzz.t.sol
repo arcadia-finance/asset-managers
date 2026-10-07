@@ -36,7 +36,7 @@ contract GetQuadraticCoefficients_SwapMath_Fuzz_Test is RebalanceOptimizationMat
         // Then: The constant coefficient is zero.
         assertEq(constantCoefficient, 0);
 
-        // And: The quadratic, linear and constant coefficients are within κ + 3, α0 + α1 + 2^160 / sqrtPriceOld + 15 and 2^160 / sqrtPriceOld + 5 units of 2^-192 of their exact values.
+        // And: The coefficients are within their error bounds of the exact values.
         assertQuadraticCoefficients(params, quadraticCoefficient, linearCoefficient, constantCoefficient);
     }
 
@@ -60,7 +60,7 @@ contract GetQuadraticCoefficients_SwapMath_Fuzz_Test is RebalanceOptimizationMat
         // And: The linear coefficient is positive.
         assertGt(linearCoefficient, 0);
 
-        // And: The quadratic, linear and constant coefficients are within κ + 3, α0 + α1 + 2^160 / sqrtPriceOld + 15 and 2^160 / sqrtPriceOld + 5 units of 2^-192 of their exact values.
+        // And: The coefficients are within their error bounds of the exact values.
         assertQuadraticCoefficients(params, quadraticCoefficient, linearCoefficient, constantCoefficient);
     }
 
@@ -81,7 +81,7 @@ contract GetQuadraticCoefficients_SwapMath_Fuzz_Test is RebalanceOptimizationMat
         // Then: The constant coefficient is negative.
         assertLt(constantCoefficient, 0);
 
-        // And: The quadratic, linear and constant coefficients are within κ + 3, α0 + α1 + 2^160 / sqrtPriceOld + 15 and 2^160 / sqrtPriceOld + 5 units of 2^-192 of their exact values.
+        // And: The coefficients are within their error bounds of the exact values.
         assertQuadraticCoefficients(params, quadraticCoefficient, linearCoefficient, constantCoefficient);
     }
 
@@ -100,7 +100,7 @@ contract GetQuadraticCoefficients_SwapMath_Fuzz_Test is RebalanceOptimizationMat
         // Then: The constant coefficient is zero.
         assertEq(constantCoefficient, 0);
 
-        // And: The quadratic, linear and constant coefficients are within κ + 3, α0 + α1 + 2^160 / sqrtPriceOld + 15 and 2^160 / sqrtPriceOld + 5 units of 2^-192 of their exact values.
+        // And: The coefficients are within their error bounds of the exact values.
         assertQuadraticCoefficients(params, quadraticCoefficient, linearCoefficient, constantCoefficient);
     }
 
@@ -121,7 +121,7 @@ contract GetQuadraticCoefficients_SwapMath_Fuzz_Test is RebalanceOptimizationMat
         // Then: The constant coefficient is positive.
         assertGt(constantCoefficient, 0);
 
-        // And: The quadratic, linear and constant coefficients are within κ + 3, α0 + α1 + 2^160 / sqrtPriceOld + 15 and 2^160 / sqrtPriceOld + 5 units of 2^-192 of their exact values.
+        // And: The coefficients are within their error bounds of the exact values.
         assertQuadraticCoefficients(params, quadraticCoefficient, linearCoefficient, constantCoefficient);
     }
 
@@ -145,7 +145,7 @@ contract GetQuadraticCoefficients_SwapMath_Fuzz_Test is RebalanceOptimizationMat
         // And: The linear coefficient is positive.
         assertGt(linearCoefficient, 0);
 
-        // And: The quadratic, linear and constant coefficients are within κ + 3, α0 + α1 + 2^160 / sqrtPriceOld + 15 and 2^160 / sqrtPriceOld + 5 units of 2^-192 of their exact values.
+        // And: The coefficients are within their error bounds of the exact values.
         assertQuadraticCoefficients(params, quadraticCoefficient, linearCoefficient, constantCoefficient);
     }
 }

@@ -32,11 +32,11 @@ contract CapAmount1Out_SwapMath_Fuzz_Test is RebalanceOptimizationMath_Fuzz_Test
         uint160 sqrtPriceNew,
         uint256 amountOut
     ) public view {
-        // Given: A position in range, and a balance of token0 whose net amountIn times sqrtPriceOld fits 256 bits.
+        // Given: A position in range and a valid token0 balance.
         givenValidSwapParams(params, true);
-        params.amount0 = bound(params.amount0, 0, type(uint256).max / params.sqrtPriceOld);
+        params.amount0 = bound(params.amount0, 1, type(uint256).max / params.sqrtPriceOld);
 
-        // And: sqrtPriceNew costs at most amount0 − 1, so lies at or above the pool's price for the net amountIn of amount0 − 1.
+        // And: sqrtPriceNew costs at most amount0 − 1.
         uint256 amountInLessFee = FixedPointMathLib.zeroFloorSub(params.amount0, 1) * (1e6 - params.fee) / 1e6;
         uint160 sqrtPriceLimit = SqrtPriceMath.getNextSqrtPriceFromAmount0RoundingUp(
             params.sqrtPriceOld, params.usableLiquidity, amountInLessFee, true
@@ -63,17 +63,23 @@ contract CapAmount1Out_SwapMath_Fuzz_Test is RebalanceOptimizationMath_Fuzz_Test
 
         // Then: The amountOut is returned unchanged.
         assertEq(amountOutCapped, amountOut);
+
+        // And: The pool's swap for amountOut leaves at least one wei of token0.
+        (, uint256 amountIn) = getAmountInForAmountOut(params, amountOutCapped);
+        assertLt(amountIn, params.amount0);
     }
 
     function testFuzz_Success_capAmount1Out_Capped(SwapParams memory params, uint160 sqrtPriceNew, uint256 amountOut)
         public
         view
     {
-        // Given: A position in range, and a balance of token0 whose net amountIn times sqrtPriceOld fits 256 bits.
+        // Given: A position in range and a token0 balance the pool prices exactly.
         givenValidSwapParams(params, true);
-        params.amount0 = bound(params.amount0, 1, type(uint256).max / params.sqrtPriceOld);
+        params.amount0 = bound(
+            params.amount0, 1, (type(uint256).max - (uint256(params.usableLiquidity) << 96)) / params.sqrtPriceOld
+        );
 
-        // And: sqrtPriceNew lies below the pool's price for the net amountIn of amount0 − 1, so costs at least amount0.
+        // And: sqrtPriceNew costs at least amount0.
         uint256 amountInLessFee = (params.amount0 - 1) * (1e6 - params.fee) / 1e6;
         uint160 sqrtPriceLimit = SqrtPriceMath.getNextSqrtPriceFromAmount0RoundingUp(
             params.sqrtPriceOld, params.usableLiquidity, amountInLessFee, true
@@ -97,7 +103,7 @@ contract CapAmount1Out_SwapMath_Fuzz_Test is RebalanceOptimizationMath_Fuzz_Test
             SqrtPriceMath.getAmount1Delta(sqrtPriceLimit, params.sqrtPriceOld, params.usableLiquidity, false);
         assertEq(amountOutCapped, FixedPointMathLib.min(amountOut, amountOutLimit));
 
-        // And: The pool's swap for the capped amountOut leaves at least one wei of token0.
+        // And: The capped swap leaves at least one wei of token0.
         (, uint256 amountIn) = getAmountInForAmountOut(params, amountOutCapped);
         assertLt(amountIn, params.amount0);
     }
@@ -110,16 +116,19 @@ contract CapAmount1Out_SwapMath_Fuzz_Test is RebalanceOptimizationMath_Fuzz_Test
         // Given: A position with sqrtPriceOld above the upper tick.
         givenValidSwapParamsOutOfRange(params, true);
 
-        // And: A balance of token0 whose net amountIn, less one wei, does not reach the upper tick.
-        (uint256 amountInToBound,) = getSwapToBound(params);
-        params.amount0 = bound(params.amount0, 1, amountInToBound);
+        // And: A balance of token0 that pays exactly for the swap to the upper tick.
+        (uint256 amountInToBound, uint256 amountOutToBound) = getSwapToBound(params);
+        params.amount0 = amountInToBound;
 
-        // And: sqrtPriceNew lies below the pool's price for the net amountIn of amount0 − 1.
-        uint160 sqrtPriceLimit = SqrtPriceMath.getNextSqrtPriceFromAmount0RoundingUp(
-            params.sqrtPriceOld, params.usableLiquidity, (params.amount0 - 1) * (1e6 - params.fee) / 1e6, true
+        // And: sqrtPriceNew lies in the range.
+        sqrtPriceNew = uint160(bound(sqrtPriceNew, params.sqrtRatioLower, params.sqrtRatioUpper));
+
+        // And: amountOut reaches the upper tick, and at most sqrtPriceNew.
+        amountOut = bound(
+            amountOut,
+            amountOutToBound,
+            SqrtPriceMath.getAmount1Delta(sqrtPriceNew, params.sqrtPriceOld, params.usableLiquidity, false)
         );
-        vm.assume(sqrtPriceLimit > TickMath.MIN_SQRT_PRICE);
-        sqrtPriceNew = uint160(bound(sqrtPriceNew, TickMath.MIN_SQRT_PRICE, sqrtPriceLimit - 1));
 
         // When: Calling _capAmount1Out().
         uint256 amountOutCapped = optimizationMath.capAmount1Out(
@@ -132,9 +141,11 @@ contract CapAmount1Out_SwapMath_Fuzz_Test is RebalanceOptimizationMath_Fuzz_Test
             amountOut
         );
 
-        // Then: The amountOut is capped at the amountOut of the swap to the upper tick, not before it.
-        uint256 amountOutLimit =
-            SqrtPriceMath.getAmount1Delta(params.sqrtRatioUpper, params.sqrtPriceOld, params.usableLiquidity, false);
-        assertEq(amountOutCapped, FixedPointMathLib.min(amountOut, amountOutLimit));
+        // Then: The swap reaches the upper tick.
+        assertGe(amountOutCapped, amountOutToBound);
+
+        // And: The capped swap costs at most the token0 balance.
+        (, uint256 amountIn) = getAmountInForAmountOut(params, amountOutCapped);
+        assertLe(amountIn, params.amount0);
     }
 }

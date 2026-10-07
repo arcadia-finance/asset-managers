@@ -24,10 +24,14 @@ contract GetPositionState_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_getPositionState_NotNative(uint128 liquidityPool, PositionState memory position) public {
+    function testFuzz_Success_getPositionState_NotNative(
+        uint128 liquidityPool,
+        uint24 protocolFee,
+        PositionState memory position
+    ) public {
         // Given: A valid position.
-        liquidityPool = givenValidPoolState(liquidityPool, position);
-        setPoolState(liquidityPool, position, false);
+        (liquidityPool, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
+        setPoolState(liquidityPool, position, protocolFee, false);
         givenValidPositionState(position);
         setPositionState(position);
 
@@ -35,9 +39,9 @@ contract GetPositionState_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
         PositionState memory position_ = base.getPositionState(address(positionManagerV4), position.id);
 
         // Then: It should return the correct position.
-        assertEq(position_.pool, address(0));
+        assertEq(position_.pool, position.pool);
         assertEq(position_.id, position.id);
-        assertEq(position_.fee, POOL_FEE);
+        assertEq(position_.poolFee, position.poolFee);
         assertEq(position_.tickSpacing, TICK_SPACING);
         assertEq(position_.tickCurrent, TickMath.getTickAtSqrtPrice(uint160(position.sqrtPrice)));
         assertEq(position_.tickLower, position.tickLower);
@@ -49,10 +53,14 @@ contract GetPositionState_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
         assertEq(position_.tokens[1], address(token1));
     }
 
-    function testFuzz_Success_getPositionState_IsNative(uint128 liquidityPool, PositionState memory position) public {
+    function testFuzz_Success_getPositionState_IsNative(
+        uint128 liquidityPool,
+        uint24 protocolFee,
+        PositionState memory position
+    ) public {
         // Given: A valid position.
-        liquidityPool = givenValidPoolState(liquidityPool, position);
-        setPoolState(liquidityPool, position, true);
+        (liquidityPool, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
+        setPoolState(liquidityPool, position, protocolFee, true);
         givenValidPositionState(position);
         setPositionState(position);
         position.id = uint96(position.id);
@@ -61,9 +69,9 @@ contract GetPositionState_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
         PositionState memory position_ = base.getPositionState(address(positionManagerV4), position.id);
 
         // Then: It should return the correct position.
-        assertEq(position_.pool, address(0));
+        assertEq(position_.pool, position.pool);
         assertEq(position_.id, position.id);
-        assertEq(position_.fee, POOL_FEE);
+        assertEq(position_.poolFee, position.poolFee);
         assertEq(position_.tickSpacing, TICK_SPACING);
         assertEq(position_.tickCurrent, TickMath.getTickAtSqrtPrice(uint160(position.sqrtPrice)));
         assertEq(position_.tickLower, position.tickLower);

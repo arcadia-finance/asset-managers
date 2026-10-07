@@ -344,9 +344,10 @@ abstract contract Compounder is IActionBase, AbstractBase, Guardian {
         // Only increase the liquidity if there is token0 or token1 to add.
         if (balances[0] > fees[0] || balances[1] > fees[1]) {
             // Get the rebalance parameters, based on a hypothetical swap through the pool itself without slippage.
+            uint256 ammFee = _getAmmFee(position);
             RebalanceParams memory rebalanceParams = RebalanceLogic._getRebalanceParams(
                 accountInfo_.minLiquidityRatio,
-                position.fee,
+                ammFee,
                 initiatorParams.swapFee,
                 position.sqrtPrice,
                 cache.sqrtRatioLower,
@@ -363,7 +364,7 @@ abstract contract Compounder is IActionBase, AbstractBase, Guardian {
             // but excess slippage will be subtracted from the initiatorFee.
             // For swaps via a router, tokenOut should be the limiting factor when increasing liquidity.
             // Update balances after the swap.
-            _swap(balances, fees, initiatorParams, position, rebalanceParams, cache);
+            _swap(balances, fees, initiatorParams, position, rebalanceParams, cache, ammFee);
 
             // Check that the pool is still balanced after the swap.
             // Since the swap went potentially through the pool itself (but does not have to),
@@ -452,6 +453,7 @@ abstract contract Compounder is IActionBase, AbstractBase, Guardian {
      * @param position A struct with position and pool related variables.
      * @param rebalanceParams A struct with the rebalance parameters.
      * @param cache A struct with cached variables.
+     * @param ammFee The fee the AMM charges on swaps, with 6 decimals precision.
      * @dev Must update the balances and sqrtPrice after the swap.
      */
     function _swap(
@@ -460,7 +462,8 @@ abstract contract Compounder is IActionBase, AbstractBase, Guardian {
         InitiatorParams memory initiatorParams,
         PositionState memory position,
         RebalanceParams memory rebalanceParams,
-        Cache memory cache
+        Cache memory cache,
+        uint256 ammFee
     ) internal virtual {
         // Don't do swaps with zero amount.
         if (rebalanceParams.amountIn == 0) return;
@@ -469,16 +472,18 @@ abstract contract Compounder is IActionBase, AbstractBase, Guardian {
         // This can be done either directly through the pool, or via a router with custom swap data.
         if (initiatorParams.swapData.length == 0) {
             // Calculate a more accurate amountOut, with slippage.
+            uint256 amount0 = balances[0] - fees[0];
+            uint256 amount1 = balances[1] - fees[1];
             // forge-lint: disable-next-item(unsafe-typecast)
             uint256 amountOut = RebalanceOptimizationMath._getAmountOutWithSlippage(
                 rebalanceParams.zeroToOne,
-                position.fee,
+                ammFee,
                 _getPoolLiquidity(position),
                 uint160(position.sqrtPrice),
                 cache.sqrtRatioLower,
                 cache.sqrtRatioUpper,
-                balances[0] - fees[0],
-                balances[1] - fees[1]
+                amount0,
+                amount1
             );
             // Don't do swaps with zero amount.
             if (amountOut == 0) return;

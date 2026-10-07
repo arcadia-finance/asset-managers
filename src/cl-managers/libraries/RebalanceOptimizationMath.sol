@@ -36,7 +36,7 @@ library RebalanceOptimizationMath {
     /**
      * @notice Analytically calculates the amountOut for a swap through the pool itself, that maximizes the amount of liquidity that is added.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
-     * @param fee The fee of the pool, with 6 decimals precision.
+     * @param fee The fee the AMM charges on swaps, with 6 decimals precision.
      * @param usableLiquidity The amount of active liquidity in the pool, at the current tick.
      * @param sqrtPriceOld The square root of the pool price (token1/token0) before the swap, with 96 binary precision.
      * @param sqrtRatioLower The square root price of the lower tick of the liquidity position, with 96 binary precision.
@@ -68,7 +68,7 @@ library RebalanceOptimizationMath {
 
     /**
      * @notice Calculates the amountOut of token1 for a swap of token0, that maximizes the amount of liquidity that is added.
-     * @param fee The fee of the pool, with 6 decimals precision.
+     * @param fee The fee the AMM charges on swaps, with 6 decimals precision.
      * @param usableLiquidity The amount of active liquidity in the pool, at the current tick.
      * @param sqrtPriceOld The square root of the pool price (token1/token0) before the swap, with 96 binary precision.
      * @param sqrtRatioLower The square root price of the lower tick of the liquidity position, with 96 binary precision.
@@ -125,7 +125,7 @@ library RebalanceOptimizationMath {
 
     /**
      * @notice Calculates the amountOut of token0 for a swap of token1, that maximizes the amount of liquidity that is added.
-     * @param fee The fee of the pool, with 6 decimals precision.
+     * @param fee The fee the AMM charges on swaps, with 6 decimals precision.
      * @param usableLiquidity The amount of active liquidity in the pool, at the current tick.
      * @param sqrtPriceOld The square root of the pool price (token1/token0) before the swap, with 96 binary precision.
      * @param sqrtRatioLower The square root price of the lower tick of the liquidity position, with 96 binary precision.
@@ -182,12 +182,12 @@ library RebalanceOptimizationMath {
 
     /**
      * @notice Calculates the amountOut of token1, for a given amountIn of token0.
-     * @param fee The fee of the pool, with 6 decimals precision.
+     * @param fee The fee the AMM charges on swaps, with 6 decimals precision.
      * @param usableLiquidity The amount of active liquidity in the pool, at the current tick.
      * @param sqrtPriceOld The SqrtPrice before the swap.
      * @param amount0 The balance of token0 before the swap.
      * @return amountOut The amount of token1 that is swapped to.
-     * @dev The net amountIn is rounded down, so the swap never costs more than amount0.
+     * @dev The net amountIn is rounded down, so a single pool step never costs more than amount0.
      */
     function _getAmount1OutFromAmount0In(uint256 fee, uint128 usableLiquidity, uint160 sqrtPriceOld, uint256 amount0)
         internal
@@ -205,12 +205,12 @@ library RebalanceOptimizationMath {
 
     /**
      * @notice Calculates the amountOut of token0, for a given amountIn of token1.
-     * @param fee The fee of the pool, with 6 decimals precision.
+     * @param fee The fee the AMM charges on swaps, with 6 decimals precision.
      * @param usableLiquidity The amount of active liquidity in the pool, at the current tick.
      * @param sqrtPriceOld The SqrtPrice before the swap.
      * @param amount1 The balance of token1 before the swap.
      * @return amountOut The amount of token0 that is swapped to.
-     * @dev The net amountIn is rounded down, so the swap never costs more than amount1.
+     * @dev The net amountIn is rounded down, so a single pool step never costs more than amount1.
      */
     function _getAmount0OutFromAmount1In(uint256 fee, uint128 usableLiquidity, uint160 sqrtPriceOld, uint256 amount1)
         internal
@@ -231,8 +231,8 @@ library RebalanceOptimizationMath {
     ////////////////////////////////////////////////////////////// */
 
     /**
-     * @notice Caps the amountOut of token0, so that the swap leaves at least one wei of token1.
-     * @param fee The fee of the pool, with 6 decimals precision.
+     * @notice Caps the amountOut of token0, so that a single pool step leaves at least one wei of token1.
+     * @param fee The fee the AMM charges on swaps, with 6 decimals precision.
      * @param usableLiquidity The amount of active liquidity in the pool, at the current tick.
      * @param sqrtPriceOld The square root of the pool price (token1/token0) before the swap, with 96 binary precision.
      * @param sqrtRatioLower The square root price of the lower tick of the liquidity position, with 96 binary precision.
@@ -273,8 +273,8 @@ library RebalanceOptimizationMath {
     }
 
     /**
-     * @notice Caps the amountOut of token1, so that the swap leaves at least one wei of token0.
-     * @param fee The fee of the pool, with 6 decimals precision.
+     * @notice Caps the amountOut of token1, so that a single pool step leaves at least one wei of token0.
+     * @param fee The fee the AMM charges on swaps, with 6 decimals precision.
      * @param usableLiquidity The amount of active liquidity in the pool, at the current tick.
      * @param sqrtPriceOld The square root of the pool price (token1/token0) before the swap, with 96 binary precision.
      * @param sqrtRatioUpper The square root price of the upper tick of the liquidity position, with 96 binary precision.
@@ -327,7 +327,7 @@ library RebalanceOptimizationMath {
     /**
      * @notice Calculates the new sqrtPrice after the swap that maximizes the amount of liquidity that is added.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
-     * @param fee The fee of the pool, with 6 decimals precision.
+     * @param fee The fee the AMM charges on swaps, with 6 decimals precision.
      * @param usableLiquidity The amount of active liquidity in the pool, at the current tick.
      * @param sqrtPriceOld The square root of the pool price (token1/token0) before the swap, with 96 binary precision.
      * @param sqrtRatioLower The square root price of the lower tick of the liquidity position, with 96 binary precision.
@@ -388,7 +388,7 @@ library RebalanceOptimizationMath {
     /**
      * @notice Calculates the quadratic in the relative move of the sqrtPrice, cleared of its denominators.
      * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
-     * @param fee The fee of the pool, with 6 decimals precision.
+     * @param fee The fee the AMM charges on swaps, with 6 decimals precision.
      * @param usableLiquidity The amount of active liquidity in the pool, at the current tick.
      * @param sqrtPriceOld The square root of the pool price (token1/token0) before the swap, with 96 binary precision.
      * @param sqrtRatioLower The square root price of the lower tick of the liquidity position, with 96 binary precision.

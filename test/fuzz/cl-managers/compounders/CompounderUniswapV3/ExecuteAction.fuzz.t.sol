@@ -159,7 +159,7 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
 
         // And: The pool is unbalanced.
         {
-            (, uint256 lowerSqrtPriceDeviation,,,) = compounder.accountInfo(address(account));
+            (,,, uint256 lowerSqrtPriceDeviation,) = compounder.accountInfo(address(account));
             initiatorParams.trustedSqrtPrice = bound(
                 initiatorParams.trustedSqrtPrice,
                 position.sqrtPrice * 1e18 / lowerSqrtPriceDeviation + lowerSqrtPriceDeviation,
@@ -187,10 +187,7 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
         givenValidPoolState(liquidityPool, position);
         liquidityPool = uint128(bound(liquidityPool, 1e20, 1e25));
         setPoolState(liquidityPool, position);
-        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
-        position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
-        position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
-        position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
+        givenValidPositionStateInRange(position);
         position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
         setPositionState(position);
         initiatorParams.positionManager = address(nonfungiblePositionManager);
@@ -256,7 +253,7 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
 
         // And: The pool is unbalanced after the swap.
         {
-            (, uint256 lowerSqrtPriceDeviation,,,) = compounder.accountInfo(address(account));
+            (,,, uint256 lowerSqrtPriceDeviation,) = compounder.accountInfo(address(account));
             uint256 lowerBoundSqrtPrice = initiatorParams.trustedSqrtPrice * lowerSqrtPriceDeviation / 1e18;
             vm.assume(TickMath.MIN_SQRT_PRICE < lowerBoundSqrtPrice);
             uint256 newSqrtPrice = bound(position.sqrtPrice, TickMath.MIN_SQRT_PRICE, lowerBoundSqrtPrice);
@@ -287,10 +284,7 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
         givenValidPoolState(liquidityPool, position);
         liquidityPool = uint128(bound(liquidityPool, 1e20, 1e25));
         setPoolState(liquidityPool, position);
-        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
-        position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
-        position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
-        position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
+        givenValidPositionStateInRange(position);
         position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
         setPositionState(position);
         initiatorParams.positionManager = address(nonfungiblePositionManager);
@@ -398,10 +392,7 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
         givenValidPoolState(liquidityPool, position);
         liquidityPool = uint128(bound(liquidityPool, 1e20, 1e25));
         setPoolState(liquidityPool, position);
-        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
-        position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
-        position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
-        position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
+        givenValidPositionStateInRange(position);
         position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
         setPositionState(position);
         initiatorParams.positionManager = address(nonfungiblePositionManager);
@@ -520,10 +511,7 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
         givenValidPoolState(liquidityPool, position);
         liquidityPool = uint128(bound(liquidityPool, 1e20, 1e25));
         setPoolState(liquidityPool, position);
-        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
-        position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
-        position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
-        position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
+        givenValidPositionStateInRange(position);
         position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
         setPositionState(position);
         initiatorParams.positionManager = address(nonfungiblePositionManager);
@@ -546,7 +534,7 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
         // And: The initiator is not the Compounder.
         vm.assume(initiator != address(compounder));
 
-        // And: Compounder has token0 worth at least 1e8 token1, no token1 and the position has no fees.
+        // And: Compounder has only token0, worth at least 1e8 token1, and no fees.
         {
             uint256 minAmount0 = FullMath.mulDivRoundingUp(1e8, 1 << 192, position.sqrtPrice * position.sqrtPrice);
             vm.assume(minAmount0 <= 1e18);
@@ -626,10 +614,7 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
         givenValidPoolState(liquidityPool, position);
         liquidityPool = uint128(bound(liquidityPool, 1e20, 1e25));
         setPoolState(liquidityPool, position);
-        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
-        position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
-        position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
-        position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
+        givenValidPositionStateInRange(position);
         position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
         setPositionState(position);
         initiatorParams.positionManager = address(nonfungiblePositionManager);
@@ -652,7 +637,7 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
         // And: The initiator is not the Compounder.
         vm.assume(initiator != address(compounder));
 
-        // And: Compounder has token1 worth at least 1e8 token0, no token0 and the position has no fees.
+        // And: Compounder has only token1, worth at least 1e8 token0, and no fees.
         {
             uint256 minAmount1 = FullMath.mulDivRoundingUp(1e8, position.sqrtPrice * position.sqrtPrice, 1 << 192);
             vm.assume(minAmount1 <= 1e18);
@@ -732,10 +717,7 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
         givenValidPoolState(liquidityPool, position);
         liquidityPool = uint128(bound(liquidityPool, 1e20, 1e25));
         setPoolState(liquidityPool, position);
-        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
-        position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
-        position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
-        position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
+        givenValidPositionStateInRange(position);
         position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
         setPositionState(position);
         initiatorParams.positionManager = address(nonfungiblePositionManager);
@@ -814,10 +796,7 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
         givenValidPoolState(liquidityPool, position);
         liquidityPool = uint128(bound(liquidityPool, 1e20, 1e25));
         setPoolState(liquidityPool, position);
-        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
-        position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
-        position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
-        position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
+        givenValidPositionStateInRange(position);
         position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
         setPositionState(position);
         initiatorParams.positionManager = address(nonfungiblePositionManager);

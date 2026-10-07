@@ -61,12 +61,12 @@ contract GetSqrtPrice_SwapMath_Fuzz_Test is RebalanceOptimizationMath_Fuzz_Test 
         // When: Calling _getSqrtPrice().
         uint160 sqrtPriceNew = getSqrtPrice(params);
 
-        // Then: sqrtPriceNew is not above sqrtPriceOld and not below the lower tick by more than ⌊Δk⌋ units of sqrtPrice.
+        // Then: sqrtPriceNew is between the lower tick minus ⌊Δk⌋ and sqrtPriceOld.
         uint256 sqrtPriceLimit = getSafetyBounds(params);
         assertLe(sqrtPriceNew, params.sqrtPriceOld);
         assertGe(sqrtPriceNew, sqrtPriceLimit);
 
-        // And: The exact crossing lies within the precision window before sqrtPriceNew and one unit more beyond it.
+        // And: The exact crossing lies within the precision window of sqrtPriceNew.
         uint256 window = ((params.sqrtPriceOld - sqrtPriceNew) >> 95) + (params.sqrtPriceOld >> 145) + 2;
         uint160 sqrtPriceBound =
             sqrtPriceNew + window < params.sqrtPriceOld ? uint160(sqrtPriceNew + window) : params.sqrtPriceOld;
@@ -117,12 +117,12 @@ contract GetSqrtPrice_SwapMath_Fuzz_Test is RebalanceOptimizationMath_Fuzz_Test 
         // When: Calling _getSqrtPrice().
         uint160 sqrtPriceNew = getSqrtPrice(params);
 
-        // Then: sqrtPriceNew is not below sqrtPriceOld and not above the upper tick by more than ⌊Δk⌋ units of sqrtPrice.
+        // Then: sqrtPriceNew is between sqrtPriceOld and the upper tick plus ⌊Δk⌋.
         uint256 sqrtPriceLimit = getSafetyBounds(params);
         assertGe(sqrtPriceNew, params.sqrtPriceOld);
         assertLe(sqrtPriceNew, sqrtPriceLimit);
 
-        // And: The exact crossing lies within the precision window before sqrtPriceNew and one unit more beyond it.
+        // And: The exact crossing lies within the precision window of sqrtPriceNew.
         uint256 window = ((sqrtPriceNew - params.sqrtPriceOld) >> 95) + (params.sqrtPriceOld >> 145) + 2;
         uint160 sqrtPriceBound =
             sqrtPriceNew > params.sqrtPriceOld + window ? uint160(sqrtPriceNew - window) : params.sqrtPriceOld;

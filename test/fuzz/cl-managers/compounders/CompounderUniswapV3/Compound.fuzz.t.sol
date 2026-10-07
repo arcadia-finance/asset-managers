@@ -7,8 +7,10 @@ pragma solidity ^0.8.0;
 import { Compounder } from "../../../../../src/cl-managers/compounders/Compounder.sol";
 import { CompounderUniswapV3_Fuzz_Test } from "./_CompounderUniswapV3.fuzz.t.sol";
 import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
+import { FixedPointMathLib } from "../../../../../lib/accounts-v2/lib/solady/src/utils/FixedPointMathLib.sol";
 import { FullMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { Guardian } from "../../../../../src/guardian/Guardian.sol";
+import { LiquidityAmounts } from "../../../../../src/cl-managers/libraries/LiquidityAmounts.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
 import { RebalanceLogic, RebalanceParams } from "../../../../../src/cl-managers/libraries/RebalanceLogic.sol";
 import {
@@ -172,11 +174,7 @@ contract Compound_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz_Test
         givenValidPoolState(liquidityPool, position);
         liquidityPool = uint128(bound(liquidityPool, 1e25, 1e30));
         setPoolState(liquidityPool, position);
-        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
-        // forge-lint: disable-next-item(divide-before-multiply)
-        position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
-        position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
-        position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
+        givenValidPositionStateInRange(position);
         position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
         setPositionState(position);
         initiatorParams.positionManager = address(nonfungiblePositionManager);
@@ -291,44 +289,27 @@ contract Compound_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz_Test
         address initiator,
         uint256 tolerance
     ) public {
-        // Given: A pool with its price exactly on a tick.
-        liquidityPool = uint128(bound(liquidityPool, 1e18, 1e24));
-        position.tickCurrent = int24(bound(position.tickCurrent, -200_000, 200_000));
+        // Given: A pool with its price on a tick.
+        liquidityPool = givenValidPoolState(liquidityPool, position);
+        position.tickSpacing = uniswapV3Factory.feeAmountTickSpacing(position.poolFee);
+        position.tickCurrent -= (position.tickCurrent % position.tickSpacing + position.tickSpacing)
+            % position.tickSpacing;
         position.sqrtPrice = TickMath.getSqrtPriceAtTick(position.tickCurrent);
-
-        // And: The pool fee is enabled with a tick spacing of one.
-        position.fee = uint24(bound(position.fee, 100, 10_000));
-        vm.assume(uniswapV3Factory.feeAmountTickSpacing(position.fee) == 0);
-        uniswapV3Factory.enableFeeAmount(position.fee, 1);
         setPoolState(liquidityPool, position);
 
         // And: A position with its lower tick on the pool price.
         position.tickLower = position.tickCurrent;
-        position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent + 1, position.tickCurrent + 20_000));
-        position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
+        position.tickUpper = int24(
+            bound(
+                position.tickUpper,
+                position.tickCurrent / position.tickSpacing + 1,
+                BOUND_TICK_UPPER / position.tickSpacing
+            )
+        ) * position.tickSpacing;
+        position.liquidity = uint128(bound(position.liquidity, 1, liquidityPool));
         setPositionState(position);
         initiatorParams.positionManager = address(nonfungiblePositionManager);
         initiatorParams.id = uint96(position.id);
-
-        // And: The Compounder receives a small token1 balance from the Account.
-        initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, 1, 1e8));
-
-        // And: The liquidity of the token0 balance times the token1 balance is at most the pool liquidity.
-        uint256 maxAmount0 = SqrtPriceMath.getAmount0Delta(
-            uint160(position.sqrtPrice),
-            TickMath.getSqrtPriceAtTick(position.tickUpper),
-            uint128(liquidityPool / initiatorParams.amount1),
-            false
-        );
-
-        // And: The Compounder receives enough token0 from the Account to mint the minimum liquidity without a swap.
-        {
-            uint256 minAmount0 = 1e18 / (1e18 - MIN_LIQUIDITY_RATIO)
-                * (FullMath.mulDivRoundingUp(initiatorParams.amount1, 1 << 192, position.sqrtPrice * position.sqrtPrice)
-                    + FullMath.mulDivRoundingUp(1, 1 << 96, position.sqrtPrice));
-            vm.assume(minAmount0 <= maxAmount0);
-            initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, minAmount0, maxAmount0));
-        }
 
         // And: uniV3 is allowed.
         deployUniswapV3AM();
@@ -351,6 +332,55 @@ contract Compound_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz_Test
         // And: The initiator charges no swap fee.
         initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
         initiatorParams.swapFee = 0;
+
+        // And: A token0 balance large enough for the minimum liquidity ratio.
+        uint256 unsold = FullMath.mulDivRoundingUp((uint256(liquidityPool) + position.liquidity), 9, 1 << 99);
+        unsold = ((position.sqrtPrice >> 145) + 5) * unsold + 2
+            * FullMath.mulDivRoundingUp(position.sqrtPrice, 5 * position.sqrtPrice, 1 << 194) + 5;
+        uint256 minAmountIn = 2 * unsold;
+        {
+            uint256 minAmount = (1e18 / (1e18 - MIN_LIQUIDITY_RATIO))
+                * (FullMath.mulDivRoundingUp(minAmountIn, 1 << 192, position.sqrtPrice * position.sqrtPrice)
+                    + FullMath.mulDivRoundingUp(1, 1 << 96, position.sqrtPrice));
+            uint256 maxAmount = SqrtPriceMath.getAmount0Delta(
+                uint160(position.sqrtPrice),
+                TickMath.getSqrtPriceAtTick(position.tickUpper),
+                uint128(liquidityPool / minAmountIn),
+                false
+            );
+            vm.assume(minAmount <= maxAmount);
+            initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, minAmount, maxAmount));
+        }
+
+        // And: A token1 balance of at least twice what the swap can leave unsold.
+        {
+            (,, uint256 upperSqrtPriceDeviation,,) = compounder.accountInfo(address(account));
+            uint256 maxAmountIn = FullMath.mulDiv(
+                liquidityPool,
+                FullMath.mulDiv(position.sqrtPrice, upperSqrtPriceDeviation, 1e18) - position.sqrtPrice - 2,
+                1 << 96
+            );
+            maxAmountIn = FixedPointMathLib.min(
+                maxAmountIn,
+                liquidityPool
+                    / LiquidityAmounts.getLiquidityForAmount0(
+                        uint160(position.sqrtPrice),
+                        TickMath.getSqrtPriceAtTick(position.tickUpper),
+                        initiatorParams.amount0
+                    )
+            );
+            maxAmountIn = FixedPointMathLib.min(
+                maxAmountIn,
+                FullMath.mulDiv(
+                    initiatorParams.amount0 / (1e18 / (1e18 - MIN_LIQUIDITY_RATIO))
+                        - FullMath.mulDivRoundingUp(1, 1 << 96, position.sqrtPrice),
+                    position.sqrtPrice * position.sqrtPrice,
+                    1 << 192
+                )
+            );
+            vm.assume(minAmountIn <= maxAmountIn);
+            initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, minAmountIn, maxAmountIn));
+        }
 
         // And: Account owns the position and the token balances.
         vm.prank(users.liquidityProvider);
@@ -384,9 +414,6 @@ contract Compound_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz_Test
         // And: The pool is balanced.
         initiatorParams.trustedSqrtPrice = position.sqrtPrice;
 
-        // And: The token1 balance of the pool is known.
-        uint256 poolBalance1 = token1.balanceOf(address(poolUniswap));
-
         // When: Calling compound().
         initiatorParams.swapData = "";
         vm.prank(initiator);
@@ -396,11 +423,17 @@ contract Compound_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz_Test
         assertEq(ERC721(address(nonfungiblePositionManager)).ownerOf(position.id), address(account));
 
         // And: The liquidity of the position increased.
-        (,,,,,,, uint128 liquidity,,,,) = nonfungiblePositionManager.positions(position.id);
-        assertGt(liquidity, position.liquidity);
+        {
+            (,,,,,,, uint128 liquidity,,,,) = nonfungiblePositionManager.positions(position.id);
+            assertGt(liquidity, position.liquidity);
+        }
 
-        // And: The pool received at most the token1 balance of the Compounder.
-        assertLe(token1.balanceOf(address(poolUniswap)) - poolBalance1, initiatorParams.amount1);
+        // And: The Compounder holds no tokens.
+        assertEq(token0.balanceOf(address(compounder)), 0);
+        assertEq(token1.balanceOf(address(compounder)), 0);
+
+        // And: The Account holds at most the unsold token1.
+        assertLe(token1.balanceOf(address(account)), unsold);
     }
 
     function testFuzz_Success_compound_PriceOnUpperTick(
@@ -410,44 +443,30 @@ contract Compound_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz_Test
         address initiator,
         uint256 tolerance
     ) public {
-        // Given: A pool with its price exactly on a tick.
-        liquidityPool = uint128(bound(liquidityPool, 1e18, 1e24));
-        position.tickCurrent = int24(bound(position.tickCurrent, -200_000, 200_000));
+        // Given: A pool with its price on a tick.
+        liquidityPool = givenValidPoolState(liquidityPool, position);
+        position.tickSpacing = uniswapV3Factory.feeAmountTickSpacing(position.poolFee);
+        position.tickCurrent -= (position.tickCurrent % position.tickSpacing + position.tickSpacing)
+            % position.tickSpacing;
         position.sqrtPrice = TickMath.getSqrtPriceAtTick(position.tickCurrent);
-
-        // And: The pool fee is enabled with a tick spacing of one.
-        position.fee = uint24(bound(position.fee, 100, 10_000));
-        vm.assume(uniswapV3Factory.feeAmountTickSpacing(position.fee) == 0);
-        uniswapV3Factory.enableFeeAmount(position.fee, 1);
         setPoolState(liquidityPool, position);
+
+        // And: The pool reached its price from above.
+        poolUniswap.setCurrentTick(position.tickCurrent - 1);
 
         // And: A position with its upper tick on the pool price.
         position.tickUpper = position.tickCurrent;
-        position.tickLower = int24(bound(position.tickLower, position.tickCurrent - 20_000, position.tickCurrent - 1));
-        position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
+        position.tickLower = int24(
+            bound(
+                position.tickLower,
+                BOUND_TICK_LOWER / position.tickSpacing,
+                position.tickCurrent / position.tickSpacing - 1
+            )
+        ) * position.tickSpacing;
+        position.liquidity = uint128(bound(position.liquidity, 1, liquidityPool));
         setPositionState(position);
         initiatorParams.positionManager = address(nonfungiblePositionManager);
         initiatorParams.id = uint96(position.id);
-
-        // And: The Compounder receives a small token0 balance from the Account.
-        initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 1, 1e8));
-
-        // And: The liquidity of the token1 balance times the token0 balance is at most the pool liquidity.
-        uint256 maxAmount1 = SqrtPriceMath.getAmount1Delta(
-            TickMath.getSqrtPriceAtTick(position.tickLower),
-            uint160(position.sqrtPrice),
-            uint128(liquidityPool / initiatorParams.amount0),
-            false
-        );
-
-        // And: The Compounder receives enough token1 from the Account to mint the minimum liquidity without a swap.
-        {
-            uint256 minAmount1 = 1e18 / (1e18 - MIN_LIQUIDITY_RATIO)
-                * (FullMath.mulDivRoundingUp(initiatorParams.amount0, position.sqrtPrice * position.sqrtPrice, 1 << 192)
-                    + FullMath.mulDivRoundingUp(position.sqrtPrice, 1, 1 << 96));
-            vm.assume(minAmount1 <= maxAmount1);
-            initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, minAmount1, maxAmount1));
-        }
 
         // And: uniV3 is allowed.
         deployUniswapV3AM();
@@ -470,6 +489,65 @@ contract Compound_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz_Test
         // And: The initiator charges no swap fee.
         initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
         initiatorParams.swapFee = 0;
+
+        // And: A token1 balance large enough for the minimum liquidity ratio.
+        uint256 unsold = FixedPointMathLib.divUp(
+            FullMath.mulDivRoundingUp((uint256(liquidityPool) + position.liquidity), 5 << 94, position.sqrtPrice),
+            position.sqrtPrice
+        );
+        unsold = ((position.sqrtPrice >> 145) + 5) * unsold + 2
+            * FullMath.mulDivRoundingUp(5 << 190, 1, position.sqrtPrice * position.sqrtPrice) + 5;
+        uint256 minAmountIn = 2 * unsold;
+        {
+            uint256 minAmount = (1e18 / (1e18 - MIN_LIQUIDITY_RATIO))
+                * (FullMath.mulDivRoundingUp(minAmountIn, position.sqrtPrice * position.sqrtPrice, 1 << 192)
+                    + FullMath.mulDivRoundingUp(position.sqrtPrice, 1, 1 << 96));
+            uint256 maxAmount = SqrtPriceMath.getAmount1Delta(
+                TickMath.getSqrtPriceAtTick(position.tickLower),
+                uint160(position.sqrtPrice),
+                uint128(liquidityPool / minAmountIn),
+                false
+            );
+            vm.assume(minAmount <= maxAmount);
+            initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, minAmount, maxAmount));
+        }
+
+        // And: A token0 balance of at least twice what the swap can leave unsold.
+        {
+            (,,, uint256 lowerSqrtPriceDeviation,) = compounder.accountInfo(address(account));
+            uint256 lowerBoundSqrtPrice = FullMath.mulDiv(position.sqrtPrice, lowerSqrtPriceDeviation, 1e18);
+            uint256 maxAmountIn = FullMath.mulDiv(
+                FullMath.mulDiv(liquidityPool, position.sqrtPrice - lowerBoundSqrtPrice - 2, lowerBoundSqrtPrice),
+                1 << 96,
+                position.sqrtPrice
+            );
+            maxAmountIn = FixedPointMathLib.min(
+                maxAmountIn,
+                liquidityPool
+                    / LiquidityAmounts.getLiquidityForAmount1(
+                        TickMath.getSqrtPriceAtTick(position.tickLower),
+                        uint160(position.sqrtPrice),
+                        initiatorParams.amount1
+                    )
+            );
+            maxAmountIn = FixedPointMathLib.min(
+                maxAmountIn,
+                FullMath.mulDiv(
+                    initiatorParams.amount1 / (1e18 / (1e18 - MIN_LIQUIDITY_RATIO))
+                        - FullMath.mulDivRoundingUp(position.sqrtPrice, 1, 1 << 96),
+                    1 << 192,
+                    position.sqrtPrice * position.sqrtPrice
+                )
+            );
+            maxAmountIn = FixedPointMathLib.min(
+                maxAmountIn,
+                FullMath.mulDiv(
+                    (uint256(liquidityPool) + position.liquidity), 1 << 192, position.sqrtPrice * position.sqrtPrice
+                )
+            );
+            vm.assume(minAmountIn <= maxAmountIn);
+            initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, minAmountIn, maxAmountIn));
+        }
 
         // And: Account owns the position and the token balances.
         vm.prank(users.liquidityProvider);
@@ -503,9 +581,6 @@ contract Compound_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz_Test
         // And: The pool is balanced.
         initiatorParams.trustedSqrtPrice = position.sqrtPrice;
 
-        // And: The token0 balance of the pool is known.
-        uint256 poolBalance0 = token0.balanceOf(address(poolUniswap));
-
         // When: Calling compound().
         initiatorParams.swapData = "";
         vm.prank(initiator);
@@ -515,10 +590,16 @@ contract Compound_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz_Test
         assertEq(ERC721(address(nonfungiblePositionManager)).ownerOf(position.id), address(account));
 
         // And: The liquidity of the position increased.
-        (,,,,,,, uint128 liquidity,,,,) = nonfungiblePositionManager.positions(position.id);
-        assertGt(liquidity, position.liquidity);
+        {
+            (,,,,,,, uint128 liquidity,,,,) = nonfungiblePositionManager.positions(position.id);
+            assertGt(liquidity, position.liquidity);
+        }
 
-        // And: The pool received at most the token0 balance of the Compounder.
-        assertLe(token0.balanceOf(address(poolUniswap)) - poolBalance0, initiatorParams.amount0);
+        // And: The Compounder holds no tokens.
+        assertEq(token0.balanceOf(address(compounder)), 0);
+        assertEq(token1.balanceOf(address(compounder)), 0);
+
+        // And: The Account holds at most the unsold token0.
+        assertLe(token0.balanceOf(address(account)), unsold);
     }
 }

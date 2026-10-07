@@ -33,6 +33,8 @@ contract RebalancerExtension is Rebalancer {
 
     function _getSqrtPrice(PositionState memory position) internal view override returns (uint160) { }
 
+    function _getAmmFee(PositionState memory position) internal view override returns (uint24) { }
+
     function _claim(
         uint256[] memory balances,
         uint256[] memory fees,

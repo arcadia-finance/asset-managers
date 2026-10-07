@@ -46,10 +46,10 @@ contract GetAmount1OutFromAmount0In_SwapMath_Fuzz_Test is RebalanceOptimizationM
             params.fee, params.usableLiquidity, params.sqrtPriceOld, params.amount0
         );
 
-        // And: amountOut is the amountOut of the pool for amount0 less the fee, rounded down.
+        // And: amountOut is the pool's amountOut for amount0 less the fee.
         assertEq(amountOut, getAmountOutForAmountIn(params, params.amount0));
 
-        // And: amountOut is always smaller or equal than result without slippage, amount0 * sqrtPriceOld² / 2^192 rounded down.
+        // And: amountOut is at most the amountOut without slippage.
         uint256 partialQuotient = FullMath.mulDiv(params.amount0, params.sqrtPriceOld, 1 << 96);
         uint256 carry = (mulmod(params.amount0, params.sqrtPriceOld, 1 << 96) * params.sqrtPriceOld) >> 96;
         carry += mulmod(partialQuotient, params.sqrtPriceOld, 1 << 96);

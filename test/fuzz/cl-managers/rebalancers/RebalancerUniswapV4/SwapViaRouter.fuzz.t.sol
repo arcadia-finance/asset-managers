@@ -42,6 +42,7 @@ contract SwapViaRouter_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Revert_swapViaRouter_RouterReverts(
         uint128 liquidityPool,
+        uint24 protocolFee,
         PositionState memory position,
         uint64 balance0,
         uint64 balance1,
@@ -49,8 +50,8 @@ contract SwapViaRouter_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         uint64 amountOut
     ) public {
         // Given: A pool with liquidity.
-        liquidityPool = givenValidPoolState(liquidityPool, position);
-        setPoolState(liquidityPool, position, false);
+        (liquidityPool, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
+        setPoolState(liquidityPool, position, protocolFee, false);
 
         // And: Contract has sufficient balance.
         balance0 = uint64(bound(balance0, 1, type(uint64).max));
@@ -76,6 +77,7 @@ contract SwapViaRouter_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
     function testFuzz_Success_swapViaRouter_NotNative_ZeroToOne(
         uint128 liquidityPool,
+        uint24 protocolFee,
         PositionState memory position,
         uint64 balance0,
         uint64 balance1,
@@ -83,8 +85,8 @@ contract SwapViaRouter_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         uint64 amountOut
     ) public {
         // Given: A pool with liquidity.
-        liquidityPool = givenValidPoolState(liquidityPool, position);
-        setPoolState(liquidityPool, position, false);
+        (liquidityPool, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
+        setPoolState(liquidityPool, position, protocolFee, false);
 
         // And: Contract has sufficient balance.
         balance0 = uint64(bound(balance0, 1, type(uint64).max));
@@ -115,6 +117,7 @@ contract SwapViaRouter_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
     function testFuzz_Success_swapViaRouter_NotNative_OneToZero(
         uint128 liquidityPool,
+        uint24 protocolFee,
         PositionState memory position,
         uint64 balance0,
         uint64 balance1,
@@ -122,8 +125,8 @@ contract SwapViaRouter_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         uint64 amountOut
     ) public {
         // Given: A pool with liquidity.
-        liquidityPool = givenValidPoolState(liquidityPool, position);
-        setPoolState(liquidityPool, position, false);
+        (liquidityPool, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
+        setPoolState(liquidityPool, position, protocolFee, false);
 
         // And: Contract has sufficient balance.
         balance1 = uint64(bound(balance1, 1, type(uint64).max));
@@ -154,6 +157,7 @@ contract SwapViaRouter_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
     function testFuzz_Success_swapViaRouter_IsNative_ZeroToOne(
         uint128 liquidityPool,
+        uint24 protocolFee,
         PositionState memory position,
         uint64 balance0,
         uint64 balance1,
@@ -161,8 +165,8 @@ contract SwapViaRouter_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         uint64 amountOut
     ) public {
         // Given: A pool with liquidity.
-        liquidityPool = givenValidPoolState(liquidityPool, position);
-        setPoolState(liquidityPool, position, true);
+        (liquidityPool, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
+        setPoolState(liquidityPool, position, protocolFee, true);
 
         // And: Contract has sufficient balance.
         balance0 = uint64(bound(balance0, 1, type(uint64).max));
@@ -193,6 +197,7 @@ contract SwapViaRouter_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
 
     function testFuzz_Success_swapViaRouter_IsNative_OneToZero(
         uint128 liquidityPool,
+        uint24 protocolFee,
         PositionState memory position,
         uint64 balance0,
         uint64 balance1,
@@ -200,8 +205,8 @@ contract SwapViaRouter_RebalancerUniswapV4_Fuzz_Test is RebalancerUniswapV4_Fuzz
         uint64 amountOut
     ) public {
         // Given: A pool with liquidity.
-        liquidityPool = givenValidPoolState(liquidityPool, position);
-        setPoolState(liquidityPool, position, true);
+        (liquidityPool, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
+        setPoolState(liquidityPool, position, protocolFee, true);
 
         // And: Contract has sufficient balance.
         balance1 = uint64(bound(balance1, 1, type(uint64).max));

@@ -98,7 +98,7 @@ contract GetNormalizedParameters_SwapMath_Fuzz_Test is RebalanceOptimizationMath
         // Given: A position in range.
         givenValidNormalizationParams(params);
 
-        // And: amount0 is the smallest balance whose normalized value exceeds MAX_NORMALIZED.
+        // And: The smallest amount0 whose normalized value exceeds MAX_NORMALIZED.
         (params.amount0,,,) = getOverflowAmounts(params.usableLiquidity, params.sqrtPriceOld);
 
         // And: The normalized amount1 does not exceed MAX_NORMALIZED.
@@ -137,7 +137,7 @@ contract GetNormalizedParameters_SwapMath_Fuzz_Test is RebalanceOptimizationMath
         (uint256 maxAmount0,) = getMaxAmounts(params.usableLiquidity, params.sqrtPriceOld);
         params.amount0 = bound(params.amount0, 0, maxAmount0);
 
-        // And: amount1 is the smallest balance whose normalized value exceeds MAX_NORMALIZED.
+        // And: The smallest amount1 whose normalized value exceeds MAX_NORMALIZED.
         (,, params.amount1,) = getOverflowAmounts(params.usableLiquidity, params.sqrtPriceOld);
 
         // When: Calling _getNormalizedParameters().
@@ -169,7 +169,7 @@ contract GetNormalizedParameters_SwapMath_Fuzz_Test is RebalanceOptimizationMath
             FullMath.mulDiv(params.amount0, uint256(params.sqrtPriceOld) << 96, params.usableLiquidity)
         );
 
-        // And: amount1Normalized is at most amount1 * 2^288 / (L * sqrtPriceOld) rounded down, and at most ⌈2^160 / sqrtPriceOld⌉ below it.
+        // And: amount1Normalized is at most ⌈2^160 / sqrtPriceOld⌉ below its exact value.
         {
             uint256 quotient = FullMath.mulDiv(params.amount1, 1 << 128, params.usableLiquidity);
             uint256 remainder = FullMath.mulDiv(
@@ -181,10 +181,10 @@ contract GetNormalizedParameters_SwapMath_Fuzz_Test is RebalanceOptimizationMath
             assertLe(amount1Exact, amount1Normalized + FixedPointMathLib.divUp(1 << 160, params.sqrtPriceOld));
         }
 
-        // And: sqrtRatioLowerNormalized is sqrtRatioLower * 2^192 / sqrtPriceOld, rounded down.
+        // And: sqrtRatioLowerNormalized is sqrtRatioLower * 2^192 / sqrtPriceOld.
         assertEq(sqrtRatioLowerNormalized, FullMath.mulDiv(params.sqrtRatioLower, 1 << 192, params.sqrtPriceOld));
 
-        // And: sqrtRatioUpperInverseNormalized is sqrtPriceOld * 2^192 / sqrtRatioUpper, rounded down.
+        // And: sqrtRatioUpperInverseNormalized is sqrtPriceOld * 2^192 / sqrtRatioUpper.
         assertEq(sqrtRatioUpperInverseNormalized, FullMath.mulDiv(params.sqrtPriceOld, 1 << 192, params.sqrtRatioUpper));
     }
 
@@ -206,7 +206,7 @@ contract GetNormalizedParameters_SwapMath_Fuzz_Test is RebalanceOptimizationMath
         uint256 divisor = params.sqrtPriceOld >> shift;
         params.usableLiquidity = uint128(bound(params.usableLiquidity, 1, type(uint128).max / divisor) * divisor);
 
-        // And: amount0 is the largest balance whose normalized value does not exceed MAX_NORMALIZED.
+        // And: The largest amount0 whose normalized value is at most MAX_NORMALIZED.
         (uint256 minAmount0,,,) = getOverflowAmounts(params.usableLiquidity, params.sqrtPriceOld);
         params.amount0 = minAmount0 - 1;
 
@@ -232,7 +232,7 @@ contract GetNormalizedParameters_SwapMath_Fuzz_Test is RebalanceOptimizationMath
         (uint256 maxAmount0,) = getMaxAmounts(params.usableLiquidity, params.sqrtPriceOld);
         params.amount0 = bound(params.amount0, 0, maxAmount0);
 
-        // And: amount1 is the largest balance whose normalized value does not exceed MAX_NORMALIZED.
+        // And: The largest amount1 whose normalized value is at most MAX_NORMALIZED.
         (,, uint256 minAmount1,) = getOverflowAmounts(params.usableLiquidity, params.sqrtPriceOld);
         params.amount1 = minAmount1 - 1;
 

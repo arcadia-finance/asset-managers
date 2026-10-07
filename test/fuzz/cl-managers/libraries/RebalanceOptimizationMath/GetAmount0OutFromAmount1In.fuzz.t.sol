@@ -32,8 +32,8 @@ contract GetAmount0OutFromAmount1In_SwapMath_Fuzz_Test is RebalanceOptimizationM
         // And: fee is smaller than 1e6 (invariant).
         params.fee = bound(params.fee, 0, 1e6 - 1);
 
-        // And: usableLiquidity is not near zero.
-        params.usableLiquidity = uint128(bound(params.usableLiquidity, 1e18, type(uint128).max));
+        // And: usableLiquidity is not zero.
+        params.usableLiquidity = uint128(bound(params.usableLiquidity, 1, type(uint128).max));
 
         // And: sqrtPriceOld is within boundaries.
         params.sqrtPriceOld = uint160(bound(params.sqrtPriceOld, TickMath.MIN_SQRT_PRICE, TickMath.MAX_SQRT_PRICE));
@@ -55,10 +55,10 @@ contract GetAmount0OutFromAmount1In_SwapMath_Fuzz_Test is RebalanceOptimizationM
             params.fee, params.usableLiquidity, params.sqrtPriceOld, params.amount1
         );
 
-        // And: amountOut is the amountOut of the pool for amount1 less the fee, rounded down.
+        // And: amountOut is the pool's amountOut for amount1 less the fee.
         assertEq(amountOut, getAmountOutForAmountIn(params, params.amount1));
 
-        // And: amountOut is always smaller or equal than result without slippage, amount1 * 2^192 / sqrtPriceOld² rounded down.
+        // And: amountOut is at most the amountOut without slippage.
         uint256 partialQuotient = FullMath.mulDiv(params.amount1, 1 << 96, params.sqrtPriceOld);
         uint256 carry = (mulmod(params.amount1, 1 << 96, params.sqrtPriceOld) << 96) / params.sqrtPriceOld;
         carry += mulmod(partialQuotient, 1 << 96, params.sqrtPriceOld);

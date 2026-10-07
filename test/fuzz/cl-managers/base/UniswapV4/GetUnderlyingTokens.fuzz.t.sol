@@ -27,11 +27,11 @@ contract GetUnderlyingTokens_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
     function testFuzz_revert_getUnderlyingTokens_InvalidPool(uint128 liquidityPool, PositionState memory position)
         public
     {
-        liquidityPool = givenValidPoolState(liquidityPool, position);
+        (liquidityPool,) = givenValidPoolState(liquidityPool, position, 0);
 
         deployNativeAM();
         poolKey = initializePoolV4(
-            address(0), address(weth9), uint160(position.sqrtPrice), address(0), position.fee, position.tickSpacing
+            address(0), address(weth9), uint160(position.sqrtPrice), address(0), position.poolFee, position.tickSpacing
         );
         position.tokens = new address[](2);
         position.tokens[0] = address(0);
@@ -51,11 +51,13 @@ contract GetUnderlyingTokens_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
         base.getUnderlyingTokens(address(positionManagerV4), position.id);
     }
 
-    function testFuzz_Success_getUnderlyingTokens_NotNative(uint128 liquidityPool, PositionState memory position)
-        public
-    {
-        liquidityPool = givenValidPoolState(liquidityPool, position);
-        setPoolState(liquidityPool, position, false);
+    function testFuzz_Success_getUnderlyingTokens_NotNative(
+        uint128 liquidityPool,
+        uint24 protocolFee,
+        PositionState memory position
+    ) public {
+        (liquidityPool, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
+        setPoolState(liquidityPool, position, protocolFee, false);
         givenValidPositionState(position);
         setPositionState(position);
 
@@ -67,11 +69,13 @@ contract GetUnderlyingTokens_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
         assertEq(token1_, address(token1));
     }
 
-    function testFuzz_Success_getUnderlyingTokens_IsNative(uint128 liquidityPool, PositionState memory position)
-        public
-    {
-        liquidityPool = givenValidPoolState(liquidityPool, position);
-        setPoolState(liquidityPool, position, true);
+    function testFuzz_Success_getUnderlyingTokens_IsNative(
+        uint128 liquidityPool,
+        uint24 protocolFee,
+        PositionState memory position
+    ) public {
+        (liquidityPool, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
+        setPoolState(liquidityPool, position, protocolFee, true);
         givenValidPositionState(position);
         setPositionState(position);
 

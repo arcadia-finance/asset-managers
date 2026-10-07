@@ -11,7 +11,7 @@ struct PositionState {
     // The id of the position.
     uint256 id;
     // The fee of the pool
-    uint24 fee;
+    uint24 poolFee;
     // The tick spacing of the pool.
     int24 tickSpacing;
     // The current tick of the pool.

@@ -8,25 +8,38 @@ import { ArcadiaOracle } from "../../../../../lib/accounts-v2/test/utils/mocks/o
 import { BitPackingLib } from "../../../../../lib/accounts-v2/src/libraries/BitPackingLib.sol";
 import { Currency } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
 import { DefaultUniswapV4AM } from "../../../../../lib/accounts-v2/src/asset-modules/UniswapV4/DefaultUniswapV4AM.sol";
+import { DynamicFeeHookMock } from "../../../../utils/mocks/DynamicFeeHookMock.sol";
 import { ERC20Mock } from "../../../../../lib/accounts-v2/test/utils/mocks/tokens/ERC20Mock.sol";
-import {
-    FixedPoint96
-} from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint96.sol";
 import {
     FixedPoint128
 } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint128.sol";
+import {
+    FixedPoint96
+} from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FixedPoint96.sol";
 import { FullMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { Fuzz_Test } from "../../../Fuzz.t.sol";
+import { Hooks } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/Hooks.sol";
+import {
+    IPoolManager
+} from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/interfaces/IPoolManager.sol";
+import {
+    LPFeeLibrary
+} from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/LPFeeLibrary.sol";
 import { NativeTokenAM } from "../../../../../lib/accounts-v2/src/asset-modules/native-token/NativeTokenAM.sol";
+import { PoolId } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolId.sol";
 import { PoolKey } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
-import { UniswapV4Extension } from "../../../../utils/extensions/UniswapV4Extension.sol";
+import {
+    ProtocolFeeLibrary
+} from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/ProtocolFeeLibrary.sol";
 import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 import { UniswapHelpers } from "../../../../utils/uniswap-v3/UniswapHelpers.sol";
+import { UniswapV4Extension } from "../../../../utils/extensions/UniswapV4Extension.sol";
 import { UniswapV4Fixture } from "../../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v4/UniswapV4Fixture.f.sol";
 import {
     UniswapV4HooksRegistry
 } from "../../../../../lib/accounts-v2/src/asset-modules/UniswapV4/UniswapV4HooksRegistry.sol";
+import { Vm } from "../../../../../lib/accounts-v2/lib/forge-std/src/Vm.sol";
 
 /**
  * @notice Common logic needed by all "UniswapV4" fuzz tests.
@@ -38,6 +51,7 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
     /////////////////////////////////////////////////////////////// */
 
     uint24 internal constant POOL_FEE = 100;
+    uint24 internal constant MAX_POOL_FEE = 100_000;
     int24 internal constant TICK_SPACING = 1;
 
     uint256 internal constant MAX_TOLERANCE = 0.02 * 1e18;
@@ -52,6 +66,8 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
     ERC20Mock internal token1;
 
     PoolKey internal poolKey;
+
+    DynamicFeeHookMock internal dynamicFeeHook;
 
     // forge-lint: disable-start(mixed-case-variable)
     ArcadiaOracle internal ethOracle;
@@ -81,6 +97,8 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
 
         // Deploy fixture for Uniswap V3.
         UniswapV4Fixture.setUp();
+        dynamicFeeHook = DynamicFeeHookMock(address(Hooks.ALL_HOOK_MASK + 1));
+        deployCodeTo("DynamicFeeHookMock.sol", abi.encode(poolManager), address(dynamicFeeHook));
 
         // Deploy test contract.
         base =
@@ -92,13 +110,17 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
     ////////////////////////////////////////////////////////////////*/
 
     function initUniswapV4() internal returns (uint256 id) {
-        id = initUniswapV4(2 ** 96, type(uint64).max, POOL_FEE, TICK_SPACING, false);
+        id = initUniswapV4(2 ** 96, type(uint64).max, POOL_FEE, TICK_SPACING, address(0), false);
     }
 
-    function initUniswapV4(uint160 sqrtPrice, uint128 liquidityPool, uint24 fee, int24 tickSpacing, bool native)
-        internal
-        returns (uint256 id)
-    {
+    function initUniswapV4(
+        uint160 sqrtPrice,
+        uint128 liquidityPool,
+        uint24 fee,
+        int24 tickSpacing,
+        address hook,
+        bool native
+    ) internal returns (uint256 id) {
         // Create tokens.
         token0 = new ERC20Mock("TokenA", "TOKA", 0);
         token1 = new ERC20Mock("TokenB", "TOKB", 0);
@@ -109,9 +131,9 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         // Create pool.
         if (native) {
             deployNativeAM();
-            poolKey = initializePoolV4(address(0), address(token1), uint160(sqrtPrice), address(0), fee, tickSpacing);
+            poolKey = initializePoolV4(address(0), address(token1), uint160(sqrtPrice), hook, fee, tickSpacing);
         } else {
-            poolKey = initializePoolV4(address(token0), address(token1), sqrtPrice, address(0), fee, tickSpacing);
+            poolKey = initializePoolV4(address(token0), address(token1), sqrtPrice, hook, fee, tickSpacing);
         }
 
         // Create initial position.
@@ -135,13 +157,13 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         addAssetToArcadia(address(token1), int256(price1));
     }
 
-    function givenValidPoolState(uint128 liquidityPool, PositionState memory position)
+    function givenValidPoolState(uint128 liquidityPool, PositionState memory position, uint24 protocolFee)
         internal
         view
-        returns (uint128 liquidityPool_)
+        returns (uint128 liquidityPool_, uint24 protocolFee_)
     {
-        // Given: No hook is set.
-        position.pool = address(0);
+        // Given: No hook or the dynamic fee hook.
+        position.pool = uint160(position.pool) % 2 == 0 ? address(0) : address(dynamicFeeHook);
 
         // And: Reasonable current price.
         position.sqrtPrice =
@@ -152,12 +174,27 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
             uint128(bound(liquidityPool, UniswapHelpers.maxLiquidity(1) / 1000, UniswapHelpers.maxLiquidity(1) / 10));
         position.sqrtPrice = uint160(position.sqrtPrice);
         position.tickCurrent = TickMath.getTickAtSqrtPrice(uint160(position.sqrtPrice));
-        position.fee = POOL_FEE;
+        position.poolFee = uint24(bound(position.poolFee, 0, MAX_POOL_FEE));
         position.tickSpacing = TICK_SPACING;
+
+        // And: A protocol fee per direction.
+        protocolFee_ = uint24(
+            bound(protocolFee & 0xfff, 0, ProtocolFeeLibrary.MAX_PROTOCOL_FEE)
+                | bound(protocolFee >> 12, 0, ProtocolFeeLibrary.MAX_PROTOCOL_FEE) << 12
+        );
     }
 
-    function setPoolState(uint128 liquidityPool, PositionState memory position, bool native) internal {
-        initUniswapV4(uint160(position.sqrtPrice), liquidityPool, position.fee, position.tickSpacing, native);
+    function setPoolState(uint128 liquidityPool, PositionState memory position, uint24 protocolFee, bool native)
+        internal
+    {
+        uint24 lpFee = position.poolFee;
+        if (position.pool == address(dynamicFeeHook)) position.poolFee = LPFeeLibrary.DYNAMIC_FEE_FLAG;
+        initUniswapV4(
+            uint160(position.sqrtPrice), liquidityPool, position.poolFee, position.tickSpacing, position.pool, native
+        );
+        if (position.pool == address(dynamicFeeHook)) dynamicFeeHook.setLpFee(poolKey, lpFee);
+        poolManager.setProtocolFeeController(address(this));
+        poolManager.setProtocolFee(poolKey, protocolFee);
         position.tokens = new address[](2);
         position.tokens[0] = native ? address(0) : address(token0);
         position.tokens[1] = address(token1);
@@ -226,6 +263,24 @@ abstract contract UniswapV4_Fuzz_Test is Fuzz_Test, UniswapV4Fixture {
         erc20AM.addAsset(address(weth9), BitPackingLib.pack(BA_TO_QA_SINGLE, oracleEthToUsdArr));
         nativeTokenAM.addAsset(address(0), BitPackingLib.pack(BA_TO_QA_SINGLE, oracleEthToUsdArr));
         vm.stopPrank();
+    }
+
+    function getAmmFee() internal view returns (uint24 ammFee) {
+        (,, uint24 protocolFee, uint24 lpFee) = stateView.getSlot0(poolKey.toId());
+        uint16 protocolFee0 = ProtocolFeeLibrary.getZeroForOneFee(protocolFee);
+        uint16 protocolFee1 = ProtocolFeeLibrary.getOneForZeroFee(protocolFee);
+        ammFee = ProtocolFeeLibrary.calculateSwapFee(protocolFee0 > protocolFee1 ? protocolFee0 : protocolFee1, lpFee);
+    }
+
+    function getSwap(Vm.Log[] memory logs) internal view returns (int128 amount0, int128 amount1, uint24 fee) {
+        for (uint256 i; i < logs.length; ++i) {
+            if (
+                logs[i].emitter == address(poolManager) && logs[i].topics[0] == IPoolManager.Swap.selector
+                    && logs[i].topics[1] == PoolId.unwrap(poolKey.toId())
+            ) {
+                (amount0, amount1,,,, fee) = abi.decode(logs[i].data, (int128, int128, uint160, uint128, int24, uint24));
+            }
+        }
     }
 
     function generateFees(uint256 amount0, uint256 amount1) public {

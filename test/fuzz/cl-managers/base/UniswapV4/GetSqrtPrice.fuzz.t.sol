@@ -22,10 +22,15 @@ contract GetSqrtPrice_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_getSqrtPrice(uint128 liquidityPool, PositionState memory position, bool native) public {
+    function testFuzz_Success_getSqrtPrice(
+        uint128 liquidityPool,
+        uint24 protocolFee,
+        PositionState memory position,
+        bool native
+    ) public {
         // Given: A valid position.
-        liquidityPool = givenValidPoolState(liquidityPool, position);
-        setPoolState(liquidityPool, position, native);
+        (liquidityPool, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
+        setPoolState(liquidityPool, position, protocolFee, native);
         givenValidPositionState(position);
         setPositionState(position);
 

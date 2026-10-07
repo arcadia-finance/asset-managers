@@ -9,7 +9,7 @@ import { RebalanceLogic, RebalanceParams } from "../../../src/cl-managers/librar
 contract RebalanceLogicExtension {
     function getRebalanceParams(
         uint256 maxSlippageRatio,
-        uint256 poolFee,
+        uint256 ammFee,
         uint256 initiatorFee,
         uint256 sqrtPrice,
         uint256 sqrtRatioLower,
@@ -18,7 +18,7 @@ contract RebalanceLogicExtension {
         uint256 balance1
     ) external pure returns (RebalanceParams memory) {
         return RebalanceLogic._getRebalanceParams(
-            maxSlippageRatio, poolFee, initiatorFee, sqrtPrice, sqrtRatioLower, sqrtRatioUpper, balance0, balance1
+            maxSlippageRatio, ammFee, initiatorFee, sqrtPrice, sqrtRatioLower, sqrtRatioUpper, balance0, balance1
         );
     }
 }

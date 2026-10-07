@@ -118,6 +118,7 @@ abstract contract Slipstream is AbstractBase {
      * @param positionManager The contract address of the Position Manager.
      * @param id The id of the Liquidity Position.
      * @return position A struct with position and pool related variables.
+     * @dev Slipstream pools have no fixed poolFee, their dynamic fee is read in _getAmmFee.
      */
     function _getPositionState(address positionManager, uint256 id)
         internal
@@ -150,7 +151,6 @@ abstract contract Slipstream is AbstractBase {
         position.pool =
             SlipstreamLogic.computeAddress(POOL_IMPLEMENTATION, CL_FACTORY, token0, token1, position.tickSpacing);
         (position.sqrtPrice, position.tickCurrent,,,,) = ICLPool(position.pool).slot0();
-        position.fee = ICLPool(position.pool).fee();
     }
 
     /**
@@ -175,6 +175,15 @@ abstract contract Slipstream is AbstractBase {
      */
     function _getSqrtPrice(PositionState memory position) internal view virtual override returns (uint160 sqrtPrice) {
         (sqrtPrice,,,,,) = ICLPool(position.pool).slot0();
+    }
+
+    /**
+     * @notice Returns the fee the AMM charges on swaps.
+     * @param position A struct with position and pool related variables.
+     * @return ammFee The fee the AMM charges on swaps, with 6 decimals precision.
+     */
+    function _getAmmFee(PositionState memory position) internal view virtual override returns (uint24 ammFee) {
+        ammFee = ICLPool(position.pool).fee();
     }
 
     /* ///////////////////////////////////////////////////////////////

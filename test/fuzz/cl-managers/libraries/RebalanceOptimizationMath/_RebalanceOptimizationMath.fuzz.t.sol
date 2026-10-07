@@ -390,7 +390,7 @@ abstract contract RebalanceOptimizationMath_Fuzz_Test is Fuzz_Test {
         returns (bool valid, uint256 liquidity, uint256 liquidityOut)
     {
         (uint160 sqrtPrice, uint256 amountIn) = getAmountInForAmountOut(params, amountOut);
-        valid = amountIn <= (params.zeroToOne ? params.amount0 : params.amount1)
+        valid = (amountOut == 0 || amountIn < (params.zeroToOne ? params.amount0 : params.amount1))
             && (params.zeroToOne ? sqrtPrice >= params.sqrtRatioLower : sqrtPrice <= params.sqrtRatioUpper);
         (uint256 balance0, uint256 balance1) = params.zeroToOne
             ? (FixedPointMathLib.zeroFloorSub(params.amount0, amountIn), params.amount1 + amountOut)
@@ -400,11 +400,7 @@ abstract contract RebalanceOptimizationMath_Fuzz_Test is Fuzz_Test {
         liquidityOut = params.zeroToOne ? liquidity1 : liquidity0;
     }
 
-    function getOptimalLiquidity(SwapParams memory params)
-        internal
-        pure
-        returns (uint256 liquidity, uint160 sqrtPrice)
-    {
+    function getOptimalLiquidity(SwapParams memory params) internal pure returns (uint256 liquidity) {
         uint256 low;
         uint256 high = params.zeroToOne
             ? SqrtPriceMath.getAmount1Delta(params.sqrtRatioLower, params.sqrtPriceOld, params.usableLiquidity, false)
@@ -442,7 +438,6 @@ abstract contract RebalanceOptimizationMath_Fuzz_Test is Fuzz_Test {
             }
         }
         (, liquidity,) = getLiquidityForAmountOut(params, amountOut);
-        (sqrtPrice,) = getAmountInForAmountOut(params, amountOut);
     }
 
     function getLiquidityAndTolerance(SwapParams memory params, uint256 amountOut)
@@ -500,20 +495,36 @@ abstract contract RebalanceOptimizationMath_Fuzz_Test is Fuzz_Test {
         }
     }
 
-    function getPrecisionTolerance(SwapParams memory params, uint256 optimalLiquidity, uint160 optimalSqrtPrice)
+    function getCrossingSqrtPrice(SwapParams memory params) internal pure returns (uint160 sqrtPrice) {
+        uint256 low = params.zeroToOne
+            ? params.sqrtRatioLower
+            : FixedPointMathLib.max(params.sqrtPriceOld, params.sqrtRatioLower);
+        uint256 high = params.zeroToOne
+            ? FixedPointMathLib.min(params.sqrtPriceOld, params.sqrtRatioUpper)
+            : params.sqrtRatioUpper;
+        while (high - low > 1) {
+            uint256 middle = (low + high) / 2;
+            (uint256 liquidityIn, uint256 liquidityOut) = getLiquiditiesAfterMove(params, uint160(middle), true);
+            if ((liquidityIn >= liquidityOut) == params.zeroToOne) high = middle;
+            else low = middle;
+        }
+        sqrtPrice = uint160(params.zeroToOne ? high : low);
+    }
+
+    function getPrecisionTolerance(SwapParams memory params, uint256 optimalLiquidity, uint160 crossingSqrtPrice)
         internal
         pure
         returns (uint256 tolerance)
     {
         uint256 window =
-            ((params.zeroToOne ? params.sqrtPriceOld - optimalSqrtPrice : optimalSqrtPrice - params.sqrtPriceOld) >> 95)
-                + (params.sqrtPriceOld >> 145) + 2;
+            ((params.zeroToOne ? params.sqrtPriceOld - crossingSqrtPrice : crossingSqrtPrice - params.sqrtPriceOld)
+                        >> 95) + (params.sqrtPriceOld >> 145) + 2;
         uint256 lowest = type(uint256).max;
         for (uint256 i; i < 2; ++i) {
             uint256 low;
             uint256 high = window + 1;
-            uint256 middle;
-            uint256 liquidity;
+            uint256 middle = i == 0 ? window : 0;
+            uint256 liquidity = type(uint256).max;
             do {
                 uint256 amountOut;
                 {
@@ -521,13 +532,13 @@ abstract contract RebalanceOptimizationMath_Fuzz_Test is Fuzz_Test {
                     if ((i == 0) == params.zeroToOne) {
                         end = uint160(
                             FixedPointMathLib.min(
-                                optimalSqrtPrice + middle,
+                                crossingSqrtPrice + middle,
                                 params.zeroToOne ? params.sqrtPriceOld : params.sqrtRatioUpper
                             )
                         );
                     } else {
                         uint256 limit = params.zeroToOne ? params.sqrtRatioLower : params.sqrtPriceOld;
-                        end = uint160(optimalSqrtPrice > limit + middle ? optimalSqrtPrice - middle : limit);
+                        end = uint160(crossingSqrtPrice > limit + middle ? crossingSqrtPrice - middle : limit);
                     }
                     amountOut = params.zeroToOne
                         ? SqrtPriceMath.getAmount1Delta(end, params.sqrtPriceOld, params.usableLiquidity, false)
@@ -536,12 +547,12 @@ abstract contract RebalanceOptimizationMath_Fuzz_Test is Fuzz_Test {
                 (bool valid, uint256 liquidityAtEnd,) = getLiquidityForAmountOut(params, amountOut);
                 if (valid || middle == 0) {
                     low = middle;
-                    liquidity = liquidityAtEnd;
+                    if (valid) liquidity = liquidityAtEnd;
                 } else {
                     high = middle;
                 }
                 middle = (low + high) / 2;
-            } while (high - low > 1);
+            } while (i == 1 && high - low > 1);
             if (liquidity < lowest) lowest = liquidity;
         }
         tolerance = optimalLiquidity > lowest ? optimalLiquidity - lowest : 0;

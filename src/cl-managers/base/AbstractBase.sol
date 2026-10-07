@@ -71,6 +71,13 @@ abstract contract AbstractBase {
      */
     function _getSqrtPrice(PositionState memory position) internal view virtual returns (uint160 sqrtPrice);
 
+    /**
+     * @notice Returns the fee the AMM charges on swaps.
+     * @param position A struct with position and pool related variables.
+     * @return ammFee The fee the AMM charges on swaps, with 6 decimals precision.
+     */
+    function _getAmmFee(PositionState memory position) internal view virtual returns (uint24 ammFee);
+
     /* ///////////////////////////////////////////////////////////////
                             CLAIM LOGIC
     /////////////////////////////////////////////////////////////// */
