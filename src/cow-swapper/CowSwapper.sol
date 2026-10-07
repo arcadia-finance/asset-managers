@@ -30,7 +30,7 @@ contract CowSwapper is IActionBase, EIP712, Guardian {
     ////////////////////////////////////////////////////////////// */
 
     // The version of the CowSwapper.
-    string public constant VERSION = "1.1.1";
+    string public constant VERSION = "1.2.0";
 
     // The EIP-1271 magic value.
     bytes4 internal constant MAGIC_VALUE = 0x1626ba7e;

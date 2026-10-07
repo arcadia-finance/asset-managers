@@ -17,7 +17,7 @@ contract YieldClaimerUniswapV3 is YieldClaimer, UniswapV3 {
     ////////////////////////////////////////////////////////////// */
 
     // The version of the Asset Manager.
-    string public constant VERSION = "2.1.0";
+    string public constant VERSION = "2.2.0";
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
