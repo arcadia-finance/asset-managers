@@ -21,10 +21,17 @@ contract Constructor_MerklOperatorBase_Fuzz_Test is MerklOperatorBase_Fuzz_Test 
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_Constructor(address owner_, address arcadiaFactory, address distributor_) public {
-        MerklOperatorBaseExtension merklOperator_ = new MerklOperatorBaseExtension(owner_, arcadiaFactory, distributor_);
+    function testFuzz_Success_Constructor(
+        address owner_,
+        address guardian_,
+        address arcadiaFactory,
+        address distributor_
+    ) public {
+        MerklOperatorBaseExtension merklOperator_ =
+            new MerklOperatorBaseExtension(owner_, guardian_, arcadiaFactory, distributor_);
 
         assertEq(merklOperator_.owner(), owner_);
+        assertEq(merklOperator_.guardian(), guardian_);
         assertEq(address(merklOperator_.ARCADIA_FACTORY()), arcadiaFactory);
         assertEq(address(merklOperator_.MERKL_DISTRIBUTOR()), distributor_);
     }

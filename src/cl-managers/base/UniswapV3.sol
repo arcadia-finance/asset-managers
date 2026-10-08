@@ -105,7 +105,7 @@ abstract contract UniswapV3 is AbstractBase {
             ,,
             position.tokens[0],
             position.tokens[1],
-            position.fee,
+            position.poolFee,
             position.tickLower,
             position.tickUpper,
             position.liquidity,,,,
@@ -113,7 +113,7 @@ abstract contract UniswapV3 is AbstractBase {
 
         // Get data of the Liquidity Pool.
         position.pool =
-            PoolAddress.computeAddress(UNISWAP_V3_FACTORY, position.tokens[0], position.tokens[1], position.fee);
+            PoolAddress.computeAddress(UNISWAP_V3_FACTORY, position.tokens[0], position.tokens[1], position.poolFee);
         (position.sqrtPrice, position.tickCurrent,,,,,) = IUniswapV3Pool(position.pool).slot0();
         position.tickSpacing = IUniswapV3Pool(position.pool).tickSpacing();
     }
@@ -140,6 +140,15 @@ abstract contract UniswapV3 is AbstractBase {
      */
     function _getSqrtPrice(PositionState memory position) internal view virtual override returns (uint160 sqrtPrice) {
         (sqrtPrice,,,,,,) = IUniswapV3Pool(position.pool).slot0();
+    }
+
+    /**
+     * @notice Returns the fee the AMM charges on swaps.
+     * @param position A struct with position and pool related variables.
+     * @return ammFee The fee the AMM charges on swaps, with 6 decimals precision.
+     */
+    function _getAmmFee(PositionState memory position) internal pure virtual override returns (uint24 ammFee) {
+        ammFee = position.poolFee;
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -281,7 +290,7 @@ abstract contract UniswapV3 is AbstractBase {
                 zeroToOne,
                 -int256(amountOut),
                 zeroToOne ? CLMath.MIN_SQRT_PRICE_LIMIT : CLMath.MAX_SQRT_PRICE_LIMIT,
-                abi.encode(position.tokens[0], position.tokens[1], position.fee)
+                abi.encode(position.tokens[0], position.tokens[1], position.poolFee)
             );
 
         // Update the balances.
@@ -341,7 +350,7 @@ abstract contract UniswapV3 is AbstractBase {
             IPositionManagerV3.MintParams({
                 token0: position.tokens[0],
                 token1: position.tokens[1],
-                fee: position.fee,
+                fee: position.poolFee,
                 tickLower: position.tickLower,
                 tickUpper: position.tickUpper,
                 amount0Desired: amount0Desired,

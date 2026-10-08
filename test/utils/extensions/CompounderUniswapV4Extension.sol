@@ -10,6 +10,7 @@ import { PositionState } from "../../../src/cl-managers/state/PositionState.sol"
 contract CompounderUniswapV4Extension is CompounderUniswapV4 {
     constructor(
         address owner_,
+        address guardian_,
         address arcadiaFactory,
         address routerTrampoline,
         address positionManager,
@@ -18,7 +19,7 @@ contract CompounderUniswapV4Extension is CompounderUniswapV4 {
         address wrappedNative
     )
         CompounderUniswapV4(
-            owner_, arcadiaFactory, routerTrampoline, positionManager, permit2, poolManager, wrappedNative
+            owner_, guardian_, arcadiaFactory, routerTrampoline, positionManager, permit2, poolManager, wrappedNative
         )
     { }
 

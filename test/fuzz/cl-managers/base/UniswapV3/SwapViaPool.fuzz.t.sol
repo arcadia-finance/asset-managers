@@ -49,7 +49,7 @@ contract SwapViaPool_UniswapV3_Fuzz_Test is UniswapV3_Fuzz_Test {
         );
         uint256 amountInLessFee =
             SqrtPriceMath.getAmount0Delta(sqrtPriceNew, uint160(position.sqrtPrice), poolUniswap.liquidity(), true);
-        uint256 amountIn = amountInLessFee * 1e6 / (1e6 - POOL_FEE);
+        uint256 amountIn = amountInLessFee * 1e6 / (1e6 - position.poolFee);
         vm.assume(amountIn > 10);
 
         // And: Contract has sufficient balances.
@@ -94,7 +94,7 @@ contract SwapViaPool_UniswapV3_Fuzz_Test is UniswapV3_Fuzz_Test {
         );
         uint256 amountInLessFee =
             SqrtPriceMath.getAmount1Delta(sqrtPriceNew, uint160(position.sqrtPrice), poolUniswap.liquidity(), true);
-        uint256 amountIn = amountInLessFee * 1e6 / (1e6 - POOL_FEE);
+        uint256 amountIn = amountInLessFee * 1e6 / (1e6 - position.poolFee);
         vm.assume(amountIn > 10);
 
         // And: Contract has sufficient balances.

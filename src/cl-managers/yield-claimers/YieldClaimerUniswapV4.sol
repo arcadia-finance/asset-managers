@@ -17,7 +17,7 @@ contract YieldClaimerUniswapV4 is YieldClaimer, UniswapV4 {
     ////////////////////////////////////////////////////////////// */
 
     // The version of the Asset Manager.
-    string public constant VERSION = "2.1.1";
+    string public constant VERSION = "2.2.0";
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -25,6 +25,7 @@ contract YieldClaimerUniswapV4 is YieldClaimer, UniswapV4 {
 
     /**
      * @param owner_ The address of the Owner.
+     * @param guardian_ The address of the Guardian.
      * @param arcadiaFactory The contract address of the Arcadia Factory.
      * @param positionManager The contract address of the Uniswap v4 Position Manager.
      * @param permit2 The contract address of Permit2.
@@ -33,10 +34,14 @@ contract YieldClaimerUniswapV4 is YieldClaimer, UniswapV4 {
      */
     constructor(
         address owner_,
+        address guardian_,
         address arcadiaFactory,
         address positionManager,
         address permit2,
         address poolManager,
         address wrappedNative
-    ) YieldClaimer(owner_, arcadiaFactory) UniswapV4(positionManager, permit2, poolManager, wrappedNative) { }
+    )
+        YieldClaimer(owner_, guardian_, arcadiaFactory)
+        UniswapV4(positionManager, permit2, poolManager, wrappedNative)
+    { }
 }

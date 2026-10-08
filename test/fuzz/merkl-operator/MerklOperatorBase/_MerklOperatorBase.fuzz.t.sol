@@ -53,7 +53,8 @@ abstract contract MerklOperatorBase_Fuzz_Test is Fuzz_Test, MerklFixture {
         token1 = new ERC20Mock("TokenB", "TOKB", 0);
 
         // Deploy test contract.
-        merklOperator = new MerklOperatorBaseExtension(users.owner, address(factory), address(distributor));
+        merklOperator =
+            new MerklOperatorBaseExtension(users.owner, users.guardian, address(factory), address(distributor));
     }
 
     /*////////////////////////////////////////////////////////////////

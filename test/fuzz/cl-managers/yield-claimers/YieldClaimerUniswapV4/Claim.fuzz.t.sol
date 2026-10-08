@@ -128,7 +128,7 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         factory.safeTransferFrom(users.accountOwner, newOwner, address(account));
         vm.startPrank(newOwner);
         account.setAssetManagers(assetManagers, statuses, new bytes[](1));
-        vm.warp(block.timestamp + 10 minutes);
+        vm.warp(vm.getBlockTimestamp() + 10 minutes);
         factory.safeTransferFrom(newOwner, users.accountOwner, address(account));
         vm.stopPrank();
 
@@ -152,6 +152,7 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
 
     function testFuzz_Success_claim_NotNative_AccountIsRecipient(
         uint128 liquidityPool,
+        uint24 protocolFee,
         PositionState memory position,
         uint256 feeSeed,
         YieldClaimer.InitiatorParams memory initiatorParams,
@@ -162,9 +163,9 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         vm.assume(initiator != address(poolManager));
 
         // And A valid position in range (has both tokens).
-        givenValidPoolState(liquidityPool, position);
+        (, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
         liquidityPool = uint128(bound(liquidityPool, 1e25, 1e30));
-        setPoolState(liquidityPool, position, false);
+        setPoolState(liquidityPool, position, protocolFee, false);
         position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
         position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
         position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
@@ -235,6 +236,7 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
 
     function testFuzz_Success_claim_NotNative_AccountIsNotRecipient(
         uint128 liquidityPool,
+        uint24 protocolFee,
         PositionState memory position,
         uint256 feeSeed,
         YieldClaimer.InitiatorParams memory initiatorParams,
@@ -253,9 +255,9 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         vm.assume(recipient != address(poolManager));
 
         // And: A valid position in range (has both tokens).
-        givenValidPoolState(liquidityPool, position);
+        (, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
         liquidityPool = uint128(bound(liquidityPool, 1e25, 1e30));
-        setPoolState(liquidityPool, position, false);
+        setPoolState(liquidityPool, position, protocolFee, false);
         position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
         position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
         position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
@@ -326,6 +328,7 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
 
     function testFuzz_Success_claim_IsNative_AccountIsRecipient(
         uint128 liquidityPool,
+        uint24 protocolFee,
         PositionState memory position,
         uint256 feeSeed,
         YieldClaimer.InitiatorParams memory initiatorParams,
@@ -336,9 +339,9 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         vm.assume(initiator != address(poolManager));
 
         // And: A valid position in range (has both tokens).
-        givenValidPoolState(liquidityPool, position);
+        (, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
         liquidityPool = uint128(bound(liquidityPool, 1e25, 1e30));
-        setPoolState(liquidityPool, position, true);
+        setPoolState(liquidityPool, position, protocolFee, true);
         position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
         position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
         position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
@@ -409,6 +412,7 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
 
     function testFuzz_Success_claim_IsNative_AccountIsNotRecipient(
         uint128 liquidityPool,
+        uint24 protocolFee,
         PositionState memory position,
         uint256 feeSeed,
         YieldClaimer.InitiatorParams memory initiatorParams,
@@ -427,9 +431,9 @@ contract Compound_YieldClaimerUniswapV4_Fuzz_Test is YieldClaimerUniswapV4_Fuzz_
         vm.assume(recipient != address(poolManager));
 
         // And: A valid position in range (has both tokens).
-        givenValidPoolState(liquidityPool, position);
+        (, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
         liquidityPool = uint128(bound(liquidityPool, 1e25, 1e30));
-        setPoolState(liquidityPool, position, true);
+        setPoolState(liquidityPool, position, protocolFee, true);
         position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
         position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
         position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));

@@ -17,7 +17,7 @@ contract YieldClaimerUniswapV3 is YieldClaimer, UniswapV3 {
     ////////////////////////////////////////////////////////////// */
 
     // The version of the Asset Manager.
-    string public constant VERSION = "2.1.0";
+    string public constant VERSION = "2.2.0";
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -25,12 +25,16 @@ contract YieldClaimerUniswapV3 is YieldClaimer, UniswapV3 {
 
     /**
      * @param owner_ The address of the Owner.
+     * @param guardian_ The address of the Guardian.
      * @param arcadiaFactory The contract address of the Arcadia Factory.
      * @param positionManager The contract address of the Uniswap v3 Position Manager.
      * @param uniswapV3Factory The contract address of the Uniswap v3 Factory.
      */
-    constructor(address owner_, address arcadiaFactory, address positionManager, address uniswapV3Factory)
-        YieldClaimer(owner_, arcadiaFactory)
-        UniswapV3(positionManager, uniswapV3Factory)
-    { }
+    constructor(
+        address owner_,
+        address guardian_,
+        address arcadiaFactory,
+        address positionManager,
+        address uniswapV3Factory
+    ) YieldClaimer(owner_, guardian_, arcadiaFactory) UniswapV3(positionManager, uniswapV3Factory) { }
 }

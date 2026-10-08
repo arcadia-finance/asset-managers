@@ -39,6 +39,7 @@ abstract contract CompounderUniswapV3_Fuzz_Test is UniswapV3_Fuzz_Test {
         // Deploy test contract.
         compounder = new CompounderUniswapV3Extension(
             users.owner,
+            users.guardian,
             address(factory),
             address(routerTrampoline),
             address(nonfungiblePositionManager),

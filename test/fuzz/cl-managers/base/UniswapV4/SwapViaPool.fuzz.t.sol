@@ -5,6 +5,9 @@
 pragma solidity ^0.8.0;
 
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
+import {
+    ProtocolFeeLibrary
+} from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/ProtocolFeeLibrary.sol";
 import { UniswapV4_Fuzz_Test } from "./_UniswapV4.fuzz.t.sol";
 import {
     SqrtPriceMath
@@ -28,14 +31,15 @@ contract SwapViaPool_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Success_swapViaPool_NotNative_ZeroToOne_Balanced(
         uint128 liquidityPool,
+        uint24 protocolFee,
         PositionState memory position,
         uint128 balance0,
         uint128 balance1,
         uint64 amountOut
     ) public {
         // Given: A valid position.
-        liquidityPool = givenValidPoolState(liquidityPool, position);
-        setPoolState(liquidityPool, position, false);
+        (liquidityPool, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
+        setPoolState(liquidityPool, position, protocolFee, false);
         givenValidPositionState(position);
         setPositionState(position);
 
@@ -50,7 +54,9 @@ contract SwapViaPool_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
         uint256 amountInLessFee = SqrtPriceMath.getAmount0Delta(
             sqrtPriceNew, uint160(position.sqrtPrice), stateView.getLiquidity(poolKey.toId()), true
         );
-        uint256 amountIn = amountInLessFee * 1e6 / (1e6 - POOL_FEE);
+        (,,, uint24 lpFee) = stateView.getSlot0(poolKey.toId());
+        uint256 amountIn = amountInLessFee * 1e6
+            / (1e6 - ProtocolFeeLibrary.calculateSwapFee(ProtocolFeeLibrary.getZeroForOneFee(protocolFee), lpFee));
         vm.assume(amountIn > 10);
 
         // And: Contract has sufficient balances.
@@ -74,14 +80,15 @@ contract SwapViaPool_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
 
     function testFuzz_Success_swapViaPool_NotNative_OneToZero_Balanced(
         uint128 liquidityPool,
+        uint24 protocolFee,
         PositionState memory position,
         uint128 balance0,
         uint128 balance1,
         uint64 amountOut
     ) public {
         // Given: A valid position.
-        liquidityPool = givenValidPoolState(liquidityPool, position);
-        setPoolState(liquidityPool, position, false);
+        (liquidityPool, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
+        setPoolState(liquidityPool, position, protocolFee, false);
         givenValidPositionState(position);
         setPositionState(position);
 
@@ -96,7 +103,9 @@ contract SwapViaPool_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
         uint256 amountInLessFee = SqrtPriceMath.getAmount1Delta(
             sqrtPriceNew, uint160(position.sqrtPrice), stateView.getLiquidity(poolKey.toId()), true
         );
-        uint256 amountIn = amountInLessFee * 1e6 / (1e6 - POOL_FEE);
+        (,,, uint24 lpFee) = stateView.getSlot0(poolKey.toId());
+        uint256 amountIn = amountInLessFee * 1e6
+            / (1e6 - ProtocolFeeLibrary.calculateSwapFee(ProtocolFeeLibrary.getOneForZeroFee(protocolFee), lpFee));
         vm.assume(amountIn > 10);
 
         // And: Contract has sufficient balances.
@@ -120,14 +129,15 @@ contract SwapViaPool_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
 
     function testFuzz_Success_swapViaPool_IsNative_ZeroToOne_Balanced(
         uint128 liquidityPool,
+        uint24 protocolFee,
         PositionState memory position,
         uint128 balance0,
         uint128 balance1,
         uint64 amountOut
     ) public {
         // Given: A valid position.
-        liquidityPool = givenValidPoolState(liquidityPool, position);
-        setPoolState(liquidityPool, position, true);
+        (liquidityPool, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
+        setPoolState(liquidityPool, position, protocolFee, true);
         givenValidPositionState(position);
         setPositionState(position);
 
@@ -142,7 +152,9 @@ contract SwapViaPool_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
         uint256 amountInLessFee = SqrtPriceMath.getAmount0Delta(
             sqrtPriceNew, uint160(position.sqrtPrice), stateView.getLiquidity(poolKey.toId()), true
         );
-        uint256 amountIn = amountInLessFee * 1e6 / (1e6 - POOL_FEE);
+        (,,, uint24 lpFee) = stateView.getSlot0(poolKey.toId());
+        uint256 amountIn = amountInLessFee * 1e6
+            / (1e6 - ProtocolFeeLibrary.calculateSwapFee(ProtocolFeeLibrary.getZeroForOneFee(protocolFee), lpFee));
         vm.assume(amountIn > 10);
 
         // And: Contract has sufficient balances.
@@ -166,14 +178,15 @@ contract SwapViaPool_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
 
     function testFuzz_Success_swapViaPool_IsNative_OneToZero_Balanced(
         uint128 liquidityPool,
+        uint24 protocolFee,
         PositionState memory position,
         uint128 balance0,
         uint128 balance1,
         uint64 amountOut
     ) public {
         // Given: A valid position.
-        liquidityPool = givenValidPoolState(liquidityPool, position);
-        setPoolState(liquidityPool, position, true);
+        (liquidityPool, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
+        setPoolState(liquidityPool, position, protocolFee, true);
         givenValidPositionState(position);
         setPositionState(position);
 
@@ -188,7 +201,9 @@ contract SwapViaPool_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
         uint256 amountInLessFee = SqrtPriceMath.getAmount1Delta(
             sqrtPriceNew, uint160(position.sqrtPrice), stateView.getLiquidity(poolKey.toId()), true
         );
-        uint256 amountIn = amountInLessFee * 1e6 / (1e6 - POOL_FEE);
+        (,,, uint24 lpFee) = stateView.getSlot0(poolKey.toId());
+        uint256 amountIn = amountInLessFee * 1e6
+            / (1e6 - ProtocolFeeLibrary.calculateSwapFee(ProtocolFeeLibrary.getOneForZeroFee(protocolFee), lpFee));
         vm.assume(amountIn > 10);
 
         // And: Contract has sufficient balances.

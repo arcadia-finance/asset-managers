@@ -29,7 +29,7 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
 
     struct TestVariables {
         uint256 maxSlippageRatio;
-        uint256 poolFee;
+        uint256 ammFee;
         uint256 initiatorFee;
         uint256 sqrtPrice;
         int24 tickLower;
@@ -76,7 +76,7 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
 
         // And: Fee is smaller than MAX_FEE.
         testVars.initiatorFee = bound(testVars.initiatorFee, 0, MAX_FEE);
-        testVars.poolFee = uint24(bound(testVars.poolFee, 0, (MAX_FEE - testVars.initiatorFee) / 1e12));
+        testVars.ammFee = uint24(bound(testVars.ammFee, 0, (MAX_FEE - testVars.initiatorFee) / 1e12));
 
         // And: Slippage Ratio is smaller than MIN_LIQUIDITY_RATIO.
         testVars.maxSlippageRatio = bound(testVars.maxSlippageRatio, MIN_LIQUIDITY_RATIO, 1e18);
@@ -105,7 +105,7 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
         assertEq(rebalanceParams.amountIn, testVars.balance1 - rebalanceParams.amountInitiatorFee);
 
         // And: amountOut is correct.
-        uint256 fee = testVars.initiatorFee + testVars.poolFee * 1e12;
+        uint256 fee = testVars.initiatorFee + testVars.ammFee * 1e12;
         assertEq(rebalanceParams.amountOut, CLMath._getAmountOut(testVars.sqrtPrice, false, testVars.balance1, fee));
     }
 
@@ -136,7 +136,7 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
 
         // And: Fee is smaller than MAX_FEE.
         testVars.initiatorFee = bound(testVars.initiatorFee, 0, MAX_FEE);
-        testVars.poolFee = uint24(bound(testVars.poolFee, 0, (MAX_FEE - testVars.initiatorFee) / 1e12));
+        testVars.ammFee = uint24(bound(testVars.ammFee, 0, (MAX_FEE - testVars.initiatorFee) / 1e12));
 
         // And: Slippage Ratio is smaller than MIN_LIQUIDITY_RATIO.
         testVars.maxSlippageRatio = bound(testVars.maxSlippageRatio, MIN_LIQUIDITY_RATIO, 1e18);
@@ -165,7 +165,7 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
         assertEq(rebalanceParams.amountIn, testVars.balance0 - rebalanceParams.amountInitiatorFee);
 
         // And: amountOut is correct.
-        uint256 fee = testVars.initiatorFee + testVars.poolFee * 1e12;
+        uint256 fee = testVars.initiatorFee + testVars.ammFee * 1e12;
         assertEq(rebalanceParams.amountOut, CLMath._getAmountOut(testVars.sqrtPrice, true, testVars.balance0, fee));
     }
 
@@ -209,7 +209,7 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
 
         // And: Fee is smaller than MAX_FEE.
         testVars.initiatorFee = bound(testVars.initiatorFee, 0, MAX_FEE);
-        testVars.poolFee = uint24(bound(testVars.poolFee, 0, (MAX_FEE - testVars.initiatorFee) / 1e12));
+        testVars.ammFee = uint24(bound(testVars.ammFee, 0, (MAX_FEE - testVars.initiatorFee) / 1e12));
 
         // And: Slippage Ratio is smaller than MIN_LIQUIDITY_RATIO.
         testVars.maxSlippageRatio = bound(testVars.maxSlippageRatio, MIN_LIQUIDITY_RATIO, 1e18);
@@ -246,7 +246,7 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
         assertTrue(rebalanceParams.zeroToOne);
 
         // And: amountOut is correct.
-        uint256 fee = testVars.initiatorFee + testVars.poolFee * 1e12;
+        uint256 fee = testVars.initiatorFee + testVars.ammFee * 1e12;
         {
             uint256 denominator = 1e18 + targetRatio * fee / (1e18 - fee);
             uint256 amountOutExpected = (targetRatio - currentRatio) * totalValueInToken1 / denominator;
@@ -299,7 +299,7 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
 
         // And: Fee is smaller than MAX_FEE.
         testVars.initiatorFee = bound(testVars.initiatorFee, 0, MAX_FEE);
-        testVars.poolFee = uint24(bound(testVars.poolFee, 0, (MAX_FEE - testVars.initiatorFee) / 1e12));
+        testVars.ammFee = uint24(bound(testVars.ammFee, 0, (MAX_FEE - testVars.initiatorFee) / 1e12));
 
         // And: Slippage Ratio is smaller than MIN_LIQUIDITY_RATIO.
         testVars.maxSlippageRatio = bound(testVars.maxSlippageRatio, MIN_LIQUIDITY_RATIO, 1e18);
@@ -336,7 +336,7 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
         assertFalse(rebalanceParams.zeroToOne);
 
         // And: amountInitiatorFee is correct.
-        uint256 fee = testVars.initiatorFee + testVars.poolFee * 1e12;
+        uint256 fee = testVars.initiatorFee + testVars.ammFee * 1e12;
         uint256 amountInWithFee;
         {
             uint256 denominator = 1e18 - targetRatio * fee / 1e18;
@@ -363,7 +363,7 @@ contract GetRebalanceParams_RebalanceLogic_Fuzz_Test is RebalanceLogic_Fuzz_Test
     {
         return rebalanceLogic.getRebalanceParams(
             testVars.maxSlippageRatio,
-            testVars.poolFee,
+            testVars.ammFee,
             testVars.initiatorFee,
             testVars.sqrtPrice,
             sqrtRatioLower,

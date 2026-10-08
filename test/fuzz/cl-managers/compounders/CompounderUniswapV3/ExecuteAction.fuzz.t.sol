@@ -4,11 +4,12 @@
  */
 pragma solidity ^0.8.0;
 
+import { ActionData } from "../../../../../lib/accounts-v2/src/interfaces/IActionBase.sol";
 import { Compounder } from "../../../../../src/cl-managers/compounders/Compounder.sol";
 import { CompounderUniswapV3_Fuzz_Test } from "./_CompounderUniswapV3.fuzz.t.sol";
-import { ActionData } from "../../../../../lib/accounts-v2/src/interfaces/IActionBase.sol";
 import { DefaultRebalancerHook } from "../../../../utils/mocks/DefaultRebalancerHook.sol";
 import { ERC721 } from "../../../../../lib/accounts-v2/lib/solmate/src/tokens/ERC721.sol";
+import { FullMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 import { PositionState } from "../../../../../src/cl-managers/state/PositionState.sol";
 import { RebalanceLogic, RebalanceParams } from "../../../../../src/cl-managers/libraries/RebalanceLogic.sol";
 import { RouterMock } from "../../../../utils/mocks/RouterMock.sol";
@@ -18,7 +19,7 @@ import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4
 /**
  * @notice Fuzz tests for the function "_executeAction" of contract "CompounderUniswapV3".
  */
-// forge-lint: disable-next-item(divide-before-multiply,unsafe-typecast)
+// forge-lint: disable-next-item(divide-before-multiply,erc20-unchecked-transfer,unsafe-typecast)
 contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz_Test {
     /*////////////////////////////////////////////////////////////////
                             VARIABLES
@@ -158,7 +159,7 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
 
         // And: The pool is unbalanced.
         {
-            (, uint256 lowerSqrtPriceDeviation,,,) = compounder.accountInfo(address(account));
+            (,,, uint256 lowerSqrtPriceDeviation,) = compounder.accountInfo(address(account));
             initiatorParams.trustedSqrtPrice = bound(
                 initiatorParams.trustedSqrtPrice,
                 position.sqrtPrice * 1e18 / lowerSqrtPriceDeviation + lowerSqrtPriceDeviation,
@@ -186,10 +187,7 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
         givenValidPoolState(liquidityPool, position);
         liquidityPool = uint128(bound(liquidityPool, 1e20, 1e25));
         setPoolState(liquidityPool, position);
-        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
-        position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
-        position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
-        position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
+        givenValidPositionStateInRange(position);
         position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
         setPositionState(position);
         initiatorParams.positionManager = address(nonfungiblePositionManager);
@@ -206,10 +204,8 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
-        // forge-lint: disable-start(erc20-unchecked-transfer)
         ERC721(address(nonfungiblePositionManager))
             .transferFrom(users.liquidityProvider, address(compounder), position.id);
-        // forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Compounder has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1e18));
@@ -257,7 +253,7 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
 
         // And: The pool is unbalanced after the swap.
         {
-            (, uint256 lowerSqrtPriceDeviation,,,) = compounder.accountInfo(address(account));
+            (,,, uint256 lowerSqrtPriceDeviation,) = compounder.accountInfo(address(account));
             uint256 lowerBoundSqrtPrice = initiatorParams.trustedSqrtPrice * lowerSqrtPriceDeviation / 1e18;
             vm.assume(TickMath.MIN_SQRT_PRICE < lowerBoundSqrtPrice);
             uint256 newSqrtPrice = bound(position.sqrtPrice, TickMath.MIN_SQRT_PRICE, lowerBoundSqrtPrice);
@@ -288,10 +284,7 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
         givenValidPoolState(liquidityPool, position);
         liquidityPool = uint128(bound(liquidityPool, 1e20, 1e25));
         setPoolState(liquidityPool, position);
-        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
-        position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
-        position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
-        position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
+        givenValidPositionStateInRange(position);
         position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
         setPositionState(position);
         initiatorParams.positionManager = address(nonfungiblePositionManager);
@@ -308,10 +301,8 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
-        // forge-lint: disable-start(erc20-unchecked-transfer)
         ERC721(address(nonfungiblePositionManager))
             .transferFrom(users.liquidityProvider, address(compounder), position.id);
-        // forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Compounder has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1e18));
@@ -401,10 +392,7 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
         givenValidPoolState(liquidityPool, position);
         liquidityPool = uint128(bound(liquidityPool, 1e20, 1e25));
         setPoolState(liquidityPool, position);
-        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
-        position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
-        position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
-        position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
+        givenValidPositionStateInRange(position);
         position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
         setPositionState(position);
         initiatorParams.positionManager = address(nonfungiblePositionManager);
@@ -421,10 +409,8 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
 
         // And: The Compounder owns the position.
         vm.prank(users.liquidityProvider);
-        // forge-lint: disable-start(erc20-unchecked-transfer)
         ERC721(address(nonfungiblePositionManager))
             .transferFrom(users.liquidityProvider, address(compounder), position.id);
-        // forge-lint: disable-end(erc20-unchecked-transfer)
 
         // And: Compounder has balances.
         initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, 0, 1e18));
@@ -508,5 +494,381 @@ contract ExecuteAction_CompounderUniswapV3_Fuzz_Test is CompounderUniswapV3_Fuzz
         assertEq(depositData.assetIds[0], position.id);
         assertEq(depositData.assetAmounts[0], 1);
         assertEq(depositData.assetTypes[0], 2);
+
+        // And: The liquidity of the position increased.
+        (,,,,,,, uint128 liquidity,,,,) = nonfungiblePositionManager.positions(position.id);
+        assertGt(liquidity, position.liquidity);
+    }
+
+    function testFuzz_Success_executeAction_Token0WithoutFees(
+        uint128 liquidityPool,
+        PositionState memory position,
+        Compounder.InitiatorParams memory initiatorParams,
+        address initiator,
+        uint256 tolerance
+    ) public {
+        // Given: A valid position in range (has both tokens).
+        givenValidPoolState(liquidityPool, position);
+        liquidityPool = uint128(bound(liquidityPool, 1e20, 1e25));
+        setPoolState(liquidityPool, position);
+        givenValidPositionStateInRange(position);
+        position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
+        setPositionState(position);
+        initiatorParams.positionManager = address(nonfungiblePositionManager);
+        initiatorParams.id = uint96(position.id);
+
+        // And: Account info is set.
+        tolerance = bound(tolerance, 0.001 * 1e18, MAX_TOLERANCE);
+        vm.prank(account.owner());
+        compounder.setAccountInfo(address(account), initiator, MAX_FEE, MAX_FEE, tolerance, MIN_LIQUIDITY_RATIO, "");
+
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
+        initiatorParams.swapFee = initiatorParams.claimFee;
+
+        // And: The Compounder owns the position.
+        vm.prank(users.liquidityProvider);
+        ERC721(address(nonfungiblePositionManager))
+            .transferFrom(users.liquidityProvider, address(compounder), position.id);
+
+        // And: The initiator is not the Compounder.
+        vm.assume(initiator != address(compounder));
+
+        // And: Compounder has only token0, worth at least 1e8 token1, and no fees.
+        {
+            uint256 minAmount0 = FullMath.mulDivRoundingUp(1e8, 1 << 192, position.sqrtPrice * position.sqrtPrice);
+            vm.assume(minAmount0 <= 1e18);
+            initiatorParams.amount0 = uint128(bound(initiatorParams.amount0, minAmount0, 1e18));
+        }
+        initiatorParams.amount1 = 0;
+        deal(address(token0), address(compounder), initiatorParams.amount0, true);
+
+        // And: account is set.
+        compounder.setAccount(address(account));
+
+        // And: The pool is balanced.
+        {
+            (uint160 sqrtPrice,,,,,,) = poolUniswap.slot0();
+            initiatorParams.trustedSqrtPrice = sqrtPrice;
+        }
+
+        // And: liquidity is not 0.
+        RebalanceParams memory rebalanceParams = RebalanceLogic._getRebalanceParams(
+            1e18,
+            poolUniswap.fee(),
+            initiatorParams.swapFee,
+            initiatorParams.trustedSqrtPrice,
+            TickMath.getSqrtPriceAtTick(position.tickLower),
+            TickMath.getSqrtPriceAtTick(position.tickUpper),
+            initiatorParams.amount0,
+            0
+        );
+        vm.assume(rebalanceParams.amountIn > 0);
+        vm.assume(rebalanceParams.minLiquidity > 0);
+
+        // And: Swap of token0 to token1 is successful.
+        {
+            RouterMock router = new RouterMock();
+            bytes memory routerData = abi.encodeWithSelector(
+                RouterMock.swap.selector,
+                address(token0),
+                address(token1),
+                rebalanceParams.amountIn,
+                rebalanceParams.amountOut
+            );
+            initiatorParams.swapData = abi.encode(address(router), rebalanceParams.amountIn, routerData);
+            deal(address(token1), address(router), rebalanceParams.amountOut, true);
+        }
+
+        // When: Calling executeAction().
+        // Then: It should emit the correct event.
+        bytes memory actionTargetData = abi.encode(initiator, initiatorParams);
+        vm.prank(address(account));
+        vm.expectEmit();
+        emit Compounder.Compound(address(account), address(nonfungiblePositionManager), position.id);
+        ActionData memory depositData = compounder.executeAction(actionTargetData);
+
+        // And: It should return the position to be deposited back into the account.
+        assertEq(depositData.assets[0], address(nonfungiblePositionManager));
+        assertEq(depositData.assetIds[0], position.id);
+        assertEq(depositData.assetAmounts[0], 1);
+        assertEq(depositData.assetTypes[0], 2);
+
+        // And: The liquidity of the position increased.
+        (,,,,,,, uint128 liquidity,,,,) = nonfungiblePositionManager.positions(position.id);
+        assertGt(liquidity, position.liquidity);
+
+        // And: All token0 and token1 left in the Compounder are returned to the Account.
+        assertEq(token0.allowance(address(compounder), address(account)), token0.balanceOf(address(compounder)));
+        assertEq(token1.allowance(address(compounder), address(account)), token1.balanceOf(address(compounder)));
+    }
+
+    function testFuzz_Success_executeAction_Token1WithoutFees(
+        uint128 liquidityPool,
+        PositionState memory position,
+        Compounder.InitiatorParams memory initiatorParams,
+        address initiator,
+        uint256 tolerance
+    ) public {
+        // Given: A valid position in range (has both tokens).
+        givenValidPoolState(liquidityPool, position);
+        liquidityPool = uint128(bound(liquidityPool, 1e20, 1e25));
+        setPoolState(liquidityPool, position);
+        givenValidPositionStateInRange(position);
+        position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
+        setPositionState(position);
+        initiatorParams.positionManager = address(nonfungiblePositionManager);
+        initiatorParams.id = uint96(position.id);
+
+        // And: Account info is set.
+        tolerance = bound(tolerance, 0.001 * 1e18, MAX_TOLERANCE);
+        vm.prank(account.owner());
+        compounder.setAccountInfo(address(account), initiator, MAX_FEE, MAX_FEE, tolerance, MIN_LIQUIDITY_RATIO, "");
+
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
+        initiatorParams.swapFee = initiatorParams.claimFee;
+
+        // And: The Compounder owns the position.
+        vm.prank(users.liquidityProvider);
+        ERC721(address(nonfungiblePositionManager))
+            .transferFrom(users.liquidityProvider, address(compounder), position.id);
+
+        // And: The initiator is not the Compounder.
+        vm.assume(initiator != address(compounder));
+
+        // And: Compounder has only token1, worth at least 1e8 token0, and no fees.
+        {
+            uint256 minAmount1 = FullMath.mulDivRoundingUp(1e8, position.sqrtPrice * position.sqrtPrice, 1 << 192);
+            vm.assume(minAmount1 <= 1e18);
+            initiatorParams.amount1 = uint128(bound(initiatorParams.amount1, minAmount1, 1e18));
+        }
+        initiatorParams.amount0 = 0;
+        deal(address(token1), address(compounder), initiatorParams.amount1, true);
+
+        // And: account is set.
+        compounder.setAccount(address(account));
+
+        // And: The pool is balanced.
+        {
+            (uint160 sqrtPrice,,,,,,) = poolUniswap.slot0();
+            initiatorParams.trustedSqrtPrice = sqrtPrice;
+        }
+
+        // And: liquidity is not 0.
+        RebalanceParams memory rebalanceParams = RebalanceLogic._getRebalanceParams(
+            1e18,
+            poolUniswap.fee(),
+            initiatorParams.swapFee,
+            initiatorParams.trustedSqrtPrice,
+            TickMath.getSqrtPriceAtTick(position.tickLower),
+            TickMath.getSqrtPriceAtTick(position.tickUpper),
+            0,
+            initiatorParams.amount1
+        );
+        vm.assume(rebalanceParams.amountIn > 0);
+        vm.assume(rebalanceParams.minLiquidity > 0);
+
+        // And: Swap of token1 to token0 is successful.
+        {
+            RouterMock router = new RouterMock();
+            bytes memory routerData = abi.encodeWithSelector(
+                RouterMock.swap.selector,
+                address(token1),
+                address(token0),
+                rebalanceParams.amountIn,
+                rebalanceParams.amountOut
+            );
+            initiatorParams.swapData = abi.encode(address(router), rebalanceParams.amountIn, routerData);
+            deal(address(token0), address(router), rebalanceParams.amountOut, true);
+        }
+
+        // When: Calling executeAction().
+        // Then: It should emit the correct event.
+        bytes memory actionTargetData = abi.encode(initiator, initiatorParams);
+        vm.prank(address(account));
+        vm.expectEmit();
+        emit Compounder.Compound(address(account), address(nonfungiblePositionManager), position.id);
+        ActionData memory depositData = compounder.executeAction(actionTargetData);
+
+        // And: It should return the position to be deposited back into the account.
+        assertEq(depositData.assets[0], address(nonfungiblePositionManager));
+        assertEq(depositData.assetIds[0], position.id);
+        assertEq(depositData.assetAmounts[0], 1);
+        assertEq(depositData.assetTypes[0], 2);
+
+        // And: The liquidity of the position increased.
+        (,,,,,,, uint128 liquidity,,,,) = nonfungiblePositionManager.positions(position.id);
+        assertGt(liquidity, position.liquidity);
+
+        // And: All token0 and token1 left in the Compounder are returned to the Account.
+        assertEq(token0.allowance(address(compounder), address(account)), token0.balanceOf(address(compounder)));
+        assertEq(token1.allowance(address(compounder), address(account)), token1.balanceOf(address(compounder)));
+    }
+
+    function testFuzz_Success_executeAction_ClaimOnly(
+        uint128 liquidityPool,
+        PositionState memory position,
+        Compounder.InitiatorParams memory initiatorParams,
+        address initiator,
+        uint256 tolerance
+    ) public {
+        // Given: A valid position in range (has both tokens).
+        givenValidPoolState(liquidityPool, position);
+        liquidityPool = uint128(bound(liquidityPool, 1e20, 1e25));
+        setPoolState(liquidityPool, position);
+        givenValidPositionStateInRange(position);
+        position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
+        setPositionState(position);
+        initiatorParams.positionManager = address(nonfungiblePositionManager);
+        initiatorParams.id = uint96(position.id);
+
+        // And: Account info is set.
+        tolerance = bound(tolerance, 0.001 * 1e18, MAX_TOLERANCE);
+        vm.prank(account.owner());
+        compounder.setAccountInfo(address(account), initiator, MAX_FEE, MAX_FEE, tolerance, MIN_LIQUIDITY_RATIO, "");
+
+        // And: Fees are valid.
+        initiatorParams.claimFee = uint64(bound(initiatorParams.claimFee, 0, MAX_FEE));
+        initiatorParams.swapFee = initiatorParams.claimFee;
+
+        // And: The Compounder owns the position.
+        vm.prank(users.liquidityProvider);
+        ERC721(address(nonfungiblePositionManager))
+            .transferFrom(users.liquidityProvider, address(compounder), position.id);
+
+        // And: Compounder has no balances and the position has no fees.
+        initiatorParams.amount0 = 0;
+        initiatorParams.amount1 = 0;
+
+        // And: account is set.
+        compounder.setAccount(address(account));
+
+        // And: The pool is balanced.
+        {
+            (uint160 sqrtPrice,,,,,,) = poolUniswap.slot0();
+            initiatorParams.trustedSqrtPrice = sqrtPrice;
+        }
+
+        // And: The token balances of the initiator and the pool are known.
+        uint256 initiatorBalance0 = token0.balanceOf(initiator);
+        uint256 initiatorBalance1 = token1.balanceOf(initiator);
+        uint256 poolBalance0 = token0.balanceOf(address(poolUniswap));
+        uint256 poolBalance1 = token1.balanceOf(address(poolUniswap));
+
+        // When: Calling executeAction().
+        // Then: It should emit the correct event.
+        bytes memory actionTargetData = abi.encode(initiator, initiatorParams);
+        vm.prank(address(account));
+        vm.expectEmit();
+        emit Compounder.Compound(address(account), address(nonfungiblePositionManager), position.id);
+        ActionData memory depositData = compounder.executeAction(actionTargetData);
+
+        // And: It should return only the position to be deposited back into the account.
+        assertEq(depositData.assets.length, 1);
+        assertEq(depositData.assets[0], address(nonfungiblePositionManager));
+        assertEq(depositData.assetIds[0], position.id);
+        assertEq(depositData.assetAmounts[0], 1);
+        assertEq(depositData.assetTypes[0], 2);
+
+        // And: The liquidity of the position is unchanged.
+        (,,,,,,, uint128 liquidity,,,,) = nonfungiblePositionManager.positions(position.id);
+        assertEq(liquidity, position.liquidity);
+
+        // And: No token0 or token1 is transferred.
+        assertEq(token0.balanceOf(address(compounder)), 0);
+        assertEq(token1.balanceOf(address(compounder)), 0);
+        assertEq(token0.balanceOf(initiator), initiatorBalance0);
+        assertEq(token1.balanceOf(initiator), initiatorBalance1);
+        assertEq(token0.balanceOf(address(poolUniswap)), poolBalance0);
+        assertEq(token1.balanceOf(address(poolUniswap)), poolBalance1);
+    }
+
+    function testFuzz_Success_executeAction_ClaimOnly_FullClaimFee(
+        uint128 liquidityPool,
+        PositionState memory position,
+        uint256 feeSeed,
+        Compounder.InitiatorParams memory initiatorParams,
+        address initiator,
+        uint256 tolerance
+    ) public {
+        // Given: A valid position in range (has both tokens).
+        givenValidPoolState(liquidityPool, position);
+        liquidityPool = uint128(bound(liquidityPool, 1e20, 1e25));
+        setPoolState(liquidityPool, position);
+        givenValidPositionStateInRange(position);
+        position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
+        setPositionState(position);
+        initiatorParams.positionManager = address(nonfungiblePositionManager);
+        initiatorParams.id = uint96(position.id);
+
+        // And: Account info is set, with a maximum claim fee of 100%.
+        tolerance = bound(tolerance, 0.001 * 1e18, MAX_TOLERANCE);
+        vm.prank(account.owner());
+        compounder.setAccountInfo(address(account), initiator, 1e18, MAX_FEE, tolerance, MIN_LIQUIDITY_RATIO, "");
+
+        // And: The initiator claims all fees.
+        initiatorParams.claimFee = 1e18;
+        initiatorParams.swapFee = uint64(bound(initiatorParams.swapFee, 0, MAX_FEE));
+
+        // And: The Compounder owns the position.
+        vm.prank(users.liquidityProvider);
+        ERC721(address(nonfungiblePositionManager))
+            .transferFrom(users.liquidityProvider, address(compounder), position.id);
+
+        // And: The initiator is not the Compounder or the pool.
+        vm.assume(initiator != address(compounder));
+        vm.assume(initiator != address(poolUniswap));
+
+        // And: Compounder has no balances.
+        initiatorParams.amount0 = 0;
+        initiatorParams.amount1 = 0;
+
+        // And: The position has fees in both tokens.
+        feeSeed = bound(feeSeed, type(uint8).max, type(uint48).max);
+        generateFees(feeSeed, feeSeed);
+        (uint256 fee0, uint256 fee1) = getFeeAmountsV3(position.id);
+        vm.assume(fee0 > 0);
+        vm.assume(fee1 > 0);
+
+        // And: account is set.
+        compounder.setAccount(address(account));
+
+        // And: The pool is balanced.
+        {
+            (uint160 sqrtPrice,,,,,,) = poolUniswap.slot0();
+            initiatorParams.trustedSqrtPrice = sqrtPrice;
+        }
+
+        // And: The token balances of the initiator are known.
+        uint256 initiatorBalance0 = token0.balanceOf(initiator);
+        uint256 initiatorBalance1 = token1.balanceOf(initiator);
+
+        // When: Calling executeAction().
+        // Then: It should emit the correct event.
+        bytes memory actionTargetData = abi.encode(initiator, initiatorParams);
+        vm.prank(address(account));
+        vm.expectEmit();
+        emit Compounder.Compound(address(account), address(nonfungiblePositionManager), position.id);
+        ActionData memory depositData = compounder.executeAction(actionTargetData);
+
+        // And: It should return only the position to be deposited back into the account.
+        assertEq(depositData.assets.length, 1);
+        assertEq(depositData.assets[0], address(nonfungiblePositionManager));
+        assertEq(depositData.assetIds[0], position.id);
+        assertEq(depositData.assetAmounts[0], 1);
+        assertEq(depositData.assetTypes[0], 2);
+
+        // And: The liquidity of the position is unchanged.
+        (,,,,,,, uint128 liquidity,,,,) = nonfungiblePositionManager.positions(position.id);
+        assertEq(liquidity, position.liquidity);
+
+        // And: The initiator received all claimed fees.
+        assertEq(token0.balanceOf(initiator), initiatorBalance0 + fee0);
+        assertEq(token1.balanceOf(initiator), initiatorBalance1 + fee1);
+
+        // And: No token0 or token1 is left in the Compounder.
+        assertEq(token0.balanceOf(address(compounder)), 0);
+        assertEq(token1.balanceOf(address(compounder)), 0);
     }
 }

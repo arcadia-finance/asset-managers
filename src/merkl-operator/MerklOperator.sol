@@ -24,7 +24,7 @@ contract MerklOperator is Guardian, ReentrancyGuard {
     ////////////////////////////////////////////////////////////// */
 
     // The version of the Asset Manager.
-    string public constant VERSION = "1.0.0";
+    string public constant VERSION = "1.1.0";
 
     // The contract address of the Arcadia Factory.
     IArcadiaFactory public immutable ARCADIA_FACTORY;
@@ -92,10 +92,13 @@ contract MerklOperator is Guardian, ReentrancyGuard {
 
     /**
      * @param owner_ The address of the Owner.
+     * @param guardian_ The address of the Guardian.
      * @param factory The contract address of the Arcadia Accounts Factory.
      * @param merklDistributor The contract address of the Merkl Distributor.
      */
-    constructor(address owner_, address factory, address merklDistributor) Guardian(owner_) {
+    constructor(address owner_, address guardian_, address factory, address merklDistributor)
+        Guardian(owner_, guardian_)
+    {
         ARCADIA_FACTORY = IArcadiaFactory(factory);
         MERKL_DISTRIBUTOR = IDistributor(merklDistributor);
     }

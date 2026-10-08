@@ -21,11 +21,12 @@ contract Constructor_YieldClaimerUniswapV3_Fuzz_Test is YieldClaimerUniswapV3_Fu
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_Constructor(address owner_, address arcadiaFactory) public {
+    function testFuzz_Success_Constructor(address owner_, address guardian_, address arcadiaFactory) public {
         YieldClaimerUniswapV3Extension yieldClaimer_ = new YieldClaimerUniswapV3Extension(
-            owner_, arcadiaFactory, address(nonfungiblePositionManager), address(uniswapV3Factory)
+            owner_, guardian_, arcadiaFactory, address(nonfungiblePositionManager), address(uniswapV3Factory)
         );
 
         assertEq(yieldClaimer_.owner(), owner_);
+        assertEq(yieldClaimer_.guardian(), guardian_);
     }
 }

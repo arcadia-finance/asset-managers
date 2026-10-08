@@ -137,10 +137,13 @@ abstract contract Compounder is IActionBase, AbstractBase, Guardian {
 
     /**
      * @param owner_ The address of the Owner.
+     * @param guardian_ The address of the Guardian.
      * @param arcadiaFactory The contract address of the Arcadia Factory.
      * @param routerTrampoline The contract address of the Router Trampoline.
      */
-    constructor(address owner_, address arcadiaFactory, address routerTrampoline) Guardian(owner_) {
+    constructor(address owner_, address guardian_, address arcadiaFactory, address routerTrampoline)
+        Guardian(owner_, guardian_)
+    {
         ARCADIA_FACTORY = IArcadiaFactory(arcadiaFactory);
         ROUTER_TRAMPOLINE = IRouterTrampoline(routerTrampoline);
     }
@@ -341,46 +344,50 @@ abstract contract Compounder is IActionBase, AbstractBase, Guardian {
         // If the position is staked, unstake it.
         _unstake(balances, positionManager, position);
 
-        // Get the rebalance parameters, based on a hypothetical swap through the pool itself without slippage.
-        RebalanceParams memory rebalanceParams = RebalanceLogic._getRebalanceParams(
-            accountInfo_.minLiquidityRatio,
-            position.fee,
-            initiatorParams.swapFee,
-            position.sqrtPrice,
-            cache.sqrtRatioLower,
-            cache.sqrtRatioUpper,
-            balances[0] - fees[0],
-            balances[1] - fees[1]
-        );
-        if (rebalanceParams.zeroToOne) fees[0] += rebalanceParams.amountInitiatorFee;
-        else fees[1] += rebalanceParams.amountInitiatorFee;
+        // Only increase the liquidity if there is token0 or token1 to add.
+        if (balances[0] > fees[0] || balances[1] > fees[1]) {
+            // Get the rebalance parameters, based on a hypothetical swap through the pool itself without slippage.
+            uint256 ammFee = _getAmmFee(position);
+            RebalanceParams memory rebalanceParams = RebalanceLogic._getRebalanceParams(
+                accountInfo_.minLiquidityRatio,
+                ammFee,
+                initiatorParams.swapFee,
+                position.sqrtPrice,
+                cache.sqrtRatioLower,
+                cache.sqrtRatioUpper,
+                balances[0] - fees[0],
+                balances[1] - fees[1]
+            );
+            if (rebalanceParams.zeroToOne) fees[0] += rebalanceParams.amountInitiatorFee;
+            else fees[1] += rebalanceParams.amountInitiatorFee;
 
-        // Do the swap to rebalance the position.
-        // This can be done either directly through the pool, or via a router with custom swap data.
-        // For swaps directly through the pool, if slippage is bigger than calculated, the transaction will not immediately revert,
-        // but excess slippage will be subtracted from the initiatorFee.
-        // For swaps via a router, tokenOut should be the limiting factor when increasing liquidity.
-        // Update balances after the swap.
-        _swap(balances, fees, initiatorParams, position, rebalanceParams, cache);
+            // Do the swap to rebalance the position.
+            // This can be done either directly through the pool, or via a router with custom swap data.
+            // For swaps directly through the pool, if slippage is bigger than calculated, the transaction will not immediately revert,
+            // but excess slippage will be subtracted from the initiatorFee.
+            // For swaps via a router, tokenOut should be the limiting factor when increasing liquidity.
+            // Update balances after the swap.
+            _swap(balances, fees, initiatorParams, position, rebalanceParams, cache, ammFee);
 
-        // Check that the pool is still balanced after the swap.
-        // Since the swap went potentially through the pool itself (but does not have to),
-        // the sqrtPrice might have moved and brought the pool out of balance.
-        position.sqrtPrice = _getSqrtPrice(position);
-        if (!isPoolBalanced(position.sqrtPrice, cache)) revert UnbalancedPool();
+            // Check that the pool is still balanced after the swap.
+            // Since the swap went potentially through the pool itself (but does not have to),
+            // the sqrtPrice might have moved and brought the pool out of balance.
+            position.sqrtPrice = _getSqrtPrice(position);
+            if (!isPoolBalanced(position.sqrtPrice, cache)) revert UnbalancedPool();
 
-        // As explained before _swap(), tokenOut should be the limiting factor when increasing liquidity
-        // therefore we only subtract the initiator fee from the amountOut, not from the amountIn.
-        // Increase liquidity, update balances and delta liquidity.
-        (uint256 amount0Desired, uint256 amount1Desired) =
-            rebalanceParams.zeroToOne ? (balances[0], balances[1] - fees[1]) : (balances[0] - fees[0], balances[1]);
-        // Increase liquidity, update balances and liquidity
-        _increaseLiquidity(balances, positionManager, position, amount0Desired, amount1Desired);
+            // As explained before _swap(), tokenOut should be the limiting factor when increasing liquidity
+            // therefore we only subtract the initiator fee from the amountOut, not from the amountIn.
+            // Increase liquidity, update balances and delta liquidity.
+            (uint256 amount0Desired, uint256 amount1Desired) =
+                rebalanceParams.zeroToOne ? (balances[0], balances[1] - fees[1]) : (balances[0] - fees[0], balances[1]);
+            // Increase liquidity, update balances and liquidity
+            _increaseLiquidity(balances, positionManager, position, amount0Desired, amount1Desired);
 
-        // Check that the actual liquidity of the position is above the minimum threshold.
-        // This prevents loss of principal of the liquidity position due to slippage,
-        // or malicious initiators who remove liquidity during a custom swap.
-        if (position.liquidity < rebalanceParams.minLiquidity) revert InsufficientLiquidity();
+            // Check that the actual liquidity of the position is above the minimum threshold.
+            // This prevents loss of principal of the liquidity position due to slippage,
+            // or malicious initiators who remove liquidity during a custom swap.
+            if (position.liquidity < rebalanceParams.minLiquidity) revert InsufficientLiquidity();
+        }
 
         // If the position was staked, stake it.
         _stake(balances, positionManager, position);
@@ -449,6 +456,7 @@ abstract contract Compounder is IActionBase, AbstractBase, Guardian {
      * @param position A struct with position and pool related variables.
      * @param rebalanceParams A struct with the rebalance parameters.
      * @param cache A struct with cached variables.
+     * @param ammFee The fee the AMM charges on swaps, with 6 decimals precision.
      * @dev Must update the balances and sqrtPrice after the swap.
      */
     function _swap(
@@ -457,7 +465,8 @@ abstract contract Compounder is IActionBase, AbstractBase, Guardian {
         InitiatorParams memory initiatorParams,
         PositionState memory position,
         RebalanceParams memory rebalanceParams,
-        Cache memory cache
+        Cache memory cache,
+        uint256 ammFee
     ) internal virtual {
         // Don't do swaps with zero amount.
         if (rebalanceParams.amountIn == 0) return;
@@ -466,18 +475,18 @@ abstract contract Compounder is IActionBase, AbstractBase, Guardian {
         // This can be done either directly through the pool, or via a router with custom swap data.
         if (initiatorParams.swapData.length == 0) {
             // Calculate a more accurate amountOut, with slippage.
+            uint256 amount0 = balances[0] - fees[0];
+            uint256 amount1 = balances[1] - fees[1];
             // forge-lint: disable-next-item(unsafe-typecast)
             uint256 amountOut = RebalanceOptimizationMath._getAmountOutWithSlippage(
                 rebalanceParams.zeroToOne,
-                position.fee,
+                ammFee,
                 _getPoolLiquidity(position),
                 uint160(position.sqrtPrice),
                 cache.sqrtRatioLower,
                 cache.sqrtRatioUpper,
-                balances[0] - fees[0],
-                balances[1] - fees[1],
-                rebalanceParams.amountIn,
-                rebalanceParams.amountOut
+                amount0,
+                amount1
             );
             // Don't do swaps with zero amount.
             if (amountOut == 0) return;

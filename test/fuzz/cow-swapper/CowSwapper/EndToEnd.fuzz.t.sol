@@ -99,6 +99,9 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         // And: account_ has no owner() function.
         vm.assume(account_.code.length == 0);
 
+        // And: account_ is not a precompile.
+        vm.assume(!isPrecompile(account_));
+
         // And: Account is not the console.
         vm.assume(account_ != address(0x000000000000000000636F6e736F6c652e6c6f67));
         loan.lender = account_;
@@ -106,11 +109,7 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         // When: The solver calls the flash loan router.
         // Then: it should revert.
         vm.prank(solver);
-        if (!isPrecompile(account_)) {
-            vm.expectRevert(bytes(""));
-        } else {
-            vm.expectRevert(bytes(""));
-        }
+        vm.expectRevert(bytes(""));
         flashLoanRouter.flashLoanAndSettle(loans, settlementCallData);
     }
 

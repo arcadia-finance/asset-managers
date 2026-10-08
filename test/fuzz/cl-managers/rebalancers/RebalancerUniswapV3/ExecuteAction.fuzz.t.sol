@@ -176,10 +176,8 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
         initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: A new position with a valid tick range above current tick.
-        tickLower = int24(bound(tickLower, position.tickCurrent, BOUND_TICK_UPPER - 1));
-        tickLower = tickLower / position.tickSpacing * position.tickSpacing;
-        tickUpper = int24(bound(tickUpper, tickLower + 1, BOUND_TICK_UPPER));
-        tickUpper = tickUpper / position.tickSpacing * position.tickSpacing;
+        (tickLower, tickUpper) =
+            givenValidTicks(tickLower, tickUpper, position.tickCurrent, BOUND_TICK_UPPER, 1, position.tickSpacing);
         initiatorParams.strategyData = abi.encode(tickLower, tickUpper);
 
         // And: Rebalancer has balances.
@@ -196,7 +194,7 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
 
         // And: The pool is unbalanced.
         {
-            (, uint256 lowerSqrtPriceDeviation,,,,) = rebalancer.accountInfo(address(account));
+            (,,, uint256 lowerSqrtPriceDeviation,,) = rebalancer.accountInfo(address(account));
             initiatorParams.trustedSqrtPrice = bound(
                 initiatorParams.trustedSqrtPrice,
                 position.sqrtPrice * 1e18 / lowerSqrtPriceDeviation + lowerSqrtPriceDeviation,
@@ -224,10 +222,7 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
         // Given: A valid position in range (has both tokens).
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position);
-        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
-        position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
-        position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
-        position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
+        givenValidPositionStateInRange(position);
         position.liquidity = uint128(bound(position.liquidity, 1e6, 1e10));
         (uint256 amount0,) = setPositionState(position);
         initiatorParams.positionManager = address(nonfungiblePositionManager);
@@ -253,10 +248,8 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
         initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: A new position with a valid tick range above current tick.
-        tickLower = int24(bound(tickLower, position.tickCurrent, BOUND_TICK_UPPER - 1));
-        tickLower = tickLower / position.tickSpacing * position.tickSpacing;
-        tickUpper = int24(bound(tickUpper, tickLower + 1, BOUND_TICK_UPPER));
-        tickUpper = tickUpper / position.tickSpacing * position.tickSpacing;
+        (tickLower, tickUpper) =
+            givenValidTicks(tickLower, tickUpper, position.tickCurrent, BOUND_TICK_UPPER, 1, position.tickSpacing);
         initiatorParams.strategyData = abi.encode(tickLower, tickUpper);
 
         // And: The Rebalancer owns the position.
@@ -305,10 +298,7 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
         // Given: A valid position in range (has both tokens).
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position);
-        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
-        position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
-        position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
-        position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
+        givenValidPositionStateInRange(position);
         position.liquidity = uint128(bound(position.liquidity, 1e6, 1e10));
         (uint256 amount0, uint256 amount1) = setPositionState(position);
         initiatorParams.positionManager = address(nonfungiblePositionManager);
@@ -334,10 +324,8 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
         initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: A new position with a valid tick range above current tick.
-        tickLower = int24(bound(tickLower, position.tickCurrent, BOUND_TICK_UPPER - 1));
-        tickLower = tickLower / position.tickSpacing * position.tickSpacing;
-        tickUpper = int24(bound(tickUpper, tickLower + 1, BOUND_TICK_UPPER));
-        tickUpper = tickUpper / position.tickSpacing * position.tickSpacing;
+        (tickLower, tickUpper) =
+            givenValidTicks(tickLower, tickUpper, position.tickCurrent, BOUND_TICK_UPPER, 1, position.tickSpacing);
         initiatorParams.strategyData = abi.encode(tickLower, tickUpper);
 
         // And: The Rebalancer owns the position.
@@ -390,10 +378,7 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
         // Given: A valid position in range (has both tokens).
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position);
-        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
-        position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
-        position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
-        position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
+        givenValidPositionStateInRange(position);
         position.liquidity = uint128(bound(position.liquidity, 1e6, 1e10));
         (uint256 amount0, uint256 amount1) = setPositionState(position);
         initiatorParams.positionManager = address(nonfungiblePositionManager);
@@ -419,10 +404,8 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
         initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: A new position with a valid tick range above current tick.
-        tickLower = int24(bound(tickLower, position.tickCurrent, BOUND_TICK_UPPER - 1));
-        tickLower = tickLower / position.tickSpacing * position.tickSpacing;
-        tickUpper = int24(bound(tickUpper, tickLower + 1, BOUND_TICK_UPPER));
-        tickUpper = tickUpper / position.tickSpacing * position.tickSpacing;
+        (tickLower, tickUpper) =
+            givenValidTicks(tickLower, tickUpper, position.tickCurrent, BOUND_TICK_UPPER, 1, position.tickSpacing);
         initiatorParams.strategyData = abi.encode(tickLower, tickUpper);
 
         // And: The Rebalancer owns the position.
@@ -455,7 +438,7 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
 
         // And: The pool is unbalanced after the swap.
         {
-            (, uint256 lowerSqrtPriceDeviation,,,,) = rebalancer.accountInfo(address(account));
+            (,,, uint256 lowerSqrtPriceDeviation,,) = rebalancer.accountInfo(address(account));
             uint256 lowerBoundSqrtPrice = initiatorParams.trustedSqrtPrice * lowerSqrtPriceDeviation / 1e18;
             uint256 newSqrtPrice = bound(position.sqrtPrice, TickMath.MIN_SQRT_PRICE, lowerBoundSqrtPrice);
 
@@ -486,10 +469,7 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
         // Given: A valid position in range (has both tokens).
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position);
-        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
-        position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
-        position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
-        position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
+        givenValidPositionStateInRange(position);
         position.liquidity = uint128(bound(position.liquidity, 1e7, 1e10));
         (uint256 amount0, uint256 amount1) = setPositionState(position);
         initiatorParams.positionManager = address(nonfungiblePositionManager);
@@ -515,10 +495,8 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
         initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: A new position with a valid tick range above current tick.
-        tickLower = int24(bound(tickLower, position.tickCurrent, BOUND_TICK_UPPER - 10));
-        tickLower = tickLower / position.tickSpacing * position.tickSpacing;
-        tickUpper = int24(bound(tickUpper, tickLower + 10, BOUND_TICK_UPPER));
-        tickUpper = tickUpper / position.tickSpacing * position.tickSpacing;
+        (tickLower, tickUpper) =
+            givenValidTicks(tickLower, tickUpper, position.tickCurrent, BOUND_TICK_UPPER, 10, position.tickSpacing);
         initiatorParams.strategyData = abi.encode(tickLower, tickUpper);
 
         // And: The Rebalancer owns the position.
@@ -578,10 +556,7 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
         // Given: A valid position in range (has both tokens).
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position);
-        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
-        position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
-        position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
-        position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
+        givenValidPositionStateInRange(position);
         position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
         (uint256 amount0, uint256 amount1) = setPositionState(position);
         initiatorParams.positionManager = address(nonfungiblePositionManager);
@@ -607,10 +582,8 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
         initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: A new position with a valid tick range below current tick.
-        tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, position.tickCurrent - 11));
-        tickLower = tickLower / position.tickSpacing * position.tickSpacing;
-        tickUpper = int24(bound(tickUpper, tickLower + 10, position.tickCurrent - 1));
-        tickUpper = tickUpper / position.tickSpacing * position.tickSpacing;
+        (tickLower, tickUpper) =
+            givenValidTicks(tickLower, tickUpper, BOUND_TICK_LOWER, position.tickCurrent - 1, 10, position.tickSpacing);
         initiatorParams.strategyData = abi.encode(tickLower, tickUpper);
 
         // And: The Rebalancer owns the position.
@@ -704,10 +677,7 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
         // Given: A valid position in range (has both tokens).
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position);
-        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
-        position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
-        position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
-        position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
+        givenValidPositionStateInRange(position);
         position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
         (uint256 amount0, uint256 amount1) = setPositionState(position);
         initiatorParams.positionManager = address(nonfungiblePositionManager);
@@ -733,10 +703,8 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
         initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: A new position with a valid tick range above current tick.
-        tickLower = int24(bound(tickLower, position.tickCurrent + 1, BOUND_TICK_UPPER - 10));
-        tickLower = tickLower / position.tickSpacing * position.tickSpacing;
-        tickUpper = int24(bound(tickUpper, tickLower + 10, BOUND_TICK_UPPER));
-        tickUpper = tickUpper / position.tickSpacing * position.tickSpacing;
+        (tickLower, tickUpper) =
+            givenValidTicks(tickLower, tickUpper, position.tickCurrent + 1, BOUND_TICK_UPPER, 10, position.tickSpacing);
         initiatorParams.strategyData = abi.encode(tickLower, tickUpper);
 
         // And: The Rebalancer owns the position.
@@ -837,10 +805,7 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
         // Given: A valid position in range (has both tokens).
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position);
-        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
-        position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
-        position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
-        position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
+        givenValidPositionStateInRange(position);
         position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
         setPositionState(position);
         initiatorParams.positionManager = address(nonfungiblePositionManager);
@@ -866,10 +831,8 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
         initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: A new position with a valid tick range below current tick.
-        tickLower = int24(bound(tickLower, BOUND_TICK_LOWER, position.tickCurrent - 11));
-        tickLower = tickLower / position.tickSpacing * position.tickSpacing;
-        tickUpper = int24(bound(tickUpper, tickLower + 10, position.tickCurrent - 1));
-        tickUpper = tickUpper / position.tickSpacing * position.tickSpacing;
+        (tickLower, tickUpper) =
+            givenValidTicks(tickLower, tickUpper, BOUND_TICK_LOWER, position.tickCurrent - 1, 10, position.tickSpacing);
         initiatorParams.strategyData = abi.encode(tickLower, tickUpper);
 
         // And: The Rebalancer owns the position.
@@ -965,10 +928,7 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
         // Given: A valid position in range (has both tokens).
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position);
-        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
-        position.tickLower = position.tickLower / position.tickSpacing * position.tickSpacing;
-        position.tickUpper = int24(bound(position.tickUpper, position.tickCurrent, BOUND_TICK_UPPER));
-        position.tickUpper = position.tickCurrent + (position.tickCurrent - position.tickLower);
+        givenValidPositionStateInRange(position);
         position.liquidity = uint128(bound(position.liquidity, 1e10, 1e15));
         setPositionState(position);
         initiatorParams.positionManager = address(nonfungiblePositionManager);
@@ -994,10 +954,8 @@ contract ExecuteAction_RebalancerUniswapV3_Fuzz_Test is RebalancerUniswapV3_Fuzz
         initiatorParams.swapFee = initiatorParams.claimFee;
 
         // And: A new position with a valid tick range above current tick.
-        tickLower = int24(bound(tickLower, position.tickCurrent + 1, BOUND_TICK_UPPER - 10));
-        tickLower = tickLower / position.tickSpacing * position.tickSpacing;
-        tickUpper = int24(bound(tickUpper, tickLower + 10, BOUND_TICK_UPPER));
-        tickUpper = tickUpper / position.tickSpacing * position.tickSpacing;
+        (tickLower, tickUpper) =
+            givenValidTicks(tickLower, tickUpper, position.tickCurrent + 1, BOUND_TICK_UPPER, 10, position.tickSpacing);
         initiatorParams.strategyData = abi.encode(tickLower, tickUpper);
 
         // And: The Rebalancer owns the position.

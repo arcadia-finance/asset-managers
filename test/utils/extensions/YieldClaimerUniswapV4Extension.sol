@@ -10,12 +10,13 @@ import { PositionState } from "../../../src/cl-managers/state/PositionState.sol"
 contract YieldClaimerUniswapV4Extension is YieldClaimerUniswapV4 {
     constructor(
         address owner_,
+        address guardian_,
         address arcadiaFactory,
         address positionManager,
         address permit2,
         address poolManager,
         address wrappedNative
-    ) YieldClaimerUniswapV4(owner_, arcadiaFactory, positionManager, permit2, poolManager, wrappedNative) { }
+    ) YieldClaimerUniswapV4(owner_, guardian_, arcadiaFactory, positionManager, permit2, poolManager, wrappedNative) { }
 
     function getUnderlyingTokens(address positionManager, uint256 id) external view returns (address, address) {
         return _getUnderlyingTokens(positionManager, id);

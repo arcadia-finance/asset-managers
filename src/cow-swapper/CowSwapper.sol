@@ -30,7 +30,7 @@ contract CowSwapper is IActionBase, EIP712, Guardian {
     ////////////////////////////////////////////////////////////// */
 
     // The version of the CowSwapper.
-    string public constant VERSION = "1.1.1";
+    string public constant VERSION = "1.2.0";
 
     // The EIP-1271 magic value.
     bytes4 internal constant MAGIC_VALUE = 0x1626ba7e;
@@ -137,13 +137,18 @@ contract CowSwapper is IActionBase, EIP712, Guardian {
 
     /**
      * @param owner_ The address of the Owner.
+     * @param guardian_ The address of the Guardian.
      * @param arcadiaFactory The contract address of the Arcadia Factory.
      * @param flashLoanRouter The contract address of the flash-loan router.
      * @param hooksTrampoline The contract address of the hooks trampoline.
      */
-    constructor(address owner_, address arcadiaFactory, address flashLoanRouter, address hooksTrampoline)
-        Guardian(owner_)
-    {
+    constructor(
+        address owner_,
+        address guardian_,
+        address arcadiaFactory,
+        address flashLoanRouter,
+        address hooksTrampoline
+    ) Guardian(owner_, guardian_) {
         ARCADIA_FACTORY = IArcadiaFactory(arcadiaFactory);
         FLASH_LOAN_ROUTER = IFlashLoanRouter(flashLoanRouter);
         COW_SETTLEMENT = IGPv2Settlement(address(FLASH_LOAN_ROUTER.settlementContract()));

@@ -77,8 +77,9 @@ abstract contract CowSwapper_Fuzz_Test is Fuzz_Test, BalancerV2Fixture, CowSwapF
         addAssetToArcadia(address(token1), int256(1e18));
 
         // Deploy test contract.
-        cowSwapper =
-            new CowSwapperExtension(users.owner, address(factory), address(flashLoanRouter), address(hooksTrampoline));
+        cowSwapper = new CowSwapperExtension(
+            users.owner, users.guardian, address(factory), address(flashLoanRouter), address(hooksTrampoline)
+        );
 
         // Deploy mocked order hook.
         orderHook = new DefaultOrderHook(address(cowSwapper));

@@ -30,7 +30,7 @@ library RebalanceLogic {
      * that maximizes the amount of liquidity that can be added to the positions (no leftovers of either token0 or token1).
      * @param minLiquidityRatio The ratio of the minimum amount of liquidity that must be minted,
      * relative to the hypothetical amount of liquidity when we rebalance without slippage, with 18 decimals precision.
-     * @param poolFee The fee of the pool, with 6 decimals precision.
+     * @param ammFee The fee the AMM charges on swaps, with 6 decimals precision.
      * @param initiatorFee The fee of the initiator, with 18 decimals precision.
      * @param sqrtPrice The square root of the price (token1/token0), with 96 binary precision.
      * @param sqrtRatioLower The square root price of the lower tick of the liquidity position, with 96 binary precision.
@@ -41,7 +41,7 @@ library RebalanceLogic {
      */
     function _getRebalanceParams(
         uint256 minLiquidityRatio,
-        uint256 poolFee,
+        uint256 ammFee,
         uint256 initiatorFee,
         uint256 sqrtPrice,
         uint256 sqrtRatioLower,
@@ -49,11 +49,11 @@ library RebalanceLogic {
         uint256 balance0,
         uint256 balance1
     ) internal pure returns (RebalanceParams memory rebalanceParams) {
-        // Total fee is pool fee + initiator fee, with 18 decimals precision.
-        // Since Uniswap uses 6 decimals precision for the fee, we have to multiply the pool fee by 1e12.
+        // Total fee is AMM fee + initiator fee, with 18 decimals precision.
+        // Since the AMM fee has 6 decimals precision, we have to multiply it by 1e12.
         uint256 fee;
         unchecked {
-            fee = initiatorFee + poolFee * 1e12;
+            fee = initiatorFee + ammFee * 1e12;
         }
 
         // Calculate the swap parameters

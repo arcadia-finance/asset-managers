@@ -39,8 +39,9 @@ abstract contract DefaultOrderHook_Fuzz_Test is Fuzz_Test, BalancerV2Fixture, Co
         deployCowSwap(users.owner, BALANCER_VAULT);
 
         // Deploy CoW Swapper
-        cowSwapper =
-            new CowSwapperExtension(users.owner, address(factory), address(flashLoanRouter), address(hooksTrampoline));
+        cowSwapper = new CowSwapperExtension(
+            users.owner, users.guardian, address(factory), address(flashLoanRouter), address(hooksTrampoline)
+        );
 
         // Deploy mocked order hook.
         orderHook = new DefaultOrderHookExtension(address(cowSwapper));

@@ -37,6 +37,7 @@ abstract contract RebalancerUniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
         // Deploy test contract.
         rebalancer = new RebalancerUniswapV4Extension(
             users.owner,
+            users.guardian,
             address(factory),
             address(routerTrampoline),
             address(positionManagerV4),

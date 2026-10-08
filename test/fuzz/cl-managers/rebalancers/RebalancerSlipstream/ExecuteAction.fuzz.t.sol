@@ -203,7 +203,7 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
 
         // And: The pool is unbalanced.
         {
-            (, uint256 lowerSqrtPriceDeviation,,,,) = rebalancer.accountInfo(address(account));
+            (,,, uint256 lowerSqrtPriceDeviation,,) = rebalancer.accountInfo(address(account));
             initiatorParams.trustedSqrtPrice = bound(
                 initiatorParams.trustedSqrtPrice,
                 position.sqrtPrice * 1e18 / lowerSqrtPriceDeviation + lowerSqrtPriceDeviation,
@@ -297,7 +297,7 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
 
         // And: The pool is unbalanced after the swap.
         {
-            (, uint256 lowerSqrtPriceDeviation,,,,) = rebalancer.accountInfo(address(account));
+            (,,, uint256 lowerSqrtPriceDeviation,,) = rebalancer.accountInfo(address(account));
             uint256 lowerBoundSqrtPrice = initiatorParams.trustedSqrtPrice * lowerSqrtPriceDeviation / 1e18;
             uint256 newSqrtPrice = bound(position.sqrtPrice, TickMath.MIN_SQRT_PRICE, lowerBoundSqrtPrice);
 
@@ -397,7 +397,7 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
 
         // And: The pool is unbalanced after the swap.
         {
-            (, uint256 lowerSqrtPriceDeviation,,,,) = rebalancer.accountInfo(address(account));
+            (,,, uint256 lowerSqrtPriceDeviation,,) = rebalancer.accountInfo(address(account));
             uint256 lowerBoundSqrtPrice = initiatorParams.trustedSqrtPrice * lowerSqrtPriceDeviation / 1e18;
             uint256 newSqrtPrice = bound(position.sqrtPrice, TickMath.MIN_SQRT_PRICE, lowerBoundSqrtPrice);
 
@@ -495,7 +495,7 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
 
         // And: The pool is unbalanced after the swap.
         {
-            (, uint256 lowerSqrtPriceDeviation,,,,) = rebalancer.accountInfo(address(account));
+            (,,, uint256 lowerSqrtPriceDeviation,,) = rebalancer.accountInfo(address(account));
             uint256 lowerBoundSqrtPrice = initiatorParams.trustedSqrtPrice * lowerSqrtPriceDeviation / 1e18;
             uint256 newSqrtPrice = bound(position.sqrtPrice, TickMath.MIN_SQRT_PRICE, lowerBoundSqrtPrice);
 
@@ -1025,7 +1025,7 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
         (token0, token1) = (address(token0) < address(token1)) ? (token0, token1) : (token1, token0);
         stdstore.target(address(registry)).sig(registry.inRegistry.selector).with_key(AERO).checked_write(false);
 
-        // Given: A valid position in range (has both tokens).
+        // And: A valid position in range (has both tokens).
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position, true);
         position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
@@ -1313,7 +1313,7 @@ contract ExecuteAction_RebalancerSlipstream_Fuzz_Test is RebalancerSlipstream_Fu
         (token0, token1) = (address(token0) < address(token1)) ? (token0, token1) : (token1, token0);
         stdstore.target(address(registry)).sig(registry.inRegistry.selector).with_key(AERO).checked_write(false);
 
-        // Given: A valid position in range (has both tokens).
+        // And: A valid position in range (has both tokens).
         liquidityPool = givenValidPoolState(liquidityPool, position);
         setPoolState(liquidityPool, position, true);
         position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));

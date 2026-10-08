@@ -58,7 +58,7 @@ abstract contract YieldClaimer_Fuzz_Test is Fuzz_Test, UniswapV3Fixture {
         (token0, token1) = (address(token0) < address(token1)) ? (token0, token1) : (token1, token0);
 
         // Deploy test contract.
-        yieldClaimer = new YieldClaimerExtension(users.owner, address(factory));
+        yieldClaimer = new YieldClaimerExtension(users.owner, users.guardian, address(factory));
     }
 
     /*////////////////////////////////////////////////////////////////

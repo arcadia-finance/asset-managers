@@ -28,8 +28,8 @@ import { UniswapV3AMExtension } from "../../../../../lib/accounts-v2/test/utils/
 import {
     UniswapV3AMFixture
 } from "../../../../../lib/accounts-v2/test/utils/fixtures/arcadia-accounts/UniswapV3AMFixture.f.sol";
-import { UniswapV3Fixture } from "../../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";
 import { UniswapV3Extension } from "../../../../utils/extensions/UniswapV3Extension.sol";
+import { UniswapV3Fixture } from "../../../../../lib/accounts-v2/test/utils/fixtures/uniswap-v3/UniswapV3Fixture.f.sol";
 import { Utils } from "../../../../../lib/accounts-v2/test/utils/Utils.sol";
 
 /**
@@ -149,11 +149,12 @@ abstract contract UniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, UniswapV3A
             uint128(bound(liquidityPool, UniswapHelpers.maxLiquidity(1) / 1000, UniswapHelpers.maxLiquidity(1) / 10));
         position.sqrtPrice = uint160(position.sqrtPrice);
         position.tickCurrent = TickMath.getTickAtSqrtPrice(uint160(position.sqrtPrice));
-        position.fee = POOL_FEE;
+        uint24[4] memory fees = [uint24(100), 500, 3000, 10_000];
+        position.poolFee = fees[bound(position.poolFee, 0, 3)];
     }
 
     function setPoolState(uint128 liquidityPool, PositionState memory position) internal {
-        initUniswapV3(uint160(position.sqrtPrice), liquidityPool, position.fee);
+        initUniswapV3(uint160(position.sqrtPrice), liquidityPool, position.poolFee);
         position.pool = address(poolUniswap);
         position.tickSpacing = poolUniswap.tickSpacing();
         position.tokens = new address[](2);
@@ -168,6 +169,32 @@ abstract contract UniswapV3_Fuzz_Test is Fuzz_Test, UniswapV3Fixture, UniswapV3A
         position.tickUpper = int24(bound(position.tickUpper, position.tickLower + 2 * tickSpacing, BOUND_TICK_UPPER));
         position.tickUpper = position.tickUpper / tickSpacing * tickSpacing;
         position.liquidity = uint128(bound(position.liquidity, 1e6, poolUniswap.liquidity() / 1e3));
+    }
+
+    function givenValidPositionStateInRange(PositionState memory position) internal view {
+        int24 tickSpacing = position.tickSpacing;
+        int24 tickCurrent = position.tickCurrent - (position.tickCurrent % tickSpacing + tickSpacing) % tickSpacing;
+        position.tickLower = int24(bound(position.tickLower, BOUND_TICK_LOWER, position.tickCurrent - 1));
+        position.tickLower -= (position.tickLower % tickSpacing + tickSpacing) % tickSpacing;
+        position.tickUpper = 2 * tickCurrent - position.tickLower + tickSpacing;
+    }
+
+    function givenValidTicks(
+        int24 tickLower,
+        int24 tickUpper,
+        int24 minTick,
+        int24 maxTick,
+        int24 minWidth,
+        int24 tickSpacing
+    ) internal pure returns (int24, int24) {
+        int256 minIndex =
+            -((-int256(minTick) - (((-int256(minTick) % tickSpacing) + tickSpacing) % tickSpacing)) / tickSpacing);
+        int256 maxIndex =
+            (int256(maxTick) - ((int256(maxTick) % tickSpacing + tickSpacing) % tickSpacing)) / tickSpacing;
+        int256 widthIndex = (int256(minWidth) + tickSpacing - 1) / tickSpacing;
+        int256 lowerIndex = bound(tickLower, minIndex, maxIndex - widthIndex);
+        int256 upperIndex = bound(tickUpper, lowerIndex + widthIndex, maxIndex);
+        return (int24(lowerIndex * tickSpacing), int24(upperIndex * tickSpacing));
     }
 
     function setPositionState(PositionState memory position) internal returns (uint256 amount0, uint256 amount1) {

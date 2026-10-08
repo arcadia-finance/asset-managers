@@ -148,10 +148,13 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
 
     /**
      * @param owner_ The address of the Owner.
+     * @param guardian_ The address of the Guardian.
      * @param arcadiaFactory The contract address of the Arcadia Factory.
      * @param routerTrampoline The contract address of the Router Trampoline.
      */
-    constructor(address owner_, address arcadiaFactory, address routerTrampoline) Guardian(owner_) {
+    constructor(address owner_, address guardian_, address arcadiaFactory, address routerTrampoline)
+        Guardian(owner_, guardian_)
+    {
         ARCADIA_FACTORY = IArcadiaFactory(arcadiaFactory);
         ROUTER_TRAMPOLINE = IRouterTrampoline(routerTrampoline);
     }
@@ -409,9 +412,10 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
 
         // Get the rebalance parameters, based on a hypothetical swap through the pool itself without slippage.
         // Reverts if balance is smaller than the required fees and amountOut.
+        uint256 ammFee = _getAmmFee(position);
         RebalanceParams memory rebalanceParams = RebalanceLogic._getRebalanceParams(
             accountInfo_.minLiquidityRatio,
-            position.fee,
+            ammFee,
             initiatorParams.swapFee,
             position.sqrtPrice,
             cache.sqrtRatioLower,
@@ -428,7 +432,7 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
         // but excess slippage will be subtracted from the initiatorFee.
         // For swaps via a router, tokenOut should be the limiting factor when increasing liquidity.
         // Update balances after the swap.
-        _swap(balances, fees, initiatorParams, position, rebalanceParams, cache);
+        _swap(balances, fees, initiatorParams, position, rebalanceParams, cache, ammFee);
 
         // Check that the pool is still balanced after the swap.
         // Since the swap went potentially through the pool itself (but does not have to),
@@ -521,6 +525,7 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
      * @param position A struct with position and pool related variables.
      * @param rebalanceParams A struct with the rebalance parameters.
      * @param cache A struct with cached variables.
+     * @param ammFee The fee the AMM charges on swaps, with 6 decimals precision.
      * @dev Must update the balances and sqrtPrice after the swap.
      */
     function _swap(
@@ -529,7 +534,8 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
         InitiatorParams memory initiatorParams,
         PositionState memory position,
         RebalanceParams memory rebalanceParams,
-        Cache memory cache
+        Cache memory cache,
+        uint256 ammFee
     ) internal virtual {
         // Don't do swaps with zero amount.
         if (rebalanceParams.amountIn == 0) return;
@@ -543,15 +549,13 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
             // forge-lint: disable-next-item(unsafe-typecast)
             uint256 amountOut = RebalanceOptimizationMath._getAmountOutWithSlippage(
                 rebalanceParams.zeroToOne,
-                position.fee,
+                ammFee,
                 _getPoolLiquidity(position),
                 uint160(position.sqrtPrice),
                 cache.sqrtRatioLower,
                 cache.sqrtRatioUpper,
                 amount0,
-                amount1,
-                rebalanceParams.amountIn,
-                rebalanceParams.amountOut
+                amount1
             );
             // Don't do swaps with zero amount.
             if (amountOut == 0) return;

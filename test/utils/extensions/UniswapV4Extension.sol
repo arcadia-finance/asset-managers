@@ -28,6 +28,10 @@ contract UniswapV4Extension is UniswapV4 {
         return _getSqrtPrice(position);
     }
 
+    function getAmmFee(PositionState memory position) external view returns (uint24) {
+        return _getAmmFee(position);
+    }
+
     function claim(
         uint256[] memory balances,
         uint256[] memory fees,

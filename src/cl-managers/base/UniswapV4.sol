@@ -20,6 +20,9 @@ import { LiquidityAmounts } from "../libraries/LiquidityAmounts.sol";
 import { PoolKey } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 import { PositionInfo } from "../../../lib/accounts-v2/lib/v4-periphery/src/libraries/PositionInfoLibrary.sol";
 import { PositionState } from "../state/PositionState.sol";
+import {
+    ProtocolFeeLibrary
+} from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/ProtocolFeeLibrary.sol";
 import { SafeApprove } from "../../libraries/SafeApprove.sol";
 import { StateLibrary } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/StateLibrary.sol";
 import { SwapParams } from "../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/types/PoolOperation.sol";
@@ -146,7 +149,7 @@ abstract contract UniswapV4 is AbstractBase {
         position.pool = address(poolKey.hooks);
         position.tokens[0] = Currency.unwrap(poolKey.currency0);
         position.tokens[1] = Currency.unwrap(poolKey.currency1);
-        position.fee = poolKey.fee;
+        position.poolFee = poolKey.fee;
         position.tickSpacing = poolKey.tickSpacing;
         (position.sqrtPrice, position.tickCurrent,,) = POOL_MANAGER.getSlot0(poolKey.toId());
         return position;
@@ -167,7 +170,7 @@ abstract contract UniswapV4 is AbstractBase {
         PoolKey memory poolKey = PoolKey({
             currency0: Currency.wrap(position.tokens[0]),
             currency1: Currency.wrap(position.tokens[1]),
-            fee: position.fee,
+            fee: position.poolFee,
             tickSpacing: position.tickSpacing,
             hooks: IHooks(position.pool)
         });
@@ -183,11 +186,33 @@ abstract contract UniswapV4 is AbstractBase {
         PoolKey memory poolKey = PoolKey({
             currency0: Currency.wrap(position.tokens[0]),
             currency1: Currency.wrap(position.tokens[1]),
-            fee: position.fee,
+            fee: position.poolFee,
             tickSpacing: position.tickSpacing,
             hooks: IHooks(position.pool)
         });
         (sqrtPrice,,,) = POOL_MANAGER.getSlot0(poolKey.toId());
+    }
+
+    /**
+     * @notice Returns the fee the AMM charges on swaps.
+     * @param position A struct with position and pool related variables.
+     * @return ammFee The fee the AMM charges on swaps, with 6 decimals precision.
+     * @dev A hook can still override the fee in beforeSwap.
+     */
+    function _getAmmFee(PositionState memory position) internal view virtual override returns (uint24 ammFee) {
+        uint24 protocolFee;
+        (,, protocolFee, ammFee) = POOL_MANAGER.getSlot0(
+            PoolKey({
+                currency0: Currency.wrap(position.tokens[0]),
+                currency1: Currency.wrap(position.tokens[1]),
+                fee: position.poolFee,
+                tickSpacing: position.tickSpacing,
+                hooks: IHooks(position.pool)
+            }).toId()
+        );
+        uint16 protocolFee0 = ProtocolFeeLibrary.getZeroForOneFee(protocolFee);
+        uint16 protocolFee1 = ProtocolFeeLibrary.getOneForZeroFee(protocolFee);
+        ammFee = ProtocolFeeLibrary.calculateSwapFee(protocolFee0 > protocolFee1 ? protocolFee0 : protocolFee1, ammFee);
     }
 
     /* ///////////////////////////////////////////////////////////////
@@ -380,7 +405,7 @@ abstract contract UniswapV4 is AbstractBase {
             PoolKey({
                 currency0: Currency.wrap(position.tokens[0]),
                 currency1: Currency.wrap(position.tokens[1]),
-                fee: position.fee,
+                fee: position.poolFee,
                 tickSpacing: position.tickSpacing,
                 hooks: IHooks(position.pool)
             })
@@ -500,7 +525,7 @@ abstract contract UniswapV4 is AbstractBase {
         PoolKey memory poolKey = PoolKey({
             currency0: Currency.wrap(position.tokens[0]),
             currency1: Currency.wrap(position.tokens[1]),
-            fee: position.fee,
+            fee: position.poolFee,
             tickSpacing: position.tickSpacing,
             hooks: IHooks(position.pool)
         });
@@ -578,17 +603,20 @@ abstract contract UniswapV4 is AbstractBase {
         Currency currency1 = Currency.wrap(position.tokens[1]);
 
         // Generate calldata to mint new position.
-        bytes memory actions = new bytes(3);
+        bytes memory actions = new bytes(4);
         // forge-lint: disable-next-item(unsafe-typecast)
         actions[0] = bytes1(uint8(Actions.INCREASE_LIQUIDITY));
         // forge-lint: disable-next-item(unsafe-typecast)
-        actions[1] = bytes1(uint8(Actions.SETTLE_PAIR));
+        actions[1] = bytes1(uint8(Actions.CLOSE_CURRENCY));
         // forge-lint: disable-next-item(unsafe-typecast)
-        actions[2] = bytes1(uint8(Actions.SWEEP));
-        bytes[] memory params = new bytes[](3);
+        actions[2] = bytes1(uint8(Actions.CLOSE_CURRENCY));
+        // forge-lint: disable-next-item(unsafe-typecast)
+        actions[3] = bytes1(uint8(Actions.SWEEP));
+        bytes[] memory params = new bytes[](4);
         params[0] = abi.encode(position.id, position.liquidity, type(uint128).max, type(uint128).max, "");
-        params[1] = abi.encode(currency0, currency1);
-        params[2] = abi.encode(currency0, address(this));
+        params[1] = abi.encode(currency0);
+        params[2] = abi.encode(currency1);
+        params[3] = abi.encode(currency0, address(this));
 
         // Mint the new position.
         uint256 ethValue = isNative ? amount0Desired : 0;

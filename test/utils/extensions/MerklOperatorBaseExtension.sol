@@ -7,7 +7,7 @@ pragma solidity ^0.8.0;
 import { MerklOperatorBase } from "../../../src/merkl-operator/MerklOperatorBase.sol";
 
 contract MerklOperatorBaseExtension is MerklOperatorBase {
-    constructor(address owner_, address arcadiaFactory, address merklDistributor)
-        MerklOperatorBase(owner_, arcadiaFactory, merklDistributor)
+    constructor(address owner_, address guardian_, address arcadiaFactory, address merklDistributor)
+        MerklOperatorBase(owner_, guardian_, arcadiaFactory, merklDistributor)
     { }
 }

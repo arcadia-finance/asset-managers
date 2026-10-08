@@ -64,8 +64,11 @@ abstract contract Guardian is Owned {
 
     /**
      * @param owner_ The address of the Owner.
+     * @param guardian_ The address of the Guardian.
      */
-    constructor(address owner_) Owned(owner_) { }
+    constructor(address owner_, address guardian_) Owned(owner_) {
+        guardian = guardian_;
+    }
 
     /* //////////////////////////////////////////////////////////////
                             GUARDIAN LOGIC

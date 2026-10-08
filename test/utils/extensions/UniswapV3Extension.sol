@@ -26,6 +26,10 @@ contract UniswapV3Extension is UniswapV3 {
         return _getSqrtPrice(position);
     }
 
+    function getAmmFee(PositionState memory position) external pure returns (uint24) {
+        return _getAmmFee(position);
+    }
+
     function claim(
         uint256[] memory balances,
         uint256[] memory fees,

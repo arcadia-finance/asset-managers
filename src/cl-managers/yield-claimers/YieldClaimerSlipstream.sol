@@ -19,7 +19,7 @@ contract YieldClaimerSlipstream is YieldClaimer, Slipstream {
     ////////////////////////////////////////////////////////////// */
 
     // The version of the Asset Manager.
-    string public constant VERSION = "2.1.0";
+    string public constant VERSION = "2.2.0";
 
     /* //////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -27,6 +27,7 @@ contract YieldClaimerSlipstream is YieldClaimer, Slipstream {
 
     /**
      * @param owner_ The address of the Owner.
+     * @param guardian_ The address of the Guardian.
      * @param arcadiaFactory The contract address of the Arcadia Factory.
      * @param positionManager The contract address of the Slipstream Position Manager.
      * @param cLFactory The contract address of the Slipstream Factory.
@@ -37,6 +38,7 @@ contract YieldClaimerSlipstream is YieldClaimer, Slipstream {
      */
     constructor(
         address owner_,
+        address guardian_,
         address arcadiaFactory,
         address positionManager,
         address cLFactory,
@@ -45,7 +47,7 @@ contract YieldClaimerSlipstream is YieldClaimer, Slipstream {
         address stakedSlipstreamAm,
         address stakedSlipstreamWrapper
     )
-        YieldClaimer(owner_, arcadiaFactory)
+        YieldClaimer(owner_, guardian_, arcadiaFactory)
         Slipstream(
             positionManager, cLFactory, poolImplementation, rewardToken, stakedSlipstreamAm, stakedSlipstreamWrapper
         )

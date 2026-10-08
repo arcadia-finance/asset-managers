@@ -15,34 +15,38 @@ contract RebalanceOptimizationMathExtension {
         uint160 sqrtRatioLower,
         uint160 sqrtRatioUpper,
         uint256 amount0,
-        uint256 amount1,
-        uint256 amountIn,
-        uint256 amountOut
+        uint256 amount1
     ) external pure returns (uint256) {
         return RebalanceOptimizationMath._getAmountOutWithSlippage(
-            zeroToOne,
-            fee,
-            usableLiquidity,
-            sqrtPriceOld,
-            sqrtRatioLower,
-            sqrtRatioUpper,
-            amount0,
-            amount1,
-            amountIn,
-            amountOut
+            zeroToOne, fee, usableLiquidity, sqrtPriceOld, sqrtRatioLower, sqrtRatioUpper, amount0, amount1
         );
     }
 
-    function approximateSqrtPriceNew(
-        bool zeroToOne,
+    function getAmount1OutWithSlippage(
         uint256 fee,
         uint128 usableLiquidity,
         uint160 sqrtPriceOld,
-        uint256 amountIn,
-        uint256 amountOut
-    ) external pure returns (uint160 sqrtPriceNew) {
-        sqrtPriceNew = RebalanceOptimizationMath._approximateSqrtPriceNew(
-            zeroToOne, fee, usableLiquidity, sqrtPriceOld, amountIn, amountOut
+        uint160 sqrtRatioLower,
+        uint160 sqrtRatioUpper,
+        uint256 amount0,
+        uint256 amount1
+    ) external pure returns (uint256 amountOut) {
+        amountOut = RebalanceOptimizationMath._getAmount1OutWithSlippage(
+            fee, usableLiquidity, sqrtPriceOld, sqrtRatioLower, sqrtRatioUpper, amount0, amount1
+        );
+    }
+
+    function getAmount0OutWithSlippage(
+        uint256 fee,
+        uint128 usableLiquidity,
+        uint160 sqrtPriceOld,
+        uint160 sqrtRatioLower,
+        uint160 sqrtRatioUpper,
+        uint256 amount0,
+        uint256 amount1
+    ) external pure returns (uint256 amountOut) {
+        amountOut = RebalanceOptimizationMath._getAmount0OutWithSlippage(
+            fee, usableLiquidity, sqrtPriceOld, sqrtRatioLower, sqrtRatioUpper, amount0, amount1
         );
     }
 
@@ -62,30 +66,87 @@ contract RebalanceOptimizationMathExtension {
         amountOut = RebalanceOptimizationMath._getAmount0OutFromAmount1In(fee, usableLiquidity, sqrtPriceOld, amount1);
     }
 
-    function getSwapParamsExact(
-        bool zeroToOne,
+    function capAmount1Out(
         uint256 fee,
         uint128 usableLiquidity,
         uint160 sqrtPriceOld,
-        uint160 sqrtPriceNew
-    ) external pure returns (uint256 amountIn, uint256 amountOut) {
-        (amountIn, amountOut) = RebalanceOptimizationMath._getSwapParamsExact(
-            zeroToOne, fee, usableLiquidity, sqrtPriceOld, sqrtPriceNew
+        uint160 sqrtRatioUpper,
+        uint160 sqrtPriceNew,
+        uint256 amount0,
+        uint256 amountOut
+    ) external pure returns (uint256 amountOutCapped) {
+        amountOutCapped = RebalanceOptimizationMath._capAmount1Out(
+            fee, usableLiquidity, sqrtPriceOld, sqrtRatioUpper, sqrtPriceNew, amount0, amountOut
         );
     }
 
-    function approximateOptimalSwapAmounts(
-        bool zeroToOne,
+    function capAmount0Out(
+        uint256 fee,
+        uint128 usableLiquidity,
+        uint160 sqrtPriceOld,
         uint160 sqrtRatioLower,
-        uint160 sqrtRatioUpper,
-        uint256 amount0,
+        uint160 sqrtPriceNew,
         uint256 amount1,
-        uint256 amountIn,
-        uint256 amountOut,
-        uint160 sqrtPrice
-    ) external pure returns (bool converged, uint256 amountIn_, uint256 amountOut_) {
-        (converged, amountIn_, amountOut_) = RebalanceOptimizationMath._approximateOptimalSwapAmounts(
-            zeroToOne, sqrtRatioLower, sqrtRatioUpper, amount0, amount1, amountIn, amountOut, sqrtPrice
+        uint256 amountOut
+    ) external pure returns (uint256 amountOutCapped) {
+        amountOutCapped = RebalanceOptimizationMath._capAmount0Out(
+            fee, usableLiquidity, sqrtPriceOld, sqrtRatioLower, sqrtPriceNew, amount1, amountOut
         );
+    }
+
+    function getSqrtPrice(
+        bool zeroToOne,
+        uint256 fee,
+        uint256 usableLiquidity,
+        uint256 sqrtPriceOld,
+        uint256 sqrtRatioLower,
+        uint256 sqrtRatioUpper,
+        uint256 amount0,
+        uint256 amount1
+    ) external pure returns (uint160 sqrtPriceNew) {
+        sqrtPriceNew = RebalanceOptimizationMath._getSqrtPrice(
+            zeroToOne, fee, usableLiquidity, sqrtPriceOld, sqrtRatioLower, sqrtRatioUpper, amount0, amount1
+        );
+    }
+
+    function getQuadraticCoefficients(
+        bool zeroToOne,
+        uint256 fee,
+        uint256 usableLiquidity,
+        uint256 sqrtPriceOld,
+        uint256 sqrtRatioLower,
+        uint256 sqrtRatioUpper,
+        uint256 amount0,
+        uint256 amount1
+    ) external pure returns (int256 quadraticCoefficient, int256 linearCoefficient, int256 constantCoefficient) {
+        (quadraticCoefficient, linearCoefficient, constantCoefficient) =
+            RebalanceOptimizationMath._getQuadraticCoefficients(
+                zeroToOne, fee, usableLiquidity, sqrtPriceOld, sqrtRatioLower, sqrtRatioUpper, amount0, amount1
+            );
+    }
+
+    function getNormalizedParameters(
+        uint256 usableLiquidity,
+        uint256 sqrtPriceOld,
+        uint256 sqrtRatioLower,
+        uint256 sqrtRatioUpper,
+        uint256 amount0,
+        uint256 amount1
+    )
+        external
+        pure
+        returns (
+            uint256 amount0Normalized,
+            uint256 amount1Normalized,
+            uint256 sqrtRatioLowerNormalized,
+            uint256 sqrtRatioUpperInverseNormalized
+        )
+    {
+        (
+            amount0Normalized, amount1Normalized, sqrtRatioLowerNormalized, sqrtRatioUpperInverseNormalized
+        ) =
+            RebalanceOptimizationMath._getNormalizedParameters(
+                usableLiquidity, sqrtPriceOld, sqrtRatioLower, sqrtRatioUpper, amount0, amount1
+            );
     }
 }

@@ -29,14 +29,15 @@ contract IncreaseLiquidity_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
     //////////////////////////////////////////////////////////////*/
     function testFuzz_Success_increaseLiquidity_NotNative(
         uint128 liquidityPool,
+        uint24 protocolFee,
         address positionManager,
         PositionState memory position,
         uint128 balance0,
         uint128 balance1
     ) public {
         // Given: A valid position.
-        liquidityPool = givenValidPoolState(liquidityPool, position);
-        setPoolState(liquidityPool, position, false);
+        (liquidityPool, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
+        setPoolState(liquidityPool, position, protocolFee, false);
         givenValidPositionState(position);
         setPositionState(position);
 
@@ -109,14 +110,15 @@ contract IncreaseLiquidity_UniswapV4_Fuzz_Test is UniswapV4_Fuzz_Test {
 
     function testFuzz_Success_increaseLiquidity_IsNative(
         uint128 liquidityPool,
+        uint24 protocolFee,
         address positionManager,
         PositionState memory position,
         uint128 balance0,
         uint128 balance1
     ) public {
         // Given: A valid position.
-        liquidityPool = givenValidPoolState(liquidityPool, position);
-        setPoolState(liquidityPool, position, true);
+        (liquidityPool, protocolFee) = givenValidPoolState(liquidityPool, position, protocolFee);
+        setPoolState(liquidityPool, position, protocolFee, true);
         givenValidPositionState(position);
         setPositionState(position);
 
