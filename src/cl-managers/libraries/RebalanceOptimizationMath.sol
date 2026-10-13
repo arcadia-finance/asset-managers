@@ -44,7 +44,8 @@ library RebalanceOptimizationMath {
      * @param amount0 The balance of token0 before the swap.
      * @param amount1 The balance of token1 before the swap.
      * @return amountOut The amount of tokenOut.
-     * @dev The calculations take both fees and slippage into account, but assume constant liquidity across the swap.
+     * @dev Models the swap as one pool step, so it assumes constant liquidity and no stop or extra rounding at an initialized tick or a tick bitmap word boundary.
+     * A swap with a large price impact can cross either and revert, through the pool's rounding at each step or a different liquidity.
      * @dev Requires a nonzero usableLiquidity, and sqrtPriceOld above the lower tick for zeroToOne and below the upper tick otherwise.
      */
     function _getAmountOutWithSlippage(
