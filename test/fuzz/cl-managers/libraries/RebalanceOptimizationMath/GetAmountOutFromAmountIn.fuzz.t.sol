@@ -10,10 +10,10 @@ import { RebalanceOptimizationMath_Fuzz_Test } from "./_RebalanceOptimizationMat
 import { TickMath } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
 /**
- * @notice Fuzz tests for the function "_getAmount0OutFromAmount1In" of contract "RebalanceOptimizationMath".
+ * @notice Fuzz tests for the function "_getAmountOutFromAmountIn" of contract "RebalanceOptimizationMath".
  */
 // forge-lint: disable-next-item(unsafe-typecast)
-contract GetAmount0OutFromAmount1In_SwapMath_Fuzz_Test is RebalanceOptimizationMath_Fuzz_Test {
+contract GetAmountOutFromAmountIn_SwapMath_Fuzz_Test is RebalanceOptimizationMath_Fuzz_Test {
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
@@ -25,7 +25,45 @@ contract GetAmount0OutFromAmount1In_SwapMath_Fuzz_Test is RebalanceOptimizationM
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
-    function testFuzz_Success_getAmount0OutFromAmount1In(SwapParams memory params) public view {
+    function testFuzz_Success_getAmountOutFromAmountIn_ZeroToOne(SwapParams memory params) public view {
+        // Given: A zeroToOne swap.
+        params.zeroToOne = true;
+
+        // And: fee is smaller than 1e6 (invariant).
+        params.fee = bound(params.fee, 0, 1e6 - 1);
+
+        // And: usableLiquidity is not zero.
+        params.usableLiquidity = uint128(bound(params.usableLiquidity, 1, type(uint128).max));
+
+        // And: sqrtPriceOld is within boundaries.
+        params.sqrtPriceOld = uint160(bound(params.sqrtPriceOld, TickMath.MIN_SQRT_PRICE, TickMath.MAX_SQRT_PRICE));
+
+        // And: amountOut without slippage would not overflow.
+        params.amount0 = bound(params.amount0, 0, type(uint128).max);
+
+        // When: calling _getAmountOutFromAmountIn().
+        // Then: it does not revert.
+        uint256 amountOut = optimizationMath.getAmountOutFromAmountIn(
+            true, params.fee, params.usableLiquidity, params.sqrtPriceOld, params.amount0
+        );
+
+        // And: amountOut is the pool's amountOut for amount0 less the fee.
+        assertEq(amountOut, getAmountOutForAmountIn(params, params.amount0));
+
+        // And: amountOut is at most the amountOut without slippage.
+        uint256 partialQuotient = FullMath.mulDiv(params.amount0, params.sqrtPriceOld, 1 << 96);
+        uint256 carry = (mulmod(params.amount0, params.sqrtPriceOld, 1 << 96) * params.sqrtPriceOld) >> 96;
+        carry += mulmod(partialQuotient, params.sqrtPriceOld, 1 << 96);
+        uint256 amountOutWithoutSlippage =
+            FullMath.mulDiv(partialQuotient, params.sqrtPriceOld, 1 << 96) + (carry >> 96);
+        assertLe(amountOut, amountOutWithoutSlippage);
+
+        // And: The amountIn of the pool for amountOut is smaller or equal than amount0.
+        (, uint256 amountIn) = getAmountInForAmountOut(params, amountOut);
+        assertLe(amountIn, params.amount0);
+    }
+
+    function testFuzz_Success_getAmountOutFromAmountIn_OneToZero(SwapParams memory params) public view {
         // Given: A oneToZero swap.
         params.zeroToOne = false;
 
@@ -49,10 +87,10 @@ contract GetAmount0OutFromAmount1In_SwapMath_Fuzz_Test is RebalanceOptimizationM
                 : FullMath.mulDiv(amountInLessFee, FixedPoint96.Q96, params.usableLiquidity));
         vm.assume(params.sqrtPriceOld + quotient < type(uint160).max);
 
-        // When: calling _getAmount0OutFromAmount1In().
+        // When: calling _getAmountOutFromAmountIn().
         // Then: it does not revert.
-        uint256 amountOut = optimizationMath.getAmount0OutFromAmount1In(
-            params.fee, params.usableLiquidity, params.sqrtPriceOld, params.amount1
+        uint256 amountOut = optimizationMath.getAmountOutFromAmountIn(
+            false, params.fee, params.usableLiquidity, params.sqrtPriceOld, params.amount1
         );
 
         // And: amountOut is the pool's amountOut for amount1 less the fee.

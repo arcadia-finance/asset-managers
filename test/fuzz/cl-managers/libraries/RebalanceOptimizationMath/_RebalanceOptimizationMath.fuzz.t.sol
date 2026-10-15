@@ -163,20 +163,9 @@ abstract contract RebalanceOptimizationMath_Fuzz_Test is Fuzz_Test {
         vm.assume(liquidity0Exceeds ? liquidity0 > liquidity1 + margin : liquidity1 > liquidity0 + margin);
     }
 
-    function getAmount1OutWithSlippage(SwapParams memory params) internal view returns (uint256 amountOut) {
-        amountOut = optimizationMath.getAmount1OutWithSlippage(
-            params.fee,
-            params.usableLiquidity,
-            params.sqrtPriceOld,
-            params.sqrtRatioLower,
-            params.sqrtRatioUpper,
-            params.amount0,
-            params.amount1
-        );
-    }
-
-    function getAmount0OutWithSlippage(SwapParams memory params) internal view returns (uint256 amountOut) {
-        amountOut = optimizationMath.getAmount0OutWithSlippage(
+    function getAmountOutWithSlippage(SwapParams memory params) internal view returns (uint256 amountOut) {
+        amountOut = optimizationMath.getAmountOutWithSlippage(
+            params.zeroToOne,
             params.fee,
             params.usableLiquidity,
             params.sqrtPriceOld,

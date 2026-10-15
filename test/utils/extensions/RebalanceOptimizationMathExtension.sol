@@ -22,75 +22,15 @@ contract RebalanceOptimizationMathExtension {
         );
     }
 
-    function getAmount1OutWithSlippage(
+    function getAmountOutFromAmountIn(
+        bool zeroToOne,
         uint256 fee,
         uint128 usableLiquidity,
         uint160 sqrtPriceOld,
-        uint160 sqrtRatioLower,
-        uint160 sqrtRatioUpper,
-        uint256 amount0,
-        uint256 amount1
+        uint256 amountIn
     ) external pure returns (uint256 amountOut) {
-        amountOut = RebalanceOptimizationMath._getAmount1OutWithSlippage(
-            fee, usableLiquidity, sqrtPriceOld, sqrtRatioLower, sqrtRatioUpper, amount0, amount1
-        );
-    }
-
-    function getAmount0OutWithSlippage(
-        uint256 fee,
-        uint128 usableLiquidity,
-        uint160 sqrtPriceOld,
-        uint160 sqrtRatioLower,
-        uint160 sqrtRatioUpper,
-        uint256 amount0,
-        uint256 amount1
-    ) external pure returns (uint256 amountOut) {
-        amountOut = RebalanceOptimizationMath._getAmount0OutWithSlippage(
-            fee, usableLiquidity, sqrtPriceOld, sqrtRatioLower, sqrtRatioUpper, amount0, amount1
-        );
-    }
-
-    function getAmount1OutFromAmount0In(uint256 fee, uint128 usableLiquidity, uint160 sqrtPriceOld, uint256 amount0)
-        external
-        pure
-        returns (uint256 amountOut)
-    {
-        amountOut = RebalanceOptimizationMath._getAmount1OutFromAmount0In(fee, usableLiquidity, sqrtPriceOld, amount0);
-    }
-
-    function getAmount0OutFromAmount1In(uint256 fee, uint128 usableLiquidity, uint160 sqrtPriceOld, uint256 amount1)
-        external
-        pure
-        returns (uint256 amountOut)
-    {
-        amountOut = RebalanceOptimizationMath._getAmount0OutFromAmount1In(fee, usableLiquidity, sqrtPriceOld, amount1);
-    }
-
-    function capAmount1Out(
-        uint256 fee,
-        uint128 usableLiquidity,
-        uint160 sqrtPriceOld,
-        uint160 sqrtRatioUpper,
-        uint160 sqrtPriceNew,
-        uint256 amount0,
-        uint256 amountOut
-    ) external pure returns (uint256 amountOutCapped) {
-        amountOutCapped = RebalanceOptimizationMath._capAmount1Out(
-            fee, usableLiquidity, sqrtPriceOld, sqrtRatioUpper, sqrtPriceNew, amount0, amountOut
-        );
-    }
-
-    function capAmount0Out(
-        uint256 fee,
-        uint128 usableLiquidity,
-        uint160 sqrtPriceOld,
-        uint160 sqrtRatioLower,
-        uint160 sqrtPriceNew,
-        uint256 amount1,
-        uint256 amountOut
-    ) external pure returns (uint256 amountOutCapped) {
-        amountOutCapped = RebalanceOptimizationMath._capAmount0Out(
-            fee, usableLiquidity, sqrtPriceOld, sqrtRatioLower, sqrtPriceNew, amount1, amountOut
+        amountOut = RebalanceOptimizationMath._getAmountOutFromAmountIn(
+            zeroToOne, fee, usableLiquidity, sqrtPriceOld, amountIn
         );
     }
 
