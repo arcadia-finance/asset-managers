@@ -14,7 +14,7 @@ import {
 } from "../../../../../lib/accounts-v2/lib/v4-periphery/lib/v4-core/src/libraries/SqrtPriceMath.sol";
 
 /**
- * @notice Fuzz tests for the function "_getAmountOutWithSlippage" of contract "RebalanceOptimizationMath".
+ * @notice Fuzz tests for the function "getAmountOutWithSlippage" of contract "RebalanceOptimizationMath".
  */
 // forge-lint: disable-next-item(unsafe-typecast)
 contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMath_Fuzz_Test {
@@ -39,7 +39,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMat
         // And: usableLiquidity is zero.
         params.usableLiquidity = 0;
 
-        // When: Calling _getAmountOutWithSlippage().
+        // When: Calling getAmountOutWithSlippage().
         // Then: It should revert.
         vm.expectRevert(FixedPointMathLib.FullMulDivFailed.selector);
         getAmountOutWithSlippage(params);
@@ -57,7 +57,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMat
         (, uint256 maxAmount1) = getMaxAmounts(params.usableLiquidity, params.sqrtPriceOld);
         params.amount1 = bound(params.amount1, 0, maxAmount1);
 
-        // When: Calling _getAmountOutWithSlippage().
+        // When: Calling getAmountOutWithSlippage().
         // Then: It should revert.
         vm.expectRevert(RebalanceOptimizationMath.Overflow.selector);
         getAmountOutWithSlippage(params);
@@ -73,7 +73,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMat
         // And: usableLiquidity is zero.
         params.usableLiquidity = 0;
 
-        // When: Calling _getAmountOutWithSlippage().
+        // When: Calling getAmountOutWithSlippage().
         // Then: It should revert.
         vm.expectRevert(FixedPointMathLib.FullMulDivFailed.selector);
         getAmountOutWithSlippage(params);
@@ -91,7 +91,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMat
         (uint256 maxAmount0,) = getMaxAmounts(params.usableLiquidity, params.sqrtPriceOld);
         params.amount0 = bound(params.amount0, 0, maxAmount0);
 
-        // When: Calling _getAmountOutWithSlippage().
+        // When: Calling getAmountOutWithSlippage().
         // Then: It should revert.
         vm.expectRevert(RebalanceOptimizationMath.Overflow.selector);
         getAmountOutWithSlippage(params);
@@ -108,7 +108,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMat
         (uint256 amountInToBound,) = getSwapToBound(params);
         params.amount0 = bound(params.amount0, 0, amountInToBound - 1);
 
-        // When: Calling _getAmountOutWithSlippage().
+        // When: Calling getAmountOutWithSlippage().
         uint256 amountOut = getAmountOutWithSlippage(params);
 
         // Then: amountOut is the amountOut of the pool for a swap of the full amount0.
@@ -133,7 +133,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMat
         // And: The normalized amount1 at the upper tick does not exceed MAX_NORMALIZED.
         params.amount1 = bound(params.amount1, 0, maxAmount1 - amountOutToBound);
 
-        // When: Calling _getAmountOutWithSlippage().
+        // When: Calling getAmountOutWithSlippage().
         uint256 amountOut = getAmountOutWithSlippage(params);
 
         // Then: amountOut is the amountOut of the swap to the upper tick.
@@ -157,7 +157,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMat
         params.amount0 = bound(params.amount0, amountInToBound, amountInToBound + maxAmount0);
         params.amount1 = bound(params.amount1, 0, maxAmount1 - amountOutToBound);
 
-        // When: Calling _getAmountOutWithSlippage().
+        // When: Calling getAmountOutWithSlippage().
         uint256 amountOut = getAmountOutWithSlippage(params);
 
         // Then: amountOut includes the amountOut of the swap to the upper tick.
@@ -189,7 +189,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMat
         params.amount0 = amountInToBound + bound(params.amount0, 1, FixedPointMathLib.min(2, maxAmount0));
         params.amount1 = bound(params.amount1, 0, maxAmount1 - amountOutToBound);
 
-        // When: Calling _getAmountOutWithSlippage().
+        // When: Calling getAmountOutWithSlippage().
         uint256 amountOut = getAmountOutWithSlippage(params);
 
         // Then: amountOut includes the amountOut of the swap to the upper tick.
@@ -225,7 +225,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMat
             params.amount1 = bound(params.amount1, 0, maxAmount1 - amountOutToBound);
         }
 
-        // When: Calling _getAmountOutWithSlippage().
+        // When: Calling getAmountOutWithSlippage().
         uint256 amountOut = getAmountOutWithSlippage(params);
 
         // Then: The liquidity is within the tolerances of the optimum.
@@ -244,7 +244,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMat
         params.amount0 = bound(params.amount0, 0, FixedPointMathLib.min(maxAmount0, type(uint128).max));
         params.amount1 = bound(params.amount1, 0, FixedPointMathLib.min(maxAmount1, type(uint128).max));
 
-        // When: Calling _getAmountOutWithSlippage().
+        // When: Calling getAmountOutWithSlippage().
         uint256 amountOut = getAmountOutWithSlippage(params);
 
         // Then: The new price is between the lower tick minus ⌊Δk⌋ and sqrtPriceOld.
@@ -272,7 +272,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMat
         params.amount0 = bound(params.amount0, 0, FixedPointMathLib.min(maxAmount0, type(uint128).max));
         params.amount1 = bound(params.amount1, 0, FixedPointMathLib.min(maxAmount1, type(uint128).max));
 
-        // When: Calling _getAmountOutWithSlippage().
+        // When: Calling getAmountOutWithSlippage().
         uint256 amountOut = getAmountOutWithSlippage(params);
 
         // Then: The liquidity is within the tolerances of the optimum.
@@ -289,7 +289,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMat
         // And: Balances of at most 2^60 L, with liquidity0 at least liquidity1.
         givenValidBalances(params, true);
 
-        // When: Calling _getAmountOutWithSlippage().
+        // When: Calling getAmountOutWithSlippage().
         uint256 amountOut = getAmountOutWithSlippage(params);
 
         // Then: The new price is between the lower tick minus ⌊Δk⌋ and sqrtPriceOld.
@@ -324,7 +324,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMat
             params.amount1 = bound(params.amount1, 0, maxAmount1);
         }
 
-        // When: Calling _getAmountOutWithSlippage().
+        // When: Calling getAmountOutWithSlippage().
         uint256 amountOut = getAmountOutWithSlippage(params);
 
         // Then: amountOut is at most that of ⌊1/2 + Δk⌋ units of sqrtPrice.
@@ -348,7 +348,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMat
         params.amount0 = 0;
         params.amount1 = 0;
 
-        // When: Calling _getAmountOutWithSlippage().
+        // When: Calling getAmountOutWithSlippage().
         uint256 amountOut = getAmountOutWithSlippage(params);
 
         // Then: amountOut is zero.
@@ -370,7 +370,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMat
             getLiquidities(params, params.sqrtPriceOld, params.amount0, params.amount1);
         vm.assume(liquidity0 > liquidity1);
 
-        // When: Calling _getAmountOutWithSlippage().
+        // When: Calling getAmountOutWithSlippage().
         uint256 amountOut = getAmountOutWithSlippage(params);
 
         // Then: The liquidity is within the tolerances of the optimum.
@@ -391,7 +391,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMat
         (uint256 amountInToBound,) = getSwapToBound(params);
         params.amount1 = bound(params.amount1, 0, amountInToBound - 1);
 
-        // When: Calling _getAmountOutWithSlippage().
+        // When: Calling getAmountOutWithSlippage().
         uint256 amountOut = getAmountOutWithSlippage(params);
 
         // Then: amountOut is the amountOut of the pool for a swap of the full amount1.
@@ -416,7 +416,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMat
         // And: The normalized amount0 at the lower tick does not exceed MAX_NORMALIZED.
         params.amount0 = bound(params.amount0, 0, maxAmount0 - amountOutToBound);
 
-        // When: Calling _getAmountOutWithSlippage().
+        // When: Calling getAmountOutWithSlippage().
         uint256 amountOut = getAmountOutWithSlippage(params);
 
         // Then: amountOut is the amountOut of the swap to the lower tick.
@@ -440,7 +440,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMat
         params.amount0 = bound(params.amount0, 0, maxAmount0 - amountOutToBound);
         params.amount1 = bound(params.amount1, amountInToBound, amountInToBound + maxAmount1);
 
-        // When: Calling _getAmountOutWithSlippage().
+        // When: Calling getAmountOutWithSlippage().
         uint256 amountOut = getAmountOutWithSlippage(params);
 
         // Then: amountOut includes the amountOut of the swap to the lower tick.
@@ -472,7 +472,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMat
         params.amount0 = bound(params.amount0, 0, maxAmount0 - amountOutToBound);
         params.amount1 = amountInToBound + bound(params.amount1, 1, FixedPointMathLib.min(2, maxAmount1));
 
-        // When: Calling _getAmountOutWithSlippage().
+        // When: Calling getAmountOutWithSlippage().
         uint256 amountOut = getAmountOutWithSlippage(params);
 
         // Then: amountOut includes the amountOut of the swap to the lower tick.
@@ -508,7 +508,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMat
             params.amount1 = bound(params.amount1, amountInToBound, amountInToBound + maxAmount1);
         }
 
-        // When: Calling _getAmountOutWithSlippage().
+        // When: Calling getAmountOutWithSlippage().
         uint256 amountOut = getAmountOutWithSlippage(params);
 
         // Then: The liquidity is within the tolerances of the optimum.
@@ -527,7 +527,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMat
         params.amount0 = bound(params.amount0, 0, FixedPointMathLib.min(maxAmount0, type(uint128).max));
         params.amount1 = bound(params.amount1, 0, FixedPointMathLib.min(maxAmount1, type(uint128).max));
 
-        // When: Calling _getAmountOutWithSlippage().
+        // When: Calling getAmountOutWithSlippage().
         uint256 amountOut = getAmountOutWithSlippage(params);
 
         // Then: The new price is between sqrtPriceOld and the upper tick plus ⌊Δk⌋.
@@ -555,7 +555,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMat
         params.amount0 = bound(params.amount0, 0, FixedPointMathLib.min(maxAmount0, type(uint128).max));
         params.amount1 = bound(params.amount1, 0, FixedPointMathLib.min(maxAmount1, type(uint128).max));
 
-        // When: Calling _getAmountOutWithSlippage().
+        // When: Calling getAmountOutWithSlippage().
         uint256 amountOut = getAmountOutWithSlippage(params);
 
         // Then: The liquidity is within the tolerances of the optimum.
@@ -572,7 +572,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMat
         // And: Balances of at most 2^60 L, with liquidity1 at least liquidity0.
         givenValidBalances(params, false);
 
-        // When: Calling _getAmountOutWithSlippage().
+        // When: Calling getAmountOutWithSlippage().
         uint256 amountOut = getAmountOutWithSlippage(params);
 
         // Then: The new price is between sqrtPriceOld and the upper tick plus ⌊Δk⌋.
@@ -603,7 +603,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMat
             params.amount0 = bound(params.amount0, 0, maxAmount0);
         }
 
-        // When: Calling _getAmountOutWithSlippage().
+        // When: Calling getAmountOutWithSlippage().
         uint256 amountOut = getAmountOutWithSlippage(params);
 
         // Then: amountOut is at most that of ⌊1/2 + Δk⌋ units of sqrtPrice.
@@ -627,7 +627,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMat
         params.amount0 = 0;
         params.amount1 = 0;
 
-        // When: Calling _getAmountOutWithSlippage().
+        // When: Calling getAmountOutWithSlippage().
         uint256 amountOut = getAmountOutWithSlippage(params);
 
         // Then: amountOut is zero.
@@ -649,7 +649,7 @@ contract GetAmountOutWithSlippage_SwapMath_Fuzz_Test is RebalanceOptimizationMat
             getLiquidities(params, params.sqrtPriceOld, params.amount0, params.amount1);
         vm.assume(liquidity1 > liquidity0);
 
-        // When: Calling _getAmountOutWithSlippage().
+        // When: Calling getAmountOutWithSlippage().
         uint256 amountOut = getAmountOutWithSlippage(params);
 
         // Then: The liquidity is within the tolerances of the optimum.

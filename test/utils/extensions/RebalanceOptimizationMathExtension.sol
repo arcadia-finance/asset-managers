@@ -17,7 +17,7 @@ contract RebalanceOptimizationMathExtension {
         uint256 amount0,
         uint256 amount1
     ) external pure returns (uint256) {
-        return RebalanceOptimizationMath._getAmountOutWithSlippage(
+        return RebalanceOptimizationMath.getAmountOutWithSlippage(
             zeroToOne, fee, usableLiquidity, sqrtPriceOld, sqrtRatioLower, sqrtRatioUpper, amount0, amount1
         );
     }

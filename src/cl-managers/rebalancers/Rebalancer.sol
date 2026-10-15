@@ -547,7 +547,7 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
             uint256 amount0 = balances[0] - fees[0] - initiatorParams.amountOut0;
             uint256 amount1 = balances[1] - fees[1] - initiatorParams.amountOut1;
             // forge-lint: disable-next-item(unsafe-typecast)
-            uint256 amountOut = RebalanceOptimizationMath._getAmountOutWithSlippage(
+            uint256 amountOut = RebalanceOptimizationMath.getAmountOutWithSlippage(
                 rebalanceParams.zeroToOne,
                 ammFee,
                 _getPoolLiquidity(position),
