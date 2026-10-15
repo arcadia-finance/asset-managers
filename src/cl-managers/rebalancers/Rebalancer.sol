@@ -358,8 +358,7 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
         AccountInfo memory accountInfo_ = accountInfo[msg.sender];
 
         // Decode actionTargetData.
-        (address initiator, InitiatorParams memory initiatorParams) =
-            abi.decode(actionTargetData, (address, InitiatorParams));
+        (, InitiatorParams memory initiatorParams) = abi.decode(actionTargetData, (address, InitiatorParams));
         address positionManager = initiatorParams.positionManager;
 
         // Validate initiatorParams.
@@ -463,7 +462,9 @@ abstract contract Rebalancer is IActionBase, AbstractBase, Guardian {
 
         // Approve the liquidity position and leftovers to be deposited back into the Account.
         // And transfer the initiator fees to the initiator.
-        uint256 count = _approveAndTransfer(initiator, balances, fees, initiatorParams, positionManager, position);
+        uint256 count = _approveAndTransfer(
+            abi.decode(actionTargetData, (address)), balances, fees, initiatorParams, positionManager, position
+        );
 
         // Encode deposit data for the flash-action.
         depositData = ArcadiaLogic._encodeDeposit(positionManager, position.id, position.tokens, balances, count);
