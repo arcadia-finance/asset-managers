@@ -57,266 +57,123 @@ library RebalanceOptimizationMath {
         uint256 amount0,
         uint256 amount1
     ) internal pure returns (uint256 amountOut) {
-        amountOut = zeroToOne
-            ? _getAmount1OutWithSlippage(
-                fee, usableLiquidity, sqrtPriceOld, sqrtRatioLower, sqrtRatioUpper, amount0, amount1
-            )
-            : _getAmount0OutWithSlippage(
-                fee, usableLiquidity, sqrtPriceOld, sqrtRatioLower, sqrtRatioUpper, amount0, amount1
-            );
-    }
-
-    /**
-     * @notice Calculates the amountOut of token1 for a swap of token0, that maximizes the amount of liquidity that is added.
-     * @param fee The fee the AMM charges on swaps, with 6 decimals precision.
-     * @param usableLiquidity The amount of active liquidity in the pool, at the current tick.
-     * @param sqrtPriceOld The square root of the pool price (token1/token0) before the swap, with 96 binary precision.
-     * @param sqrtRatioLower The square root price of the lower tick of the liquidity position, with 96 binary precision.
-     * @param sqrtRatioUpper The square root price of the upper tick of the liquidity position, with 96 binary precision.
-     * @param amount0 The balance of token0 before the swap.
-     * @param amount1 The balance of token1 before the swap.
-     * @return amountOut The amount of token1.
-     */
-    function _getAmount1OutWithSlippage(
-        uint256 fee,
-        uint128 usableLiquidity,
-        uint160 sqrtPriceOld,
-        uint160 sqrtRatioLower,
-        uint160 sqrtRatioUpper,
-        uint256 amount0,
-        uint256 amount1
-    ) internal pure returns (uint256 amountOut) {
-        uint256 amount0Start = amount0;
-        uint160 sqrtPrice;
-        // If the price is above the range, we sell all token0, unless that brings the price back into the range.
-        if (sqrtPriceOld > sqrtRatioUpper) {
+        uint256 amountIn = zeroToOne ? amount0 : amount1;
+        // If the price is out of the range on the side of tokenIn, we sell all tokenIn, unless that brings the price
+        // back into the range.
+        if (zeroToOne ? sqrtPriceOld > sqrtRatioUpper : sqrtPriceOld < sqrtRatioLower) {
             uint256 amountInToBound;
             unchecked {
-                amountInToBound = SqrtPriceMath.getAmount0Delta(sqrtRatioUpper, sqrtPriceOld, usableLiquidity, true)
-                    .mulDivUp(1e6, 1e6 - fee);
+                amountInToBound = (zeroToOne
+                        ? SqrtPriceMath.getAmount0Delta(sqrtRatioUpper, sqrtPriceOld, usableLiquidity, true)
+                        : SqrtPriceMath.getAmount1Delta(sqrtPriceOld, sqrtRatioLower, usableLiquidity, true))
+                .mulDivUp(1e6, 1e6 - fee);
             }
-            if (amount0 < amountInToBound) {
-                return _getAmount1OutFromAmount0In(fee, usableLiquidity, sqrtPriceOld, amount0);
+            if (amountIn < amountInToBound) {
+                return _getAmountOutFromAmountIn(zeroToOne, fee, usableLiquidity, sqrtPriceOld, amountIn);
             }
-            // The price re-enters the range: we move it to the upper tick and solve the rest from there.
-            amountOut = SqrtPriceMath.getAmount1Delta(sqrtRatioUpper, sqrtPriceOld, usableLiquidity, false);
-            unchecked {
-                amount0 -= amountInToBound;
+            // The price re-enters the range: we move it to the tick and solve the rest from there.
+            if (zeroToOne) {
+                unchecked {
+                    amount0 -= amountInToBound;
+                }
+                amount1 += SqrtPriceMath.getAmount1Delta(sqrtRatioUpper, sqrtPriceOld, usableLiquidity, false);
+            } else {
+                unchecked {
+                    amount1 -= amountInToBound;
+                }
+                amount0 += SqrtPriceMath.getAmount0Delta(sqrtPriceOld, sqrtRatioLower, usableLiquidity, false);
             }
-            amount1 += amountOut;
-            sqrtPrice = sqrtRatioUpper;
-        } else {
-            sqrtPrice = sqrtPriceOld;
         }
 
         // Calculate the new sqrtPrice at which liquidity0 equals liquidity1.
-        uint160 sqrtPriceNew =
-            _getSqrtPrice(true, fee, usableLiquidity, sqrtPrice, sqrtRatioLower, sqrtRatioUpper, amount0, amount1);
+        uint160 sqrtPriceNew = _getSqrtPrice(
+            zeroToOne,
+            fee,
+            usableLiquidity,
+            zeroToOne
+                ? FixedPointMathLib.min(sqrtPriceOld, sqrtRatioUpper)
+                : FixedPointMathLib.max(sqrtPriceOld, sqrtRatioLower),
+            sqrtRatioLower,
+            sqrtRatioUpper,
+            amount0,
+            amount1
+        );
 
-        // Calculate the largest amountOut that reaches that sqrtPrice.
-        unchecked {
-            amountOut += SqrtPriceMath.getAmount1Delta(sqrtPriceNew, sqrtPrice, usableLiquidity, false);
-        }
-
-        // Cap the amountOut where the pool would charge the whole balance of token0.
-        amountOut =
-            _capAmount1Out(fee, usableLiquidity, sqrtPriceOld, sqrtRatioUpper, sqrtPriceNew, amount0Start, amountOut);
-    }
-
-    /**
-     * @notice Calculates the amountOut of token0 for a swap of token1, that maximizes the amount of liquidity that is added.
-     * @param fee The fee the AMM charges on swaps, with 6 decimals precision.
-     * @param usableLiquidity The amount of active liquidity in the pool, at the current tick.
-     * @param sqrtPriceOld The square root of the pool price (token1/token0) before the swap, with 96 binary precision.
-     * @param sqrtRatioLower The square root price of the lower tick of the liquidity position, with 96 binary precision.
-     * @param sqrtRatioUpper The square root price of the upper tick of the liquidity position, with 96 binary precision.
-     * @param amount0 The balance of token0 before the swap.
-     * @param amount1 The balance of token1 before the swap.
-     * @return amountOut The amount of token0.
-     */
-    function _getAmount0OutWithSlippage(
-        uint256 fee,
-        uint128 usableLiquidity,
-        uint160 sqrtPriceOld,
-        uint160 sqrtRatioLower,
-        uint160 sqrtRatioUpper,
-        uint256 amount0,
-        uint256 amount1
-    ) internal pure returns (uint256 amountOut) {
-        uint256 amount1Start = amount1;
-        uint160 sqrtPrice;
-        // If the price is below the range, we sell all token1, unless that brings the price back into the range.
-        if (sqrtPriceOld < sqrtRatioLower) {
-            uint256 amountInToBound;
+        // The largest net amountIn for which the pool, rounding it and the fee up, leaves one wei of tokenIn.
+        amountIn = amountIn.zeroFloorSub(1).fullMulDiv(1e6 - fee, 1e6);
+        // Calculate the largest amountOut that reaches that sqrtPrice, at the latest the price amountIn reaches, but
+        // not past the tick.
+        if (zeroToOne) {
             unchecked {
-                amountInToBound = SqrtPriceMath.getAmount1Delta(sqrtPriceOld, sqrtRatioLower, usableLiquidity, true)
-                    .mulDivUp(1e6, 1e6 - fee);
+                // Only when an upper bound of the net amountIn to sqrtPriceNew exceeds amountIn.
+                if (
+                    UnsafeMath.divRoundingUp(
+                            usableLiquidity
+                                * UnsafeMath.divRoundingUp(uint256(sqrtPriceOld - sqrtPriceNew) << 96, sqrtPriceOld),
+                            sqrtPriceNew
+                        ) > amountIn
+                ) {
+                    sqrtPriceNew = uint160(
+                        FixedPointMathLib.max(
+                            sqrtPriceNew,
+                            FixedPointMathLib.min(
+                                SqrtPriceMath.getNextSqrtPriceFromAmount0RoundingUp(
+                                    sqrtPriceOld, usableLiquidity, amountIn, true
+                                ),
+                                sqrtRatioUpper
+                            )
+                        )
+                    );
+                }
             }
-            if (amount1 < amountInToBound) {
-                return _getAmount0OutFromAmount1In(fee, usableLiquidity, sqrtPriceOld, amount1);
-            }
-            // The price re-enters the range: we move it to the lower tick and solve the rest from there.
-            amountOut = SqrtPriceMath.getAmount0Delta(sqrtPriceOld, sqrtRatioLower, usableLiquidity, false);
-            amount0 += amountOut;
-            unchecked {
-                amount1 -= amountInToBound;
-            }
-            sqrtPrice = sqrtRatioLower;
-        } else {
-            sqrtPrice = sqrtPriceOld;
-        }
-
-        // Calculate the new sqrtPrice at which liquidity0 equals liquidity1.
-        uint160 sqrtPriceNew =
-            _getSqrtPrice(false, fee, usableLiquidity, sqrtPrice, sqrtRatioLower, sqrtRatioUpper, amount0, amount1);
-
-        // Calculate the largest amountOut that reaches that sqrtPrice.
-        unchecked {
-            amountOut += SqrtPriceMath.getAmount0Delta(sqrtPrice, sqrtPriceNew, usableLiquidity, false);
-        }
-
-        // Cap the amountOut where the pool would charge the whole balance of token1.
-        amountOut =
-            _capAmount0Out(fee, usableLiquidity, sqrtPriceOld, sqrtRatioLower, sqrtPriceNew, amount1Start, amountOut);
-    }
-
-    /**
-     * @notice Calculates the amountOut of token1, for a given amountIn of token0.
-     * @param fee The fee the AMM charges on swaps, with 6 decimals precision.
-     * @param usableLiquidity The amount of active liquidity in the pool, at the current tick.
-     * @param sqrtPriceOld The SqrtPrice before the swap.
-     * @param amount0 The balance of token0 before the swap.
-     * @return amountOut The amount of token1 that is swapped to.
-     * @dev The net amountIn is rounded down, so a single pool step never costs more than amount0.
-     */
-    function _getAmount1OutFromAmount0In(uint256 fee, uint128 usableLiquidity, uint160 sqrtPriceOld, uint256 amount0)
-        internal
-        pure
-        returns (uint256 amountOut)
-    {
-        unchecked {
-            uint256 amountInLessFee = amount0.mulDiv(1e6 - fee, 1e6);
-            uint160 sqrtPriceNew = SqrtPriceMath.getNextSqrtPriceFromAmount0RoundingUp(
-                sqrtPriceOld, usableLiquidity, amountInLessFee, true
-            );
             amountOut = SqrtPriceMath.getAmount1Delta(sqrtPriceNew, sqrtPriceOld, usableLiquidity, false);
-        }
-    }
-
-    /**
-     * @notice Calculates the amountOut of token0, for a given amountIn of token1.
-     * @param fee The fee the AMM charges on swaps, with 6 decimals precision.
-     * @param usableLiquidity The amount of active liquidity in the pool, at the current tick.
-     * @param sqrtPriceOld The SqrtPrice before the swap.
-     * @param amount1 The balance of token1 before the swap.
-     * @return amountOut The amount of token0 that is swapped to.
-     * @dev The net amountIn is rounded down, so a single pool step never costs more than amount1.
-     */
-    function _getAmount0OutFromAmount1In(uint256 fee, uint128 usableLiquidity, uint160 sqrtPriceOld, uint256 amount1)
-        internal
-        pure
-        returns (uint256 amountOut)
-    {
-        unchecked {
-            uint256 amountInLessFee = amount1.mulDiv(1e6 - fee, 1e6);
-            uint160 sqrtPriceNew = SqrtPriceMath.getNextSqrtPriceFromAmount1RoundingDown(
-                sqrtPriceOld, usableLiquidity, amountInLessFee, true
+        } else {
+            sqrtPriceNew = uint160(
+                FixedPointMathLib.min(
+                    sqrtPriceNew,
+                    FixedPointMathLib.max(sqrtPriceOld + amountIn.fullMulDiv(1 << 96, usableLiquidity), sqrtRatioLower)
+                )
             );
             amountOut = SqrtPriceMath.getAmount0Delta(sqrtPriceOld, sqrtPriceNew, usableLiquidity, false);
         }
     }
 
-    /* //////////////////////////////////////////////////////////////
-                               CAP LOGIC
-    ////////////////////////////////////////////////////////////// */
-
     /**
-     * @notice Caps the amountOut of token0, so that a single pool step leaves at least one wei of token1.
+     * @notice Calculates the amountOut of tokenOut, for a given amountIn of tokenIn.
+     * @param zeroToOne Bool indicating if token0 has to be swapped to token1 or opposite.
      * @param fee The fee the AMM charges on swaps, with 6 decimals precision.
      * @param usableLiquidity The amount of active liquidity in the pool, at the current tick.
-     * @param sqrtPriceOld The square root of the pool price (token1/token0) before the swap, with 96 binary precision.
-     * @param sqrtRatioLower The square root price of the lower tick of the liquidity position, with 96 binary precision.
-     * @param sqrtPriceNew The sqrtPrice that amountOut reaches, with 96 binary precision.
-     * @param amount1 The balance of token1 before the swap.
-     * @param amountOut The amount of token0 that is swapped to.
-     * @return amountOutCapped The capped amount of token0 that is swapped to.
-     * @dev The pool rounds the net amountIn and the fee up, which can take the whole balance where the position needs less than two wei of token1.
+     * @param sqrtPriceOld The SqrtPrice before the swap.
+     * @param amountIn The balance of tokenIn before the swap.
+     * @return amountOut The amount of tokenOut that is swapped to.
+     * @dev The net amountIn is rounded down, so a single pool step never costs more than amountIn.
      */
-    function _capAmount0Out(
+    function _getAmountOutFromAmountIn(
+        bool zeroToOne,
         uint256 fee,
         uint128 usableLiquidity,
         uint160 sqrtPriceOld,
-        uint160 sqrtRatioLower,
-        uint160 sqrtPriceNew,
-        uint256 amount1,
-        uint256 amountOut
-    ) internal pure returns (uint256 amountOutCapped) {
-        amountOutCapped = amountOut;
+        uint256 amountIn
+    ) internal pure returns (uint256 amountOut) {
         unchecked {
-            // The largest net amountIn for which the pool, rounding it and the fee up, leaves one wei of token1.
-            uint256 amount1LessFee = amount1.zeroFloorSub(1).fullMulDiv(1e6 - fee, 1e6);
-            // The furthest sqrtPrice that amount1LessFee reaches, as the pool rounds it.
-            uint256 sqrtPriceLimit = sqrtPriceOld + amount1LessFee.fullMulDiv(1 << 96, usableLiquidity);
-            if (sqrtPriceNew > sqrtPriceLimit) {
-                // Keep amountOut if it leaves one wei, else cap it at that sqrtPrice, but not below the lower tick.
-                amountOutCapped = FixedPointMathLib.min(
-                    amountOut,
-                    SqrtPriceMath.getAmount0Delta(
-                        sqrtPriceOld,
-                        uint160(FixedPointMathLib.max(sqrtPriceLimit, sqrtRatioLower)),
-                        usableLiquidity,
-                        false
-                    )
+            uint256 amountInLessFee = amountIn.mulDiv(1e6 - fee, 1e6);
+            amountOut = zeroToOne
+                ? SqrtPriceMath.getAmount1Delta(
+                    SqrtPriceMath.getNextSqrtPriceFromAmount0RoundingUp(
+                        sqrtPriceOld, usableLiquidity, amountInLessFee, true
+                    ),
+                    sqrtPriceOld,
+                    usableLiquidity,
+                    false
+                )
+                : SqrtPriceMath.getAmount0Delta(
+                    sqrtPriceOld,
+                    SqrtPriceMath.getNextSqrtPriceFromAmount1RoundingDown(
+                        sqrtPriceOld, usableLiquidity, amountInLessFee, true
+                    ),
+                    usableLiquidity,
+                    false
                 );
-            }
-        }
-    }
-
-    /**
-     * @notice Caps the amountOut of token1, so that a single pool step leaves at least one wei of token0.
-     * @param fee The fee the AMM charges on swaps, with 6 decimals precision.
-     * @param usableLiquidity The amount of active liquidity in the pool, at the current tick.
-     * @param sqrtPriceOld The square root of the pool price (token1/token0) before the swap, with 96 binary precision.
-     * @param sqrtRatioUpper The square root price of the upper tick of the liquidity position, with 96 binary precision.
-     * @param sqrtPriceNew The sqrtPrice that amountOut reaches, with 96 binary precision.
-     * @param amount0 The balance of token0 before the swap.
-     * @param amountOut The amount of token1 that is swapped to.
-     * @return amountOutCapped The capped amount of token1 that is swapped to.
-     * @dev The pool rounds the net amountIn and the fee up, which can take the whole balance where the position needs less than two wei of token0.
-     */
-    function _capAmount1Out(
-        uint256 fee,
-        uint128 usableLiquidity,
-        uint160 sqrtPriceOld,
-        uint160 sqrtRatioUpper,
-        uint160 sqrtPriceNew,
-        uint256 amount0,
-        uint256 amountOut
-    ) internal pure returns (uint256 amountOutCapped) {
-        amountOutCapped = amountOut;
-        unchecked {
-            // The largest net amountIn for which the pool, rounding it and the fee up, leaves one wei of token0.
-            uint256 amount0LessFee = amount0.zeroFloorSub(1).fullMulDiv(1e6 - fee, 1e6);
-            // An upper bound of the pool's net amountIn to sqrtPriceNew.
-            uint256 amountInLessFee = UnsafeMath.divRoundingUp(
-                usableLiquidity * UnsafeMath.divRoundingUp(uint256(sqrtPriceOld - sqrtPriceNew) << 96, sqrtPriceOld),
-                sqrtPriceNew
-            );
-            if (amountInLessFee > amount0LessFee) {
-                // The furthest sqrtPrice that amount0LessFee reaches, as the pool rounds it, but not above the upper tick.
-                sqrtPriceNew = uint160(
-                    FixedPointMathLib.min(
-                        SqrtPriceMath.getNextSqrtPriceFromAmount0RoundingUp(
-                            sqrtPriceOld, usableLiquidity, amount0LessFee, true
-                        ),
-                        sqrtRatioUpper
-                    )
-                );
-                // Keep amountOut if it leaves one wei, else cap it at the largest amountOut that reaches that sqrtPrice.
-                amountOutCapped = FixedPointMathLib.min(
-                    amountOut, SqrtPriceMath.getAmount1Delta(sqrtPriceNew, sqrtPriceOld, usableLiquidity, false)
-                );
-            }
         }
     }
 
