@@ -47,7 +47,7 @@ library RebalanceOptimizationMath {
      * @dev The calculations take both fees and slippage into account, but assume constant liquidity across the swap.
      * @dev Requires a nonzero usableLiquidity, and sqrtPriceOld above the lower tick for zeroToOne and below the upper tick otherwise.
      */
-    function _getAmountOutWithSlippage(
+    function getAmountOutWithSlippage(
         bool zeroToOne,
         uint256 fee,
         uint128 usableLiquidity,
@@ -56,10 +56,10 @@ library RebalanceOptimizationMath {
         uint160 sqrtRatioUpper,
         uint256 amount0,
         uint256 amount1
-    ) internal pure returns (uint256 amountOut) {
+    ) external pure returns (uint256 amountOut) {
         uint256 amountIn = zeroToOne ? amount0 : amount1;
-        // If the price is out of the range on the side of tokenIn, we sell all tokenIn, unless that brings the price
-        // back into the range.
+        // If the price is outside the range and the position needs only tokenOut, all tokenIn is swapped, unless the
+        // swap moves the price back into the range.
         if (zeroToOne ? sqrtPriceOld > sqrtRatioUpper : sqrtPriceOld < sqrtRatioLower) {
             uint256 amountInToBound;
             unchecked {
@@ -71,7 +71,7 @@ library RebalanceOptimizationMath {
             if (amountIn < amountInToBound) {
                 return _getAmountOutFromAmountIn(zeroToOne, fee, usableLiquidity, sqrtPriceOld, amountIn);
             }
-            // The price re-enters the range: we move it to the tick and solve the rest from there.
+            // The price re-enters the range: we move it to sqrtRatioUpper or sqrtRatioLower and solve the rest from there.
             if (zeroToOne) {
                 unchecked {
                     amount0 -= amountInToBound;
@@ -85,7 +85,7 @@ library RebalanceOptimizationMath {
             }
         }
 
-        // Calculate the new sqrtPrice at which liquidity0 equals liquidity1.
+        // The price is in the range: calculate the new sqrtPrice at which liquidity0 equals liquidity1.
         uint160 sqrtPriceNew = _getSqrtPrice(
             zeroToOne,
             fee,
@@ -101,11 +101,14 @@ library RebalanceOptimizationMath {
 
         // The largest net amountIn for which the pool, rounding it and the fee up, leaves one wei of tokenIn.
         amountIn = amountIn.zeroFloorSub(1).fullMulDiv(1e6 - fee, 1e6);
-        // Calculate the largest amountOut that reaches that sqrtPrice, at the latest the price amountIn reaches, but
-        // not past the tick.
+
+        // Calculate the amountOut of the swap to sqrtPriceNew. When the swap uses nearly all tokenIn, the pool rounding
+        // amountIn and the fee up can cost more tokenIn than the balance, and the swap stops before sqrtPriceNew.
         if (zeroToOne) {
+            // The sqrtPrice decreases. If amountIn does not reach sqrtPriceNew, the swap stops at the sqrtPrice amountIn
+            // reaches, but not above sqrtRatioUpper.
             unchecked {
-                // Only when an upper bound of the net amountIn to sqrtPriceNew exceeds amountIn.
+                // amountIn can only fall short if it is below an upper bound of the net amountIn to sqrtPriceNew.
                 if (
                     UnsafeMath.divRoundingUp(
                             usableLiquidity
@@ -128,6 +131,8 @@ library RebalanceOptimizationMath {
             }
             amountOut = SqrtPriceMath.getAmount1Delta(sqrtPriceNew, sqrtPriceOld, usableLiquidity, false);
         } else {
+            // The sqrtPrice increases. If amountIn does not reach sqrtPriceNew, the swap stops at the sqrtPrice amountIn
+            // reaches, but not below sqrtRatioLower.
             sqrtPriceNew = uint160(
                 FixedPointMathLib.min(
                     sqrtPriceNew,
