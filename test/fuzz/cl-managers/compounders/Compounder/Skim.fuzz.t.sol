@@ -4,9 +4,9 @@
  */
 pragma solidity ^0.8.0;
 
-import { Guardian } from "../../../../../src/guardian/Guardian.sol";
 import { Compounder } from "../../../../../src/cl-managers/compounders/Compounder.sol";
 import { Compounder_Fuzz_Test } from "./_Compounder.fuzz.t.sol";
+import { Guardian } from "../../../../../src/guardian/Guardian.sol";
 import { RevertingReceive } from "../../../../../lib/accounts-v2/test/utils/mocks/RevertingReceive.sol";
 
 /**
@@ -69,7 +69,7 @@ contract Skim_Compounder_Fuzz_Test is Compounder_Fuzz_Test {
         vm.prank(users.owner);
         compounder.transferOwnership(address(revertingReceiver));
 
-        // And: merklOperator has a native token balance.
+        // And: compounder has a native token balance.
         uint256 balancePre = address(revertingReceiver).balance;
         amount = bound(amount, 0, type(uint256).max - balancePre);
         vm.deal(address(revertingReceiver), amount);
@@ -81,8 +81,8 @@ contract Skim_Compounder_Fuzz_Test is Compounder_Fuzz_Test {
         compounder.skim(address(0));
     }
 
-    function testFuzz_Success_skim_Ether(uint256 amount) public {
-        // Given: merklOperator has a native token balance.
+    function testFuzz_Success_skim_NativeToken(uint256 amount) public {
+        // Given: compounder has a native token balance.
         uint256 balancePre = users.owner.balance;
         amount = bound(amount, 0, type(uint256).max - balancePre);
         vm.deal(address(compounder), amount);
@@ -99,7 +99,7 @@ contract Skim_Compounder_Fuzz_Test is Compounder_Fuzz_Test {
     }
 
     function testFuzz_Success_skim_ERC20(uint256 amount) public {
-        // Given: merklOperator has an ERC20 balance.
+        // Given: compounder has an ERC20 balance.
         deal(address(token0), address(compounder), amount, true);
 
         // When: Calling skim.
