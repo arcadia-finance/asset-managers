@@ -64,6 +64,8 @@ abstract contract Slipstream_Fuzz_Test is
     ICLPoolExtension internal poolCl;
 
     // forge-lint: disable-next-line(mixed-case-variable)
+    SlipstreamAMExtension internal slipstreamAM;
+    // forge-lint: disable-next-line(mixed-case-variable)
     StakedSlipstreamAM internal stakedSlipstreamAM;
     ICLGauge internal gauge;
     SwapFeeModuleMock internal swapFeeModule;
@@ -216,8 +218,7 @@ abstract contract Slipstream_Fuzz_Test is
     function deploySlipstreamAM() internal {
         // Deploy Add the Asset Module to the Registry.
         vm.startPrank(users.owner);
-        SlipstreamAMExtension slipstreamAM =
-            new SlipstreamAMExtension(users.owner, address(registry), address(slipstreamPositionManager));
+        slipstreamAM = new SlipstreamAMExtension(users.owner, address(registry), address(slipstreamPositionManager));
         registry.addAssetModule(address(slipstreamAM));
         slipstreamAM.setProtocol();
         vm.stopPrank();
@@ -230,7 +231,7 @@ abstract contract Slipstream_Fuzz_Test is
         // Deploy Add the Asset Module to the Registry.
         vm.startPrank(users.owner);
         stakedSlipstreamAM = new StakedSlipstreamAM(
-            users.owner, address(registry), address(slipstreamPositionManager), address(voter), AERO
+            users.owner, address(registry), address(slipstreamPositionManager), address(voter), AERO, users.treasury
         );
         registry.addAssetModule(address(stakedSlipstreamAM));
         stakedSlipstreamAM.initialize();

@@ -9,12 +9,20 @@ fuzz = { runs = 50, max_test_rejects = 100_000_000}
 no_match_path = "**/{script/}*"
 isolate = false
 compilation_restrictions = [
+    { paths = "lib/accounts-v2/lib/metadex-slipstream/contracts/**", version = "=0.7.6" },
     { paths = "lib/accounts-v2/lib/slipstream/contracts/**", version = "=0.7.6" },
     { paths = "lib/accounts-v2/lib/v3-core/contracts/**", version = "=0.7.6" },
     { paths = "lib/accounts-v2/lib/v3-periphery/contracts/**", version = "=0.7.6" },
     { paths = "lib/accounts-v2/lib/swap-router-contracts/contracts/**", version = "=0.7.6" },
 ]
 remappings = [
+    "lib/accounts-v2/lib/metadex-slipstream:contracts/=lib/accounts-v2/lib/metadex-slipstream/contracts/",
+    "lib/accounts-v2/lib/metadex:V3/=lib/accounts-v2/lib/metadex/V3/src/",
+    "lib/accounts-v2/lib/metadex:@nomad-xyz/src/=lib/accounts-v2/lib/excessively-safe-call-value/src/",
+    "lib/accounts-v2/lib/metadex:@openzeppelin/contracts/=lib/accounts-v2/lib/openzeppelin-contracts-v5/contracts/",
+    "lib/accounts-v2/lib/metadex:@solady/=lib/accounts-v2/lib/solady/src/",
+    "lib/accounts-v2/lib/metadex-slipstream:@nomad-xyz/excessively-safe-call/=lib/accounts-v2/lib/excessively-safe-call/",
+    "lib/accounts-v2/lib/metadex-slipstream:@openzeppelin/=lib/accounts-v2/lib/openzeppelin-contracts-v3.4/",
     "lib/accounts-v2/lib/openzeppelin-contracts-upgradeable-v4.9:@openzeppelin/=lib/accounts-v2/lib/openzeppelin-contracts-v4.9/",
     "lib/accounts-v2/lib/merkl-contracts:@openzeppelin/contracts/=lib/accounts-v2/lib/openzeppelin-contracts-v4.9/contracts/",
     "lib/accounts-v2/lib/merkl-contracts:@openzeppelin/contracts-upgradeable/=lib/accounts-v2/lib/openzeppelin-contracts-upgradeable-v4.9/contracts/",
@@ -29,6 +37,13 @@ remappings = [
     "@uniswap/v4-core/=lib/accounts-v2/lib/v4-periphery/lib/v4-core/",
     "contracts/=lib/accounts-v2/lib/slipstream/contracts",
     "solmate/=lib/accounts-v2/lib/solmate/",
+]
+libraries = [
+    "lib/accounts-v2/lib/metadex/V3/src/libraries/AllocationLogicLibrary.sol:AllocationLogicLibrary:0x3000000000000000000000000000000000000001",
+    "lib/accounts-v2/lib/metadex/V3/src/libraries/LeafAllocationLibrary.sol:LeafAllocationLibrary:0x3000000000000000000000000000000000000002",
+    "lib/accounts-v2/lib/metadex/V3/src/libraries/RewardsLogicLibrary.sol:RewardsLogicLibrary:0x3000000000000000000000000000000000000003",
+    "lib/accounts-v2/lib/metadex/V3/src/libraries/VotingRewardsFactoryLibrary.sol:VotingRewardsFactoryLibrary:0x3000000000000000000000000000000000000004",
+    "lib/accounts-v2/lib/metadex-slipstream/contracts/core/libraries/CLPoolNonSwapPath.sol:CLPoolNonSwapPath:0x3000000000000000000000000000000000000005",
 ]
 fs_permissions = [{ access = "read", path = "./out"}, { access = "write", path = "./script/out"}]
 # Transient storage composability warning (known safe pattern in v4-core):
