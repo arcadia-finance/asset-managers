@@ -42,6 +42,9 @@ contract CowSwapper is IActionBase, EIP712, Guardian {
     // The contract address of the Arcadia Factory.
     IArcadiaFactory public immutable ARCADIA_FACTORY;
 
+    // The domain separator of the Cow Settlement.
+    bytes32 internal immutable COW_DOMAIN_SEPARATOR;
+
     // The contract address of the Cow Settlement.
     IGPv2Settlement internal immutable COW_SETTLEMENT;
 
@@ -152,6 +155,7 @@ contract CowSwapper is IActionBase, EIP712, Guardian {
         ARCADIA_FACTORY = IArcadiaFactory(arcadiaFactory);
         FLASH_LOAN_ROUTER = IFlashLoanRouter(flashLoanRouter);
         COW_SETTLEMENT = IGPv2Settlement(address(FLASH_LOAN_ROUTER.settlementContract()));
+        COW_DOMAIN_SEPARATOR = COW_SETTLEMENT.domainSeparator();
         HOOKS_TRAMPOLINE = hooksTrampoline;
         VAULT_RELAYER = COW_SETTLEMENT.vaultRelayer();
     }
@@ -312,6 +316,7 @@ contract CowSwapper is IActionBase, EIP712, Guardian {
         initiator = initiator_;
         tokenIn = tokenIn_;
         amountIn = amountIn_;
+        orderHash = bytes32(0);
 
         // Encode data for the flash-action.
         bytes memory actionData = ArcadiaLogic._encodeAction(tokenIn_, amountIn_, callBackData);
@@ -359,7 +364,7 @@ contract CowSwapper is IActionBase, EIP712, Guardian {
      * @return depositData A struct with the data to deposit the bought tokens in the account.
      */
     function executeAction(bytes calldata callBackData) external override returns (ActionData memory depositData) {
-        // Caller must be the Account, provided as input in triggerFlashLoan().
+        // Caller must be the Account, provided as input in flashLoanAndCallBack().
         if (msg.sender != account) revert OnlyAccount();
 
         // Cache the balance of tokenIn before the swap.
@@ -405,7 +410,7 @@ contract CowSwapper is IActionBase, EIP712, Guardian {
 
     /**
      * @notice Hook called before the swap to store the remaining initiator parameters,
-     * (since they could not be passed during triggerFlashLoan).
+     * (since they could not be passed during flashLoanAndCallBack).
      * @param initiatorData The encoded remaining initiator parameters.
      * @dev There is no guarantee the solver includes the "beforeSwap()" hook in the settlement.
      * If "beforeSwap()" would not be called during the settlement,
@@ -494,7 +499,7 @@ contract CowSwapper is IActionBase, EIP712, Guardian {
     /**
      * @notice Verifies EIP-1271 signature.
      * @param orderHash_ Hash of the CoW Swap order.
-     * @param signature Initiator signature encoded as (bytes32 r, bytes32 s, uint8 v).
+     * @param signature Packed encoded as (bytes32 orderStructHash, bytes32 r, bytes32 s, uint8 v).
      * @return magicValue The EIP-1271 magic value.
      * @dev There is no guarantee the solver includes a call to "isValidSignature()".
      * A malicious solver could modify the signature, skipping the check that the orderHash is correct.
@@ -503,6 +508,11 @@ contract CowSwapper is IActionBase, EIP712, Guardian {
      * No need to again check for replay attacks here.
      */
     function isValidSignature(bytes32 orderHash_, bytes calldata signature) external view returns (bytes4) {
+        // Only hashes of the CoW Protocol domain can be signed.
+        if (keccak256(abi.encodePacked("\x19\x01", COW_DOMAIN_SEPARATOR, bytes32(signature[:32]))) != orderHash_) {
+            revert InvalidOrderHash();
+        }
+
         // If we are not in a flash loan, return magic value for the verification of off-chain solvers.
         if (account == address(0)) return MAGIC_VALUE;
 
@@ -510,9 +520,8 @@ contract CowSwapper is IActionBase, EIP712, Guardian {
         if (orderHash != orderHash_) revert InvalidOrderHash();
 
         // Validate Signature.
-        // ECDSA.recoverSigner() will never return the zero address as signer (reverts instead).
-        // Hence if the equality holds, the "initiator" was non-zero, and "account" and "initiator" were verified during "triggerFlashLoan()".
-        address signer = ECDSA.recoverCalldata(messageHash, signature);
+        // ECDSA.recoverCalldata() reverts for the zero address, so a valid signer implies the "initiator" verified in "flashLoanAndCallBack()" is non-zero.
+        address signer = ECDSA.recoverCalldata(messageHash, signature[32:]);
         if (signer != initiator && signer != accountOwner) revert InvalidSigner();
 
         // If order hash is valid, return EIP-1271 magic value.

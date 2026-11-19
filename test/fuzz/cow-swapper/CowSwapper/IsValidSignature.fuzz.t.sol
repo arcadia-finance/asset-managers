@@ -20,23 +20,55 @@ contract IsValidSignature_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         CowSwapper_Fuzz_Test.setUp();
     }
 
+    /* ///////////////////////////////////////////////////////////////
+                          HELPER FUNCTIONS
+    /////////////////////////////////////////////////////////////// */
+
+    function getOrderHash(bytes32 structHash) internal view returns (bytes32) {
+        return keccak256(abi.encodePacked("\x19\x01", settlement.domainSeparator(), structHash));
+    }
+
     /*//////////////////////////////////////////////////////////////
                               TESTS
     //////////////////////////////////////////////////////////////*/
+
+    function testFuzz_Revert_isValidSignature_InvalidDomain(
+        address account_,
+        address caller,
+        bytes32 orderHash,
+        bytes32 structHash,
+        bytes memory signature
+    ) public {
+        // Given: Account is set or not.
+        cowSwapper.setAccount(account_);
+
+        // And: The orderHash is not a hash of the CoW Protocol domain.
+        vm.assume(orderHash != getOrderHash(structHash));
+
+        // And: Transient state is set.
+        cowSwapper.setOrderHash(orderHash);
+
+        // When: Caller calls isValidSignature.
+        // Then: it should revert.
+        vm.prank(caller);
+        vm.expectRevert(CowSwapper.InvalidOrderHash.selector);
+        cowSwapper.isValidSignature(orderHash, abi.encodePacked(structHash, signature));
+    }
 
     function testFuzz_Revert_isValidSignature_InvalidOrderHash(
         address account_,
         address caller,
         bytes32 orderHash,
         bytes32 messageHash,
-        bytes32 orderHash_,
-        bytes calldata signature
+        bytes32 structHash,
+        bytes memory signature
     ) public {
         // Given: Account is set.
         vm.assume(account_ != address(0));
         cowSwapper.setAccount(account_);
 
         // And: The orderHash is not correct.
+        bytes32 orderHash_ = getOrderHash(structHash);
         vm.assume(orderHash != orderHash_);
 
         // And: Transient state is set.
@@ -47,15 +79,15 @@ contract IsValidSignature_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         // Then: it should revert.
         vm.prank(caller);
         vm.expectRevert(CowSwapper.InvalidOrderHash.selector);
-        cowSwapper.isValidSignature(orderHash_, signature);
+        cowSwapper.isValidSignature(orderHash_, abi.encodePacked(structHash, signature));
     }
 
     function testFuzz_Revert_isValidSignature_InvalidSignatureLength(
         address account_,
         address caller,
-        bytes32 orderHash,
         bytes32 messageHash,
-        bytes calldata invalidSignature
+        bytes32 structHash,
+        bytes memory invalidSignature
     ) public {
         // Given: Account is set.
         vm.assume(account_ != address(0));
@@ -65,6 +97,7 @@ contract IsValidSignature_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         vm.assume(invalidSignature.length != 65 && invalidSignature.length != 64);
 
         // And: Transient state is set.
+        bytes32 orderHash = getOrderHash(structHash);
         cowSwapper.setOrderHash(orderHash);
         cowSwapper.setMessageHash(messageHash);
 
@@ -72,14 +105,14 @@ contract IsValidSignature_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         // Then: it should revert.
         vm.prank(caller);
         vm.expectRevert(ECDSA.InvalidSignature.selector);
-        cowSwapper.isValidSignature(orderHash, invalidSignature);
+        cowSwapper.isValidSignature(orderHash, abi.encodePacked(structHash, invalidSignature));
     }
 
     function testFuzz_Revert_isValidSignature_InvalidSignatureLength(
         address account_,
         address caller,
-        bytes32 orderHash,
         bytes32 messageHash,
+        bytes32 structHash,
         bytes32 r,
         bytes32 s,
         bytes1 invalidV
@@ -98,6 +131,7 @@ contract IsValidSignature_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         }
 
         // And: Transient state is set.
+        bytes32 orderHash = getOrderHash(structHash);
         cowSwapper.setOrderHash(orderHash);
         cowSwapper.setMessageHash(messageHash);
 
@@ -105,7 +139,7 @@ contract IsValidSignature_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         // Then: it should revert.
         vm.prank(caller);
         vm.expectRevert(ECDSA.InvalidSignature.selector);
-        cowSwapper.isValidSignature(orderHash, invalidSignature);
+        cowSwapper.isValidSignature(orderHash, abi.encodePacked(structHash, invalidSignature));
     }
 
     function testFuzz_Revert_isValidSignature_InvalidSigner(
@@ -113,8 +147,8 @@ contract IsValidSignature_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         address caller,
         address accountOwner,
         address initiator,
-        bytes32 orderHash,
         bytes32 messageHash,
+        bytes32 structHash,
         uint256 signerPrivateKey
     ) public {
         // Given: Account is set.
@@ -129,12 +163,13 @@ contract IsValidSignature_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         vm.assume(initiator != vm.addr(signerPrivateKey));
 
         // And: Transient state is set.
+        bytes32 orderHash = getOrderHash(structHash);
         cowSwapper.setAccountOwner(accountOwner);
         cowSwapper.setInitiator(initiator);
         cowSwapper.setOrderHash(orderHash);
         cowSwapper.setMessageHash(messageHash);
 
-        bytes memory signature = getSignature(messageHash, signerPrivateKey);
+        bytes memory signature = abi.encodePacked(structHash, getSignature(messageHash, signerPrivateKey));
 
         // When: Caller calls isValidSignature.
         // Then: it should revert.
@@ -143,7 +178,7 @@ contract IsValidSignature_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         cowSwapper.isValidSignature(orderHash, signature);
     }
 
-    function testFuzz_Success_isValidSignature_NoAccountSet(address caller, bytes32 orderHash, bytes memory signature)
+    function testFuzz_Success_isValidSignature_NoAccountSet(address caller, bytes32 structHash, bytes memory signature)
         public
     {
         // Given: No Account is set.
@@ -151,7 +186,8 @@ contract IsValidSignature_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
 
         // When: Caller calls isValidSignature.
         vm.prank(caller);
-        bytes4 magicValue = cowSwapper.isValidSignature(orderHash, signature);
+        bytes4 magicValue =
+            cowSwapper.isValidSignature(getOrderHash(structHash), abi.encodePacked(structHash, signature));
 
         // Then: Magic value is returned.
         assertEq(magicValue, bytes4(0x1626ba7e));
@@ -161,8 +197,8 @@ contract IsValidSignature_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         address account_,
         address caller,
         address initiator,
-        bytes32 orderHash,
         bytes32 messageHash,
+        bytes32 structHash,
         uint256 accountOwnerPrivateKey
     ) public {
         // Given: Account is set.
@@ -174,12 +210,13 @@ contract IsValidSignature_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         address accountOwner = vm.addr(accountOwnerPrivateKey);
 
         // And: Transient state is set.
+        bytes32 orderHash = getOrderHash(structHash);
         cowSwapper.setAccountOwner(accountOwner);
         cowSwapper.setInitiator(initiator);
         cowSwapper.setOrderHash(orderHash);
         cowSwapper.setMessageHash(messageHash);
 
-        bytes memory signature = getSignature(messageHash, accountOwnerPrivateKey);
+        bytes memory signature = abi.encodePacked(structHash, getSignature(messageHash, accountOwnerPrivateKey));
 
         // When: Caller calls isValidSignature.
         vm.prank(caller);
@@ -193,8 +230,8 @@ contract IsValidSignature_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         address account_,
         address caller,
         address accountOwner,
-        bytes32 orderHash,
         bytes32 messageHash,
+        bytes32 structHash,
         uint256 initiatorPrivateKey
     ) public {
         // Given: Account is set.
@@ -206,12 +243,13 @@ contract IsValidSignature_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         address initiator = vm.addr(initiatorPrivateKey);
 
         // And: Transient state is set.
+        bytes32 orderHash = getOrderHash(structHash);
         cowSwapper.setAccountOwner(accountOwner);
         cowSwapper.setInitiator(initiator);
         cowSwapper.setOrderHash(orderHash);
         cowSwapper.setMessageHash(messageHash);
 
-        bytes memory signature = getSignature(messageHash, initiatorPrivateKey);
+        bytes memory signature = abi.encodePacked(structHash, getSignature(messageHash, initiatorPrivateKey));
 
         // When: Caller calls isValidSignature.
         vm.prank(caller);

@@ -421,7 +421,9 @@ contract ExecuteAction_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         bytes memory loansWithSettlement;
         {
             // And: The signature length is not correct.
-            bytes memory signature = abi.encodePacked(address(cowSwapper), invalidSignature);
+            bytes memory signature = abi.encodePacked(
+                address(cowSwapper), keccak256(abi.encode(GPv2Order.TYPE_HASH, order)), invalidSignature
+            );
             bytes memory settlementCallData = getSettlementCallData(swapFee, order, signature);
 
             loansWithSettlement = this.getLoansWithSettlement(new Loan.Data[](1), settlementCallData);
@@ -482,7 +484,9 @@ contract ExecuteAction_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
                 mstore(add(invalidSignature, 64), s)
                 mstore8(add(invalidSignature, 96), invalidV)
             }
-            bytes memory signature = abi.encodePacked(address(cowSwapper), invalidSignature);
+            bytes memory signature = abi.encodePacked(
+                address(cowSwapper), keccak256(abi.encode(GPv2Order.TYPE_HASH, order)), invalidSignature
+            );
             bytes memory settlementCallData = getSettlementCallData(swapFee, order, signature);
 
             loansWithSettlement = this.getLoansWithSettlement(new Loan.Data[](1), settlementCallData);

@@ -109,11 +109,11 @@ contract Claim_MerklOperatorBase_Fuzz_Test is MerklOperatorBase_Fuzz_Test {
 
         // And: MerklOperatorBase is allowed as Asset Manager by New Owner.
         vm.prank(users.accountOwner);
-        vm.warp(block.timestamp + 10 minutes);
+        vm.warp(vm.getBlockTimestamp() + 10 minutes);
         factory.safeTransferFrom(users.accountOwner, newOwner, address(account));
         vm.startPrank(newOwner);
         account.setMerklOperators(merklOperators, statuses, new bytes[](1), address(account), new address[](0));
-        vm.warp(block.timestamp + 10 minutes);
+        vm.warp(vm.getBlockTimestamp() + 10 minutes);
         factory.safeTransferFrom(newOwner, users.accountOwner, address(account));
         vm.stopPrank();
 
