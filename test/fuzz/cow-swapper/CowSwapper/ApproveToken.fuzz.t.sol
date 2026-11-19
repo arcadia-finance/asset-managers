@@ -46,6 +46,7 @@ contract ApproveToken_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
         // Given: nonToken is not a token.
         vm.assume(nonToken != address(token0));
         vm.assume(nonToken != address(token1));
+        vm.assume(nonToken != address(weth9));
 
         // When: calling approveToken
         // Then: it should revert.

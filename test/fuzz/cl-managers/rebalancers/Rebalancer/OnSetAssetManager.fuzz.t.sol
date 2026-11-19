@@ -53,13 +53,12 @@ contract OnSetAssetManager_Rebalancer_Fuzz_Test is Rebalancer_Fuzz_Test {
 
     function testFuzz_Revert_onSetAssetManager_NotAnAccount(
         address caller,
-        address account_,
         address accountOwner,
         bool status,
         bytes memory data
     ) public {
-        // Given: account is not an Arcadia Account
-        vm.assume(account_ != address(account));
+        // Given: caller is not an Arcadia Account
+        vm.assume(caller != address(account));
 
         // When: calling rebalance
         // Then: it should revert

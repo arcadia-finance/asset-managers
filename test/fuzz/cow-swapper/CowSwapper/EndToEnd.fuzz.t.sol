@@ -21,6 +21,8 @@ import { MaliciousSolver } from "../../../utils/mocks/MaliciousSolver.sol";
  */
 // forge-lint: disable-next-item(unsafe-typecast)
 contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
+    using GPv2Order for GPv2Order.Data;
+
     /* ///////////////////////////////////////////////////////////////
                               SETUP
     /////////////////////////////////////////////////////////////// */
@@ -264,6 +266,69 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
             interactions[0] = new ICowSettlement.Interaction[](0);
             settlementCallData = abi.encodeCall(ICowSettlement.settle, (tokens, clearingPrices, trades, interactions));
         }
+
+        // When: The solver calls the flash loan router.
+        // Then: it should revert.
+        vm.prank(solver);
+        vm.expectRevert("Settlement reverted");
+        flashLoanRouter.flashLoanAndSettle(loans, settlementCallData);
+    }
+
+    function testFuzz_Revert_EndToEnd_MissingBeforeSwap_StaleOrderHash(
+        uint256 initiatorPrivateKey,
+        uint64 swapFee,
+        GPv2Order.Data memory order
+    ) public {
+        // Given: Valid signer.
+        initiatorPrivateKey = givenValidPrivatekey(initiatorPrivateKey);
+        address initiator = vm.addr(initiatorPrivateKey);
+
+        // And: Valid swap fee.
+        swapFee = uint64(bound(swapFee, 0, MAX_FEE));
+
+        // And: Valid order.
+        givenValidOrder(swapFee, order);
+
+        // And: Cow swapper is set as asset manager with initiator.
+        setCowSwapper(initiator);
+
+        // And: Account has sufficient tokenIn balance.
+        depositErc20InAccount(account, ERC20Mock(address(order.sellToken)), order.sellAmount);
+
+        // And: Router can execute the swap.
+        deal(address(order.buyToken), address(routerMock), order.buyAmount, true);
+
+        // And: Valid EIP-1271 signature.
+        bytes memory signature =
+            abi.encodePacked(address(cowSwapper), getSignature(address(account), swapFee, order, initiatorPrivateKey));
+
+        // And: The beforeSwap hook is not called.
+        Loan.Data[] memory loans = new Loan.Data[](1);
+        loans[0] = Loan.Data({
+            amount: order.sellAmount,
+            borrower: IBorrower(address(cowSwapper)),
+            lender: address(account),
+            token: IERC20(address(order.sellToken))
+        });
+        bytes memory settlementCallData;
+        {
+            (
+                address[] memory tokens,
+                uint256[] memory clearingPrices,
+                ICowSettlement.Trade[] memory trades,
+                ICowSettlement.Interaction[][3] memory interactions
+            ) = getSettlementData(swapFee, order, signature);
+            // Remove the hooks interaction.
+            interactions[0] = new ICowSettlement.Interaction[](0);
+            settlementCallData = abi.encodeCall(ICowSettlement.settle, (tokens, clearingPrices, trades, interactions));
+        }
+
+        // And: Order state of this order is left in transient storage by an earlier swap.
+        bytes32 orderHash = order.hash(orderHook.DOMAIN_SEPARATOR());
+        cowSwapper.setOrderHash(orderHash);
+        cowSwapper.setMessageHash(cowSwapper.getMessageHash(address(account), swapFee, orderHash));
+        cowSwapper.setTokenOut(address(order.buyToken));
+        cowSwapper.setSwapFee(swapFee);
 
         // When: The solver calls the flash loan router.
         // Then: it should revert.
@@ -776,6 +841,8 @@ contract EndToEnd_CowSwapper_Fuzz_Test is CowSwapper_Fuzz_Test {
 
         // And: Cow swapper is set as asset manager with initiator.
         vm.assume(initiator != address(0));
+        vm.assume(initiator != address(account));
+        vm.assume(initiator != address(settlement));
         setCowSwapper(initiator);
 
         // And: Account has sufficient tokenIn balance.

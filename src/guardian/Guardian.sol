@@ -89,7 +89,7 @@ abstract contract Guardian is Owned {
     /**
      * @notice Pauses the Asset Manager.
      */
-    function pause() external onlyGuardian whenNotPaused {
+    function pause() external onlyGuardian {
         paused = true;
     }
 
